@@ -65,6 +65,11 @@ public class PPOIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
+    @Override
     protected Num calculate(int index) {
         Num shortEmaValue = shortTermEma.getValue(index);
         Num longEmaValue = longTermEma.getValue(index);

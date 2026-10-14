@@ -44,6 +44,11 @@ public class MinusDIIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
+    @Override
     protected Num calculate(int index) {
         final var atrIndicatorValue = atrIndicator.getValue(index);
         if (atrIndicatorValue.equals(getBarSeries().numFactory().zero())) {

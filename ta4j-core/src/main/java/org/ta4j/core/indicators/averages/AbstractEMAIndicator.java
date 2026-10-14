@@ -18,7 +18,10 @@ import static org.ta4j.core.num.NaN.NaN;
  * invalid data is encountered. When a NaN value is detected, it is returned
  * immediately. If a previous value is NaN, the indicator resets to the current
  * value to allow graceful recovery. When a bounded series removes its prefix,
- * the retained recursive cache reanchors at the new head.
+ * the retained recursive cache reanchors at the new head. Cached consumers must
+ * discard their retained values too, because those values embed the previous
+ * recurrence. A saturated moving series therefore rebuilds this recurrence on
+ * each append; this does not preserve continuous full-history smoothing state.
  */
 public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -74,6 +77,19 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
             invalidateCache();
             observedRemovedBarsCount = removedBarsCount;
         }
+    }
+
+    /**
+     * Exposes this indicator's existing retained-head reset to cached consumers,
+     * including consumers that depend on it through derived helper indicators. This
+     * hook only reports the policy; it does not acquire the EMA monitor or evaluate
+     * source values during dependency traversal.
+     *
+     * @return {@code true}, because no pre-pruning recurrence remains valid
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
     @Override

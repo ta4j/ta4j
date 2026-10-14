@@ -101,6 +101,11 @@ public class MACDIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
+    @Override
     protected Num calculate(int index) {
         return shortTermEma.getValue(index).minus(longTermEma.getValue(index));
     }

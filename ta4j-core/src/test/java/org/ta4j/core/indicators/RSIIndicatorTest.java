@@ -21,6 +21,7 @@ import org.ta4j.core.num.NumFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -96,6 +97,48 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         Indicator<Num> rsi = getIndicator(new ClosePriceIndicator(data), barCount);
 
         assertEquals(barCount, rsi.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void historicalCachesReanchorWithInternalAveragesAfterPruning() {
+        for (boolean tailFirst : new boolean[] { false, true }) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                    .withData(1, 3, 5, 2, 7, 4, 8, 6)
+                    .build();
+            series.setMaximumBarCount(8);
+            ClosePriceIndicator close = new ClosePriceIndicator(series);
+            RSIIndicator rsi = new RSIIndicator(close, 2);
+            SMAIndicator nested = new SMAIndicator(new SMAIndicator(rsi, 1), 1);
+            for (int nextClose : new int[] { 9, 3 }) {
+                // Fill historical caches, not just the separate mutable-last-bar slot.
+                for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                    rsi.getValue(i);
+                    nested.getValue(i);
+                }
+                series.barBuilder().closePrice(nextClose).add();
+                if (tailFirst) {
+                    nested.getValue(series.getEndIndex());
+                }
+                RSIIndicator fresh = new RSIIndicator(close, 2);
+                SMAIndicator freshNested = new SMAIndicator(new SMAIndicator(fresh, 1), 1);
+                if (tailFirst) {
+                    freshNested.getValue(series.getEndIndex());
+                }
+                for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                    Num expected = fresh.getValue(i);
+                    assertNumEquals(expected, rsi.getValue(i));
+                    assertNumEquals(freshNested.getValue(i), nested.getValue(i));
+                }
+                assertThat(rsi.getValue(series.getBeginIndex() + 1).isNaN()).isTrue();
+                if (series.getBeginIndex() == 1) {
+                    assertNumEquals(70, rsi.getValue(6));
+                }
+                series.addPrice(numOf(12));
+                int lastIndex = series.getEndIndex();
+                assertNumEquals(fresh.getValue(lastIndex), rsi.getValue(lastIndex));
+                assertNumEquals(freshNested.getValue(lastIndex), nested.getValue(lastIndex));
+            }
+        }
     }
 
     @Test

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,32 @@ public class MassIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         data.barBuilder().openPrice(43.07).closePrice(43.55).highPrice(43.65).lowPrice(43.06).add();
         data.barBuilder().openPrice(43.56).closePrice(43.95).highPrice(43.99).lowPrice(43.53).add();
         data.barBuilder().openPrice(43.93).closePrice(44.47).highPrice(44.58).lowPrice(43.93).add();
+    }
+
+    @Test
+    public void cachedHistoricalValuesReanchorAfterPruning() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        double[] prices = { 10, 12, 11, 15, 13, 16, 12, 17, 14, 18 };
+        for (int i = 0; i < prices.length; i++) {
+            double price = prices[i];
+            series.barBuilder()
+                    .openPrice(price)
+                    .highPrice(price + i % 3 + 1)
+                    .lowPrice(price - i % 2 - 1)
+                    .closePrice(price)
+                    .volume(100 + i)
+                    .add();
+        }
+        series.setMaximumBarCount(10);
+        Indicator<Num> reused = new MassIndexIndicator(series, 2, 2);
+        for (int i = 0; i < series.getEndIndex(); i++) {
+            reused.getValue(i);
+        }
+        series.barBuilder().openPrice(9).highPrice(11).lowPrice(8).closePrice(9).volume(110).add();
+        Indicator<Num> fresh = new MassIndexIndicator(series, 2, 2);
+        for (int i = series.getBeginIndex(); i < series.getEndIndex(); i++) {
+            assertNumEquals(fresh.getValue(i), reused.getValue(i));
+        }
     }
 
     @Test

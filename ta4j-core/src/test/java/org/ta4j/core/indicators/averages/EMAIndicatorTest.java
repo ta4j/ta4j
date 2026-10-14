@@ -113,6 +113,69 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void cachedConsumersReanchorAfterPruningInEitherReadOrder() {
+        for (boolean tailFirst : new boolean[] { false, true }) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                    .withData(1, 3, 5, 2, 7, 4, 8, 6)
+                    .build();
+            series.setMaximumBarCount(8);
+            ClosePriceIndicator close = new ClosePriceIndicator(series);
+            EMAIndicator ema = new EMAIndicator(close, 2);
+            SMAIndicator identity = new SMAIndicator(ema, 1);
+            SMAIndicator nested = new SMAIndicator(identity, 2);
+            for (int nextClose : new int[] { 9, 3 }) {
+                for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                    identity.getValue(i);
+                    nested.getValue(i);
+                }
+                series.barBuilder().closePrice(nextClose).add();
+                if (tailFirst) {
+                    nested.getValue(series.getEndIndex());
+                }
+                EMAIndicator fresh = new EMAIndicator(close, 2);
+                SMAIndicator freshIdentity = new SMAIndicator(fresh, 1);
+                SMAIndicator freshNested = new SMAIndicator(freshIdentity, 2);
+                // Running sums may round differently across access orders. Match
+                // the reference graph's access order and keep exact Num assertions.
+                if (tailFirst) {
+                    freshNested.getValue(series.getEndIndex());
+                }
+                for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                    assertNumEquals(fresh.getValue(i), ema.getValue(i));
+                    assertNumEquals(freshIdentity.getValue(i), identity.getValue(i));
+                    assertNumEquals(freshNested.getValue(i), nested.getValue(i));
+                }
+                series.addPrice(numOf(12));
+                int lastIndex = series.getEndIndex();
+                assertNumEquals(freshIdentity.getValue(lastIndex), identity.getValue(lastIndex));
+                assertNumEquals(freshNested.getValue(lastIndex), nested.getValue(lastIndex));
+            }
+        }
+    }
+
+    @Test
+    public void cachedConsumersRetainWarmupAndNaNRecoveryAfterPruning() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 3, 5, 2, 7, 4, 8, 6)
+                .build();
+        series.setMaximumBarCount(8);
+        Indicator<Num> source = new MockIndicator(series, 0, numOf(1), numOf(3), numOf(5), numOf(2), numOf(7), numOf(4),
+                numOf(8), NaN, numOf(9));
+        EMAIndicator ema = new EMAIndicator(source, 2);
+        SMAIndicator consumer = new SMAIndicator(ema, 1);
+        for (int i = 0; i < 8; i++) {
+            consumer.getValue(i);
+        }
+        series.barBuilder().closePrice(9).add();
+
+        assertNumEquals(9, consumer.getValue(8));
+        assertThat(consumer.getValue(7).isNaN()).isTrue();
+        assertThat(consumer.getValue(2).isNaN()).isTrue();
+        assertNumEquals(2, consumer.getValue(3));
+        assertNumEquals(new EMAIndicator(source, 2).getValue(6), consumer.getValue(6));
+    }
+
+    @Test
     public void concurrentPruneDoesNotDeadlockRecursiveRead() throws Exception {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
         series.setMaximumBarCount(4);

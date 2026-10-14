@@ -41,6 +41,11 @@ public class RSIIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
+    @Override
     protected Num calculate(int index) {
         if (index < getCountOfUnstableBars()) {
             return NaN;

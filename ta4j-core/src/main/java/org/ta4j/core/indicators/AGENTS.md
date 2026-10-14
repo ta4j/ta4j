@@ -87,6 +87,15 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   cumulative measurement, volume force, both EMAs, and the outer
   oscillator, because each downstream cache mixes fresh and stale inputs
   once the cumulative measurement rebaselines.
+- `AbstractEMAIndicator` exposes its whole-cache retained-head reset through
+  `requiresFullCacheInvalidationAfterHeadAdvance()`. Cached consumers must
+  register the smoothing dependency, or expose an explicit full-reset policy
+  when a mandatory derived EMA/MMA/ATR/SMMA helper always reanchors. A numeric
+  derived-source floor alone cannot communicate that policy when the ordinary
+  unstable band also saturates at `Integer.MAX_VALUE`. Keeping the logical
+  price input alone leaves historical cache entries above the unstable band
+  stale. Do not infer that an underlying cumulative source also resets; its
+  declared policy remains independent.
 - `RecursiveCachedIndicator` opts in by default because its subclasses
   compute each value from its predecessors; recursive subclasses over a
   fixed trailing window, such as `VolumeIndicator` and

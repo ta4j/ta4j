@@ -84,6 +84,11 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
+    @Override
     protected Num calculate(int index) {
         // Return NaN during unstable period
         if (index < getCountOfUnstableBars()) {

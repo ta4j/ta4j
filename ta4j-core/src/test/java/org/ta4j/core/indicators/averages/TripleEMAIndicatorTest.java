@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.BarSeries;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +31,33 @@ public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                         0.69, 0.7, 0.72, 0.74, 0.71)
                 .build();
         closePrice = new ClosePriceIndicator(data);
+    }
+
+    @Test
+    public void cachedHistoricalValuesReanchorAfterPruning() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        double[] prices = { 10, 12, 11, 15, 13, 16, 12, 17, 14, 18 };
+        for (int i = 0; i < prices.length; i++) {
+            double price = prices[i];
+            series.barBuilder()
+                    .openPrice(price)
+                    .highPrice(price + i % 3 + 1)
+                    .lowPrice(price - i % 2 - 1)
+                    .closePrice(price)
+                    .volume(100 + i)
+                    .add();
+        }
+        series.setMaximumBarCount(10);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Indicator<Num> reused = new TripleEMAIndicator(close, 2);
+        for (int i = 0; i < series.getEndIndex(); i++) {
+            reused.getValue(i);
+        }
+        series.barBuilder().openPrice(9).highPrice(11).lowPrice(8).closePrice(9).volume(110).add();
+        Indicator<Num> fresh = new TripleEMAIndicator(close, 2);
+        for (int i = series.getBeginIndex(); i < series.getEndIndex(); i++) {
+            assertNumEquals(fresh.getValue(i), reused.getValue(i));
+        }
     }
 
     @Test

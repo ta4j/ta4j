@@ -2932,6 +2932,34 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertEquals(2, indicator.calculations());
     }
 
+    @Test
+    public void hiddenSmoothingResetPropagatesWhenUnstableFloorSaturates() {
+        BaseBarSeries seeded = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(10, 20, 30)
+                .build();
+        BaseBarSeries series = saturatedRetainedWindowSeries(seeded.getBarData(), Integer.MAX_VALUE - 2,
+                Integer.MAX_VALUE, Integer.MAX_VALUE - 2);
+        AlligatorIndicator source = new AlligatorIndicator(new ClosePriceIndicator(series), 2, 0);
+        CachedIndicator<Num> consumer = new CachedIndicator<>(source) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return source.getValue(index);
+            }
+        };
+        assertNumEquals(22.5, consumer.getValue(Integer.MAX_VALUE));
+
+        series.setMaximumBarCount(2);
+
+        assertEquals(Integer.MAX_VALUE - 1, series.getBeginIndex());
+        assertNumEquals(25, source.getValue(Integer.MAX_VALUE));
+        assertNumEquals(25, consumer.getValue(Integer.MAX_VALUE));
+    }
+
     private static final class CountingFullDiscardIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();

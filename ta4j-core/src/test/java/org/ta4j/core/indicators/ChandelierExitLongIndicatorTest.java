@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
@@ -44,6 +45,32 @@ public class ChandelierExitLongIndicatorTest extends AbstractIndicatorTest<Indic
         data.barBuilder().openPrice(45.58).closePrice(45.55).highPrice(45.61).lowPrice(45.39).add();
         data.barBuilder().openPrice(45.45).closePrice(45.01).highPrice(45.55).lowPrice(44.80).add();
         data.barBuilder().openPrice(45.03).closePrice(44.23).highPrice(45.04).lowPrice(44.17).add();
+    }
+
+    @Test
+    public void cachedHistoricalValuesReanchorAfterPruning() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        double[] prices = { 10, 12, 11, 15, 13, 16, 12, 17, 14, 18 };
+        for (int i = 0; i < prices.length; i++) {
+            double price = prices[i];
+            series.barBuilder()
+                    .openPrice(price)
+                    .highPrice(price + i % 3 + 1)
+                    .lowPrice(price - i % 2 - 1)
+                    .closePrice(price)
+                    .volume(100 + i)
+                    .add();
+        }
+        series.setMaximumBarCount(10);
+        Indicator<Num> reused = new ChandelierExitLongIndicator(series, 2, 2);
+        for (int i = 0; i < series.getEndIndex(); i++) {
+            reused.getValue(i);
+        }
+        series.barBuilder().openPrice(9).highPrice(11).lowPrice(8).closePrice(9).volume(110).add();
+        Indicator<Num> fresh = new ChandelierExitLongIndicator(series, 2, 2);
+        for (int i = series.getBeginIndex(); i < series.getEndIndex(); i++) {
+            assertNumEquals(fresh.getValue(i), reused.getValue(i));
+        }
     }
 
     @Test

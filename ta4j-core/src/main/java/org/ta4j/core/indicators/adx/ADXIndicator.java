@@ -51,6 +51,11 @@ public class ADXIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
+    @Override
     protected Num calculate(int index) {
         return averageDXIndicator.getValue(index);
     }

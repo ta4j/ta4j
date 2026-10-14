@@ -38,6 +38,17 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
         }
     }
 
+    /**
+     * Every finite RWI value consumes ATR recurrences that reanchor after a head
+     * advance, so no cached result from the previous head remains valid.
+     *
+     * @return {@code true}
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
     @Override
     protected Num calculate(int index) {
         if (index < getCountOfUnstableBars() || index - barCount + 1 < getBarSeries().getBeginIndex()) {

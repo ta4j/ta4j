@@ -42,6 +42,11 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
+    @Override
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         Num massIndex = getBarSeries().numFactory().zero();

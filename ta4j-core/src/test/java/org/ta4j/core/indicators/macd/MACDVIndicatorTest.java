@@ -5,6 +5,8 @@ package org.ta4j.core.indicators.macd;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.saturatedRetainedWindowSeries;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -14,11 +16,13 @@ import java.util.function.BiFunction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.VWMAIndicator;
@@ -27,6 +31,8 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 
@@ -39,6 +45,40 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
     public MACDVIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void smoothingResetPropagatesWhenUnstableFloorSaturates() {
+        BarSeries seeded = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        for (int price : new int[] { 10, 20, 30 }) {
+            seeded.barBuilder()
+                    .openPrice(price)
+                    .highPrice(price + 1)
+                    .lowPrice(price - 1)
+                    .closePrice(price)
+                    .volume(1)
+                    .add();
+        }
+        BaseBarSeries retained = saturatedRetainedWindowSeries(seeded.getBarData(), Integer.MAX_VALUE - 2,
+                Integer.MAX_VALUE, Integer.MAX_VALUE - 2);
+        MACDVIndicator source = new MACDVIndicator(retained, 1, 2, 1);
+        CachedIndicator<Num> consumer = new CachedIndicator<>(source) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return source.getValue(index);
+            }
+        };
+        assertNumEquals(0, consumer.getValue(Integer.MAX_VALUE));
+
+        retained.setMaximumBarCount(2);
+
+        assertThat(source.getValue(Integer.MAX_VALUE).isNaN()).isTrue();
+        assertThat(consumer.getValue(Integer.MAX_VALUE).isNaN()).isTrue();
     }
 
     @BeforeEach

@@ -4,10 +4,13 @@
 package org.ta4j.core.indicators.volume;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -16,6 +19,28 @@ public class ChaikinOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
 
     public ChaikinOscillatorIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void historicalCacheReanchorsWithoutResettingCumulativeSource() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 10; i++) {
+            series.barBuilder().openPrice(10).highPrice(12).lowPrice(8).closePrice(9 + i % 3).volume(100 + i).add();
+        }
+        series.setMaximumBarCount(10);
+        ChaikinOscillatorIndicator oscillator = new ChaikinOscillatorIndicator(series, 2, 3);
+        AccumulationDistributionIndicator cumulative = new AccumulationDistributionIndicator(series);
+        EMAIndicator shortEma = new EMAIndicator(cumulative, 2);
+        EMAIndicator longEma = new EMAIndicator(cumulative, 3);
+        for (int i = 0; i < 10; i++) {
+            oscillator.getValue(i);
+            shortEma.getValue(i);
+            longEma.getValue(i);
+        }
+        series.barBuilder().openPrice(10).highPrice(12).lowPrice(8).closePrice(11).volume(110).add();
+        // Preserve the independently primed cumulative source; only its EMA
+        // consumers reanchor. A fresh whole graph would use a different baseline.
+        assertNumEquals(shortEma.getValue(8).minus(longEma.getValue(8)), oscillator.getValue(8));
     }
 
     @Test

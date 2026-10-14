@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -30,6 +31,33 @@ public class AlligatorIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 1; i <= 60; i++) {
             series.barBuilder().openPrice(i).closePrice(i).highPrice(i + 1).lowPrice(i - 1).volume(10 + i).add();
+        }
+    }
+
+    @Test
+    public void cachedHistoricalValuesReanchorAfterPruning() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        double[] prices = { 10, 12, 11, 15, 13, 16, 12, 17, 14, 18 };
+        for (int i = 0; i < prices.length; i++) {
+            double price = prices[i];
+            series.barBuilder()
+                    .openPrice(price)
+                    .highPrice(price + i % 3 + 1)
+                    .lowPrice(price - i % 2 - 1)
+                    .closePrice(price)
+                    .volume(100 + i)
+                    .add();
+        }
+        series.setMaximumBarCount(10);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Indicator<Num> reused = new AlligatorIndicator(close, 2, 1);
+        for (int i = 0; i < series.getEndIndex(); i++) {
+            reused.getValue(i);
+        }
+        series.barBuilder().openPrice(9).highPrice(11).lowPrice(8).closePrice(9).volume(110).add();
+        Indicator<Num> fresh = new AlligatorIndicator(close, 2, 1);
+        for (int i = series.getBeginIndex(); i < series.getEndIndex(); i++) {
+            assertNumEquals(fresh.getValue(i), reused.getValue(i));
         }
     }
 
