@@ -18,9 +18,9 @@
  * <p>
  * {@link org.ta4j.core.portfolio.MinimumVarianceOptimizer} is an optional
  * allocation calculation in this package. It produces a
- * {@code PortfolioAllocation} for the same workflow; explicit static weights
- * do not require an optimizer. Other optimizer families can remain consumers
- * of that allocation contract without adding another execution API.
+ * {@code PortfolioAllocation} for the same workflow; explicit static weights do
+ * not require an optimizer. Other optimizer families can remain consumers of
+ * that allocation contract without adding another execution API.
  * </p>
  *
  * @since 0.25.1
