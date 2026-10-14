@@ -20,7 +20,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Random;
+import java.security.SecureRandom;
 import java.util.Set;
 import java.util.StringJoiner;
 
@@ -964,11 +964,24 @@ public final class ParameterResearch {
             int noImprovement = noImprovementIterations == null ? -1 : noImprovementIterations;
             return switch (searchPlan.kind()) {
             case GRID -> new GridSearchEngine(specs);
-            case GENETIC -> new GeneticSearchEngine(specs, searchPlan.geneticSettings(), new Random(searchPlan.seed()),
-                    ranking, direction, maxIter, noImprovement);
+            case GENETIC -> new GeneticSearchEngine(specs, searchPlan.geneticSettings(),
+                    createSecureRandom(searchPlan.seed()), ranking, direction, maxIter, noImprovement);
             case PARTICLE_SWARM -> new ParticleSwarmEngine(specs, searchPlan.swarmSettings(),
-                    new Random(searchPlan.seed()), ranking, direction, maxIter, noImprovement);
+                    createSecureRandom(searchPlan.seed()), ranking, direction, maxIter, noImprovement);
             };
+        }
+
+        @SuppressFBWarnings(value = "DMI_RANDOM_USED_ONLY_ONCE", justification = "Factory method constructs a seeded SecureRandom instance and returns it to the engine.")
+        private static SecureRandom createSecureRandom(long seed) {
+            try {
+                SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
+                random.setSeed(seed);
+                return random;
+            } catch (NoSuchAlgorithmException e) {
+                SecureRandom random = new SecureRandom();
+                random.setSeed(seed);
+                return random;
+            }
         }
 
         private boolean reachedTarget(Direction activeDirection, Num activeTargetScore, Num score) {
