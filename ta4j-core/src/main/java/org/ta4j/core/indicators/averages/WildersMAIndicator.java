@@ -22,11 +22,10 @@ import org.ta4j.core.num.NumFactory;
  * bounded series, retained values survive head advances and, once the window
  * holds more than {@code barCount} bars, each appended bar continues the cached
  * recursion. Initialization is counted from where the recursion was seeded:
- * only when no cached predecessor exists (for example a fresh indicator) does it
- * restart at the retained head, using its first retained value as the
- * missing-history proxy. See the test
- * cases for this indicator as it skips the initial data until the calculation
- * stabilizes.
+ * only when no cached predecessor exists (for example a fresh indicator) does
+ * it restart at the retained head, using its first retained value as the
+ * missing-history proxy. See the test cases for this indicator as it skips the
+ * initial data until the calculation stabilizes.
  *
  * @see <a href=
  *      "https://www.tradingview.com/script/wXtQeoOg/#:~:text=Wilder%20did%20not%20use%20the,where%20K%20%3D1%2FN.">
@@ -91,8 +90,8 @@ public class WildersMAIndicator extends RecursiveCachedIndicator<Num> {
             Num sum = sumPriceIndicator.getValue(index);
 
             // Return average of available points for initialization
-            return sum.plus(simulatedValue.multipliedBy(numFactory.numOf(barCount - chainIndex - 1)))
-                    .dividedBy(numBars);
+            Num simulatedSum = sum.plus(simulatedValue.multipliedBy(numFactory.numOf(barCount - chainIndex - 1)));
+            return simulatedSum.dividedBy(numBars);
         }
 
         // Past initialization, or an initialization band whose seed bars have left

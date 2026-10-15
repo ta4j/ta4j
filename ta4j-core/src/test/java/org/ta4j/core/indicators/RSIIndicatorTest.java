@@ -55,8 +55,8 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         // #1666: RSI on a moving series must not depend on the maximum bar
         // count. Its MMAs continue their recurrences across head advances, so a
         // reader of the latest bar sees the unbounded-series value.
-        double[] closes = { 44.34, 44.09, 44.15, 43.61, 44.33, 44.83, 45.10, 45.42, 45.84, 46.08, 45.89, 46.03,
-                45.61, 46.28, 46.28, 46.00, 46.03, 46.41, 46.22, 45.64, 46.21, 46.25, 45.71, 46.45 };
+        double[] closes = { 44.34, 44.09, 44.15, 43.61, 44.33, 44.83, 45.10, 45.42, 45.84, 46.08, 45.89, 46.03, 45.61,
+                46.28, 46.28, 46.00, 46.03, 46.41, 46.22, 45.64, 46.21, 46.25, 45.71, 46.45 };
         BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         moving.setMaximumBarCount(6);
         BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();

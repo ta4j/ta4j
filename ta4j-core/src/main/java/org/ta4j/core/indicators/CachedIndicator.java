@@ -468,8 +468,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 dependenciesChanged = true;
                 invalidateFrom = unionInvalidateFrom(invalidateFrom, dependencyObservation.invalidateFrom());
                 int dependencyFloor = dependencyObservation.cacheFloor();
-                if (dependencyFloor == Integer.MAX_VALUE && dependencyObservation.headAdvanced()
-                        && hasRecursiveDependencies()) {
+                boolean recursiveHeadAdvance = dependencyObservation.headAdvanced() && hasRecursiveDependencies();
+                if (dependencyFloor == Integer.MAX_VALUE && recursiveHeadAdvance) {
                     // An unbounded-history chain keeps its retained values across a
                     // dependency-series head advance exactly as across its own; changed
                     // dependency indexes still invalidate through invalidateFrom.
@@ -759,9 +759,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * these indicators evict the declared unstable range
      * ({@code firstRetainedIndex} plus {@link #getCountOfUnstableBars()}) so that
      * re-evaluated values match a calculation against the retained window. A
-     * subclass whose values are always
-     * recomputable from the retained window, including any portion that only
-     * conditionally recurses (for example {@link StochasticIndicator}), overrides
+     * subclass whose values are always recomputable from the retained window,
+     * including any portion that only conditionally recurses (for example
+     * {@link StochasticIndicator}), overrides
      * {@link #requiresFullCacheInvalidationAfterHeadAdvance()} so the whole cache
      * is discarded: keeping only the recursively derived band would preserve stale
      * results computed from evicted bars.
@@ -850,8 +850,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return {@code true} when an explicit full-invalidation source lies in the
      *         graph
      */
-    private static boolean sourceGraphRequiresFullCacheInvalidation(Indicator<?> source,
-            Set<Indicator<?>> visited) {
+    private static boolean sourceGraphRequiresFullCacheInvalidation(Indicator<?> source, Set<Indicator<?>> visited) {
         Deque<Indicator<?>> pendingSources = new ArrayDeque<>();
         pendingSources.addLast(source);
         while (!pendingSources.isEmpty()) {
@@ -859,9 +858,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             if (!visited.add(currentSource)) {
                 continue;
             }
-            if (currentSource instanceof CachedIndicator<?> cachedSource
-                    && cachedSource.requiresFullCacheInvalidationAfterHeadAdvance()) {
-                return true;
+            if (currentSource instanceof CachedIndicator<?> cachedSource) {
+                if (cachedSource.requiresFullCacheInvalidationAfterHeadAdvance()) {
+                    return true;
+                }
             }
             for (Indicator<?> dependency : currentSource.getDependencies()) {
                 pendingSources.addLast(dependency);
@@ -960,8 +960,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // keep it in the main cache instead of dropping it, so the chain does not
             // have to recompute that bar, possibly after its own predecessor left the
             // retained window.
-            boolean promote = cachedIndexChangedRole && !cachedIndexInvalid && hasRecursiveDependencies()
-                    && lastBarState != null && lastBarState.isIntact();
+            boolean intactTerminalValue = lastBarState != null && lastBarState.isIntact();
+            boolean promote = cachedIndexChangedRole && !cachedIndexInvalid && intactTerminalValue;
+            promote = promote && hasRecursiveDependencies();
             int promotedIndex = promote ? lastBarCachedIndex : -1;
             T promotedValue = promote ? lastBarCachedResult : null;
             if (cachedIndexChangedRole || cachedIndexInvalid || computationInvalid) {

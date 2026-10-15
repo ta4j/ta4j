@@ -161,22 +161,23 @@ public class KeltnerChannelUpperIndicatorTest extends AbstractIndicatorTest<Indi
         // unbounded series; only a fresh channel re-seeds at the retained head.
         BarSeries series = steppedSeries();
         BarSeries unbounded = steppedSeries();
-        KeltnerChannelUpperIndicator upper = new KeltnerChannelUpperIndicator(
-                new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(series), 1), 1d, 2);
+        KeltnerChannelUpperIndicator upper = upperChannel(series);
         upper.getValue(5);
 
         series.setMaximumBarCount(3);
         assertEquals(3, series.getBeginIndex());
 
-        KeltnerChannelUpperIndicator reference = new KeltnerChannelUpperIndicator(
-                new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(unbounded), 1), 1d, 2);
+        KeltnerChannelUpperIndicator reference = upperChannel(unbounded);
         for (int i = 3; i <= 5; i++) {
             assertNumEquals(reference.getValue(i), upper.getValue(i));
         }
 
-        KeltnerChannelUpperIndicator freshUpper = new KeltnerChannelUpperIndicator(
-                new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(series), 1), 1d, 2);
-        assertNumEquals(60, freshUpper.getValue(5));
+        assertNumEquals(60, upperChannel(series).getValue(5));
+    }
+
+    private static KeltnerChannelUpperIndicator upperChannel(BarSeries series) {
+        KeltnerChannelMiddleIndicator middle = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(series), 1);
+        return new KeltnerChannelUpperIndicator(middle, 1d, 2);
     }
 
     private BarSeries steppedSeries() {
