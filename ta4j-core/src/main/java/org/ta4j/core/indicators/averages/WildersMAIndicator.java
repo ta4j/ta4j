@@ -64,14 +64,17 @@ public class WildersMAIndicator extends RecursiveCachedIndicator<Num> {
             // Empty series: there is no bar to seed from or recurse to.
             return NaN.NaN;
         }
-        if (index <= beginIndex) {
+        if (index < beginIndex) {
+            // A removed index mapped here by CachedIndicator: serve the first
+            // available bar's value (the retained recursion, or its seed) without
+            // re-seeding the live chain. calculate(beginIndex) reads no predecessor.
+            return getValue(beginIndex);
+        }
+        if (index == beginIndex) {
             // Seed at the first retained bar. On a bounded series retained values
             // survive head advances, so this is only reached when no cached
-            // predecessor exists (for example a fresh indicator). A pruned index
-            // mapped here by CachedIndicator must not re-seed the live chain.
-            if (index == beginIndex) {
-                chainStartIndex = beginIndex;
-            }
+            // predecessor exists (for example a fresh indicator).
+            chainStartIndex = beginIndex;
             return indicator.getValue(index);
         }
         NumFactory numFactory = getBarSeries().numFactory();

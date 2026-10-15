@@ -128,6 +128,24 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void removedIndexReadServesRetainedFirstAvailableValue() {
+        // A removed index maps to the first available bar. Once the chain has
+        // continued past warm-up, that bar holds a retained full-history value, and
+        // both requests must agree instead of the removed read re-seeding.
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(3);
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(moving), 2);
+        for (int i = 0; i < 8; i++) {
+            moving.barBuilder().closePrice(10 + 3 * (i % 3)).add();
+            ema.getValue(i);
+        }
+        int beginIndex = moving.getBeginIndex();
+        assertThat(ema.getValue(beginIndex).isNaN()).isFalse();
+        assertNumEquals(ema.getValue(beginIndex), ema.getValue(beginIndex - 1));
+        assertNumEquals(ema.getValue(beginIndex), ema.getValue(0));
+    }
+
+    @Test
     public void continuedChainKeepsFullHistoryWarmUpWhenWindowIsShorterThanWarmUp() {
         // The window (3 bars) is shorter than the warm-up (5 bars). Warm-up is
         // counted from where the chain was seeded, so the continued chain still

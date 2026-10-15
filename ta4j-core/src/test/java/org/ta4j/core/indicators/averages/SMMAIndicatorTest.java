@@ -92,6 +92,8 @@ public class SMMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         for (int i = 14; i <= 19; i++) {
             assertNumEquals(reference.getValue(i), smma.getValue(i));
         }
+        // A removed index maps to the first available bar's retained value.
+        assertNumEquals(smma.getValue(14), smma.getValue(13));
 
         SMMAIndicator fresh = new SMMAIndicator(new ClosePriceIndicator(series), 2);
         assertNumEquals(140, fresh.getValue(14));

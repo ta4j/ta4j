@@ -419,6 +419,8 @@ public class WildersMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         for (int i = 3; i <= 5; i++) {
             assertNumEquals(reference.getValue(i), indicator.getValue(i));
         }
+        // A removed index maps to the first available bar's retained value.
+        assertNumEquals(indicator.getValue(3), indicator.getValue(2));
 
         // Without cached predecessors the chain seeds at the retained [4, 5, 6].
         WildersMAIndicator fresh = new WildersMAIndicator(new ClosePriceIndicator(series), 3);

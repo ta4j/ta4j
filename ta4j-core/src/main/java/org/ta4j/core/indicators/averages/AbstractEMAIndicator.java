@@ -63,19 +63,17 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
             // Empty series: there is no bar to seed from or recurse to.
             return NaN;
         }
-        // CachedIndicator maps unavailable history to calculate(0). Serve the
-        // retained head's seed value without re-seeding the live chain, which may
-        // have started before the head.
-        boolean mappedFromRemovedHistory = index < beginIndex;
-        if (mappedFromRemovedHistory) {
-            index = Math.min(beginIndex, getBarSeries().getEndIndex());
+        // CachedIndicator maps unavailable history to calculate(0). Serve the first
+        // available bar's value: the retained recurrence when the chain continued
+        // past the head, otherwise its seed. calculate(beginIndex) never reads a
+        // predecessor, so this cannot recurse back here.
+        if (index < beginIndex) {
+            return getValue(beginIndex);
         }
 
         if (index == beginIndex) {
             // No retained predecessor: the chain is (re)seeded at the retained head.
-            if (!mappedFromRemovedHistory) {
-                chainStartIndex = beginIndex;
-            }
+            chainStartIndex = beginIndex;
             if (getCountOfUnstableBars() > 0) {
                 return NaN;
             }

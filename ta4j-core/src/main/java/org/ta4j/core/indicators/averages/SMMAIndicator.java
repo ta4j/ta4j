@@ -43,7 +43,13 @@ public class SMMAIndicator extends RecursiveCachedIndicator<Num> {
             // Empty series: there is no bar to seed from or recurse to.
             return NaN.NaN;
         }
-        if (index <= getBarSeries().getBeginIndex()) {
+        if (index < getBarSeries().getBeginIndex()) {
+            // A removed index mapped here by CachedIndicator: serve the first
+            // available bar's value (the retained recursion, or its seed).
+            // calculate(beginIndex) reads no predecessor, so this cannot recurse.
+            return getValue(getBarSeries().getBeginIndex());
+        }
+        if (index == getBarSeries().getBeginIndex()) {
             // Seed at the first retained bar: for a full series this is the first
             // data point. On a bounded series retained values survive head
             // advances, so this seed is only reached when no cached predecessor
