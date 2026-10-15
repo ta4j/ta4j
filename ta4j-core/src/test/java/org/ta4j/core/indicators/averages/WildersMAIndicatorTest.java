@@ -405,19 +405,24 @@ public class WildersMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     @Test
-    public void clearsCacheWhenSeriesHeadAdvances() {
+    public void keepsRetainedChainWhenSeriesHeadAdvances() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
         WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
-
-        // Cache values before head advance
         indicator.getValue(5);
 
-        // Advance series head by setting maximum bar count
         series.setMaximumBarCount(3);
 
-        // Values should match a freshly seeded indicator over retained bars [4, 5, 6]
-        assertNumEquals(4, indicator.getValue(3));
-        assertNumEquals(5, indicator.getValue(5));
+        // Retained values are full-history values (#1666) and are kept.
+        WildersMAIndicator reference = new WildersMAIndicator(new ClosePriceIndicator(unbounded), 3);
+        for (int i = 3; i <= 5; i++) {
+            assertNumEquals(reference.getValue(i), indicator.getValue(i));
+        }
+
+        // Without cached predecessors the chain seeds at the retained [4, 5, 6].
+        WildersMAIndicator fresh = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
+        assertNumEquals(4, fresh.getValue(3));
+        assertNumEquals(5, fresh.getValue(5));
     }
 
 }

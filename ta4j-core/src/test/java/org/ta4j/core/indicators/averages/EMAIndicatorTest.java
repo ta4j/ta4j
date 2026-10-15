@@ -61,6 +61,57 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void movingSeriesContinuesRecurrenceAcrossHeadAdvances() {
+        // #1666: a moving series drops a bar on every append. Each appended bar
+        // must extend the cached recurrence, so live and historical reads match
+        // an unbounded series instead of a chain rebuilt from the retained head.
+        double[] closes = { 10, 13, 9, 15, 11, 17, 12, 19, 14, 21, 13, 18 };
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(4);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(moving), 3);
+        EMAIndicator reference = new EMAIndicator(new ClosePriceIndicator(unbounded), 3);
+        for (int i = 0; i < closes.length; i++) {
+            moving.barBuilder().closePrice(closes[i]).add();
+            unbounded.barBuilder().closePrice(closes[i]).add();
+            assertNumEquals(reference.getValue(i), ema.getValue(i));
+        }
+        assertEquals(8, moving.getBeginIndex());
+        for (int i = moving.getBeginIndex(); i <= moving.getEndIndex(); i++) {
+            assertNumEquals(reference.getValue(i), ema.getValue(i));
+        }
+
+        // Without cached predecessors the chain re-seeds at the retained head
+        // and warms up from there.
+        EMAIndicator fresh = new EMAIndicator(new ClosePriceIndicator(moving), 3);
+        assertTrue(fresh.getValue(10).isNaN());
+        assertNumEquals(18, fresh.getValue(11));
+    }
+
+    @Test
+    public void continuedChainKeepsFullHistoryWarmUpWhenWindowIsShorterThanWarmUp() {
+        // The window (3 bars) is shorter than the warm-up (5 bars). Warm-up is
+        // counted from where the chain was seeded, so the continued chain still
+        // turns stable at index 5 like an unbounded series; a read of a pruned
+        // index must not re-seed the live chain.
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(3);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(moving), 5);
+        EMAIndicator reference = new EMAIndicator(new ClosePriceIndicator(unbounded), 5);
+        for (int i = 0; i < 10; i++) {
+            moving.barBuilder().closePrice(10 + i * (i % 2 == 0 ? 1 : -1)).add();
+            unbounded.barBuilder().closePrice(10 + i * (i % 2 == 0 ? 1 : -1)).add();
+            if (i == 7) {
+                ema.getValue(0);
+            }
+            Num value = ema.getValue(i);
+            assertNumEquals(reference.getValue(i), value);
+            assertThat(value.isNaN()).isEqualTo(i < 5);
+        }
+    }
+
+    @Test
     public void negativeIndexRemainsNaNDuringWarmup() {
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 2);
 

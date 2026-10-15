@@ -27,6 +27,7 @@ import org.ta4j.core.*;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.averages.EDMAIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.VIDYAIndicator;
 import org.ta4j.core.indicators.averages.WildersMAIndicator;
@@ -424,9 +425,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // value is recursive by definition even when it does not extend
         // RecursiveCachedIndicator: the head-advance cache floor must not
         // evict the retained band and reseed it from a different history.
-        // SMMA is the deliberate exception: it re-anchors its chain at the
-        // retained head (see SMMAIndicatorTest), so this test uses a plain
-        // self-recursive subclass that keeps the default policy.
+        // This test uses a plain self-recursive subclass that keeps the default
+        // policy without depending on any averaging implementation.
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1d, 2d, 3d, 4d, 5d, 6d, 7d)
                 .build();
@@ -2259,6 +2259,21 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         };
 
         assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(1));
+    }
+
+    @Test
+    public void recursiveDependentKeepsCacheWhenSourceOnlyRaisesNumericFloor() {
+        // An unbounded-history chain consumed the first retained true range
+        // while its previous close still existed. The true range re-evaluating
+        // that entry after a head advance does not make the chain stale, so the
+        // recursive dependent keeps its retained values (#1666) while a
+        // non-recursive dependent still discards (see above).
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        MMAIndicator dependent = new MMAIndicator(new TRIndicator(barSeries), 2);
+
+        assertEquals(1, dependent.minimumCacheableIndexAfterHeadAdvance(1));
     }
 
     @Test

@@ -714,7 +714,19 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * window on the next read; entries at or above it are kept.
      *
      * <p>
-     * The default resolves one of two policies, after propagating source
+     * Indicators with unbounded historical dependencies
+     * ({@link #hasRecursiveDependencies()} returns {@code true}) keep every
+     * retained cached value, because their results cannot be recomputed from the
+     * retained window alone and the retained recurrence is still the full-history
+     * value; the next appended bar continues that recurrence. They discard their
+     * whole cache only when their source graph contains a {@link CachedIndicator}
+     * that explicitly requires full invalidation (a discontinuity the chain cannot
+     * continue across). Numeric source floors do not propagate into them: such a
+     * floor only re-evaluates source values the chain has already consumed.
+     * </p>
+     *
+     * <p>
+     * All other indicators resolve one of two policies, after propagating source
      * invalidations: when the source graph - traversed through
      * {@link Indicator#getDependencies()} so non-cached wrappers are not a barrier
      * - contains a {@link CachedIndicator} that applies a floor above its own
@@ -723,13 +735,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * discards its whole cache too, because its cached values were derived from
      * source values that no longer exist. A source whose floor merely covers its
      * own declared unstable band does not trigger propagation, because that floor
-     * is the band's default eviction and dependents already tolerate it. Indicators
-     * with unbounded historical dependencies ({@link #hasRecursiveDependencies()}
-     * returns {@code true}) and no such source keep every cached value, because
-     * their results cannot be recomputed from the retained window alone; all other
-     * indicators evict the declared unstable range ({@code firstRetainedIndex} plus
-     * {@link #getCountOfUnstableBars()}) so that re-seeded values match a fresh
-     * calculation against the retained window. A subclass whose values are always
+     * is the band's default eviction and dependents already tolerate it. Otherwise
+     * these indicators evict the declared unstable range
+     * ({@code firstRetainedIndex} plus {@link #getCountOfUnstableBars()}) so that
+     * re-evaluated values match a calculation against the retained window. A
+     * subclass whose values are always
      * recomputable from the retained window, including any portion that only
      * conditionally recurses (for example {@link StochasticIndicator}), overrides
      * {@link #requiresFullCacheInvalidationAfterHeadAdvance()} so the whole cache
@@ -778,6 +788,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         if (requiresFullCacheInvalidationAfterHeadAdvance()) {
             return Integer.MAX_VALUE;
         }
+        if (hasRecursiveDependencies()) {
+            // An unbounded-history chain consumed each source value while its inputs
+            // were still retained, so a source that merely evicts its own lower band
+            // (for example a true range losing its previous close) does not make the
+            // chain stale. Only an explicit source discontinuity breaks it.
+            for (Indicator<?> sourceIndicator : sourceIndicators) {
+                if (sourceGraphRequiresFullCacheInvalidation(sourceIndicator, visited)) {
+                    return Integer.MAX_VALUE;
+                }
+            }
+            for (Indicator<?> derivedSource : derivedSources) {
+                if (sourceGraphRequiresFullCacheInvalidation(derivedSource, visited)) {
+                    return Integer.MAX_VALUE;
+                }
+            }
+            return firstRetainedIndex;
+        }
         for (Indicator<?> sourceIndicator : sourceIndicators) {
             if (sourceGraphRebaselinesBeyondDefaultBand(sourceIndicator, firstRetainedIndex, visited)) {
                 return Integer.MAX_VALUE;
@@ -788,7 +815,39 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 return Integer.MAX_VALUE;
             }
         }
-        return hasRecursiveDependencies() ? firstRetainedIndex : unstableRangeFloor(firstRetainedIndex);
+        return unstableRangeFloor(firstRetainedIndex);
+    }
+
+    /**
+     * Whether any cached indicator in the source graph rooted at {@code source}
+     * explicitly requires full invalidation after a head advance, i.e. declares a
+     * discontinuity (such as a cumulative source rebaselining) that an
+     * unbounded-history chain cannot continue across. Numeric floors are ignored:
+     * they only re-evaluate source values the chain has already consumed.
+     *
+     * @param source  the source indicator to inspect
+     * @param visited identity set shared with the enclosing traversal
+     * @return {@code true} when an explicit full-invalidation source lies in the
+     *         graph
+     */
+    private static boolean sourceGraphRequiresFullCacheInvalidation(Indicator<?> source,
+            Set<Indicator<?>> visited) {
+        Deque<Indicator<?>> pendingSources = new ArrayDeque<>();
+        pendingSources.addLast(source);
+        while (!pendingSources.isEmpty()) {
+            Indicator<?> currentSource = pendingSources.removeLast();
+            if (!visited.add(currentSource)) {
+                continue;
+            }
+            if (currentSource instanceof CachedIndicator<?> cachedSource
+                    && cachedSource.requiresFullCacheInvalidationAfterHeadAdvance()) {
+                return true;
+            }
+            for (Indicator<?> dependency : currentSource.getDependencies()) {
+                pendingSources.addLast(dependency);
+            }
+        }
+        return false;
     }
 
     /**

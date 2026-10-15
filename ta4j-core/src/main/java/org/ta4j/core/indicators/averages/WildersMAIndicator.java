@@ -18,11 +18,13 @@ import org.ta4j.core.num.NumFactory;
  *
  * The WMA inherently "remembers" past values due to its recursive formula, but
  * the initialization WMA can significantly bias early values. This bias
- * diminishes over time as more data contributes to the calculation. For a
- * bounded series that has discarded early bars, initialization is relative to
- * the retained head and uses its first retained value as the missing-history
- * proxy. See the test cases for this indicator as it skips the initial data
- * until the calculation stabilizes.
+ * diminishes over time as more data contributes to the calculation. On a
+ * bounded series, retained values survive head advances and each appended bar
+ * continues the cached recursion. Only when no cached predecessor exists (for
+ * example a fresh indicator) is initialization relative to the retained head,
+ * using its first retained value as the missing-history proxy. See the test
+ * cases for this indicator as it skips the initial data until the calculation
+ * stabilizes.
  *
  * @see <a href=
  *      "https://www.tradingview.com/script/wXtQeoOg/#:~:text=Wilder%20did%20not%20use%20the,where%20K%20%3D1%2FN.">
@@ -51,7 +53,9 @@ public class WildersMAIndicator extends RecursiveCachedIndicator<Num> {
     protected Num calculate(int index) {
         final int beginIndex = getBarSeries().getBeginIndex();
         if (index <= beginIndex) {
-            // Re-anchor the recursion at the first retained bar
+            // Seed at the first retained bar. On a bounded series retained values
+            // survive head advances, so this is only reached when no cached
+            // predecessor exists (for example a fresh indicator).
             return indicator.getValue(index);
         }
         NumFactory numFactory = getBarSeries().numFactory();
@@ -84,20 +88,6 @@ public class WildersMAIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return indicator.getCountOfUnstableBars() + (barCount * 2);
-    }
-
-    /**
-     * The Wilder's MA recursion seeds at the first retained bar (see
-     * {@link #calculate(int)}), so after a head advance every cached value embeds
-     * the pre-advance chain. Discard the whole cache so the retained head
-     * re-anchors the recurrence from the first retained bar instead of serving
-     * stale values.
-     *
-     * @return {@code true}
-     */
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     @Override
