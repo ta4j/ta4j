@@ -2626,12 +2626,13 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     /**
      * A cross-series dependency reached only through an intermediate indicator
-     * backed by the consumer's own series must still be observed: the EMA consumes
-     * a distance indicator on seriesA whose moving average reads seriesB, so
-     * advancing seriesB alone must recompute the cached EMA values.
+     * backed by the consumer's own series must still be observed, and a
+     * dependency-series head advance applies the same policy as an own-series one:
+     * the windowed distance is re-evaluated, while the recursive EMA keeps its
+     * retained chain.
      */
     @Test
-    public void nestedCrossSeriesDependencyHeadAdvanceInvalidatesDependentCache() {
+    public void nestedCrossSeriesDependencyHeadAdvanceKeepsRecursiveChain() {
         BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
         BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10d, 20d, 30d, 40d, 50d, 60d)
@@ -2639,19 +2640,18 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
                 new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
         EMAIndicator ema = new EMAIndicator(distance, 2);
+        Num distanceBefore2 = distance.getValue(2);
         Num before2 = ema.getValue(2);
         Num before3 = ema.getValue(3);
         seriesB.setMaximumBarCount(4); // head advances; the EMA never reads seriesB directly
-        Num after2 = ema.getValue(2);
-        Num after3 = ema.getValue(3);
 
-        DistanceFromMAIndicator freshDistance = new DistanceFromMAIndicator(seriesA,
-                new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
-        EMAIndicator freshEma = new EMAIndicator(freshDistance, 2);
-        assertNumEquals(freshEma.getValue(2), after2);
-        assertNumEquals(freshEma.getValue(3), after3);
-        assertThat(after2).isNotEqualTo(before2);
-        assertThat(after3).isNotEqualTo(before3);
+        // The EMA consumed distance(2) while seriesB still held its full window, so
+        // its chain stays the full-history value (#1666) ...
+        assertNumEquals(before2, ema.getValue(2));
+        assertNumEquals(before3, ema.getValue(3));
+        // ... while the windowed distance is still re-evaluated against seriesB's
+        // retained window.
+        assertThat(distance.getValue(2)).isNotEqualTo(distanceBefore2);
     }
 
     /**

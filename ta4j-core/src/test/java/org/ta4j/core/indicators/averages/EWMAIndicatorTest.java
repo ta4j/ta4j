@@ -10,6 +10,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -74,5 +75,19 @@ public class EWMAIndicatorTest extends AbstractIndicatorTest<MockIndicator, Num>
         EWMAIndicator fresh = new EWMAIndicator(indicator, 2, 0.5);
         assertNumEquals(4, fresh.getValue(2));
         assertTrue(fresh.getValue(1).isNaN());
+    }
+
+    @Test
+    public void seedWindowLongerThanRetainedWindowIsNaN() {
+        // The seed averages barCount source values. A chain read every bar reaches
+        // its seed index after the first bars were pruned; it must not average
+        // values mapped from removed bars.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(3);
+        EWMAIndicator ewma = new EWMAIndicator(new ClosePriceIndicator(series), 4, 0.5);
+        for (int i = 0; i < 8; i++) {
+            series.barBuilder().closePrice(1 + 2 * i).add();
+            assertTrue(ewma.getValue(i).isNaN());
+        }
     }
 }

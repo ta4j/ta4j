@@ -89,6 +89,9 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   `ATRIndicator`, `SMMAIndicator`, `WildersMAIndicator`) or to consumers of
   them. A recursion re-seeds at the retained head only when no cached
   predecessor exists, and `AbstractEMAIndicator` counts warm-up from that seed.
+  `CachedIndicator` keeps a recursive indicator's former terminal value when a
+  bar is appended, and applies the same rule to dependency-series head
+  advances.
 - Conditionally recursive indicators (recursion only along special
   stretches, e.g. flat windows or equal-basis Klinger trend stretches)
   override `requiresFullCacheInvalidationAfterHeadAdvance()` to return

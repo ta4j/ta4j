@@ -89,6 +89,25 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void twoBarWindowContinuesChainFromFormerTerminalValue() {
+        // With two retained bars the predecessor of each appended bar was the
+        // terminal bar on the previous read. Its value must survive the append, or
+        // the chain would have to recompute it after its own predecessor left the
+        // window and re-seed on every bar.
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(2);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(moving), 3);
+        EMAIndicator reference = new EMAIndicator(new ClosePriceIndicator(unbounded), 3);
+        for (int i = 0; i < 10; i++) {
+            moving.barBuilder().closePrice(10 + 3 * (i % 3)).add();
+            unbounded.barBuilder().closePrice(10 + 3 * (i % 3)).add();
+            assertNumEquals(reference.getValue(i), ema.getValue(i));
+        }
+        assertThat(ema.getValue(9).isNaN()).isFalse();
+    }
+
+    @Test
     public void continuedChainKeepsFullHistoryWarmUpWhenWindowIsShorterThanWarmUp() {
         // The window (3 bars) is shorter than the warm-up (5 bars). Warm-up is
         // counted from where the chain was seeded, so the continued chain still

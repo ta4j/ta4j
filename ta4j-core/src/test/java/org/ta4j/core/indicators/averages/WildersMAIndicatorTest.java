@@ -425,4 +425,21 @@ public class WildersMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         assertNumEquals(5, fresh.getValue(5));
     }
 
+    @Test
+    public void movingSeriesJustLongerThanBarCountContinuesRecursion() {
+        // Initialization is counted from where the recursion was seeded, so with a
+        // window of barCount + 1 every appended bar continues the recursion instead
+        // of re-entering the retained-head initialization.
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(4);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(moving), 3);
+        WildersMAIndicator reference = new WildersMAIndicator(new ClosePriceIndicator(unbounded), 3);
+        for (int i = 0; i < 12; i++) {
+            moving.barBuilder().closePrice(5 + 2 * (i % 4)).add();
+            unbounded.barBuilder().closePrice(5 + 2 * (i % 4)).add();
+            assertNumEquals(reference.getValue(i), indicator.getValue(i));
+        }
+    }
+
 }
