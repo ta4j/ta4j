@@ -729,25 +729,37 @@ public class BaseBar implements Bar {
     }
 
     /**
-     * Validates the deserialized state so serialized bars written by older ta4j
-     * versions that predate the OHLC invariant are rejected instead of silently
-     * loading inconsistent prices.
+     * Validates the deserialized state so serialized bars written by external or
+     * legacy callers are verified against domain invariants (time attributes, OHLC
+     * invariants, non-negative volume/amount/trades) upon deserialization.
      *
      * @param stream the object stream
      * @throws IOException            if deserialization fails
      * @throws ClassNotFoundException if a serialized class is unavailable
-     * @throws InvalidObjectException if the serialized prices violate the OHLC
-     *                                invariant
+     * @throws InvalidObjectException if any serialized field violates domain
+     *                                invariants
      */
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         stream.defaultReadObject();
         retainingSeriesOwner = null;
         retainingSeries = null;
         retainingSeriesQueue = null;
+        if (timePeriod == null || beginTime == null || endTime == null) {
+            throw new InvalidObjectException("Time period, begin time, and end time must not be null");
+        }
         try {
             validatePrices(openPrice, highPrice, lowPrice, closePrice);
         } catch (IllegalArgumentException e) {
             throw new InvalidObjectException("Serialized bar violates the OHLC invariant: " + e.getMessage());
+        }
+        if (volume != null && volume.isNegative()) {
+            throw new InvalidObjectException("Volume cannot be negative, but was " + volume);
+        }
+        if (amount != null && amount.isNegative()) {
+            throw new InvalidObjectException("Amount cannot be negative, but was " + amount);
+        }
+        if (trades < 0) {
+            throw new InvalidObjectException("Number of trades cannot be negative, but was " + trades);
         }
     }
 
