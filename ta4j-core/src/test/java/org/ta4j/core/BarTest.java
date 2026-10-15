@@ -181,6 +181,33 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertThrows(InvalidObjectException.class, () -> deserialize(serialized));
     }
 
+    @Test
+    public void testSerializedBarWithNegativeVolumeIsRejected() throws Exception {
+        final DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
+        final BaseBar bar = new BaseBar(Duration.ofHours(1), beginTime, endTime, doubleFactory.numOf(10),
+                doubleFactory.numOf(20), doubleFactory.numOf(5), doubleFactory.numOf(15),
+                doubleFactory.numOf(123456.789d), doubleFactory.zero(), 0);
+        final byte[] serialized = serialize(bar);
+        final int volumeOffset = indexOfDouble(serialized, 123456.789d);
+        assertTrue(volumeOffset >= 0, "serialized stream must contain volume");
+        writeDouble(serialized, volumeOffset, -1.0d);
+        assertThrows(InvalidObjectException.class, () -> deserialize(serialized));
+    }
+
+    @Test
+    public void testSerializedBarWithNegativeTradesIsRejected() throws Exception {
+        final DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
+        final long testTrades = 9876543210L;
+        final BaseBar bar = new BaseBar(Duration.ofHours(1), beginTime, endTime, doubleFactory.numOf(10),
+                doubleFactory.numOf(20), doubleFactory.numOf(5), doubleFactory.numOf(15), doubleFactory.zero(),
+                doubleFactory.zero(), testTrades);
+        final byte[] serialized = serialize(bar);
+        final int tradesOffset = indexOfLong(serialized, testTrades);
+        assertTrue(tradesOffset >= 0, "serialized stream must contain trades");
+        writeLong(serialized, tradesOffset, -1L);
+        assertThrows(InvalidObjectException.class, () -> deserialize(serialized));
+    }
+
     private static byte[] serialize(Object value) throws IOException {
         try (ByteArrayOutputStream bytes = new ByteArrayOutputStream();
                 ObjectOutputStream out = new ObjectOutputStream(bytes)) {
@@ -215,6 +242,23 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private static byte[] doubleBytes(double value) {
         return ByteBuffer.allocate(Double.BYTES).putDouble(value).array();
+    }
+
+    private static int indexOfLong(byte[] bytes, long value) {
+        final byte[] needle = ByteBuffer.allocate(Long.BYTES).putLong(value).array();
+        outer: for (int i = 0; i <= bytes.length - needle.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (bytes[i + j] != needle[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
+    }
+
+    private static void writeLong(byte[] bytes, int offset, long value) {
+        System.arraycopy(ByteBuffer.allocate(Long.BYTES).putLong(value).array(), 0, bytes, offset, Long.BYTES);
     }
 
     @Test
