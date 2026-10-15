@@ -445,9 +445,21 @@ public class WildersMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void emptySeriesReturnsNaNWithoutRecursing() {
-        BarSeries empty = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
 
-        assertTrue(new WildersMAIndicator(new ClosePriceIndicator(empty), 3).getValue(0).isNaN());
+        assertTrue(indicator.getValue(0).isNaN());
+
+        // The empty-series read must not leave a value that later appends reuse.
+        WildersMAIndicator reference = new WildersMAIndicator(new ClosePriceIndicator(unbounded), 3);
+        for (int i = 0; i < 5; i++) {
+            series.barBuilder().closePrice(10 + 2 * i).add();
+            unbounded.barBuilder().closePrice(10 + 2 * i).add();
+        }
+        for (int i = 0; i < 5; i++) {
+            assertNumEquals(reference.getValue(i), indicator.getValue(i));
+        }
     }
 
 }

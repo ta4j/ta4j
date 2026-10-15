@@ -446,6 +446,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             DependencyObservation[] dependencyObservations = observeDependencySeries();
             boolean dependenciesChanged = false;
             int invalidateFrom = snapshot.earliestChangedIndex();
+            if (snapshot.endIndex() > sinceSnapshot.endIndex()) {
+                // Values cached above the previous end index (for example a NaN
+                // read from an empty series) were computed before those bars
+                // existed; appended bars must be recomputed.
+                long previousEnd = sinceSnapshot.endIndex();
+                invalidateFrom = unionInvalidateFrom(invalidateFrom,
+                        previousEnd >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) previousEnd + 1);
+            }
             int firstRetainedIndex = snapshot.removedThroughIndex() + 1;
             // When the series head advanced, entries cached at indexes whose
             // preceding window is no longer fully available were computed from

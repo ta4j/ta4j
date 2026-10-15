@@ -109,10 +109,22 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void emptySeriesReturnsNaNWithoutRecursing() {
-        BarSeries empty = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(series), 1);
 
-        assertTrue(new EMAIndicator(new ClosePriceIndicator(empty), 3).getValue(0).isNaN());
-        assertTrue(new EMAIndicator(new ClosePriceIndicator(empty), 1).getValue(0).isNaN());
+        assertTrue(new EMAIndicator(new ClosePriceIndicator(series), 3).getValue(0).isNaN());
+        assertTrue(ema.getValue(0).isNaN());
+
+        // The empty-series read must not leave a value that later appends reuse.
+        EMAIndicator reference = new EMAIndicator(new ClosePriceIndicator(unbounded), 1);
+        for (int i = 0; i < 4; i++) {
+            series.barBuilder().closePrice(10 + i).add();
+            unbounded.barBuilder().closePrice(10 + i).add();
+        }
+        for (int i = 0; i < 4; i++) {
+            assertNumEquals(reference.getValue(i), ema.getValue(i));
+        }
     }
 
     @Test

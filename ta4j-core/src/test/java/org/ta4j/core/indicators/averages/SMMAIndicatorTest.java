@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.*;
 
@@ -95,6 +96,13 @@ public class SMMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         SMMAIndicator fresh = new SMMAIndicator(new ClosePriceIndicator(series), 2);
         assertNumEquals(140, fresh.getValue(14));
         assertNumEquals(145, fresh.getValue(15));
+    }
+
+    @Test
+    public void emptySeriesReturnsNaNWithoutRecursing() {
+        BarSeries empty = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        assertThat(new SMMAIndicator(new ClosePriceIndicator(empty), 3).getValue(0).isNaN()).isTrue();
     }
 
     private BarSeries rampSeries() {

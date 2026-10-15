@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,7 +39,10 @@ public class SMMAIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-
+        if (getBarSeries().getBeginIndex() < 0) {
+            // Empty series: there is no bar to seed from or recurse to.
+            return NaN.NaN;
+        }
         if (index <= getBarSeries().getBeginIndex()) {
             // Seed at the first retained bar: for a full series this is the first
             // data point. On a bounded series retained values survive head
