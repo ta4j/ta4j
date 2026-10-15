@@ -464,4 +464,10 @@ public class WildersMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         }
     }
 
+    @Test
+    public void readRecomputesWhenHeadAdvancesMidRead() {
+        HeadAdvancingSource.assertReadRecomputesAfterMidReadHeadAdvance(numFactory,
+                source -> new WildersMAIndicator(source, 3));
+    }
+
 }

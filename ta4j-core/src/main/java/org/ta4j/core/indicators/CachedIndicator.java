@@ -525,8 +525,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
             int cacheHighest = cache.synchronize(minimumCacheableIndex, snapshot.maximumBarCount(), invalidateFrom);
             if (lastBarSync.promotedIndex() >= 0 && !discardWholeCache) {
-                cache.put(lastBarSync.promotedIndex(), lastBarSync.promotedValue());
-                cacheHighest = Math.max(cacheHighest, lastBarSync.promotedIndex());
+                cacheHighest = promoteFormerTerminalValue(lastBarSync, cacheHighest);
             }
             highestResultIndex = Math.max(cacheHighest, lastBarSync.lastBarIndex());
 
@@ -969,18 +968,42 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             promote = promote && hasRecursiveDependencies();
             int promotedIndex = promote ? lastBarCachedIndex : -1;
             T promotedValue = promote ? lastBarCachedResult : null;
+            LastBarState promotedState = promote ? lastBarState : null;
             if (cachedIndexChangedRole || cachedIndexInvalid || computationInvalid) {
                 clearLastBarCacheLocked();
             }
-            return new LastBarSync<>(lastBarCachedIndex, promotedIndex, promotedValue);
+            return new LastBarSync<>(lastBarCachedIndex, promotedIndex, promotedValue, promotedState);
         }
     }
 
     /**
-     * Result of reconciling the last-bar cache: the index it still holds (or
-     * {@code -1}) and an optional former terminal value to keep in the main cache.
+     * Publishes a former terminal value to the main cache, then checks its bar
+     * again. A bar that does not publish its own mutations to the series can change
+     * between the intact check and the publication; once it is no longer terminal
+     * nothing fingerprints it, so the value and anything computed from it are
+     * dropped instead.
+     *
+     * @return the highest still-cached index
      */
-    private record LastBarSync<V>(int lastBarIndex, int promotedIndex, V promotedValue) {
+    private int promoteFormerTerminalValue(LastBarSync<T> lastBarSync, int cacheHighest) {
+        int promotedIndex = lastBarSync.promotedIndex();
+        cache.put(promotedIndex, lastBarSync.promotedValue());
+        if (lastBarSync.promotedState().isIntact()) {
+            return Math.max(cacheHighest, promotedIndex);
+        }
+        cache.invalidateFrom(promotedIndex);
+        synchronized (lastBarLock) {
+            clearLastBarCacheLocked();
+        }
+        return Math.min(cacheHighest, promotedIndex - 1);
+    }
+
+    /**
+     * Result of reconciling the last-bar cache: the index it still holds (or
+     * {@code -1}) and an optional former terminal value, with the bar state it was
+     * computed from, to keep in the main cache.
+     */
+    private record LastBarSync<V>(int lastBarIndex, int promotedIndex, V promotedValue, LastBarState promotedState) {
     }
 
     /**
@@ -1039,6 +1062,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return the indicator value for the first available bar
      */
     private T getFirstBarValue(BarSeries series, int removedBarsCount) {
+        if (hasRecursiveDependencies() && cache.isCached(removedBarsCount)) {
+            // An unbounded-history chain keeps its full-history value at the first
+            // available bar; serve it rather than a re-seed from calculate(0), so
+            // every request for that bar agrees. Peeking computes nothing, so
+            // indicators that use calculate(0) as their recursion base case are
+            // unaffected.
+            return cache.get(removedBarsCount);
+        }
         if (firstBarHasCachedResult && firstBarCachedRemovedBarsCount == removedBarsCount) {
             return firstBarCachedResult;
         }

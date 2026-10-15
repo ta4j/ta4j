@@ -146,6 +146,12 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void readRecomputesWhenHeadAdvancesMidRead() {
+        HeadAdvancingSource.assertReadRecomputesAfterMidReadHeadAdvance(numFactory,
+                source -> new EMAIndicator(source, 2));
+    }
+
+    @Test
     public void continuedChainKeepsFullHistoryWarmUpWhenWindowIsShorterThanWarmUp() {
         // The window (3 bars) is shorter than the warm-up (5 bars). Warm-up is
         // counted from where the chain was seeded, so the continued chain still

@@ -71,18 +71,30 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
             return getValue(beginIndex);
         }
 
-        if (index == beginIndex) {
-            // No retained predecessor: the chain is (re)seeded at the retained head.
-            chainStartIndex = beginIndex;
-            if (getCountOfUnstableBars() > 0) {
-                return NaN;
-            }
-            Num current = indicator.getValue(index);
-            // Seed the recursion through the initialValue extension point instead
-            // of chasing getValue(index - 1) into removed history or self-recursion.
-            return Num.isFinite(current) ? initialValue(index, current) : NaN;
+        Num value = index == beginIndex ? seed(index) : continueChain(index);
+        if (getBarSeries().getBeginIndex() != beginIndex) {
+            // The head advanced while this value was computed, so its predecessor
+            // or source may have been read from bars that are now removed.
+            // Recompute against the new head: the value is then either a
+            // continuation or a re-seed at that head, never a mix of the two.
+            return calculate(index);
         }
+        return value;
+    }
 
+    private Num seed(int index) {
+        // No retained predecessor: the chain is (re)seeded at the retained head.
+        chainStartIndex = index;
+        if (getCountOfUnstableBars() > 0) {
+            return NaN;
+        }
+        Num current = indicator.getValue(index);
+        // Seed the recursion through the initialValue extension point instead of
+        // chasing getValue(index - 1) into removed history or self-recursion.
+        return Num.isFinite(current) ? initialValue(index, current) : NaN;
+    }
+
+    private Num continueChain(int index) {
         // Resolve the predecessor first: when it is not cached the recursion walks
         // back to the retained head and re-seeds there, which updates the chain
         // start used by the warm-up check below.

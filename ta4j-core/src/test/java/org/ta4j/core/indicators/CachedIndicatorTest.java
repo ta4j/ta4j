@@ -27,6 +27,7 @@ import org.ta4j.core.*;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.averages.EDMAIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.KAMAIndicator;
 import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.VIDYAIndicator;
@@ -1933,6 +1934,44 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
+    /**
+     * A bar that does not publish its own mutations and, once armed, changes its
+     * close price right after its amount is next read.
+     */
+    private static final class CloseChangingBar extends BaseBar {
+
+        private static final long serialVersionUID = 1L;
+        private volatile Num close;
+        private volatile Num closeOnNextAmountRead;
+
+        private CloseChangingBar(Bar source) {
+            super(source.getTimePeriod(), source.getBeginTime(), source.getEndTime(), source.getOpenPrice(),
+                    source.getHighPrice(), source.getLowPrice(), source.getClosePrice(), source.getVolume(),
+                    source.getAmount(), source.getTrades());
+            close = source.getClosePrice();
+        }
+
+        private void changeCloseOnNextAmountRead(Num newClose) {
+            closeOnNextAmountRead = newClose;
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return close;
+        }
+
+        @Override
+        public Num getAmount() {
+            Num amount = super.getAmount();
+            Num newClose = closeOnNextAmountRead;
+            if (newClose != null) {
+                closeOnNextAmountRead = null;
+                close = newClose;
+            }
+            return amount;
+        }
+    }
+
     private final static class BlockingTradesBar implements Bar {
 
         private final AtomicBoolean blockingEnabled = new AtomicBoolean();
@@ -2292,6 +2331,50 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         EMAIndicator dependent = new EMAIndicator(reversal, 2);
 
         assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(1));
+    }
+
+    @Test
+    public void removedIndexReadServesRetainedRecurrenceOfRecursiveIndicator() {
+        // A removed index maps to the first available bar. For a recursive
+        // indicator read continuously, that bar holds a retained full-history value,
+        // which the removed read must serve instead of re-seeding through
+        // calculate(0).
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        barSeries.setMaximumBarCount(20);
+        KAMAIndicator kama = new KAMAIndicator(new ClosePriceIndicator(barSeries), 3, 2, 30);
+        for (int i = 0; i < 40; i++) {
+            barSeries.barBuilder().closePrice(10 + (i % 5) + i * 0.1).add();
+            kama.getValue(i);
+        }
+        int beginIndex = barSeries.getBeginIndex();
+
+        assertNumEquals(kama.getValue(beginIndex), kama.getValue(beginIndex - 1));
+        assertNumEquals(kama.getValue(beginIndex), kama.getValue(0));
+    }
+
+    @Test
+    public void promotedTerminalValueIsDroppedWhenItsBarChangesDuringPromotion() {
+        // The former terminal bar does not publish its own mutations and changes
+        // after its intact check but before its value reaches the main cache. Once
+        // no longer terminal, nothing fingerprints it, so the promoted value must
+        // be dropped rather than continue the recursive chain.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 4; i++) {
+            barSeries.barBuilder().closePrice(10 + i).add();
+        }
+        CloseChangingBar terminal = new CloseChangingBar(barSeries.barBuilder().closePrice(20).build());
+        barSeries.addBar(terminal);
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(barSeries), 2);
+        assertNumEquals(new EMAIndicator(new ClosePriceIndicator(barSeries), 2).getValue(4), ema.getValue(4));
+
+        terminal.changeCloseOnNextAmountRead(numFactory.numOf(40));
+        barSeries.barBuilder().closePrice(22).add();
+        Num appended = ema.getValue(5);
+
+        EMAIndicator fresh = new EMAIndicator(new ClosePriceIndicator(barSeries), 2);
+        assertNumEquals(40, barSeries.getBar(4).getClosePrice());
+        assertNumEquals(fresh.getValue(5), appended);
+        assertNumEquals(fresh.getValue(4), ema.getValue(4));
     }
 
     @Test

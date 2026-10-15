@@ -70,13 +70,26 @@ public class WildersMAIndicator extends RecursiveCachedIndicator<Num> {
             // re-seeding the live chain. calculate(beginIndex) reads no predecessor.
             return getValue(beginIndex);
         }
+        Num value;
         if (index == beginIndex) {
             // Seed at the first retained bar. On a bounded series retained values
             // survive head advances, so this is only reached when no cached
             // predecessor exists (for example a fresh indicator).
             chainStartIndex = beginIndex;
-            return indicator.getValue(index);
+            value = indicator.getValue(index);
+        } else {
+            value = continueChain(index, beginIndex);
         }
+        if (getBarSeries().getBeginIndex() != beginIndex) {
+            // The head advanced while this value was computed, so its predecessor,
+            // source or initialization band may have been read from bars that are
+            // now removed. Recompute against the new head.
+            return calculate(index);
+        }
+        return value;
+    }
+
+    private Num continueChain(int index, int beginIndex) {
         NumFactory numFactory = getBarSeries().numFactory();
         Num one = numFactory.one();
 

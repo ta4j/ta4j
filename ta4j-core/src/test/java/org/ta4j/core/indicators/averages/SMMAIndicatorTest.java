@@ -107,6 +107,12 @@ public class SMMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertThat(new SMMAIndicator(new ClosePriceIndicator(empty), 3).getValue(0).isNaN()).isTrue();
     }
 
+    @Test
+    public void readRecomputesWhenHeadAdvancesMidRead() {
+        HeadAdvancingSource.assertReadRecomputesAfterMidReadHeadAdvance(numFactory,
+                source -> new SMMAIndicator(source, 3));
+    }
+
     private BarSeries rampSeries() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i <= 19; i++) {
