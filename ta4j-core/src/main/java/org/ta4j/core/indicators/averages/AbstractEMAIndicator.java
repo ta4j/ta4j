@@ -58,28 +58,29 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
 
     @Override
     protected Num calculate(int index) {
-        int beginIndex = getBarSeries().getBeginIndex();
-        if (beginIndex < 0) {
-            // Empty series: there is no bar to seed from or recurse to.
-            return NaN;
-        }
-        // CachedIndicator maps unavailable history to calculate(0). Serve the first
-        // available bar's value: the retained recurrence when the chain continued
-        // past the head, otherwise its seed. calculate(beginIndex) never reads a
-        // predecessor, so this cannot recurse back here.
-        if (index < beginIndex) {
-            return getValue(beginIndex);
-        }
+        while (true) {
+            int beginIndex = getBarSeries().getBeginIndex();
+            if (beginIndex < 0) {
+                // Empty series: there is no bar to seed from or recurse to.
+                return NaN;
+            }
+            // CachedIndicator maps unavailable history to calculate(0). Serve the
+            // first available bar's value: the retained recurrence when the chain
+            // continued past the head, otherwise its seed. calculate(beginIndex)
+            // never reads a predecessor, so this cannot recurse back here.
+            if (index < beginIndex) {
+                return getValue(beginIndex);
+            }
 
-        Num value = index == beginIndex ? seed(index) : continueChain(index);
-        if (getBarSeries().getBeginIndex() != beginIndex) {
+            Num value = index == beginIndex ? seed(index) : continueChain(index);
+            if (getBarSeries().getBeginIndex() == beginIndex) {
+                return value;
+            }
             // The head advanced while this value was computed, so its predecessor
-            // or source may have been read from bars that are now removed.
-            // Recompute against the new head: the value is then either a
-            // continuation or a re-seed at that head, never a mix of the two.
-            return calculate(index);
+            // or source may have been read from bars that are now removed. Retry
+            // against the new head: the value is then either a continuation or a
+            // re-seed at that head, never a mix of the two.
         }
-        return value;
     }
 
     private Num seed(int index) {

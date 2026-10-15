@@ -39,29 +39,30 @@ public class SMMAIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int beginIndex = getBarSeries().getBeginIndex();
-        if (beginIndex < 0) {
-            // Empty series: there is no bar to seed from or recurse to.
-            return NaN.NaN;
-        }
-        if (index < beginIndex) {
-            // A removed index mapped here by CachedIndicator: serve the first
-            // available bar's value (the retained recursion, or its seed).
-            // calculate(beginIndex) reads no predecessor, so this cannot recurse.
-            return getValue(beginIndex);
-        }
-        // Seed at the first retained bar: for a full series this is the first data
-        // point. On a bounded series retained values survive head advances, so
-        // this seed is only reached when no cached predecessor exists (for example
-        // a fresh indicator).
-        Num value = index == beginIndex ? indicator.getValue(index) : continueChain(index);
-        if (getBarSeries().getBeginIndex() != beginIndex) {
+        while (true) {
+            final int beginIndex = getBarSeries().getBeginIndex();
+            if (beginIndex < 0) {
+                // Empty series: there is no bar to seed from or recurse to.
+                return NaN.NaN;
+            }
+            if (index < beginIndex) {
+                // A removed index mapped here by CachedIndicator: serve the first
+                // available bar's value (the retained recursion, or its seed).
+                // calculate(beginIndex) reads no predecessor, so this cannot recurse.
+                return getValue(beginIndex);
+            }
+            // Seed at the first retained bar: for a full series this is the first
+            // data point. On a bounded series retained values survive head
+            // advances, so this seed is only reached when no cached predecessor
+            // exists (for example a fresh indicator).
+            Num value = index == beginIndex ? indicator.getValue(index) : continueChain(index);
+            if (getBarSeries().getBeginIndex() == beginIndex) {
+                return value;
+            }
             // The head advanced while this value was computed, so its predecessor
-            // or source may have been read from bars that are now removed.
-            // Recompute against the new head.
-            return calculate(index);
+            // or source may have been read from bars that are now removed. Retry
+            // against the new head.
         }
-        return value;
     }
 
     private Num continueChain(int index) {

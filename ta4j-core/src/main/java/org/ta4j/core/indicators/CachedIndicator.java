@@ -1062,14 +1062,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return the indicator value for the first available bar
      */
     private T getFirstBarValue(BarSeries series, int removedBarsCount) {
-        if (hasRecursiveDependencies() && cache.isCached(removedBarsCount)) {
+        if (hasRecursiveDependencies()) {
             // An unbounded-history chain keeps its full-history value at the first
             // available bar; serve it rather than a re-seed from calculate(0), so
             // every request for that bar agrees. Peeking computes nothing, so
             // indicators that use calculate(0) as their recursion base case are
-            // unaffected.
-            return cache.get(removedBarsCount);
+            // unaffected. The peek is one atomic read, so an entry evicted by a
+            // concurrent head advance falls back to the base case.
+            return cache.getOrElse(removedBarsCount, () -> getFirstBarBaseCaseValue(series, removedBarsCount));
         }
+        return getFirstBarBaseCaseValue(series, removedBarsCount);
+    }
+
+    /**
+     * Computes or serves the cached {@code calculate(0)} value for the first
+     * available bar.
+     */
+    private T getFirstBarBaseCaseValue(BarSeries series, int removedBarsCount) {
         if (firstBarHasCachedResult && firstBarCachedRemovedBarsCount == removedBarsCount) {
             return firstBarCachedResult;
         }
