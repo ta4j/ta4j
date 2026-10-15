@@ -79,6 +79,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private static final ThreadLocal<Set<Indicator<?>>> HEAD_ADVANCE_VISITED = new ThreadLocal<>();
 
     /**
+     * Per-thread series whose head advance is being reconciled, or {@code null}
+     * when unknown. An explicit full-invalidation hook declares a discontinuity on
+     * the hooked indicator's own series, so it is honored only when that series is
+     * the one that advanced.
+     */
+    private static final ThreadLocal<BarSeries> HEAD_ADVANCED_SERIES = new ThreadLocal<>();
+
+    /**
      * The source indicators whose full-tail invalidations propagate to this
      * indicator on head advance (see
      * {@link #minimumCacheableIndexAfterHeadAdvance(int)}). Empty when constructed
@@ -462,7 +470,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // is chosen by minimumCacheableIndexAfterHeadAdvance(int).
             boolean headAdvanced = snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex();
             int minimumCacheableIndex = !headAdvanced ? firstRetainedIndex
-                    : minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+                    : minimumCacheableIndexAfterHeadAdvanceOf(series, firstRetainedIndex);
             // The floor contract uses Integer.MAX_VALUE as a sentinel meaning
             // "discard every cached entry". It must never be consumed as an
             // inclusive eviction floor: when the retained window legitimately
@@ -482,7 +490,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     // dependency-series head advance exactly as across its own; changed
                     // dependency indexes still invalidate through invalidateFrom. The
                     // floor stays in this indicator's own index space.
-                    dependencyFloor = minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+                    BarSeries dependencySeries = dependencyObservation.observed.series;
+                    dependencyFloor = minimumCacheableIndexAfterHeadAdvanceOf(dependencySeries, firstRetainedIndex);
                 }
                 if (dependencyFloor == Integer.MAX_VALUE) {
                     discardWholeCache = true;
@@ -808,7 +817,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex, Indicator<?>[] derivedSources,
             Set<Indicator<?>> visited) {
-        if (requiresFullCacheInvalidationAfterHeadAdvance()) {
+        if (requiresFullCacheInvalidationAfterHeadAdvance() && headAdvancedOn(getBarSeries())) {
             return Integer.MAX_VALUE;
         }
         if (hasRecursiveDependencies()) {
@@ -846,7 +855,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * explicitly requires full invalidation after a head advance, i.e. declares a
      * discontinuity (such as a cumulative source rebaselining) that an
      * unbounded-history chain cannot continue across. Numeric floors are ignored:
-     * they only re-evaluate source values the chain has already consumed.
+     * they only re-evaluate source values the chain has already consumed. Only
+     * hooks on indicators backed by the series that advanced count: a source on
+     * another series did not reset.
      *
      * @param source  the source indicator to inspect
      * @param visited identity set shared with the enclosing traversal
@@ -861,16 +872,43 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             if (!visited.add(currentSource)) {
                 continue;
             }
-            if (currentSource instanceof CachedIndicator<?> cachedSource) {
-                if (cachedSource.requiresFullCacheInvalidationAfterHeadAdvance()) {
-                    return true;
-                }
+            if (currentSource instanceof CachedIndicator<?> cachedSource
+                    && cachedSource.requiresFullCacheInvalidationAfterHeadAdvance()
+                    && headAdvancedOn(cachedSource.getBarSeries())) {
+                return true;
             }
             for (Indicator<?> dependency : currentSource.getDependencies()) {
                 pendingSources.addLast(dependency);
             }
         }
         return false;
+    }
+
+    /**
+     * Selects the head-advance cache floor while {@code advancedSeries} is the
+     * series whose head advance is being reconciled.
+     */
+    private int minimumCacheableIndexAfterHeadAdvanceOf(BarSeries advancedSeries, int firstRetainedIndex) {
+        BarSeries enclosing = HEAD_ADVANCED_SERIES.get();
+        HEAD_ADVANCED_SERIES.set(AbstractIndicator.unwrapBarSeries(advancedSeries));
+        try {
+            return minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+        } finally {
+            if (enclosing == null) {
+                HEAD_ADVANCED_SERIES.remove();
+            } else {
+                HEAD_ADVANCED_SERIES.set(enclosing);
+            }
+        }
+    }
+
+    /**
+     * Whether {@code series} is the series whose head advance is being reconciled,
+     * or the advanced series is unknown.
+     */
+    private static boolean headAdvancedOn(BarSeries series) {
+        BarSeries advancedSeries = HEAD_ADVANCED_SERIES.get();
+        return advancedSeries == null || series != null && AbstractIndicator.unwrapBarSeries(series) == advancedSeries;
     }
 
     /**

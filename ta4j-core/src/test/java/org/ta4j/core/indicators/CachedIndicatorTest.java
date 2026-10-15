@@ -2360,6 +2360,45 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void recursiveIndicatorIgnoresResetHookOfSourceOnSeriesThatDidNotAdvance() {
+        // CusumIndicator declares a full reset on head advances of its own series.
+        // When only the consumer's series advances, the source on the other series
+        // did not reset, so the consumer keeps continuing its chain.
+        BarSeries seriesB = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 20; i++) {
+            seriesB.barBuilder().closePrice(10 + i % 3).add();
+        }
+        CusumIndicator cusumOnB = new CusumIndicator(seriesB, 10, 0.5);
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        seriesA.setMaximumBarCount(5);
+        RecursiveCachedIndicator<Num> chainLength = new RecursiveCachedIndicator<>(seriesA, cusumOnB) {
+            @Override
+            protected Num calculate(int index) {
+                cusumOnB.getValue(index);
+                Num one = getBarSeries().numFactory().one();
+                return index <= getBarSeries().getBeginIndex() ? one : getValue(index - 1).plus(one);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+
+        for (int i = 0; i < 20; i++) {
+            seriesA.barBuilder().closePrice(10).add();
+            assertNumEquals(i + 1, chainLength.getValue(i));
+        }
+
+        // Once the source's own series advances, the source resets and so must the
+        // consumer: the chain restarts at the consumer's retained head.
+        seriesB.setMaximumBarCount(20);
+        seriesB.barBuilder().closePrice(10).add();
+        int endIndex = seriesA.getEndIndex();
+        assertNumEquals(endIndex - seriesA.getBeginIndex() + 1, chainLength.getValue(endIndex));
+    }
+
+    @Test
     public void removedIndexReadServesRetainedRecurrenceOfRecursiveIndicator() {
         // A removed index maps to the first available bar. For a recursive
         // indicator read continuously, that bar holds a retained full-history value,
