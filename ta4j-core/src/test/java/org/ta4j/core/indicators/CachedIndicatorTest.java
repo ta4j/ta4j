@@ -45,6 +45,8 @@ import org.ta4j.core.indicators.pivotpoints.PivotLevel;
 import org.ta4j.core.indicators.pivotpoints.PivotPointIndicator;
 import org.ta4j.core.indicators.pivotpoints.StandardReversalIndicator;
 import org.ta4j.core.indicators.pivotpoints.TimeLevel;
+import org.ta4j.core.indicators.statistics.CusumIndicator;
+import org.ta4j.core.indicators.statistics.EwmaVarianceIndicator;
 import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
 import org.ta4j.core.indicators.statistics.ZScoreIndicator;
 import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
@@ -2331,6 +2333,30 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         EMAIndicator dependent = new EMAIndicator(reversal, 2);
 
         assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(1));
+    }
+
+    @Test
+    public void recursiveDependentResetsWithSelfReanchoringStatistics() {
+        // EwmaVarianceIndicator and CusumIndicator re-anchor their recursions at the
+        // retained head on every head advance. A recursive consumer must reset with
+        // them instead of continuing from a full-history predecessor.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        barSeries.setMaximumBarCount(6);
+        EMAIndicator dependent = new EMAIndicator(new EwmaVarianceIndicator(barSeries, 2, 0.5), 2);
+        int finiteAfterHeadAdvance = 0;
+        for (int i = 0; i < 12; i++) {
+            barSeries.barBuilder().closePrice(10 + (i * 7) % 5).add();
+            Num value = dependent.getValue(i);
+            EMAIndicator fresh = new EMAIndicator(new EwmaVarianceIndicator(barSeries, 2, 0.5), 2);
+            assertNumEquals(fresh.getValue(i), value);
+            if (barSeries.getBeginIndex() > 0 && !value.isNaN()) {
+                finiteAfterHeadAdvance++;
+            }
+        }
+
+        assertTrue(finiteAfterHeadAdvance > 0);
+        assertEquals(Integer.MAX_VALUE,
+                new EMAIndicator(new CusumIndicator(barSeries, 10, 0.5), 2).minimumCacheableIndexAfterHeadAdvance(1));
     }
 
     @Test
