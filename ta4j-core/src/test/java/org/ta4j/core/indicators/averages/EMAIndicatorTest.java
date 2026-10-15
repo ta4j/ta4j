@@ -108,6 +108,14 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void emptySeriesReturnsNaNWithoutRecursing() {
+        BarSeries empty = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        assertTrue(new EMAIndicator(new ClosePriceIndicator(empty), 3).getValue(0).isNaN());
+        assertTrue(new EMAIndicator(new ClosePriceIndicator(empty), 1).getValue(0).isNaN());
+    }
+
+    @Test
     public void continuedChainKeepsFullHistoryWarmUpWhenWindowIsShorterThanWarmUp() {
         // The window (3 bars) is shorter than the warm-up (5 bars). Warm-up is
         // counted from where the chain was seeded, so the continued chain still

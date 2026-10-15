@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.averages;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -59,6 +60,10 @@ public class WildersMAIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         final int beginIndex = getBarSeries().getBeginIndex();
+        if (beginIndex < 0) {
+            // Empty series: there is no bar to seed from or recurse to.
+            return NaN.NaN;
+        }
         if (index <= beginIndex) {
             // Seed at the first retained bar. On a bounded series retained values
             // survive head advances, so this is only reached when no cached

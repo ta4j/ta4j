@@ -40,6 +40,10 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.indicators.pivotpoints.PivotLevel;
+import org.ta4j.core.indicators.pivotpoints.PivotPointIndicator;
+import org.ta4j.core.indicators.pivotpoints.StandardReversalIndicator;
+import org.ta4j.core.indicators.pivotpoints.TimeLevel;
 import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
 import org.ta4j.core.indicators.statistics.ZScoreIndicator;
 import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
@@ -2277,6 +2281,20 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void recursiveDependentFollowsSourceThatExplicitlyRequiresFullInvalidation() {
+        // A pivot reversal rebaselines every value after a head advance; a
+        // recursive consumer cannot continue its chain across that discontinuity.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        PivotPointIndicator pivot = new PivotPointIndicator(barSeries, TimeLevel.BARBASED);
+        StandardReversalIndicator reversal = new StandardReversalIndicator(pivot, PivotLevel.RESISTANCE_1);
+        EMAIndicator dependent = new EMAIndicator(reversal, 2);
+
+        assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(1));
+    }
+
+    @Test
     public void vidyaReadsFarRetainedTailIterativelyWhenSeriesHeadAdvances() {
         assertFarRetainedTailRecomputesWithoutRecursing(series -> {
             StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(series), 14);
@@ -2652,6 +2670,28 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // ... while the windowed distance is still re-evaluated against seriesB's
         // retained window.
         assertThat(distance.getValue(2)).isNotEqualTo(distanceBefore2);
+    }
+
+    @Test
+    public void crossSeriesDependencyHeadAdvanceKeepsConsumerIndexSpace() {
+        // seriesB advances its head to index 8 while seriesA still retains every
+        // bar. The recursive EMA's cache lives in seriesA's index space, so its
+        // values below seriesB's head must not be evicted and re-seeded.
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d, 40d, 50d, 60d, 70d, 80d, 90d, 100d, 110d, 120d)
+                .build();
+        DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
+                new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
+        EMAIndicator ema = new EMAIndicator(distance, 2);
+        Num before2 = ema.getValue(2);
+        Num before3 = ema.getValue(3);
+
+        seriesB.setMaximumBarCount(4);
+        assertEquals(8, seriesB.getBeginIndex());
+
+        assertNumEquals(before2, ema.getValue(2));
+        assertNumEquals(before3, ema.getValue(3));
     }
 
     /**

@@ -59,6 +59,10 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     @Override
     protected Num calculate(int index) {
         int beginIndex = getBarSeries().getBeginIndex();
+        if (beginIndex < 0) {
+            // Empty series: there is no bar to seed from or recurse to.
+            return NaN;
+        }
         // CachedIndicator maps unavailable history to calculate(0). Serve the
         // retained head's seed value without re-seeding the live chain, which may
         // have started before the head.

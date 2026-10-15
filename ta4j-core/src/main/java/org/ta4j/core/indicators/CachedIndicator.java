@@ -472,8 +472,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 if (dependencyFloor == Integer.MAX_VALUE && recursiveHeadAdvance) {
                     // An unbounded-history chain keeps its retained values across a
                     // dependency-series head advance exactly as across its own; changed
-                    // dependency indexes still invalidate through invalidateFrom.
-                    dependencyFloor = minimumCacheableIndexAfterHeadAdvance(dependencyObservation.firstRetainedIndex());
+                    // dependency indexes still invalidate through invalidateFrom. The
+                    // floor stays in this indicator's own index space.
+                    dependencyFloor = minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
                 }
                 if (dependencyFloor == Integer.MAX_VALUE) {
                     discardWholeCache = true;
@@ -642,11 +643,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
          */
         boolean headAdvanced() {
             return state.snapshot().removedThroughIndex() != sinceState.snapshot().removedThroughIndex();
-        }
-
-        int firstRetainedIndex() {
-            long firstRetained = (long) state.snapshot().removedThroughIndex() + 1L;
-            return firstRetained >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) firstRetained;
         }
 
         int cacheFloor() {

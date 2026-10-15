@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.*;
 
 import org.junit.jupiter.api.Test;
@@ -440,6 +441,13 @@ public class WildersMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
             unbounded.barBuilder().closePrice(5 + 2 * (i % 4)).add();
             assertNumEquals(reference.getValue(i), indicator.getValue(i));
         }
+    }
+
+    @Test
+    public void emptySeriesReturnsNaNWithoutRecursing() {
+        BarSeries empty = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        assertTrue(new WildersMAIndicator(new ClosePriceIndicator(empty), 3).getValue(0).isNaN());
     }
 
 }
