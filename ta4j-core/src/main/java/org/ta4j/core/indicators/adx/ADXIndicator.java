@@ -32,11 +32,13 @@ public class ADXIndicator extends CachedIndicator<Num> {
      * @param adxBarCount the bar count for {@link #averageDXIndicator}
      */
     public ADXIndicator(BarSeries series, int diBarCount, int adxBarCount) {
-        super(series);
+        DXIndicator dx = new DXIndicator(series, diBarCount);
+        MMAIndicator averageDX = new MMAIndicator(dx, adxBarCount);
+        super(series, dx, averageDX);
         this.diBarCount = diBarCount;
         this.adxBarCount = adxBarCount;
-        this.dxIndicator = new DXIndicator(series, diBarCount);
-        this.averageDXIndicator = new MMAIndicator(dxIndicator, adxBarCount);
+        this.dxIndicator = dx;
+        this.averageDXIndicator = averageDX;
     }
 
     /**
@@ -48,11 +50,6 @@ public class ADXIndicator extends CachedIndicator<Num> {
      */
     public ADXIndicator(BarSeries series, int barCount) {
         this(series, barCount, barCount);
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     @Override

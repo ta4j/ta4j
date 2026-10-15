@@ -46,16 +46,13 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
      * @param k        the K multiplier for ATR (usually 3.0)
      */
     public ChandelierExitShortIndicator(BarSeries series, int barCount, double k) {
-        super(series);
+        ATRIndicator averageTrueRange = new ATRIndicator(series, barCount);
+        LowestValueIndicator lowest = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
+        super(series, lowest, averageTrueRange);
         this.barCount = barCount;
         this.k = getBarSeries().numFactory().numOf(k);
-        this.low = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
-        this.atr = new ATRIndicator(series, barCount);
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
+        this.low = lowest;
+        this.atr = averageTrueRange;
     }
 
     @Override

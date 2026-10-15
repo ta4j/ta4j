@@ -48,7 +48,7 @@ public class PPOIndicator extends CachedIndicator<Num> {
     }
 
     private PPOIndicator(Config config) {
-        super(config.indicator());
+        super(config.indicator(), config.shortTermEma(), config.longTermEma());
         this.indicator = config.indicator();
         this.shortTermEma = config.shortTermEma();
         this.longTermEma = config.longTermEma();
@@ -62,11 +62,6 @@ public class PPOIndicator extends CachedIndicator<Num> {
         EMAIndicator shortTermEma = new EMAIndicator(validatedIndicator, shortBarCount);
         EMAIndicator longTermEma = new EMAIndicator(validatedIndicator, longBarCount);
         return new Config(validatedIndicator, shortTermEma, longTermEma);
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     @Override

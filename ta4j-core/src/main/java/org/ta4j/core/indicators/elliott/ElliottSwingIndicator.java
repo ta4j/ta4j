@@ -174,7 +174,7 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     }
 
     private ElliottSwingIndicator(final ValidatedSwingInputs inputs) {
-        super(inputs.series());
+        super(inputs.series(), inputs.swingHighIndicator(), inputs.swingLowIndicator());
         this.swingHighIndicator = inputs.swingHighIndicator();
         this.swingLowIndicator = inputs.swingLowIndicator();
         this.degree = inputs.degree();
@@ -263,6 +263,12 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(swingHighIndicator.getCountOfUnstableBars(), swingLowIndicator.getCountOfUnstableBars());
+    }
+
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        // The complete pivot list changes when the trackers drop retained history.
+        return true;
     }
 
     @Override

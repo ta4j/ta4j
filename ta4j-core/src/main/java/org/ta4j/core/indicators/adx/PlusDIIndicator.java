@@ -36,16 +36,20 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
      *                 {@link #avgPlusDMIndicator}
      */
     public PlusDIIndicator(BarSeries series, int barCount) {
-        super(series);
-        this.barCount = barCount;
-        this.atrIndicator = new ATRIndicator(series, barCount);
-        this.plusDMIndicator = new PlusDMIndicator(series);
-        this.avgPlusDMIndicator = new MMAIndicator(plusDMIndicator, barCount);
+        this(series, barCount, new ATRIndicator(series, barCount), new PlusDMIndicator(series));
     }
 
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
+    private PlusDIIndicator(BarSeries series, int barCount, ATRIndicator atr, PlusDMIndicator plusDM) {
+        this(series, barCount, atr, plusDM, new MMAIndicator(plusDM, barCount));
+    }
+
+    private PlusDIIndicator(BarSeries series, int barCount, ATRIndicator atr, PlusDMIndicator plusDM,
+            MMAIndicator avgPlusDM) {
+        super(series, atr, avgPlusDM);
+        this.barCount = barCount;
+        this.atrIndicator = atr;
+        this.plusDMIndicator = plusDM;
+        this.avgPlusDMIndicator = avgPlusDM;
     }
 
     @Override

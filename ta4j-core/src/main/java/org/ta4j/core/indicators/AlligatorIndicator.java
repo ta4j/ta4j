@@ -70,7 +70,7 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
     }
 
     private AlligatorIndicator(Config config) {
-        super(config.indicator());
+        super(config.indicator(), config.smoothedIndicator());
         this.barCount = config.barCount();
         this.shift = config.shift();
         this.indicator = config.indicator();
@@ -169,11 +169,6 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
      */
     public static AlligatorIndicator lips(BarSeries series) {
         return lips(new MedianPriceIndicator(series));
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     @Override

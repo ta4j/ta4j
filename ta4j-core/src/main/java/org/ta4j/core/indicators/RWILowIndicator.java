@@ -27,26 +27,18 @@ public class RWILowIndicator extends CachedIndicator<Num> {
      * @param barCount the time frame
      */
     public RWILowIndicator(BarSeries series, int barCount) {
-        super(series);
-        this.barCount = barCount;
         int helperCount = Math.max(0, barCount + 1);
-        this.atrIndicators = new ATRIndicator[helperCount];
+        ATRIndicator[] averages = new ATRIndicator[helperCount];
+        for (int n = 2; n <= barCount; n++) {
+            averages[n] = new ATRIndicator(series, n);
+        }
+        super(series, java.util.Arrays.copyOfRange(averages, Math.min(2, helperCount), helperCount));
+        this.barCount = barCount;
+        this.atrIndicators = averages;
         this.sqrtValues = new Num[helperCount];
         for (int n = 2; n <= barCount; n++) {
-            atrIndicators[n] = new ATRIndicator(series, n);
             sqrtValues[n] = series.numFactory().numOf(n).sqrt();
         }
-    }
-
-    /**
-     * Every finite RWI value consumes ATR recurrences that reanchor after a head
-     * advance, so no cached result from the previous head remains valid.
-     *
-     * @return {@code true}
-     */
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     @Override

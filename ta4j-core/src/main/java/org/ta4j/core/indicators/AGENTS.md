@@ -88,13 +88,16 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   oscillator, because each downstream cache mixes fresh and stale inputs
   once the cumulative measurement rebaselines.
 - `AbstractEMAIndicator` exposes its whole-cache retained-head reset through
-  `requiresFullCacheInvalidationAfterHeadAdvance()`. Cached consumers must
-  register the smoothing dependency, or expose an explicit full-reset policy
-  when a mandatory derived EMA/MMA/ATR/SMMA helper always reanchors. A numeric
-  derived-source floor alone cannot communicate that policy when the ordinary
-  unstable band also saturates at `Integer.MAX_VALUE`. Keeping the logical
-  price input alone leaves historical cache entries above the unstable band
-  stale. Do not infer that an underlying cumulative source also resets; its
+  `requiresFullCacheInvalidationAfterHeadAdvance()`. Register the actual internal
+  EMA/MMA/ATR/SMMA instances as constructor dependencies so cached consumers and
+  nested wrappers discover the reanchoring graph. Prefer this over duplicating a
+  mandatory helper's reset policy in each composite. Keep explicit full-reset
+  hooks for owner-local behavior such as a retained pivot list or a head-relative
+  training window. Dependency discovery must not create or evaluate helpers. A
+  numeric derived-source floor alone cannot communicate a hidden full reset when
+  the ordinary unstable band also saturates at `Integer.MAX_VALUE`. Keeping the
+  logical price input alone leaves historical cache entries above the unstable
+  band stale. Do not infer that an underlying cumulative source also resets; its
   declared policy remains independent.
 - `RecursiveCachedIndicator` opts in by default because its subclasses
   compute each value from its predecessors; recursive subclasses over a

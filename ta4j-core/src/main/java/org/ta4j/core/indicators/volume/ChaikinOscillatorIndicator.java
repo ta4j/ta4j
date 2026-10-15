@@ -31,12 +31,15 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
      * @param longBarCount  the bar count for {@link #emaLong} (usually 10)
      */
     public ChaikinOscillatorIndicator(BarSeries series, int shortBarCount, int longBarCount) {
-        super(series);
+        AccumulationDistributionIndicator accumulation = new AccumulationDistributionIndicator(series);
+        EMAIndicator shortAverage = new EMAIndicator(accumulation, shortBarCount);
+        EMAIndicator longAverage = new EMAIndicator(accumulation, longBarCount);
+        super(series, shortAverage, longAverage);
         this.shortBarCount = shortBarCount;
         this.longBarCount = longBarCount;
-        this.accumulationDistributionIndicator = new AccumulationDistributionIndicator(series);
-        this.emaShort = new EMAIndicator(accumulationDistributionIndicator, shortBarCount);
-        this.emaLong = new EMAIndicator(accumulationDistributionIndicator, longBarCount);
+        this.accumulationDistributionIndicator = accumulation;
+        this.emaShort = shortAverage;
+        this.emaLong = longAverage;
     }
 
     /**
@@ -46,11 +49,6 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
      */
     public ChaikinOscillatorIndicator(BarSeries series) {
         this(series, 3, 10);
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     @Override

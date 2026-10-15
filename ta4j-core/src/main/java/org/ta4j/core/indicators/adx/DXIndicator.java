@@ -27,15 +27,12 @@ public class DXIndicator extends CachedIndicator<Num> {
      *                 {@link #minusDIIndicator}
      */
     public DXIndicator(BarSeries series, int barCount) {
-        super(series);
+        PlusDIIndicator plusDI = new PlusDIIndicator(series, barCount);
+        MinusDIIndicator minusDI = new MinusDIIndicator(series, barCount);
+        super(series, plusDI, minusDI);
         this.barCount = barCount;
-        this.plusDIIndicator = new PlusDIIndicator(series, barCount);
-        this.minusDIIndicator = new MinusDIIndicator(series, barCount);
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
+        this.plusDIIndicator = plusDI;
+        this.minusDIIndicator = minusDI;
     }
 
     @Override

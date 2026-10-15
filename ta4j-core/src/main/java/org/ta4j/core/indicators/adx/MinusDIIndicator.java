@@ -36,16 +36,14 @@ public class MinusDIIndicator extends CachedIndicator<Num> {
      *                 {@link #avgMinusDMIndicator}
      */
     public MinusDIIndicator(BarSeries series, int barCount) {
-        super(series);
+        ATRIndicator atr = new ATRIndicator(series, barCount);
+        MinusDMIndicator minusDM = new MinusDMIndicator(series);
+        MMAIndicator avgMinusDM = new MMAIndicator(minusDM, barCount);
+        super(series, atr, avgMinusDM);
         this.barCount = barCount;
-        this.atrIndicator = new ATRIndicator(series, barCount);
-        this.minusDMIndicator = new MinusDMIndicator(series);
-        this.avgMinusDMIndicator = new MMAIndicator(minusDMIndicator, barCount);
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
+        this.atrIndicator = atr;
+        this.minusDMIndicator = minusDM;
+        this.avgMinusDMIndicator = avgMinusDM;
     }
 
     @Override

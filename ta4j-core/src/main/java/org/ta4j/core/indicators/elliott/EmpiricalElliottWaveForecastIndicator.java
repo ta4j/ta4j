@@ -104,7 +104,13 @@ public final class EmpiricalElliottWaveForecastIndicator
     private EmpiricalElliottWaveForecastIndicator(final BarSeries series,
             final Indicator<ElliottScenarioSet> scenarioIndicator, final Indicator<ElliottPhase> phaseIndicator,
             final Settings settings) {
-        super(Objects.requireNonNull(series, "series"));
+        ATRIndicator averageTrueRange = new ATRIndicator(series, ATR_BAR_COUNT);
+        Indicator<?>[] sources = phaseIndicator == null
+                ? new Indicator<?>[] { Objects.requireNonNull(scenarioIndicator, "scenarioIndicator"),
+                        averageTrueRange }
+                : new Indicator<?>[] { Objects.requireNonNull(scenarioIndicator, "scenarioIndicator"), phaseIndicator,
+                        averageTrueRange };
+        super(Objects.requireNonNull(series, "series"), sources);
         this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
         if (!IndicatorUtils.isSameSeries(series, scenarioIndicator.getBarSeries())) {
             throw new IllegalArgumentException("scenarioIndicator must use the same BarSeries instance");
@@ -114,12 +120,18 @@ public final class EmpiricalElliottWaveForecastIndicator
         }
         this.phaseIndicator = phaseIndicator;
         this.settings = Objects.requireNonNull(settings, "settings");
-        this.atr = new ATRIndicator(series, ATR_BAR_COUNT);
+        this.atr = averageTrueRange;
     }
 
     private static BuiltInSources builtInSources(final BarSeries series, final ElliottDegree degree) {
         ElliottSwingIndicator swings = ElliottSwingIndicator.zigZag(Objects.requireNonNull(series, "series"), degree);
         return new BuiltInSources(new ElliottScenarioIndicator(swings), new ElliottPhaseIndicator(swings));
+    }
+
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        // Head advances also change the eligible historical training observations.
+        return true;
     }
 
     @Override

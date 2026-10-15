@@ -46,16 +46,16 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
      * @param k        the K multiplier for ATR (usually 3.0)
      */
     public ChandelierExitLongIndicator(BarSeries series, int barCount, double k) {
-        super(series);
-        this.barCount = barCount;
-        this.k = getBarSeries().numFactory().numOf(k);
-        this.high = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
-        this.atr = new ATRIndicator(series, barCount);
+        this(series, barCount, k, new ATRIndicator(series, barCount));
     }
 
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
+    private ChandelierExitLongIndicator(BarSeries series, int barCount, double k, ATRIndicator atr) {
+        HighestValueIndicator highest = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
+        super(series, highest, atr);
+        this.barCount = barCount;
+        this.k = getBarSeries().numFactory().numOf(k);
+        this.high = highest;
+        this.atr = atr;
     }
 
     @Override

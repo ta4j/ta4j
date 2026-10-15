@@ -55,9 +55,9 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     private final int defaultSignalBarCount;
     private final Num scaleFactor;
 
-    private transient EMAIndicator fastEma;
-    private transient EMAIndicator slowEma;
-    private transient ATRIndicator averageTrueRange;
+    private final transient EMAIndicator fastEma;
+    private final transient EMAIndicator slowEma;
+    private final transient ATRIndicator averageTrueRange;
 
     /**
      * Constructor with defaults:
@@ -159,14 +159,19 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     private VolatilityNormalizedMACDIndicator(ValidatedConfig config) {
-        super(config.priceIndicator());
+        EMAIndicator fastAverage = new EMAIndicator(config.priceIndicator(), config.fastBarCount());
+        EMAIndicator slowAverage = new EMAIndicator(config.priceIndicator(), config.slowBarCount());
+        ATRIndicator atr = new ATRIndicator(config.priceIndicator().getBarSeries(), config.atrBarCount());
+        super(config.priceIndicator(), fastAverage, slowAverage, atr);
         this.priceIndicator = config.priceIndicator();
         this.fastBarCount = config.fastBarCount();
         this.slowBarCount = config.slowBarCount();
         this.atrBarCount = config.atrBarCount();
         this.defaultSignalBarCount = config.signalBarCount();
         this.scaleFactor = config.scaleFactor();
-        ensureSubIndicatorsInitialized();
+        this.fastEma = fastAverage;
+        this.slowEma = slowAverage;
+        this.averageTrueRange = atr;
     }
 
     private static void validatePeriods(int fastBarCount, int slowBarCount, int atrBarCount, int signalBarCount) {
@@ -306,23 +311,14 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     private EMAIndicator getCachedFastEma() {
-        if (fastEma == null) {
-            fastEma = new EMAIndicator(priceIndicator, fastBarCount);
-        }
         return fastEma;
     }
 
     private EMAIndicator getCachedSlowEma() {
-        if (slowEma == null) {
-            slowEma = new EMAIndicator(priceIndicator, slowBarCount);
-        }
         return slowEma;
     }
 
     private ATRIndicator getCachedAtrIndicator() {
-        if (averageTrueRange == null) {
-            averageTrueRange = new ATRIndicator(getBarSeries(), atrBarCount);
-        }
         return averageTrueRange;
     }
 
@@ -645,11 +641,6 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
-    }
-
-    @Override
     protected Num calculate(int index) {
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
@@ -682,9 +673,4 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
         return Math.max(spreadUnstableBars, getCachedAtrIndicator().getCountOfUnstableBars());
     }
 
-    private void ensureSubIndicatorsInitialized() {
-        getCachedFastEma();
-        getCachedSlowEma();
-        getCachedAtrIndicator();
-    }
 }

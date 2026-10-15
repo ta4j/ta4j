@@ -35,20 +35,14 @@ public class EDMAIndicator extends CachedIndicator<Num> {
      * @param displacement the Exponential Moving Average displacement
      */
     public EDMAIndicator(Indicator<Num> indicator, int barCount, int displacement) {
-        // The source is registered so a rebaselining input (e.g., a stochastic)
-        // invalidates the whole displaced cache after a series head advance.
-        super(indicator);
+        EMAIndicator average = new EMAIndicator(indicator, barCount);
+        super(indicator, average);
         this.indicator = indicator;
         this.barCount = barCount;
         this.displacement = displacement;
-        this.ema = new EMAIndicator(indicator, barCount);
+        this.ema = average;
         int emaUnstableBars = indicator.getCountOfUnstableBars() + barCount;
         this.unstableBars = Math.max(0, emaUnstableBars + displacement);
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     @Override

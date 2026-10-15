@@ -42,15 +42,11 @@ public class KeltnerChannelMiddleIndicator extends CachedIndicator<Num> {
      * @param barCountEMA the bar count for the {@link EMAIndicator}
      */
     public KeltnerChannelMiddleIndicator(Indicator<Num> indicator, int barCountEMA) {
-        super(indicator);
+        EMAIndicator average = new EMAIndicator(indicator, barCountEMA);
+        super(indicator, average);
         this.indicator = indicator;
         this.barCount = barCountEMA;
-        this.emaIndicator = new EMAIndicator(indicator, barCountEMA);
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
+        this.emaIndicator = average;
     }
 
     @Override

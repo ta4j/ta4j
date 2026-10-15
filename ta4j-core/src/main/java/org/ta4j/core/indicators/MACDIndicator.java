@@ -52,7 +52,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
     }
 
     private MACDIndicator(Config config) {
-        super(config.indicator());
+        super(config.indicator(), config.shortTermEma(), config.longTermEma());
         this.indicator = config.indicator();
         this.shortBarCount = config.shortBarCount();
         this.longBarCount = config.longBarCount();
@@ -98,11 +98,6 @@ public class MACDIndicator extends CachedIndicator<Num> {
      */
     public NumericIndicator getHistogram(int barCount) {
         return NumericIndicator.of(this).minus(getSignalLine(barCount));
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     @Override

@@ -37,18 +37,16 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public TripleEMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        EMAIndicator first = new EMAIndicator(indicator, barCount);
+        EMAIndicator second = new EMAIndicator(first, barCount);
+        EMAIndicator third = new EMAIndicator(second, barCount);
+        super(indicator, first, second, third);
         this.barCount = barCount;
         this.indicator = indicator;
-        this.ema = new EMAIndicator(indicator, barCount);
-        this.emaEma = new EMAIndicator(ema, barCount);
-        this.emaEmaEma = new EMAIndicator(emaEma, barCount);
+        this.ema = first;
+        this.emaEma = second;
+        this.emaEmaEma = third;
         this.unstableBars = indicator.getCountOfUnstableBars() + (barCount * 3);
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     @Override

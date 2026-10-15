@@ -56,7 +56,7 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
     }
 
     private TrueStrengthIndexIndicator(Config config) {
-        super(config.priceIndicator());
+        super(config.priceIndicator(), config.doubleSmoothedChange(), config.doubleSmoothedAbsoluteChange());
         this.firstSmoothingPeriod = config.firstSmoothingPeriod();
         this.secondSmoothingPeriod = config.secondSmoothingPeriod();
         this.priceIndicator = config.priceIndicator();
@@ -83,11 +83,6 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
                 secondSmoothingPeriod);
         return new Config(indicator, doubleSmoothedChange, doubleSmoothedAbsoluteChange, firstSmoothingPeriod,
                 secondSmoothingPeriod);
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     @Override

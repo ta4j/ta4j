@@ -59,7 +59,7 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
     }
 
     private ConnorsRSIIndicator(Config config) {
-        super(config.indicator());
+        super(config.indicator(), config.priceRsi(), config.streakRsi(), config.percentRankIndicator());
         this.indicator = config.indicator();
         this.rsiPeriod = config.rsiPeriod();
         this.streakRsiPeriod = config.streakRsiPeriod();
@@ -81,11 +81,6 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
         PercentRankIndicator percentRankIndicator = new PercentRankIndicator(priceChangeIndicator, percentRankPeriod);
         return new Config(indicator, rsiPeriod, streakRsiPeriod, percentRankPeriod, priceRsi, streakRsi,
                 percentRankIndicator);
-    }
-
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     @Override

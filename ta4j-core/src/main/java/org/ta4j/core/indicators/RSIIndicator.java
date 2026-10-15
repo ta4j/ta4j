@@ -32,17 +32,17 @@ public class RSIIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public RSIIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
-        this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);
-        this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), barCount);
-        this.barCount = barCount;
-        this.unstableBars = barCount + indicator.getCountOfUnstableBars();
+        this(indicator, barCount, new MMAIndicator(new GainIndicator(indicator), barCount),
+                new MMAIndicator(new LossIndicator(indicator), barCount));
     }
 
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
+    private RSIIndicator(Indicator<Num> indicator, int barCount, MMAIndicator averageGain, MMAIndicator averageLoss) {
+        super(indicator, averageGain, averageLoss);
+        this.indicator = indicator;
+        this.averageGainIndicator = averageGain;
+        this.averageLossIndicator = averageLoss;
+        this.barCount = barCount;
+        this.unstableBars = barCount + indicator.getCountOfUnstableBars();
     }
 
     @Override
