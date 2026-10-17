@@ -293,26 +293,28 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void movingSeriesContinuesAcrossHeadAdvances() {
-        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        moving.setMaximumBarCount(8);
-        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        moving.barBuilder().closePrice(20).add();
-        unbounded.barBuilder().closePrice(20).add();
-        JMAIndicator actual = new JMAIndicator(new ClosePriceIndicator(moving), 3, 50, 2);
-        JMAIndicator expected = new JMAIndicator(new ClosePriceIndicator(unbounded), 3, 50, 2);
-        EMAIndicator actualConsumer = new EMAIndicator(actual, 2);
-        EMAIndicator expectedConsumer = new EMAIndicator(expected, 2);
-        for (int i = 1; i < 32; i++) {
-            double close = 20 + (i * 7) % 13;
-            moving.barBuilder().closePrice(close).add();
-            unbounded.barBuilder().closePrice(close).add();
-            assertNumEquals(expected.getValue(i), actual.getValue(i));
-            assertNumEquals(expectedConsumer.getValue(i), actualConsumer.getValue(i));
-            for (int retained = moving.getBeginIndex(); retained <= i; retained++) {
-                assertNumEquals(expected.getValue(retained), actual.getValue(retained));
+        for (int period : new int[] { 1, 3, 20 }) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(8);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.barBuilder().closePrice(20).add();
+            unbounded.barBuilder().closePrice(20).add();
+            JMAIndicator actual = new JMAIndicator(new ClosePriceIndicator(moving), period, 50, 2);
+            JMAIndicator expected = new JMAIndicator(new ClosePriceIndicator(unbounded), period, 50, 2);
+            EMAIndicator actualConsumer = new EMAIndicator(actual, 2);
+            EMAIndicator expectedConsumer = new EMAIndicator(expected, 2);
+            for (int i = 1; i < 32; i++) {
+                double close = 20 + (i * 7) % 13;
+                moving.barBuilder().closePrice(close).add();
+                unbounded.barBuilder().closePrice(close).add();
+                assertNumEquals(expected.getValue(i), actual.getValue(i));
+                assertNumEquals(expectedConsumer.getValue(i), actualConsumer.getValue(i));
+                for (int retained = moving.getBeginIndex(); retained <= i; retained++) {
+                    assertNumEquals(expected.getValue(retained), actual.getValue(retained));
+                }
             }
+            assertNumEquals(expected.getValue(moving.getBeginIndex()), actual.getValue(0));
         }
-        assertNumEquals(expected.getValue(moving.getBeginIndex()), actual.getValue(0));
     }
 
     @Test
