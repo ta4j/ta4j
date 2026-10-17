@@ -18,8 +18,6 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 
-import java.util.Objects;
-
 /**
  * Klinger Volume Oscillator (KVO).
  *
@@ -34,6 +32,15 @@ import java.util.Objects;
  * vf(i)    = volume(i) * trend(i) * |2 * ((dm(i) / cm(i)) - 1)| * 100
  * KVO(i)   = EMA(vf, shortPeriod) - EMA(vf, longPeriod)
  * </pre>
+ *
+ * <p>
+ * When read after every append, the complete trend, cumulative measurement and
+ * EMA chain continues across bounded-series head advances. At least two bars
+ * must remain available for the current and previous price/measurement inputs;
+ * the chain is primed even during public warm-up. Previously computed retained
+ * values therefore keep their full-history meaning. A new instance or a gap
+ * that loses its predecessor instead starts from retained history. Custom input
+ * indicators that explicitly reanchor after pruning reset the dependent chain.
  *
  * @see <a href=
  *      "https://www.tradingview.com/support/solutions/43000589157-klinger-oscillator/">TradingView:
@@ -223,8 +230,8 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         VolumeForceIndicator volumeForceIndicator = new VolumeForceIndicator(volumeIndicator, dailyMeasurementIndicator,
                 trendDirectionIndicator, cumulativeMeasurementIndicator, resolvedScaleMultiplier);
 
-        EMAIndicator shortEmaIndicator = new EvictingEmaIndicator(volumeForceIndicator, shortPeriod);
-        EMAIndicator longEmaIndicator = new EvictingEmaIndicator(volumeForceIndicator, longPeriod);
+        EMAIndicator shortEmaIndicator = new EMAIndicator(volumeForceIndicator, shortPeriod);
+        EMAIndicator longEmaIndicator = new EMAIndicator(volumeForceIndicator, longPeriod);
         return new Config(series, highPriceIndicator, lowPriceIndicator, closePriceIndicator, volumeIndicator,
                 shortPeriod, longPeriod, resolvedScaleMultiplier, dailyMeasurementIndicator, trendDirectionIndicator,
                 cumulativeMeasurementIndicator, volumeForceIndicator, shortEmaIndicator, longEmaIndicator);
@@ -232,30 +239,38 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(final int index) {
-        if (index < getCountOfUnstableBars()) {
-            return NaN;
-        }
+        while (true) {
+            int beginIndex = getBarSeries().getBeginIndex();
+            if (beginIndex < 0) {
+                return NaN;
+            }
+            if (index < beginIndex) {
+                return getValue(beginIndex);
+            }
 
-        final Num shortValue = shortEmaIndicator.getValue(index);
-        final Num longValue = longEmaIndicator.getValue(index);
-        if (isInvalid(shortValue) || isInvalid(longValue)) {
-            return NaN;
+            // Consume each input before it can leave a short window, including
+            // during the oscillator's and the EMAs' public warm-up periods.
+            volumeForceIndicator.getValue(index);
+            Num shortValue = shortEmaIndicator.getValue(index);
+            Num longValue = longEmaIndicator.getValue(index);
+            if (getBarSeries().getBeginIndex() != beginIndex) {
+                continue;
+            }
+            if (index < getCountOfUnstableBars() || isInvalid(shortValue) || isInvalid(longValue)) {
+                return NaN;
+            }
+            return shortValue.minus(longValue);
         }
-
-        return shortValue.minus(longValue);
     }
 
     /**
-     * Discards the whole oscillator cache when the series head advances. The EMA
-     * inputs rebaseline against the retained window after a head advance, so any
-     * surviving oscillator value was computed from a stale EMA tail; discarding the
-     * cache makes post-advance reads recompute from the freshly rebuilt downstream
-     * chain.
+     * Retains oscillator values derived from the continued trend and EMA chains.
      *
-     * @return {@code true}, evicting every cached entry
+     * @return {@code true}
+     * @since 0.26.1
      */
     @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+    protected boolean hasRecursiveDependencies() {
         return true;
     }
 
@@ -332,42 +347,38 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
 
         @Override
         protected Num calculate(final int index) {
-            final Num measurement = measurementIndicator.getValue(index);
-            if (isInvalid(measurement)) {
-                return NaN;
+            while (true) {
+                int beginIndex = getBarSeries().getBeginIndex();
+                if (beginIndex < 0) {
+                    return NaN;
+                }
+                if (index < beginIndex) {
+                    return getValue(beginIndex);
+                }
+
+                Num measurement = measurementIndicator.getValue(index);
+                Num value;
+                if (isInvalid(measurement)) {
+                    value = NaN;
+                } else if (index == beginIndex) {
+                    value = measurement;
+                } else {
+                    Num previousMeasurement = measurementIndicator.getValue(index - 1);
+                    Num trend = trendIndicator.getValue(index);
+                    Num previousTrend = trendIndicator.getValue(index - 1);
+                    if (isInvalid(previousMeasurement) || isInvalid(trend) || isInvalid(previousTrend)) {
+                        value = NaN;
+                    } else if (trend.equals(previousTrend)) {
+                        Num previousCumulative = getValue(index - 1);
+                        value = isInvalid(previousCumulative) ? NaN : previousCumulative.plus(measurement);
+                    } else {
+                        value = previousMeasurement.plus(measurement);
+                    }
+                }
+                if (getBarSeries().getBeginIndex() == beginIndex) {
+                    return value;
+                }
             }
-
-            final int beginIndex = getBarSeries().getBeginIndex();
-            if (beginIndex < 0 || index <= beginIndex) {
-                return measurement;
-            }
-
-            final Num previousMeasurement = measurementIndicator.getValue(index - 1);
-            final Num trend = trendIndicator.getValue(index);
-            final Num previousTrend = trendIndicator.getValue(index - 1);
-            if (isInvalid(previousMeasurement) || isInvalid(trend) || isInvalid(previousTrend)) {
-                return NaN;
-            }
-
-            if (trend.equals(previousTrend)) {
-                final Num previousCumulative = getValue(index - 1);
-                return isInvalid(previousCumulative) ? NaN : previousCumulative.plus(measurement);
-            }
-
-            return previousMeasurement.plus(measurement);
-        }
-
-        /**
-         * Equal-trend stretches recurse to the previous cumulative value and the
-         * begin-index base case returns the raw measurement, so every value is
-         * reconstructable from the retained window; the whole cache is discarded on
-         * head advance so that the post-advance cumulative measurement follows the
-         * freshly recomputed trend direction instead of values accumulated under a
-         * stale one.
-         */
-        @Override
-        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-            return true;
         }
 
         @Override
@@ -410,41 +421,35 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
 
         @Override
         protected Num calculate(final int index) {
-            final int beginIndex = getBarSeries().getBeginIndex();
-            if (beginIndex < 0 || index <= beginIndex) {
-                return NaN;
-            }
+            while (true) {
+                int beginIndex = getBarSeries().getBeginIndex();
+                if (beginIndex < 0) {
+                    return NaN;
+                }
+                if (index < beginIndex) {
+                    return getValue(beginIndex);
+                }
 
-            final Num volume = volumeIndicator.getValue(index);
-            final Num measurement = measurementIndicator.getValue(index);
-            final Num trend = trendIndicator.getValue(index);
-            final Num cumulativeMeasurement = cumulativeMeasurementIndicator.getValue(index);
-            if (isInvalid(volume) || isInvalid(measurement) || isInvalid(trend) || isInvalid(cumulativeMeasurement)) {
-                return NaN;
+                Num volume = volumeIndicator.getValue(index);
+                Num measurement = measurementIndicator.getValue(index);
+                Num trend = trendIndicator.getValue(index);
+                Num cumulativeMeasurement = cumulativeMeasurementIndicator.getValue(index);
+                Num value = NaN;
+                if (index > beginIndex && !isInvalid(volume) && !isInvalid(measurement) && !isInvalid(trend)
+                        && !isInvalid(cumulativeMeasurement) && !volume.isZero() && !cumulativeMeasurement.isZero()) {
+                    Num magnitude = two.multipliedBy(measurement.dividedBy(cumulativeMeasurement).minus(one)).abs();
+                    if (!isInvalid(magnitude)) {
+                        value = volume.multipliedBy(trend).multipliedBy(magnitude).multipliedBy(scaleMultiplier);
+                    }
+                }
+                if (getBarSeries().getBeginIndex() == beginIndex) {
+                    return value;
+                }
             }
-            if (volume.isZero() || cumulativeMeasurement.isZero()) {
-                return NaN;
-            }
-
-            final Num magnitude = two.multipliedBy(measurement.dividedBy(cumulativeMeasurement).minus(one)).abs();
-            if (isInvalid(magnitude)) {
-                return NaN;
-            }
-
-            return volume.multipliedBy(trend).multipliedBy(magnitude).multipliedBy(scaleMultiplier);
         }
 
-        /**
-         * Discards the whole cache when the series head advances. The cumulative
-         * measurement rebaselines against the retained window after a head advance, so
-         * any surviving volume-force value mixes the rebaselined measurement with a
-         * stale magnitude; discarding the cache makes post-advance reads recompute from
-         * the freshly rebuilt chain.
-         *
-         * @return {@code true}, evicting every cached entry
-         */
         @Override
-        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        protected boolean hasRecursiveDependencies() {
             return true;
         }
 
@@ -456,27 +461,6 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         @Override
         public String toString() {
             return getClass().getSimpleName() + " scaleMultiplier: " + scaleMultiplier;
-        }
-    }
-
-    private static final class EvictingEmaIndicator extends EMAIndicator {
-
-        private EvictingEmaIndicator(final Indicator<Num> indicator, final int barCount) {
-            super(indicator, barCount);
-        }
-
-        /**
-         * Discards the whole cache when the series head advances. EMA values depend on
-         * the entire retained history of the volume-force input, and the volume force
-         * rebaselines after a head advance, so any surviving EMA value mixes fresh and
-         * stale volume-force inputs; discarding the cache makes post-advance reads
-         * recurse through freshly recomputed volume-force values.
-         *
-         * @return {@code true}, evicting every cached entry
-         */
-        @Override
-        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-            return true;
         }
     }
 
@@ -541,26 +525,34 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
 
         @Override
         protected Num calculate(final int index) {
-            final int beginIndex = getBarSeries().getBeginIndex();
-            if (beginIndex < 0 || index <= beginIndex) {
-                return one;
-            }
+            while (true) {
+                int beginIndex = getBarSeries().getBeginIndex();
+                if (beginIndex < 0) {
+                    return one;
+                }
+                if (index < beginIndex) {
+                    return getValue(beginIndex);
+                }
 
-            final Num currentBasis = basisIndicator.getValue(index);
-            final Num previousBasis = basisIndicator.getValue(index - 1);
-            if (isInvalid(currentBasis) || isInvalid(previousBasis)) {
-                return NaN;
+                Num value = one;
+                if (index > beginIndex) {
+                    Num currentBasis = basisIndicator.getValue(index);
+                    Num previousBasis = basisIndicator.getValue(index - 1);
+                    if (isInvalid(currentBasis) || isInvalid(previousBasis)) {
+                        value = NaN;
+                    } else if (currentBasis.isGreaterThan(previousBasis)) {
+                        value = one;
+                    } else if (currentBasis.isLessThan(previousBasis)) {
+                        value = minusOne;
+                    } else {
+                        Num previousTrend = getValue(index - 1);
+                        value = isInvalid(previousTrend) ? NaN : previousTrend;
+                    }
+                }
+                if (getBarSeries().getBeginIndex() == beginIndex) {
+                    return value;
+                }
             }
-
-            if (currentBasis.isGreaterThan(previousBasis)) {
-                return one;
-            }
-            if (currentBasis.isLessThan(previousBasis)) {
-                return minusOne;
-            }
-
-            final Num previousTrend = getValue(index - 1);
-            return isInvalid(previousTrend) ? NaN : previousTrend;
         }
 
         @Override
@@ -574,19 +566,6 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
                     closePriceIndicator);
         }
 
-        /**
-         * An equal-basis stretch recurses to the previous direction and the begin-index
-         * base case returns {@code +1}, so every direction is reconstructable from the
-         * retained window; the whole cache is discarded on head advance so that a
-         * direction computed from evicted bars cannot carry into the cumulative
-         * measurement and volume-force calculations.
-         *
-         * @return {@code true}, evicting every cached entry
-         */
-        @Override
-        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-            return true;
-        }
     }
 
 }
