@@ -18,9 +18,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -349,8 +351,13 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void concurrentHeadAdvanceKeepsFullHistoryState() throws Exception {
-        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 30, 12, 28).build();
-        moving.setMaximumBarCount(4);
+        BarSeries moving = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .withMaxBarCount(4)
+                .build();
+        for (double closePrice : new double[] { 10, 30, 12, 28 }) {
+            moving.barBuilder().closePrice(closePrice).add();
+        }
         BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 30, 12, 28, 15)
                 .build();
