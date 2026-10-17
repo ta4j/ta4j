@@ -88,7 +88,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     @Test
     public void compoundRecursiveStateRemainsBoundedAfterLongContinuation() {
-        for (int window : new int[] { 2, 64 }) {
+        for (int window : new int[] { 1, 2, 64 }) {
             BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
             moving.setMaximumBarCount(window);
             CachedIndicator<Num> indicator = new JMAIndicator(new ClosePriceIndicator(moving), 3, 50, 2);

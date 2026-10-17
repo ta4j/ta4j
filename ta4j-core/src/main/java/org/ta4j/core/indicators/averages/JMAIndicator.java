@@ -21,8 +21,8 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * On a bounded series, retained values keep the full-history recurrence. Read
  * each appended bar to continue the chain at a cost independent of the retained
- * window. A fresh indicator, or a reader that loses every cached predecessor,
- * seeds from the first retained bar instead.
+ * window, including a one-bar window. A fresh indicator, or a reader that loses
+ * every cached predecessor, seeds from the first retained bar instead.
  *
  */
 public class JMAIndicator extends CachedIndicator<Num> {
@@ -101,6 +101,14 @@ public class JMAIndicator extends CachedIndicator<Num> {
         }
 
         @Override
+        protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+            int floor = super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+            // The last-bar cache holds the current state; the bounded main cache
+            // can retain its predecessor even when the series holds only one bar.
+            return floor == Integer.MAX_VALUE ? floor : Math.max(0, floor - 1);
+        }
+
+        @Override
         protected JmaData calculate(int index) {
             while (true) {
                 int beginIndex = getBarSeries().getBeginIndex();
@@ -110,7 +118,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
                 if (index < beginIndex) {
                     return getValue(beginIndex);
                 }
-                JmaData previous = index == beginIndex ? null : getValue(index - 1);
+                JmaData previous = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
                 Num currentPrice = indicator.getValue(index);
                 JmaData result;
                 if (previous == null) {

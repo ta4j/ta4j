@@ -514,6 +514,16 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 return snapshot;
             }
 
+            if (!headAdvanced && !discardWholeCache && minimumCacheableIndex == firstRetainedIndex) {
+                // Preserve a subclass-retained predecessor across same-head
+                // revisions. A terminal edit invalidates its suffix, not that
+                // already-consumed predecessor.
+                int firstCachedIndex = cache.getFirstCachedIndex();
+                if (firstCachedIndex >= 0) {
+                    minimumCacheableIndex = Math.min(minimumCacheableIndex, firstCachedIndex);
+                }
+            }
+
             LastBarSync<T> lastBarSync = synchronizeLastBarCache(snapshot, invalidateFrom, minimumCacheableIndex);
 
             // The first-bar cache holds the indicator value for the first available
@@ -743,7 +753,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Selects the cache floor applied after the series head advanced, i.e. the
      * lowest cached index that stays valid once {@code removedThroughIndex} grew.
      * Entries below the floor are evicted and recomputed against the retained
-     * window on the next read; entries at or above it are kept.
+     * window on the next read; entries at or above it are kept. A subclass-retained
+     * predecessor below the head also survives same-head revisions unless the
+     * changed-index range invalidates it.
      *
      * <p>
      * Indicators with unbounded historical dependencies
@@ -1052,6 +1064,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     private T getOrComputeAndCache(int index) {
         return cache.getOrCompute(index, calculator, computedIndexRecorder);
+    }
+
+    /**
+     * Reads an already computed value from the main cache without evaluating a
+     * missing value or mapping a pruned index to the retained head.
+     *
+     * <p>
+     * Call after {@link #synchronizeCacheWithSeries(BarSeries)} so series revisions
+     * and the subclass's retention policy have been applied. The mutable last-bar
+     * cache is not included.
+     *
+     * @param index the exact cached index
+     * @return the cached value, or {@code null} when absent or cached as null
+     * @since 0.26.1
+     */
+    protected final T getCachedValueOrNull(int index) {
+        return cache.get(index);
     }
 
     /**

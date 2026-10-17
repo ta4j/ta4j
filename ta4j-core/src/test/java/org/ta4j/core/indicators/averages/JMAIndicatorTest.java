@@ -318,6 +318,28 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void oneBarWindowContinuesAcrossHeadAdvancesAndTerminalMutations() {
+        for (int period : new int[] { 1, 3, 20 }) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(20).build();
+            moving.setMaximumBarCount(1);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(20).build();
+            JMAIndicator actual = new JMAIndicator(new ClosePriceIndicator(moving), period, 50, 2);
+            JMAIndicator expected = new JMAIndicator(new ClosePriceIndicator(unbounded), period, 50, 2);
+            assertNumEquals(expected.getValue(0), actual.getValue(0));
+            for (int i = 1; i < 32; i++) {
+                double close = 20 + (i * 7) % 13;
+                moving.barBuilder().closePrice(close).add();
+                unbounded.barBuilder().closePrice(close).add();
+                assertNumEquals(expected.getValue(i), actual.getValue(i));
+                moving.addPrice(close + 5);
+                unbounded.addPrice(close + 5);
+                assertNumEquals(expected.getValue(i), actual.getValue(i));
+                assertNumEquals(expected.getValue(i), actual.getValue(0));
+            }
+        }
+    }
+
+    @Test
     public void freshMovingSeriesSeedsAtRetainedHead() {
         BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 30, 12, 28, 15, 24, 17, 31)
@@ -382,30 +404,32 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void explicitSourceResetReanchorsCompoundState() {
-        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        moving.setMaximumBarCount(4);
-        CachedIndicator<Num> source = new CachedIndicator<>(moving) {
-            @Override
-            protected Num calculate(int index) {
-                return moving.getBar(index).getClosePrice().plus(numFactory.numOf(moving.getBeginIndex()));
-            }
+        for (int window : new int[] { 1, 4 }) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(window);
+            CachedIndicator<Num> source = new CachedIndicator<>(moving) {
+                @Override
+                protected Num calculate(int index) {
+                    return moving.getBar(index).getClosePrice().plus(numFactory.numOf(moving.getBeginIndex()));
+                }
 
-            @Override
-            public int getCountOfUnstableBars() {
-                return 0;
-            }
+                @Override
+                public int getCountOfUnstableBars() {
+                    return 0;
+                }
 
-            @Override
-            protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-                return true;
-            }
-        };
-        JMAIndicator actual = new JMAIndicator(source, 3, 50, 2);
-        for (int i = 0; i < 24; i++) {
-            moving.barBuilder().closePrice(20 + (i * 7) % 13).add();
-            JMAIndicator fresh = new JMAIndicator(source, 3, 50, 2);
-            for (int retained = moving.getBeginIndex(); retained <= i; retained++) {
-                assertNumEquals(fresh.getValue(retained), actual.getValue(retained));
+                @Override
+                protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+                    return true;
+                }
+            };
+            JMAIndicator actual = new JMAIndicator(source, 3, 50, 2);
+            for (int i = 0; i < 24; i++) {
+                moving.barBuilder().closePrice(20 + (i * 7) % 13).add();
+                JMAIndicator fresh = new JMAIndicator(source, 3, 50, 2);
+                for (int retained = moving.getBeginIndex(); retained <= i; retained++) {
+                    assertNumEquals(fresh.getValue(retained), actual.getValue(retained));
+                }
             }
         }
     }
@@ -439,7 +463,7 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void continuedChainDoesConstantSourceWork() {
-        for (int window : new int[] { 2, 64 }) {
+        for (int window : new int[] { 1, 2, 64 }) {
             BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
             moving.setMaximumBarCount(window);
             AtomicInteger reads = new AtomicInteger();
