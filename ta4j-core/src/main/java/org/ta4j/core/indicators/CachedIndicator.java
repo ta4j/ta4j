@@ -79,6 +79,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private static final ThreadLocal<Set<Indicator<?>>> HEAD_ADVANCE_VISITED = new ThreadLocal<>();
 
     /**
+     * Per-thread series whose head advance is being reconciled, or {@code null}
+     * when unknown. An explicit full-invalidation hook declares a discontinuity on
+     * the hooked indicator's own series, so it is honored only when that series is
+     * the one that advanced.
+     */
+    private static final ThreadLocal<BarSeries> HEAD_ADVANCED_SERIES = new ThreadLocal<>();
+
+    /**
      * The source indicators whose full-tail invalidations propagate to this
      * indicator on head advance (see
      * {@link #minimumCacheableIndexAfterHeadAdvance(int)}). Empty when constructed
@@ -446,6 +454,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             DependencyObservation[] dependencyObservations = observeDependencySeries();
             boolean dependenciesChanged = false;
             int invalidateFrom = snapshot.earliestChangedIndex();
+            if (snapshot.endIndex() > sinceSnapshot.endIndex()) {
+                // Values cached above the previous end index (for example a NaN
+                // read from an empty series) were computed before those bars
+                // existed; appended bars must be recomputed.
+                long previousEnd = sinceSnapshot.endIndex();
+                invalidateFrom = unionInvalidateFrom(invalidateFrom,
+                        previousEnd >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) previousEnd + 1);
+            }
             int firstRetainedIndex = snapshot.removedThroughIndex() + 1;
             // When the series head advanced, entries cached at indexes whose
             // preceding window is no longer fully available were computed from
@@ -454,7 +470,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // is chosen by minimumCacheableIndexAfterHeadAdvance(int).
             boolean headAdvanced = snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex();
             int minimumCacheableIndex = !headAdvanced ? firstRetainedIndex
-                    : minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+                    : minimumCacheableIndexAfterHeadAdvanceOf(series, firstRetainedIndex);
             // The floor contract uses Integer.MAX_VALUE as a sentinel meaning
             // "discard every cached entry". It must never be consumed as an
             // inclusive eviction floor: when the retained window legitimately
@@ -468,6 +484,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 dependenciesChanged = true;
                 invalidateFrom = unionInvalidateFrom(invalidateFrom, dependencyObservation.invalidateFrom());
                 int dependencyFloor = dependencyObservation.cacheFloor();
+                boolean recursiveHeadAdvance = dependencyObservation.headAdvanced() && hasRecursiveDependencies();
+                if (dependencyFloor == Integer.MAX_VALUE && recursiveHeadAdvance) {
+                    // An unbounded-history chain keeps its retained values across a
+                    // dependency-series head advance exactly as across its own; changed
+                    // dependency indexes still invalidate through invalidateFrom. The
+                    // floor stays in this indicator's own index space.
+                    BarSeries dependencySeries = dependencyObservation.observed.series;
+                    dependencyFloor = minimumCacheableIndexAfterHeadAdvanceOf(dependencySeries, firstRetainedIndex);
+                }
                 if (dependencyFloor == Integer.MAX_VALUE) {
                     discardWholeCache = true;
                 }
@@ -489,7 +514,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 return snapshot;
             }
 
-            int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, minimumCacheableIndex);
+            LastBarSync<T> lastBarSync = synchronizeLastBarCache(snapshot, invalidateFrom, minimumCacheableIndex);
 
             // The first-bar cache holds the indicator value for the first available
             // bar, i.e. series index firstRetainedIndex. Any published change at or
@@ -508,7 +533,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 cache.clear();
             }
             int cacheHighest = cache.synchronize(minimumCacheableIndex, snapshot.maximumBarCount(), invalidateFrom);
-            highestResultIndex = Math.max(cacheHighest, lastBarIndex);
+            if (lastBarSync.promotedIndex() >= 0 && !discardWholeCache) {
+                cacheHighest = promoteFormerTerminalValue(lastBarSync, cacheHighest);
+            }
+            highestResultIndex = Math.max(cacheHighest, lastBarSync.lastBarIndex());
 
             if (!observedSeriesSnapshot.compareAndSet(sinceSnapshot, snapshot)) {
                 reconciliationRequired = true;
@@ -629,11 +657,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
          * @return the lowest consumer cache index that survives the dependency change,
          *         or {@link Integer#MAX_VALUE} when nothing survives
          */
+        boolean headAdvanced() {
+            return state.snapshot().removedThroughIndex() != sinceState.snapshot().removedThroughIndex();
+        }
+
         int cacheFloor() {
             if (!changed()) {
                 return -1;
             }
-            if (state.snapshot().removedThroughIndex() != sinceState.snapshot().removedThroughIndex()) {
+            if (headAdvanced()) {
                 // A dependency-series head advance can rebase every consumer
                 // value, so no previously cached consumer result is reusable.
                 return Integer.MAX_VALUE;
@@ -714,7 +746,19 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * window on the next read; entries at or above it are kept.
      *
      * <p>
-     * The default resolves one of two policies, after propagating source
+     * Indicators with unbounded historical dependencies
+     * ({@link #hasRecursiveDependencies()} returns {@code true}) keep every
+     * retained cached value, because their results cannot be recomputed from the
+     * retained window alone and the retained recurrence is still the full-history
+     * value; the next appended bar continues that recurrence. They discard their
+     * whole cache only when their source graph contains a {@link CachedIndicator}
+     * that explicitly requires full invalidation (a discontinuity the chain cannot
+     * continue across). Numeric source floors do not propagate into them: such a
+     * floor only re-evaluates source values the chain has already consumed.
+     * </p>
+     *
+     * <p>
+     * All other indicators resolve one of two policies, after propagating source
      * invalidations: when the source graph - traversed through
      * {@link Indicator#getDependencies()} so non-cached wrappers are not a barrier
      * - contains a {@link CachedIndicator} that applies a floor above its own
@@ -723,15 +767,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * discards its whole cache too, because its cached values were derived from
      * source values that no longer exist. A source whose floor merely covers its
      * own declared unstable band does not trigger propagation, because that floor
-     * is the band's default eviction and dependents already tolerate it. Indicators
-     * with unbounded historical dependencies ({@link #hasRecursiveDependencies()}
-     * returns {@code true}) and no such source keep every cached value, because
-     * their results cannot be recomputed from the retained window alone; all other
-     * indicators evict the declared unstable range ({@code firstRetainedIndex} plus
-     * {@link #getCountOfUnstableBars()}) so that re-seeded values match a fresh
-     * calculation against the retained window. A subclass whose values are always
-     * recomputable from the retained window, including any portion that only
-     * conditionally recurses (for example {@link StochasticIndicator}), overrides
+     * is the band's default eviction and dependents already tolerate it. Otherwise
+     * these indicators evict the declared unstable range
+     * ({@code firstRetainedIndex} plus {@link #getCountOfUnstableBars()}) so that
+     * re-evaluated values match a calculation against the retained window. A
+     * subclass whose values are always recomputable from the retained window,
+     * including any portion that only conditionally recurses (for example
+     * {@link StochasticIndicator}), overrides
      * {@link #requiresFullCacheInvalidationAfterHeadAdvance()} so the whole cache
      * is discarded: keeping only the recursively derived band would preserve stale
      * results computed from evicted bars.
@@ -775,8 +817,25 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex, Indicator<?>[] derivedSources,
             Set<Indicator<?>> visited) {
-        if (requiresFullCacheInvalidationAfterHeadAdvance()) {
+        if (requiresFullCacheInvalidationAfterHeadAdvance() && headAdvancedOn(getBarSeries())) {
             return Integer.MAX_VALUE;
+        }
+        if (hasRecursiveDependencies()) {
+            // An unbounded-history chain consumed each source value while its inputs
+            // were still retained, so a source that merely evicts its own lower band
+            // (for example a true range losing its previous close) does not make the
+            // chain stale. Only an explicit source discontinuity breaks it.
+            for (Indicator<?> sourceIndicator : sourceIndicators) {
+                if (sourceGraphRequiresFullCacheInvalidation(sourceIndicator, visited)) {
+                    return Integer.MAX_VALUE;
+                }
+            }
+            for (Indicator<?> derivedSource : derivedSources) {
+                if (sourceGraphRequiresFullCacheInvalidation(derivedSource, visited)) {
+                    return Integer.MAX_VALUE;
+                }
+            }
+            return firstRetainedIndex;
         }
         for (Indicator<?> sourceIndicator : sourceIndicators) {
             if (sourceGraphRebaselinesBeyondDefaultBand(sourceIndicator, firstRetainedIndex, visited)) {
@@ -788,7 +847,68 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 return Integer.MAX_VALUE;
             }
         }
-        return hasRecursiveDependencies() ? firstRetainedIndex : unstableRangeFloor(firstRetainedIndex);
+        return unstableRangeFloor(firstRetainedIndex);
+    }
+
+    /**
+     * Whether any cached indicator in the source graph rooted at {@code source}
+     * explicitly requires full invalidation after a head advance, i.e. declares a
+     * discontinuity (such as a cumulative source rebaselining) that an
+     * unbounded-history chain cannot continue across. Numeric floors are ignored:
+     * they only re-evaluate source values the chain has already consumed. Only
+     * hooks on indicators backed by the series that advanced count: a source on
+     * another series did not reset.
+     *
+     * @param source  the source indicator to inspect
+     * @param visited identity set shared with the enclosing traversal
+     * @return {@code true} when an explicit full-invalidation source lies in the
+     *         graph
+     */
+    private static boolean sourceGraphRequiresFullCacheInvalidation(Indicator<?> source, Set<Indicator<?>> visited) {
+        Deque<Indicator<?>> pendingSources = new ArrayDeque<>();
+        pendingSources.addLast(source);
+        while (!pendingSources.isEmpty()) {
+            Indicator<?> currentSource = pendingSources.removeLast();
+            if (!visited.add(currentSource)) {
+                continue;
+            }
+            if (currentSource instanceof CachedIndicator<?> cachedSource
+                    && cachedSource.requiresFullCacheInvalidationAfterHeadAdvance()
+                    && headAdvancedOn(cachedSource.getBarSeries())) {
+                return true;
+            }
+            for (Indicator<?> dependency : currentSource.getDependencies()) {
+                pendingSources.addLast(dependency);
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Selects the head-advance cache floor while {@code advancedSeries} is the
+     * series whose head advance is being reconciled.
+     */
+    private int minimumCacheableIndexAfterHeadAdvanceOf(BarSeries advancedSeries, int firstRetainedIndex) {
+        BarSeries enclosing = HEAD_ADVANCED_SERIES.get();
+        HEAD_ADVANCED_SERIES.set(AbstractIndicator.unwrapBarSeries(advancedSeries));
+        try {
+            return minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+        } finally {
+            if (enclosing == null) {
+                HEAD_ADVANCED_SERIES.remove();
+            } else {
+                HEAD_ADVANCED_SERIES.set(enclosing);
+            }
+        }
+    }
+
+    /**
+     * Whether {@code series} is the series whose head advance is being reconciled,
+     * or the advanced series is unknown.
+     */
+    private static boolean headAdvancedOn(BarSeries series) {
+        BarSeries advancedSeries = HEAD_ADVANCED_SERIES.get();
+        return advancedSeries == null || series != null && AbstractIndicator.unwrapBarSeries(series) == advancedSeries;
     }
 
     /**
@@ -863,7 +983,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 && left.maximumBarCount() == right.maximumBarCount() && left.endIndex() == right.endIndex();
     }
 
-    private int synchronizeLastBarCache(BarSeriesChangeSnapshot snapshot, int invalidateFrom, int firstRetainedIndex) {
+    private LastBarSync<T> synchronizeLastBarCache(BarSeriesChangeSnapshot snapshot, int invalidateFrom,
+            int firstRetainedIndex) {
         synchronized (lastBarLock) {
             // Integer.MAX_VALUE is the head-advance sentinel meaning "discard
             // everything", never an inclusive retention floor.
@@ -875,11 +996,52 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             boolean computationInvalid = lastBarComputationInProgress && (discardAll
                     || lastBarComputationIndex != snapshot.endIndex() || lastBarComputationIndex < firstRetainedIndex
                     || invalidateFrom >= 0 && lastBarComputationIndex >= invalidateFrom);
+            // A recursive chain reads its predecessor on the next append. When the
+            // cached terminal value is still valid for its (now non-terminal) bar,
+            // keep it in the main cache instead of dropping it, so the chain does not
+            // have to recompute that bar, possibly after its own predecessor left the
+            // retained window.
+            boolean intactTerminalValue = lastBarState != null && lastBarState.isIntact();
+            boolean promote = cachedIndexChangedRole && !cachedIndexInvalid && intactTerminalValue;
+            promote = promote && hasRecursiveDependencies();
+            int promotedIndex = promote ? lastBarCachedIndex : -1;
+            T promotedValue = promote ? lastBarCachedResult : null;
+            LastBarState promotedState = promote ? lastBarState : null;
             if (cachedIndexChangedRole || cachedIndexInvalid || computationInvalid) {
                 clearLastBarCacheLocked();
             }
-            return lastBarCachedIndex;
+            return new LastBarSync<>(lastBarCachedIndex, promotedIndex, promotedValue, promotedState);
         }
+    }
+
+    /**
+     * Publishes a former terminal value to the main cache, then checks its bar
+     * again. A bar that does not publish its own mutations to the series can change
+     * between the intact check and the publication; once it is no longer terminal
+     * nothing fingerprints it, so the value and anything computed from it are
+     * dropped instead.
+     *
+     * @return the highest still-cached index
+     */
+    private int promoteFormerTerminalValue(LastBarSync<T> lastBarSync, int cacheHighest) {
+        int promotedIndex = lastBarSync.promotedIndex();
+        cache.put(promotedIndex, lastBarSync.promotedValue());
+        if (lastBarSync.promotedState().isIntact()) {
+            return Math.max(cacheHighest, promotedIndex);
+        }
+        cache.invalidateFrom(promotedIndex);
+        synchronized (lastBarLock) {
+            clearLastBarCacheLocked();
+        }
+        return Math.min(cacheHighest, promotedIndex - 1);
+    }
+
+    /**
+     * Result of reconciling the last-bar cache: the index it still holds (or
+     * {@code -1}) and an optional former terminal value, with the bar state it was
+     * computed from, to keep in the main cache.
+     */
+    private record LastBarSync<V>(int lastBarIndex, int promotedIndex, V promotedValue, LastBarState promotedState) {
     }
 
     /**
@@ -938,6 +1100,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return the indicator value for the first available bar
      */
     private T getFirstBarValue(BarSeries series, int removedBarsCount) {
+        if (hasRecursiveDependencies()) {
+            // An unbounded-history chain keeps its full-history value at the first
+            // available bar; serve it rather than a re-seed from calculate(0), so
+            // every request for that bar agrees. Peeking computes nothing, so
+            // indicators that use calculate(0) as their recursion base case are
+            // unaffected. The peek is one atomic read, so an entry evicted by a
+            // concurrent head advance falls back to the base case.
+            return cache.getOrElse(removedBarsCount, () -> getFirstBarBaseCaseValue(series, removedBarsCount));
+        }
+        return getFirstBarBaseCaseValue(series, removedBarsCount);
+    }
+
+    /**
+     * Computes or serves the cached {@code calculate(0)} value for the first
+     * available bar.
+     */
+    private T getFirstBarBaseCaseValue(BarSeries series, int removedBarsCount) {
         if (firstBarHasCachedResult && firstBarCachedRemovedBarsCount == removedBarsCount) {
             return firstBarCachedResult;
         }

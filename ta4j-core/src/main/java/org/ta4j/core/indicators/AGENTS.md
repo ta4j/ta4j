@@ -29,7 +29,10 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 - Keep logical source indicators serializable; mark derived/cached helper fields (`EMA` stacks, internal arithmetic helpers) as `transient` when they are reconstruction artifacts.
 - Thread-safety and `transient` are orthogonal: only reconstruction-only runtime helpers should be `transient`.
 - When composing indicators, avoid keeping fields that are only constructor-local intermediates and are not reused outside construction.
-- Avoid look-ahead bias: result at index `i` may only depend on data from `getBeginIndex()` through `i`.
+- Avoid look-ahead bias: result at index `i` may never depend on data after `i`. Inputs read at
+  calculation time must come from `getBeginIndex()` through `i`; indicators with unbounded
+  historical dependencies (`hasRecursiveDependencies()`) may additionally carry state they
+  computed from bars a bounded series has since removed.
 
 ## Numerical safety
 
@@ -73,6 +76,22 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   `Integer.MAX_VALUE` for such indicators: discarding the whole cache on
   head advance would restore an O(`maximumBarCount`) rebuild after every
   append to a full bounded series.
+- Unbounded-history indicators continue their recurrence across head
+  advances: retained cached values are full-history values and the next
+  appended bar extends the chain from its cached predecessor, so a moving
+  series matches an unbounded one at a per-bar cost independent of
+  `maximumBarCount` (#1666). Numeric floors raised by sources (for example
+  `TRIndicator` evicting its first retained entry) do not propagate into
+  them, because the chain already consumed those values while their inputs
+  existed; only a source that explicitly overrides
+  `requiresFullCacheInvalidationAfterHeadAdvance()` breaks the chain. Do not
+  add full-reset overrides to smoothing leaves (`AbstractEMAIndicator`,
+  `ATRIndicator`, `SMMAIndicator`, `WildersMAIndicator`) or to consumers of
+  them. A recursion re-seeds at the retained head only when no cached
+  predecessor exists, and `AbstractEMAIndicator` counts warm-up from that seed.
+  `CachedIndicator` keeps a recursive indicator's former terminal value when a
+  bar is appended, and applies the same rule to dependency-series head
+  advances.
 - Conditionally recursive indicators (recursion only along special
   stretches, e.g. flat windows or equal-basis Klinger trend stretches)
   override `requiresFullCacheInvalidationAfterHeadAdvance()` to return
