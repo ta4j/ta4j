@@ -26,6 +26,7 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputFilter;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Set;
@@ -363,12 +364,15 @@ public final class SwingChartDisplayer implements ChartDisplayer {
         return "true".equalsIgnoreCase(disableDisplay);
     }
 
-    private JFreeChart deepCopyChart(JFreeChart chart) throws Exception {
+    JFreeChart deepCopyChart(JFreeChart chart) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
             oos.writeObject(chart);
         }
         try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+            ObjectInputFilter filter = ObjectInputFilter.Config
+                    .createFilter("org.jfree.**;java.base/*;java.desktop/*;!*");
+            ois.setObjectInputFilter(filter);
             return (JFreeChart) ois.readObject();
         }
     }

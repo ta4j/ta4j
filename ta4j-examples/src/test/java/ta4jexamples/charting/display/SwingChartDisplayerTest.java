@@ -466,6 +466,15 @@ class SwingChartDisplayerTest {
         }
     }
 
+    @Test
+    void testDeepCopyChartWithFilter() {
+        JFreeChart chart = ChartFactory.createLineChart("Test Chart", "X", "Y", null);
+        assertDoesNotThrow(() -> {
+            JFreeChart copy = displayer.deepCopyChart(chart);
+            assertNotNull(copy, "Deep copy should succeed for valid JFreeChart");
+        });
+    }
+
     private JFrame findFrameByTitle(String title) {
         Frame[] frames = Frame.getFrames();
         for (Frame frame : frames) {
