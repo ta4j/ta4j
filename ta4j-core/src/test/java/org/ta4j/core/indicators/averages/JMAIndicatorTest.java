@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.averages;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.*;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.assertIndicatorRoundTrips;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -272,6 +273,17 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             assertNumEquals(expectedDoubles[i], jma.getValue(i));
         }
 
+    }
+
+    @Test
+    public void serializationRoundTripReconstructsCachedState() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 30, 12, 28, 15, 24, 17, 31)
+                .build();
+        JMAIndicator jma = new JMAIndicator(new ClosePriceIndicator(series), 3, 50, 2);
+        jma.getValue(series.getEndIndex());
+
+        assertIndicatorRoundTrips(series, jma, 0, 3, 7);
     }
 
     @Test

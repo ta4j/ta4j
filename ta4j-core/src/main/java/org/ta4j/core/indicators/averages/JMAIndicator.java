@@ -31,8 +31,8 @@ public class JMAIndicator extends CachedIndicator<Num> {
     private final int barCount; // Period for the JMA calculation
     private final Num phase; // Phase adjustment (usually between -100 and +100)
     private final Num power; // Smoothing power factor (default is 2)
-    private final StateIndicator state;
-    private final int unstableBars;
+    private final transient StateIndicator state;
+    private final transient int unstableBars;
 
     /**
      * Constructor.
