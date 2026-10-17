@@ -3,11 +3,10 @@
  */
 package org.ta4j.core.indicators.averages;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -19,6 +18,11 @@ import org.ta4j.core.num.NumFactory;
  * than traditional moving averages like SMA (Simple Moving Average) or EMA
  * (Exponential Moving Average), while avoiding much of the lag associated with
  * those averages.
+ * <p>
+ * On a bounded series, retained values keep the full-history recurrence. Read
+ * each appended bar to continue the chain at a cost independent of the retained
+ * window. A fresh indicator, or a reader that loses every cached predecessor,
+ * seeds from the first retained bar instead.
  *
  */
 public class JMAIndicator extends CachedIndicator<Num> {
@@ -27,25 +31,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
     private final int barCount; // Period for the JMA calculation
     private final Num phase; // Phase adjustment (usually between -100 and +100)
     private final Num power; // Smoothing power factor (default is 2)
-    private final Map<Integer, JmaData> jmaDataMap;
-    /**
-     * Guards every {@link #jmaDataMap} read, write, and clear together with the
-     * {@link #chainedMapBeginIndex} anchor: the base class computes last-bar values
-     * concurrently without holding its cache write lock, so these mutations race
-     * without their own lock. Reentrant so {@link #rebuildDataMapFrom} can recurse
-     * while the same thread holds it. Deliberately non-transient: a lock that
-     * deserializes as {@code null} would fail on the first synchronized entry.
-     */
-    private final Object jmaMapLock = new Object();
-    private final NumFactory numFactory;
-    /**
-     * Series begin index for which {@link #jmaDataMap} currently holds a chain.
-     * Only mutated from {@link #calculate(int)} while {@link #jmaMapLock} is held.
-     */
-    private int chainedMapBeginIndex = Integer.MIN_VALUE;
-    private final Num beta;
-    private final Num phaseRatio;
-    private final Num alpha;
+    private final StateIndicator state;
     private final int unstableBars;
 
     /**
@@ -57,136 +43,101 @@ public class JMAIndicator extends CachedIndicator<Num> {
      * @param power     The smoothing power factor (default is 2).
      */
     public JMAIndicator(Indicator<Num> indicator, int barCount, double phase, double power) {
-        super(indicator);
+        this(new StateIndicator(indicator, barCount, phase, power));
+    }
 
-        this.numFactory = indicator.getBarSeries().numFactory();
-        this.indicator = indicator;
-        this.barCount = barCount;
-        this.phase = numFactory.numOf(Math.min(Math.max(phase, -100), 100)); // Clamp phase between -100 and 100
-        this.power = numFactory.numOf(Math.max(1, power)); // Ensure power is at least 1
-        this.jmaDataMap = new HashMap<>();
-
-        // Compute smoothing factor based on phase
-        beta = numFactory.numOf(0.45)
-                .multipliedBy(numFactory.numOf(barCount - 1))
-                .dividedBy(numFactory.numOf(0.45).multipliedBy(numFactory.numOf(barCount - 1)).plus(numFactory.two()));
-
-        phaseRatio = this.phase.isLessThan(numFactory.numOf(-100)) ? numFactory.numOf(0.5)
-                : (this.phase.isGreaterThan(numFactory.numOf(100)) ? numFactory.numOf(2.5)
-                        : this.phase.dividedBy(numFactory.numOf(100)).plus(numFactory.numOf(1.5)));
-
-        alpha = beta.pow(this.power);
+    private JMAIndicator(StateIndicator state) {
+        super(state);
+        this.state = state;
+        this.indicator = state.indicator;
+        this.barCount = state.barCount;
+        this.phase = state.phase;
+        this.power = state.power;
         this.unstableBars = indicator.getCountOfUnstableBars() + barCount;
-
-        for (int i = indicator.getBarSeries().getBeginIndex(); i < indicator.getBarSeries().getBarCount(); i++) {
-            calculate(i);
-        }
     }
 
     @Override
     protected Num calculate(int index) {
-        NumFactory numFactory = indicator.getBarSeries().numFactory();
-        // Read the source before taking the map lock: the source carries its
-        // own synchronization, and holding our lock during the read would widen
-        // the critical section without guarding any shared state.
-        Num currentPrice = indicator.getValue(index);
-        Num zero = numFactory.zero();
-        int beginIndex = indicator.getBarSeries().getBeginIndex();
-
-        synchronized (jmaMapLock) {
-            if (chainedMapBeginIndex != beginIndex) {
-                // A bounded-series head advance (or a first read) shifted the
-                // chain's anchor: drop every entry so the chain is rebuilt from
-                // the new first retained bar. The base class can invoke
-                // calculate() concurrently for last-bar reads, so the reset,
-                // the lookups, and the writes below all run under jmaMapLock.
-                jmaDataMap.clear();
-                chainedMapBeginIndex = beginIndex;
-            }
-
-            if (index <= beginIndex) {
-                jmaDataMap.put(index, new JmaData(currentPrice, zero, zero, currentPrice));
-                return currentPrice;
-            }
-
-            JmaData previousJMA = jmaDataMap.get(index - 1);
-            if (previousJMA == null) {
-                // The chain was severed (for example a bounded-series head
-                // advance cleared the map): rebuild every predecessor from the
-                // first retained bar, which seeds the chain and terminates the
-                // loop.
-                rebuildDataMapFrom(beginIndex, index);
-                previousJMA = jmaDataMap.get(index - 1);
-            }
-
-            Num e0 = calculateE0(numFactory, currentPrice, previousJMA);
-            Num e1 = calculateE1(numFactory, currentPrice, previousJMA, e0);
-            Num e2 = calculateE2(numFactory, previousJMA, e0, e1);
-
-            Num jma = previousJMA.jma.plus(e2);
-
-            if (!jmaDataMap.containsKey(index)) {
-                jmaDataMap.put(index, new JmaData(e0, e1, e2, jma));
-            }
-
-            return jma;
-        }
+        return state.getValue(index).jma;
     }
 
     /**
-     * Recomputes the map chain for every index from {@code beginIndex} (inclusive,
-     * seeded there) to {@code index} (exclusive), so the calculation of
-     * {@code index} can chain from a fresh predecessor. Recurses through
-     * {@link #calculate(int)} while the caller already holds {@link #jmaMapLock},
-     * which is reentrant.
-     */
-    private void rebuildDataMapFrom(int beginIndex, int index) {
-        for (int i = beginIndex; i < index; i++) {
-            calculate(i);
-        }
-    }
-
-    /**
-     * The map chains every value from its predecessor, so a bounded-series head
-     * advance invalidates the whole chain: keep nothing of the base cache, forcing
-     * each value to be recomputed from the new first retained bar.
+     * Retains full-history values carried by the shared recursive state.
      *
-     * <p>
-     * This hook is a pure policy query: {@link CachedIndicator} invokes it without
-     * the cache write lock, so it must not mutate shared state. The chained map is
-     * reset inside {@link #calculate(int)} when the observed begin index changed,
-     * which runs under {@link #jmaMapLock}.
-     *
-     * @return {@code true}, so no cached value survives
+     * @return {@code true}
+     * @since 0.26.1
      */
     @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+    protected boolean hasRecursiveDependencies() {
         return true;
     }
 
-    private Num calculateE0(NumFactory numFactory, Num currentPrice, JmaData previousJMA) {
-        Num e0 = currentPrice.multipliedBy(numFactory.one().minus(alpha)).plus(previousJMA.e0.multipliedBy(alpha));
-        return e0;
-    }
-
-    private Num calculateE1(NumFactory numFactory, Num currentPrice, JmaData previousJMA, Num e0) {
-        Num e1 = currentPrice.minus(e0)
-                .multipliedBy(numFactory.one().minus(beta))
-                .plus(previousJMA.e1.multipliedBy(beta));
-        return e1;
-    }
-
-    /*
-     * Since previous e2 and previous JMA has to be used to calculate e2 I didn't
-     * see a way to abstract this out to a separate indicator which would have made
-     * JMA so much simpler to calculate and we wouldn't need the internal cache.
+    /**
+     * Owns all four recurrence components in one cache, including revision
+     * invalidation, bounded retention and concurrent last-bar publication.
      */
-    private Num calculateE2(NumFactory numFactory, JmaData previousJMA, Num e0, Num e1) {
-        Num e2 = e0.plus(phaseRatio.multipliedBy(e1))
-                .minus(previousJMA.jma)
-                .multipliedBy(numFactory.one().minus(alpha).pow(2))
-                .plus(previousJMA.e2.multipliedBy(alpha.pow(2)));
-        return e2;
+    private static final class StateIndicator extends RecursiveCachedIndicator<JmaData> {
+
+        private final Indicator<Num> indicator;
+        private final int barCount;
+        private final Num phase;
+        private final Num power;
+        private final Num alpha;
+        private final Num beta;
+        private final Num phaseRatio;
+        private final NumFactory numFactory;
+
+        private StateIndicator(Indicator<Num> indicator, int barCount, double phase, double power) {
+            super(indicator);
+            this.indicator = indicator;
+            this.barCount = barCount;
+            this.numFactory = indicator.getBarSeries().numFactory();
+            this.phase = numFactory.numOf(Math.min(Math.max(phase, -100), 100));
+            this.power = numFactory.numOf(Math.max(1, power));
+            Num scaledPeriod = numFactory.numOf(0.45).multipliedBy(numFactory.numOf(barCount - 1));
+            this.beta = scaledPeriod.dividedBy(scaledPeriod.plus(numFactory.two()));
+            this.phaseRatio = this.phase.dividedBy(numFactory.numOf(100)).plus(numFactory.numOf(1.5));
+            this.alpha = beta.pow(this.power);
+        }
+
+        @Override
+        protected JmaData calculate(int index) {
+            while (true) {
+                int beginIndex = getBarSeries().getBeginIndex();
+                if (beginIndex < 0) {
+                    return new JmaData(NaN.NaN, NaN.NaN, NaN.NaN, NaN.NaN);
+                }
+                if (index < beginIndex) {
+                    return getValue(beginIndex);
+                }
+                JmaData previous = index == beginIndex ? null : getValue(index - 1);
+                Num currentPrice = indicator.getValue(index);
+                JmaData result;
+                if (previous == null) {
+                    Num zero = numFactory.zero();
+                    result = new JmaData(currentPrice, zero, zero, currentPrice);
+                } else {
+                    Num e0 = currentPrice.multipliedBy(numFactory.one().minus(alpha))
+                            .plus(previous.e0.multipliedBy(alpha));
+                    Num e1 = currentPrice.minus(e0)
+                            .multipliedBy(numFactory.one().minus(beta))
+                            .plus(previous.e1.multipliedBy(beta));
+                    Num e2 = e0.plus(phaseRatio.multipliedBy(e1))
+                            .minus(previous.jma)
+                            .multipliedBy(numFactory.one().minus(alpha).pow(2))
+                            .plus(previous.e2.multipliedBy(alpha.pow(2)));
+                    result = new JmaData(e0, e1, e2, previous.jma.plus(e2));
+                }
+                if (getBarSeries().getBeginIndex() == beginIndex) {
+                    return result;
+                }
+            }
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
     }
 
     @Override

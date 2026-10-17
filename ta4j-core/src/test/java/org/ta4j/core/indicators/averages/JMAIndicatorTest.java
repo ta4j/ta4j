@@ -4,7 +4,16 @@
 package org.ta4j.core.indicators.averages;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.*;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -266,28 +275,113 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void boundedSeriesRebuildsChainedMapAfterHeadAdvance() {
-        // The JMA map chains every value from its predecessor, so a head
-        // advance that severs the chain must rebuild from the new first
-        // retained bar instead of serving stale chained values.
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(0d, 50d, 50d, 50d, 50d, 50d)
+    public void movingSeriesContinuesAcrossHeadAdvances() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(8);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.barBuilder().closePrice(20).add();
+        unbounded.barBuilder().closePrice(20).add();
+        JMAIndicator actual = new JMAIndicator(new ClosePriceIndicator(moving), 3, 50, 2);
+        JMAIndicator expected = new JMAIndicator(new ClosePriceIndicator(unbounded), 3, 50, 2);
+        EMAIndicator actualConsumer = new EMAIndicator(actual, 2);
+        EMAIndicator expectedConsumer = new EMAIndicator(expected, 2);
+        for (int i = 1; i < 32; i++) {
+            double close = 20 + (i * 7) % 13;
+            moving.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(i), actual.getValue(i));
+            assertNumEquals(expectedConsumer.getValue(i), actualConsumer.getValue(i));
+            for (int retained = moving.getBeginIndex(); retained <= i; retained++) {
+                assertNumEquals(expected.getValue(retained), actual.getValue(retained));
+            }
+        }
+        assertNumEquals(expected.getValue(moving.getBeginIndex()), actual.getValue(0));
+    }
+
+    @Test
+    public void freshMovingSeriesSeedsAtRetainedHead() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 30, 12, 28, 15, 24, 17, 31)
                 .build();
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        JMAIndicator jma = new JMAIndicator(closePrice, 2, 0, 2);
+        moving.setMaximumBarCount(4);
+        BarSeries retained = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(15, 24, 17, 31).build();
+        JMAIndicator actual = new JMAIndicator(new ClosePriceIndicator(moving), 3, 50, 2);
+        JMAIndicator expected = new JMAIndicator(new ClosePriceIndicator(retained), 3, 50, 2);
+        for (int i = moving.getBeginIndex(); i <= moving.getEndIndex(); i++) {
+            assertNumEquals(expected.getValue(i - moving.getBeginIndex()), actual.getValue(i));
+        }
+    }
 
-        // Populate the chained map against the original begin index so the
-        // advance below must sever and rebuild a populated chain.
-        jma.getValue(5);
+    @Test
+    public void continuedChainDoesConstantSourceWork() {
+        for (int window : new int[] { 2, 64 }) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(window);
+            AtomicInteger reads = new AtomicInteger();
+            ClosePriceIndicator source = new ClosePriceIndicator(moving) {
+                @Override
+                public Num getValue(int index) {
+                    reads.incrementAndGet();
+                    return super.getValue(index);
+                }
+            };
+            JMAIndicator jma = new JMAIndicator(source, 3, 50, 2);
+            for (int i = 0; i < 256; i++) {
+                moving.barBuilder().closePrice(20 + (i * 7) % 13).add();
+                reads.set(0);
+                jma.getValue(i);
+                assertEquals(1, reads.get(), "each append reads only its new source value");
+            }
+        }
+    }
 
-        barSeries.setMaximumBarCount(3);
-        assertEquals(3, barSeries.getBeginIndex());
-
-        // A fresh indicator chains from the seeded first retained bar; the
-        // bounded indicator must recompute to the same values.
-        JMAIndicator fresh = new JMAIndicator(closePrice, 2, 0, 2);
-        for (int i = 3; i <= 5; i++) {
-            assertNumEquals(fresh.getValue(i), jma.getValue(i));
+    @Test
+    public void concurrentHeadAdvanceKeepsFullHistoryState() throws Exception {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 30, 12, 28).build();
+        moving.setMaximumBarCount(4);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 30, 12, 28, 15)
+                .build();
+        JMAIndicator reference = new JMAIndicator(new ClosePriceIndicator(unbounded), 3, 50, 2);
+        CountDownLatch readingLastBar = new CountDownLatch(1);
+        CountDownLatch resumeRead = new CountDownLatch(1);
+        AtomicBoolean block = new AtomicBoolean(true);
+        ClosePriceIndicator source = new ClosePriceIndicator(moving) {
+            @Override
+            public Num getValue(int index) {
+                if (index == 3 && block.compareAndSet(true, false)) {
+                    readingLastBar.countDown();
+                    try {
+                        assertTrue(resumeRead.await(5, TimeUnit.SECONDS), "read was not released");
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError(e);
+                    }
+                }
+                return super.getValue(index);
+            }
+        };
+        JMAIndicator jma = new JMAIndicator(source, 3, 50, 2);
+        ExecutorService executor = Executors.newFixedThreadPool(2, task -> {
+            Thread thread = new Thread(task, "jma-head-advance");
+            thread.setDaemon(true);
+            return thread;
+        });
+        try {
+            jma.getValue(2);
+            Future<Num> inFlight = executor.submit(() -> jma.getValue(3));
+            assertTrue(readingLastBar.await(5, TimeUnit.SECONDS), "last-bar read never started");
+            moving.barBuilder().closePrice(15).add();
+            Future<Num> appended = executor.submit(() -> jma.getValue(4));
+            resumeRead.countDown();
+            assertNumEquals(reference.getValue(3), inFlight.get(5, TimeUnit.SECONDS));
+            assertNumEquals(reference.getValue(4), appended.get(5, TimeUnit.SECONDS));
+            for (int i = moving.getBeginIndex(); i <= moving.getEndIndex(); i++) {
+                assertNumEquals(reference.getValue(i), jma.getValue(i));
+            }
+        } finally {
+            resumeRead.countDown();
+            executor.shutdownNow();
         }
     }
 
