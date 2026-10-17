@@ -10,6 +10,7 @@ import static org.ta4j.core.TestUtils.saturatedRetainedWindowSeries;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -75,6 +76,134 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
                 .build();
+    }
+
+    @Test
+    public void shortWindowWarningIsAdvisoryAndOncePerDistinctCapacity() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open("%level|%msg%n");
+        try {
+            CachedIndicator<Num> indicator = new CachedIndicator<>(series) {
+                @Override
+                protected Num calculate(int index) {
+                    return numFactory.numOf(index);
+                }
+
+                @Override
+                public int getCountOfUnstableBars() {
+                    return 7;
+                }
+            };
+            assertNumEquals(12, indicator.getValue(12));
+            series.setMaximumBarCount(7);
+            assertNumEquals(12, indicator.getValue(12));
+            series.setMaximumBarCount(8);
+            assertNumEquals(12, indicator.getValue(12));
+            assertThat(capture.getLogOutput().lines().filter(line -> line.startsWith("WARN|"))).isEmpty();
+            for (int capacity : new int[] { 6, 5, 6 }) {
+                series.setMaximumBarCount(capacity);
+                assertNumEquals(12, indicator.getValue(12));
+                assertNumEquals(12, indicator.getValue(12));
+            }
+            List<String> warnings = capture.getLogOutput().lines().filter(line -> line.startsWith("WARN|")).toList();
+            assertThat(warnings).hasSize(2);
+            assertThat(warnings.get(0)).contains("maximumBarCount 6", "unstable bars 7", "not blocked");
+            assertThat(warnings.get(1)).contains("maximumBarCount 5", "unstable bars 7", "not blocked");
+        } finally {
+            capture.close();
+        }
+    }
+
+    @Test
+    public void shortWindowWarningRechecksDynamicUnstableCount() {
+        AtomicInteger unstableBars = new AtomicInteger(3);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open("%level|%msg%n");
+        try {
+            CachedIndicator<Num> indicator = new CachedIndicator<>(series) {
+                @Override
+                protected Num calculate(int index) {
+                    return numFactory.numOf(index);
+                }
+
+                @Override
+                public int getCountOfUnstableBars() {
+                    return unstableBars.get();
+                }
+            };
+            series.setMaximumBarCount(4);
+            assertNumEquals(12, indicator.getValue(12));
+            assertThat(capture.getLogOutput().lines().filter(line -> line.startsWith("WARN|"))).isEmpty();
+            unstableBars.set(5);
+            assertNumEquals(12, indicator.getValue(12));
+            unstableBars.set(6);
+            assertNumEquals(12, indicator.getValue(12));
+            List<String> warnings = capture.getLogOutput().lines().filter(line -> line.startsWith("WARN|")).toList();
+            assertThat(warnings).singleElement().asString().contains("maximumBarCount 4", "unstable bars 5");
+        } finally {
+            capture.close();
+        }
+    }
+
+    @Test
+    public void concurrentReadersWarnOnceForEachIndicatorInstance() throws Exception {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open("%level|%msg%n");
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        CountDownLatch ready = new CountDownLatch(4);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            CachedIndicator<Num> first = new CachedIndicator<>(series) {
+                @Override
+                protected Num calculate(int index) {
+                    return numFactory.numOf(index);
+                }
+
+                @Override
+                public int getCountOfUnstableBars() {
+                    return 7;
+                }
+            };
+            CachedIndicator<Num> second = new CachedIndicator<>(series) {
+                @Override
+                protected Num calculate(int index) {
+                    return numFactory.numOf(index);
+                }
+
+                @Override
+                public int getCountOfUnstableBars() {
+                    return 7;
+                }
+            };
+            series.setMaximumBarCount(4);
+            List<Future<Num>> results = new ArrayList<>();
+            for (int reader = 0; reader < 4; reader++) {
+                results.add(executor.submit(() -> {
+                    ready.countDown();
+                    assertTrue(start.await(5, TimeUnit.SECONDS));
+                    assertNumEquals(12, first.getValue(12));
+                    return second.getValue(12);
+                }));
+            }
+            assertTrue(ready.await(5, TimeUnit.SECONDS));
+            start.countDown();
+            for (Future<Num> result : results) {
+                assertNumEquals(12, result.get(5, TimeUnit.SECONDS));
+            }
+            List<String> warnings = capture.getLogOutput().lines().filter(line -> line.startsWith("WARN|")).toList();
+            assertThat(warnings).hasSize(2)
+                    .allSatisfy(warning -> assertThat(warning).contains("maximumBarCount 4", "unstable bars 7",
+                            "not blocked"));
+            assertThat(warnings.get(0)).isNotEqualTo(warnings.get(1));
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+            try {
+                assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+            } finally {
+                capture.close();
+            }
+        }
     }
 
     @Test
@@ -2602,31 +2731,37 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     @Test
     public void pearsonCorrelationRecomputesRetainedWindowAfterSeriesHeadAdvance() {
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        barSeries.setMaximumBarCount(3);
-        double[] closes = { 100d, 101d, 105d };
-        double[] volumes = { 1d, 2d, 3d };
-        for (int i = 0; i < 3; i++) {
-            barSeries.barBuilder()
-                    .openPrice(closes[i])
-                    .closePrice(closes[i])
-                    .highPrice(closes[i] + 1d)
-                    .lowPrice(closes[i] - 1d)
-                    .volume(volumes[i])
-                    .add();
-        }
-        PearsonCorrelationIndicator correlation = new PearsonCorrelationIndicator(new ClosePriceIndicator(barSeries),
-                new VolumeIndicator(barSeries, 3), 3);
-        // The closes [100, 101, 105] against volumes [1, 2, 3] are not linear.
-        Num before = correlation.getValue(2);
-        assertTrue(before.isLessThan(numFactory.one()));
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            barSeries.setMaximumBarCount(3);
+            double[] closes = { 100d, 101d, 105d };
+            double[] volumes = { 1d, 2d, 3d };
+            for (int i = 0; i < 3; i++) {
+                barSeries.barBuilder()
+                        .openPrice(closes[i])
+                        .closePrice(closes[i])
+                        .highPrice(closes[i] + 1d)
+                        .lowPrice(closes[i] - 1d)
+                        .volume(volumes[i])
+                        .add();
+            }
+            PearsonCorrelationIndicator correlation = new PearsonCorrelationIndicator(
+                    new ClosePriceIndicator(barSeries), new VolumeIndicator(barSeries, 3), 3);
+            // The closes [100, 101, 105] against volumes [1, 2, 3] are not linear.
+            Num before = correlation.getValue(2);
+            assertTrue(before.isLessThan(numFactory.one()));
 
-        // Appending a fourth bar advances the head past index 0. Index 2's
-        // window shrinks to the perfectly linear pair [101, 105] vs [2, 3], so
-        // the cached pre-advance correlation must not survive.
-        barSeries.barBuilder().openPrice(109d).closePrice(109d).highPrice(110d).lowPrice(108d).volume(4d).add();
-        assertEquals(1, barSeries.getBeginIndex());
-        assertNumEquals(1, correlation.getValue(2));
+            // Appending a fourth bar advances the head past index 0. Index 2's
+            // window shrinks to the perfectly linear pair [101, 105] vs [2, 3], so
+            // the cached pre-advance correlation must not survive.
+            barSeries.barBuilder().openPrice(109d).closePrice(109d).highPrice(110d).lowPrice(108d).volume(4d).add();
+            assertEquals(1, barSeries.getBeginIndex());
+            assertNumEquals(1, correlation.getValue(2));
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

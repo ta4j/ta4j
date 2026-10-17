@@ -37,30 +37,53 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public TripleEMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        this(indicator, barCount, new EMAIndicator(indicator, barCount));
+    }
+
+    private TripleEMAIndicator(Indicator<Num> indicator, int barCount, EMAIndicator ema) {
+        this(indicator, barCount, ema, new EMAIndicator(ema, barCount));
+    }
+
+    private TripleEMAIndicator(Indicator<Num> indicator, int barCount, EMAIndicator ema, EMAIndicator emaEma) {
+        this(indicator, barCount, ema, emaEma, new EMAIndicator(emaEma, barCount));
+    }
+
+    private TripleEMAIndicator(Indicator<Num> indicator, int barCount, EMAIndicator ema, EMAIndicator emaEma,
+            EMAIndicator emaEmaEma) {
+        super(emaEmaEma);
         this.barCount = barCount;
         this.indicator = indicator;
-        this.ema = new EMAIndicator(indicator, barCount);
-        this.emaEma = new EMAIndicator(ema, barCount);
-        this.emaEmaEma = new EMAIndicator(emaEma, barCount);
+        this.ema = ema;
+        this.emaEma = emaEma;
+        this.emaEmaEma = emaEmaEma;
         this.unstableBars = indicator.getCountOfUnstableBars() + (barCount * 3);
     }
 
     @Override
     protected Num calculate(int index) {
+        Num firstAverage = ema.getValue(index);
+        Num secondAverage = emaEma.getValue(index);
+        Num thirdAverage = emaEmaEma.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
         // trix = 3 * ( ema - emaEma ) + emaEmaEma
-        final var numFactory = getBarSeries().numFactory();
-        return numFactory.numOf(3)
-                .multipliedBy(ema.getValue(index).minus(emaEma.getValue(index)))
-                .plus(emaEmaEma.getValue(index));
+        Num three = getBarSeries().numFactory().numOf(3);
+        return three.multipliedBy(firstAverage.minus(secondAverage)).plus(thirdAverage);
     }
 
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;
+    }
+
+    /**
+     * @return {@code true}, because all EMA stages retain full-history state
+     * @since 0.26.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     @Override

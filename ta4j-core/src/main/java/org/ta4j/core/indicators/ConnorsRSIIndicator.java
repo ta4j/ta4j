@@ -59,7 +59,7 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
     }
 
     private ConnorsRSIIndicator(Config config) {
-        super(config.indicator());
+        super(config.priceRsi(), config.streakRsi(), config.percentRankIndicator());
         this.indicator = config.indicator();
         this.rsiPeriod = config.rsiPeriod();
         this.streakRsiPeriod = config.streakRsiPeriod();
@@ -85,18 +85,28 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        Num priceRsiValue = priceRsi.getValue(index);
+        Num streakRsiValue = streakRsi.getValue(index);
         // Return NaN during unstable period
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
-        Num priceRsiValue = priceRsi.getValue(index);
-        Num streakRsiValue = streakRsi.getValue(index);
         Num percentRankValue = percentRankIndicator.getValue(index);
         if (priceRsiValue.isNaN() || streakRsiValue.isNaN() || percentRankValue.isNaN()) {
             return NaN;
         }
         Num total = priceRsiValue.plus(streakRsiValue).plus(percentRankValue);
         return total.dividedBy(getBarSeries().numFactory().numOf(3));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.26.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     @Override

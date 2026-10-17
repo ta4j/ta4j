@@ -8,6 +8,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -38,6 +39,15 @@ import org.ta4j.core.num.Num;
  * This implementation uses a ring buffer for O(1) eviction when
  * {@code maximumBarCount} is set, and read-optimized locking for better
  * concurrency on cache hits.
+ *
+ * <p>
+ * When the current series capacity is smaller than
+ * {@link #getCountOfUnstableBars()}, the next value read logs an advisory
+ * warning once per instance and distinct capacity, including capacities
+ * configured after construction. Equality does not warn. The warning does not
+ * block continued values, change warm-up results or reconstruct discarded raw
+ * inputs. Recursive indicators must be read continuously while their required
+ * inputs are available to preserve their seeded history.
  *
  * <h2>Thread Safety</h2>
  * <p>
@@ -131,6 +141,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private volatile int firstBarCachedRemovedBarsCount = -1;
     private volatile boolean firstBarHasCachedResult;
     private volatile T firstBarCachedResult;
+
+    /** Diagnostic state, unrelated to the indicator's serialized configuration. */
+    private transient Set<Integer> warnedMaximumBarCounts;
+    private transient volatile int lastWarnedMaximumBarCount;
 
     private static boolean equalsNum(Num left, Num right) {
         return left == right || (left != null && left.equals(right));
@@ -401,6 +415,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     public T getValue(int index) {
         BarSeries series = getBarSeries();
         BarSeriesChangeSnapshot snapshot = synchronizeCacheWithSeries(series);
+        warnIfWindowIsShorterThanUnstablePeriod(snapshot.maximumBarCount());
         final int removedBarsCount = snapshot.removedThroughIndex() + 1;
         final int endIndex = snapshot.endIndex();
 
@@ -427,6 +442,28 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             log.trace("{}({}): {}", this, index, result);
         }
         return result;
+    }
+
+    private void warnIfWindowIsShorterThanUnstablePeriod(int maximumBarCount) {
+        if (maximumBarCount == Integer.MAX_VALUE || maximumBarCount == lastWarnedMaximumBarCount
+                || !log.isWarnEnabled()) {
+            return;
+        }
+        int unstableBars = getCountOfUnstableBars();
+        if (maximumBarCount >= unstableBars) {
+            return;
+        }
+        synchronized (firstBarLock) {
+            if (warnedMaximumBarCounts == null) {
+                warnedMaximumBarCounts = new HashSet<>();
+            }
+            lastWarnedMaximumBarCount = maximumBarCount;
+            if (!warnedMaximumBarCounts.add(maximumBarCount)) {
+                return;
+            }
+        }
+        log.warn("{}: maximumBarCount {} is smaller than unstable bars {}; continued values are not blocked",
+                getClass().getName(), maximumBarCount, unstableBars);
     }
 
     /**
@@ -512,6 +549,16 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 // overflows. Defer the trim and the observation advance to the next
                 // top-level read, which reconciles against the full change journal.
                 return snapshot;
+            }
+
+            if (!headAdvanced && !discardWholeCache && minimumCacheableIndex == firstRetainedIndex) {
+                // Preserve a subclass-retained predecessor across same-head
+                // revisions. A terminal edit invalidates its suffix, not that
+                // already-consumed predecessor.
+                int firstCachedIndex = cache.getFirstCachedIndex();
+                if (firstCachedIndex >= 0) {
+                    minimumCacheableIndex = Math.min(minimumCacheableIndex, firstCachedIndex);
+                }
             }
 
             LastBarSync<T> lastBarSync = synchronizeLastBarCache(snapshot, invalidateFrom, minimumCacheableIndex);
@@ -743,7 +790,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Selects the cache floor applied after the series head advanced, i.e. the
      * lowest cached index that stays valid once {@code removedThroughIndex} grew.
      * Entries below the floor are evicted and recomputed against the retained
-     * window on the next read; entries at or above it are kept.
+     * window on the next read; entries at or above it are kept. A subclass-retained
+     * predecessor below the head also survives same-head revisions unless the
+     * changed-index range invalidates it.
      *
      * <p>
      * Indicators with unbounded historical dependencies
@@ -1052,6 +1101,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     private T getOrComputeAndCache(int index) {
         return cache.getOrCompute(index, calculator, computedIndexRecorder);
+    }
+
+    /**
+     * Reads an already computed value from the main cache without evaluating a
+     * missing value or mapping a pruned index to the retained head.
+     *
+     * <p>
+     * Call after {@link #synchronizeCacheWithSeries(BarSeries)} so series revisions
+     * and the subclass's retention policy have been applied. The mutable last-bar
+     * cache is not included.
+     *
+     * @param index the exact cached index
+     * @return the cached value, or {@code null} when absent or cached as null
+     * @since 0.26.1
+     */
+    protected final T getCachedValueOrNull(int index) {
+        return cache.get(index);
     }
 
     /**

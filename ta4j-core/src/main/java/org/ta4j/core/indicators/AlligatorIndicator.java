@@ -70,7 +70,7 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
     }
 
     private AlligatorIndicator(Config config) {
-        super(config.indicator());
+        super(config.smoothedIndicator());
         this.barCount = config.barCount();
         this.shift = config.shift();
         this.indicator = config.indicator();
@@ -173,15 +173,26 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        if (index < getCountOfUnstableBars()) {
-            return NaN;
-        }
         final int displacedIndex = index - shift;
         if (displacedIndex < getBarSeries().getBeginIndex()) {
             return NaN;
         }
         final Num value = smoothedIndicator.getValue(displacedIndex);
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         return !Num.isFinite(value) ? NaN : value;
+    }
+
+    /**
+     * The displaced output retains the smoothing chain's historical state.
+     *
+     * @return {@code true}
+     * @since 0.26.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     /**

@@ -11,7 +11,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -28,6 +30,29 @@ public class PercentRankIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @BeforeEach
     public void setUp() {
         barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+    }
+
+    @Test
+    public void startsRecursiveSourceBeforeRankWarmUpEnds() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(5);
+        PercentRankIndicator rank = new PercentRankIndicator(new EMAIndicator(new ClosePriceIndicator(series), 3), 8);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index <= 10; index++) {
+                series.barBuilder().closePrice(index == 3 ? 100 : index == 10 ? 10.05 : 10).add();
+                Num value = rank.getValue(index);
+                if (index < 10) {
+                    assertThat(value.isNaN()).isTrue();
+                } else {
+                    // The original high seed keeps the average falling at index 10.
+                    assertNumEquals(0, value);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

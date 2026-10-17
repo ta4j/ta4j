@@ -32,26 +32,45 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public DoubleEMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        this(indicator, barCount, new EMAIndicator(indicator, barCount));
+    }
+
+    private DoubleEMAIndicator(Indicator<Num> indicator, int barCount, EMAIndicator ema) {
+        this(indicator, barCount, ema, new EMAIndicator(ema, barCount));
+    }
+
+    private DoubleEMAIndicator(Indicator<Num> indicator, int barCount, EMAIndicator ema, EMAIndicator emaEma) {
+        super(emaEma);
         this.two = getBarSeries().numFactory().two();
         this.barCount = barCount;
         this.indicator = indicator;
-        this.ema = new EMAIndicator(indicator, barCount);
-        this.emaEma = new EMAIndicator(ema, barCount);
+        this.ema = ema;
+        this.emaEma = emaEma;
         this.unstableBars = indicator.getCountOfUnstableBars() + (barCount * 2);
     }
 
     @Override
     protected Num calculate(int index) {
+        Num firstAverage = ema.getValue(index);
+        Num secondAverage = emaEma.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
-        return ema.getValue(index).multipliedBy(two).minus(emaEma.getValue(index));
+        return firstAverage.multipliedBy(two).minus(secondAverage);
     }
 
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;
+    }
+
+    /**
+     * @return {@code true}, because both EMA stages retain full-history state
+     * @since 0.26.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     @Override

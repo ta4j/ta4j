@@ -13,6 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TestUtils;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -25,6 +27,28 @@ public class KeltnerChannelMiddleIndicatorTest extends AbstractIndicatorTest<Ind
 
     public KeltnerChannelMiddleIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void primesEmaBeforeItsWarmUpReturn() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(4);
+        KeltnerChannelMiddleIndicator middle = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(moving), 14);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index <= 30; index++) {
+                moving.barBuilder().closePrice(10).add();
+                Num value = middle.getValue(index);
+                if (index < 14) {
+                    assertThat(value.isNaN()).isTrue();
+                } else {
+                    TestUtils.assertNumEquals(10, value);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @BeforeEach

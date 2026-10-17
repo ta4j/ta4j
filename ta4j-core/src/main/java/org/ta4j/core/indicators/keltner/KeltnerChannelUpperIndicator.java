@@ -55,17 +55,27 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        Num middle = keltnerMiddleIndicator.getValue(index);
+        Num averageTrueRange = getAverageTrueRangeIndicator().getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
-        return keltnerMiddleIndicator.getValue(index)
-                .plus(ratio.multipliedBy(getAverageTrueRangeIndicator().getValue(index)));
+        return middle.plus(ratio.multipliedBy(averageTrueRange));
     }
 
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(keltnerMiddleIndicator.getCountOfUnstableBars(),
                 getAverageTrueRangeIndicator().getCountOfUnstableBars());
+    }
+
+    /**
+     * @return {@code true}, because the middle and ATR retain full-history state
+     * @since 0.26.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     /** @return the bar count of {@link #keltnerMiddleIndicator} */

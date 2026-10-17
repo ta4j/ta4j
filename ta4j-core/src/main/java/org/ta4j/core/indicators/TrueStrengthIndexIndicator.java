@@ -27,6 +27,8 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
 
     @SuppressWarnings("unused")
     private final Indicator<Num> priceIndicator;
+    private final transient EMAIndicator firstSmoothedChange;
+    private final transient EMAIndicator firstSmoothedAbsoluteChange;
     private final transient EMAIndicator doubleSmoothedChange;
     private final transient EMAIndicator doubleSmoothedAbsoluteChange;
     private final int firstSmoothingPeriod;
@@ -56,10 +58,13 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
     }
 
     private TrueStrengthIndexIndicator(Config config) {
-        super(config.priceIndicator());
+        super(config.firstSmoothedChange(), config.firstSmoothedAbsoluteChange(), config.doubleSmoothedChange(),
+                config.doubleSmoothedAbsoluteChange());
         this.firstSmoothingPeriod = config.firstSmoothingPeriod();
         this.secondSmoothingPeriod = config.secondSmoothingPeriod();
         this.priceIndicator = config.priceIndicator();
+        this.firstSmoothedChange = config.firstSmoothedChange();
+        this.firstSmoothedAbsoluteChange = config.firstSmoothedAbsoluteChange();
         this.doubleSmoothedChange = config.doubleSmoothedChange();
         this.doubleSmoothedAbsoluteChange = config.doubleSmoothedAbsoluteChange();
     }
@@ -81,21 +86,33 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
         EMAIndicator firstSmoothingAbsoluteChange = new EMAIndicator(absolutePriceChange, firstSmoothingPeriod);
         EMAIndicator doubleSmoothedAbsoluteChange = new EMAIndicator(firstSmoothingAbsoluteChange,
                 secondSmoothingPeriod);
-        return new Config(indicator, doubleSmoothedChange, doubleSmoothedAbsoluteChange, firstSmoothingPeriod,
-                secondSmoothingPeriod);
+        return new Config(indicator, firstSmoothingChange, firstSmoothingAbsoluteChange, doubleSmoothedChange,
+                doubleSmoothedAbsoluteChange, firstSmoothingPeriod, secondSmoothingPeriod);
     }
 
     @Override
     protected Num calculate(int index) {
+        firstSmoothedChange.getValue(index);
+        firstSmoothedAbsoluteChange.getValue(index);
+        Num numerator = doubleSmoothedChange.getValue(index);
+        Num denominator = doubleSmoothedAbsoluteChange.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
-        Num numerator = doubleSmoothedChange.getValue(index);
-        Num denominator = doubleSmoothedAbsoluteChange.getValue(index);
         if (Num.isNaNOrNull(numerator) || Num.isNaNOrNull(denominator) || denominator.isZero()) {
             return NaN;
         }
         return numerator.dividedBy(denominator).multipliedBy(getBarSeries().numFactory().hundred());
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.26.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     @Override
@@ -104,7 +121,8 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
         return firstSmoothingPeriod + secondSmoothingPeriod;
     }
 
-    private record Config(Indicator<Num> priceIndicator, EMAIndicator doubleSmoothedChange,
+    private record Config(Indicator<Num> priceIndicator, EMAIndicator firstSmoothedChange,
+            EMAIndicator firstSmoothedAbsoluteChange, EMAIndicator doubleSmoothedChange,
             EMAIndicator doubleSmoothedAbsoluteChange, int firstSmoothingPeriod, int secondSmoothingPeriod) {
     }
 }
