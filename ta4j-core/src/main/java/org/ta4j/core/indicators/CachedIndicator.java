@@ -515,11 +515,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
 
             if (headAdvanced && !discardWholeCache && minimumCacheableIndex == firstRetainedIndex
-                    && hasRecursiveDependencies()
-                    && (long) snapshot.endIndex() == (long) sinceSnapshot.endIndex() + 1) {
-                // A consumed terminal followed by one append is a valid bridge even
-                // when it has just left the retained series. Do not create a bridge
-                // across missed appends, whose source lookbacks may already be gone.
+                    && hasRecursiveDependencies() && snapshot.endIndex() >= sinceSnapshot.endIndex()
+                    && (long) snapshot.endIndex() <= (long) sinceSnapshot.endIndex() + 1
+                    && sourceLookbackIsRetained(firstRetainedIndex, snapshot.endIndex())) {
+                // A consumed predecessor remains valid after a capacity-only shrink
+                // or one append. Missed appends or a missing source lookback cannot
+                // supply the next recurrence input.
                 minimumCacheableIndex = Math.max(0, firstRetainedIndex - 1);
             }
 
@@ -769,12 +770,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * retained cached value, because their results cannot be recomputed from the
      * retained window alone and the retained recurrence is still the full-history
      * value; the next appended bar continues that recurrence. Reconciliation also
-     * retains the consumed predecessor in the bounded ring after a single append,
-     * even when only the new terminal bar remains. They discard their whole cache
-     * only when their source graph contains a {@link CachedIndicator} that
-     * explicitly requires full invalidation (a discontinuity the chain cannot
-     * continue across). Numeric source floors do not propagate into them: such a
-     * floor only re-evaluates source values the chain has already consumed.
+     * retains the consumed predecessor in the bounded ring after a capacity-only
+     * shrink or single append, provided the new bar's source unstable range is
+     * still retained. They discard their whole cache only when their source graph
+     * contains a {@link CachedIndicator} that explicitly requires full invalidation
+     * (a discontinuity the chain cannot continue across). Numeric source floors do
+     * not propagate into them: such a floor only re-evaluates source values the
+     * chain has already consumed.
      * </p>
      *
      * <p>
@@ -833,6 +835,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         } finally {
             HEAD_ADVANCE_VISITED.remove();
         }
+    }
+
+    private boolean sourceLookbackIsRetained(int firstRetainedIndex, int endIndex) {
+        for (Indicator<?> source : sourceIndicators) {
+            if ((long) firstRetainedIndex + source.getCountOfUnstableBars() > endIndex) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex, Indicator<?>[] derivedSources,

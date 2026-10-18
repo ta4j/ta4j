@@ -59,10 +59,12 @@ import org.ta4j.core.num.NumFactory;
  * A live instance continues both moments across retained-head eviction from its
  * cached predecessor, including a one-bar seed in a one-bar window read on each
  * append. A fresh instance, or a chain whose predecessor was invalidated, seeds
- * causally from the retained head and counts warm-up from that seed origin.
- * Retained cached values describe the consumed history, not a newly constructed
- * estimator over only the current window. Reads bracket the removal count and
- * retry when pruning races the calculation.
+ * causally from the retained head and counts warm-up from that seed origin. A
+ * seed or recovery remains {@code NaN} until the complete seed window and its
+ * source warm-up are retained; cached unstable predecessors do not replace
+ * missing seed observations. Retained cached values describe the consumed
+ * history, not a newly constructed estimator over only the current window.
+ * Reads bracket the removal count and retry when pruning races the calculation.
  *
  * <p>
  * Combined with {@link CusumIndicator} this provides the volatility leg of a
@@ -269,6 +271,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num windowVarianceAround(int index, Num center) {
+        if ((long) index - getBarSeries().getBeginIndex() + 1 < (long) barCount + indicator.getCountOfUnstableBars()) {
+            return NaN.NaN;
+        }
         int windowBegin = Math.max(index - barCount + 1, getBarSeries().getBeginIndex());
         NumFactory factory = getBarSeries().numFactory();
         Num barCountNum = factory.numOf(barCount);
@@ -344,6 +349,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      */
     private static Num windowMean(Indicator<Num> source, int windowBarCount, int index) {
         BarSeries series = source.getBarSeries();
+        if ((long) index - series.getBeginIndex() + 1 < (long) windowBarCount + source.getCountOfUnstableBars()) {
+            return NaN.NaN;
+        }
         int windowBegin = Math.max(index - windowBarCount + 1, series.getBeginIndex());
         NumFactory factory = series.numFactory();
         int windowLength = index - windowBegin + 1;

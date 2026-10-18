@@ -33,6 +33,7 @@ import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
@@ -101,6 +102,59 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
             assertNumEquals(expected.getMeanIndicator().getValue(index), actual.getMeanIndicator().getValue(index));
             assertNumEquals(actual.getValue(index), actual.getValue(-1));
         }
+    }
+
+    @Test
+    public void capacityOnlyPruningRetainsMomentsForAnEditedRetainedBar() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EwmaVarianceIndicator actual = new EwmaVarianceIndicator(bounded, 1, 0.5);
+        EwmaVarianceIndicator expected = new EwmaVarianceIndicator(unbounded, 1, 0.5);
+        for (int close : new int[] { 100, 107, 102, 116 }) {
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(bounded.getEndIndex()), actual.getValue(bounded.getEndIndex()));
+        }
+        bounded.setMaximumBarCount(1);
+        assertNumEquals(expected.getValue(3), actual.getValue(3));
+        bounded.getLastBar().addPrice(numOf(119));
+        unbounded.getLastBar().addPrice(numOf(119));
+        assertNumEquals(expected.getValue(3), actual.getValue(3));
+        assertNumEquals(expected.getMeanIndicator().getValue(3), actual.getMeanIndicator().getValue(3));
+    }
+
+    @Test
+    public void incompleteSeedStaysUnstableUntilTheWholeWindowIsRetained() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(1);
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(series, 2, 0.5);
+        for (int close : new int[] { 1, 3, 5 }) {
+            series.barBuilder().closePrice(close).add();
+            int index = series.getEndIndex();
+            assertTrue(variance.getValue(index).isNaN());
+            assertTrue(variance.getMeanIndicator().getValue(index).isNaN());
+        }
+        series.setMaximumBarCount(2);
+        series.barBuilder().closePrice(7).add();
+        assertNumEquals(6, variance.getMeanIndicator().getValue(3));
+        assertNumEquals(1, variance.getValue(3));
+    }
+
+    @Test
+    public void seedWindowAlsoRetainsTheSourceLookback() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
+        series.setMaximumBarCount(2);
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new LogReturnIndicator(series), 2, 0.5);
+        assertTrue(variance.getValue(0).isNaN());
+        series.barBuilder().closePrice(110).add();
+        assertTrue(variance.getValue(1).isNaN());
+        series.barBuilder().closePrice(121).add();
+        assertTrue(variance.getValue(2).isNaN());
+        assertTrue(variance.getMeanIndicator().getValue(2).isNaN());
+        series.setMaximumBarCount(3);
+        series.barBuilder().closePrice(133.1).add();
+        assertNumEquals(numOf(Math.log(1.1)), variance.getMeanIndicator().getValue(3), 1e-12);
+        assertNumEquals(numOf(0), variance.getValue(3), 1e-12);
     }
 
     @Test

@@ -166,6 +166,29 @@ public class EwmaReturnForecastStateIndicatorTest
     }
 
     @Test
+    public void missingReturnLookbackDoesNotBecomeAnObservation() {
+        for (boolean revisionless : List.of(false, true)) {
+            BarSeries series = instrumentedSeries(revisionless, new AtomicInteger(), new AtomicBoolean(), 100);
+            series.setMaximumBarCount(1);
+            EwmaReturnForecastStateIndicator forecast = new EwmaReturnForecastStateIndicator(
+                    new LogReturnIndicator(series), 1, 0.5);
+            assertEquals(0, forecast.getValue(0).observationCount());
+            for (int index = 1; index <= 4; index++) {
+                appendClose(series, 100 + 10 * index);
+                ReturnForecastState value = forecast.getValue(index);
+                assertEquals(0, value.observationCount());
+                assertFalse(value.isStable());
+            }
+            series.setMaximumBarCount(2);
+            appendClose(series, 154);
+            ReturnForecastState recovered = forecast.getValue(5);
+            assertEquals(1, recovered.observationCount());
+            assertTrue(recovered.isStable());
+            assertNumEquals(numOf(Math.log(1.1)), recovered.mean(), 1e-12);
+        }
+    }
+
+    @Test
     public void continuedForecastMatchesUnboundedHistoryWithAndWithoutRevisions() {
         for (boolean revisionless : List.of(false, true)) {
             BarSeries bounded = instrumentedSeries(revisionless, new AtomicInteger(), new AtomicBoolean(), 100);

@@ -29,15 +29,17 @@ import org.ta4j.core.num.Num;
  * prunes its retained head, a live instance continues its moments and
  * observation count from their cached predecessors. A fresh or invalidated
  * chain seeds only from retained history and excludes a synthetic head return
- * from its count. Reads bracket the removal count and bar-history revision and
- * repeat until both are stable, so a state never mixes moments from different
- * bar revisions. Series without bar-history revisions validate all retained bar
- * values before and after each read, rebuilding the owner-local recursive
- * estimators and cached return dependencies when overlapping values change.
- * Before accepting an appended range, cached return dependencies are cleared
- * while preserving moments and counts from the unchanged prefix. This fallback
- * costs O(retained bars) per read; revision-aware normal continuation is
- * independent of retention capacity.
+ * from its count. A return stream whose lookback no longer fits the retained
+ * window remains unstable with no synthetic head observations. Reads bracket
+ * the removal count and bar-history revision and repeat until both are stable,
+ * so a state never mixes moments from different bar revisions. Series without
+ * bar-history revisions validate all retained bar values before and after each
+ * read, rebuilding the owner-local recursive estimators and cached return
+ * dependencies when overlapping values change. Before accepting an appended
+ * range, cached return dependencies are cleared while preserving moments and
+ * counts from the unchanged prefix. This fallback costs O(retained bars) per
+ * read; revision-aware normal continuation is independent of retention
+ * capacity.
  *
  * @since 0.22.9
  */
