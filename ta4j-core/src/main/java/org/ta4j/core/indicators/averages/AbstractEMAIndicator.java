@@ -64,14 +64,18 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
                 // Empty series: there is no bar to seed from or recurse to.
                 return NaN;
             }
-            // Removed-index aliases must not seed a cached recurrence at a head
-            // that has never been consumed.
+            Num value;
             if (index < beginIndex) {
-                return getCachedValueOrNull(beginIndex - 1) == null ? seed(beginIndex) : getValue(beginIndex);
+                // Preserve an already consumed head, including a terminal value.
+                // Without one, a removed-index alias must not prefill later bars
+                // or move the fresh chain's warm-up anchor into removed history.
+                value = beginIndex == getBarSeries().getEndIndex() || getCachedValueOrNull(beginIndex) != null
+                        ? getValue(beginIndex)
+                        : seed(beginIndex);
+            } else {
+                Num predecessor = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
+                value = predecessor == null ? seed(index) : continueChain(index, predecessor);
             }
-
-            Num predecessor = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
-            Num value = predecessor == null ? seed(index) : continueChain(index, predecessor);
             if (getBarSeries().getBeginIndex() == beginIndex) {
                 return value;
             }

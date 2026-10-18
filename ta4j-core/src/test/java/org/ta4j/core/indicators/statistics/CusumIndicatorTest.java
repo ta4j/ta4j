@@ -60,6 +60,18 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void emptyReadsDoNotPoisonLaterStatisticAndScale() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        CusumIndicator actual = new CusumIndicator(new ClosePriceIndicator(series), 0, 0, 3.0, 0.5);
+        assertTrue(actual.getValue(0).isNaN());
+        assertTrue(actual.getValue(series.getEndIndex()).isNaN());
+        series.barBuilder().closePrice(-1).add();
+        assertNumEquals(1, actual.getValue(0));
+        series.barBuilder().closePrice(-100).add();
+        assertNumEquals(4, actual.getValue(1));
+    }
+
+    @Test
     public void winsorizedRecursionMatchesFormula() {
         // mu0 = 0, k = 0.005, clipFactor = 3, scaleDecay = 0.5:
         // S = [0, 0, 0.045] with the -0.100 increment clipped to 3 * 0.015.

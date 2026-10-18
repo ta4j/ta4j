@@ -289,6 +289,9 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         @Override
         protected Integer calculate(int index) {
             int beginIndex = getBarSeries().getBeginIndex();
+            if (beginIndex < 0) {
+                return 0;
+            }
             if (index < beginIndex) {
                 return getValue(beginIndex);
             }

@@ -95,8 +95,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private final Indicator<?>[] sourceIndicators;
 
     /**
-     * Source lookback frontier, stopping at cached indicators that own their
-     * policy.
+     * Source lookback frontier, traversing recursive sources whose next input must
+     * remain available and stopping at non-recursive cached policy owners.
      */
     private final Indicator<?>[] sourceLookbackIndicators;
 
@@ -180,7 +180,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 continue;
             }
             frontier.add(source);
-            if (!(source instanceof CachedIndicator<?>)) {
+            if (!(source instanceof CachedIndicator<?> cached) || cached.hasRecursiveDependencies()) {
                 for (Indicator<?> dependency : source.getDependencies()) {
                     pending.addLast(dependency);
                 }
@@ -894,8 +894,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             int sourceBeginIndex = source.getBarSeries().getRemovedBarsCount();
             if (source instanceof CachedIndicator<?> cached) {
                 if (cached.hasRecursiveDependencies()) {
-                    // A live recursive source needs its consumed predecessor, not
-                    // its original initialization window, to produce the next value.
+                    // Its next input must remain reconstructible too. The
+                    // precomputed frontier includes recursive sources' inputs.
+                    if (cached.sourceLookbackIndicators.length == 0) {
+                        return false;
+                    }
                     continue;
                 }
                 // Floors describe this source's retained range, not the consumer's.

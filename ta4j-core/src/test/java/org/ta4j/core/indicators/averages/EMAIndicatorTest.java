@@ -23,6 +23,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
+import org.ta4j.core.indicators.volume.OnBalanceVolumeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
@@ -54,6 +55,36 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95, 63.37, 61.33, 61.51)
                 .build();
+    }
+
+    @Test
+    public void dependentReseedsWhenRecursiveSourceLosesItsBridge() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator actual = new EMAIndicator(new OnBalanceVolumeIndicator(series), 2);
+        for (int index = 0; index < 6; index++) {
+            series.barBuilder().closePrice(10 + index).volume(10).add();
+            actual.getValue(index);
+        }
+        series.setMaximumBarCount(1);
+        series.barBuilder().closePrice(20).volume(10).add();
+        EMAIndicator fresh = new EMAIndicator(new OnBalanceVolumeIndicator(series), 2);
+        assertNumEquals(fresh.getValue(series.getEndIndex()), actual.getValue(series.getEndIndex()));
+        assertTrue(actual.getValue(series.getEndIndex()).isNaN());
+    }
+
+    @Test
+    public void removedReadPreservesCachedTerminalHeadWithoutSourceLookback() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator actual = new EMAIndicator(new LogReturnIndicator(series), 2);
+        for (int index = 0; index < 6; index++) {
+            series.barBuilder().closePrice(10 + index * index).add();
+            actual.getValue(index);
+        }
+        Num consumed = actual.getValue(series.getEndIndex());
+        series.setMaximumBarCount(1);
+        assertNumEquals(consumed, actual.getValue(series.getBeginIndex()));
+        assertNumEquals(consumed, actual.getValue(0));
+        assertNumEquals(consumed, actual.getValue(series.getBeginIndex()));
     }
 
     @Test

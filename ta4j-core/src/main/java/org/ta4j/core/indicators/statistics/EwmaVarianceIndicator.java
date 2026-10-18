@@ -199,6 +199,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num calculateRetained(int index, int beginIndex) {
+        if (beginIndex < 0) {
+            return NaN.NaN;
+        }
         if (index < beginIndex) {
             return getValue(beginIndex);
         }
@@ -500,6 +503,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         private Num calculateRetained(int index, int beginIndex) {
+            if (beginIndex < 0) {
+                return NaN.NaN;
+            }
             if (index < beginIndex) {
                 return readValue(beginIndex);
             }

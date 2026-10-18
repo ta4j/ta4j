@@ -42,6 +42,28 @@ public class EwmaReturnForecastStateIndicatorTest
     }
 
     @Test
+    public void emptyReadsReturnUnstableStateBeforeObservationsArrive() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EwmaReturnForecastStateIndicator actual = new EwmaReturnForecastStateIndicator(new LogReturnIndicator(series),
+                2, 0.5);
+        for (int index : new int[] { 0, series.getEndIndex() }) {
+            ReturnForecastState state = actual.getValue(index);
+            assertFalse(state.isStable());
+            assertEquals(0, state.observationCount());
+            assertTrue(state.mean().isNaN());
+            assertTrue(state.variance().isNaN());
+        }
+        for (int index = 0; index < 3; index++) {
+            series.barBuilder().closePrice(100 * Math.pow(2, index)).add();
+            ReturnForecastState state = actual.getValue(index);
+            assertEquals(index, state.observationCount());
+            assertEquals(index == 2, state.isStable());
+        }
+        assertNumEquals(Math.log(2), actual.getValue(2).mean());
+        assertNumEquals(0, actual.getValue(2).variance());
+    }
+
+    @Test
     public void initializesRollingMeanStateAfterWarmup() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 133.1).build();
         LogReturnIndicator returns = new LogReturnIndicator(series);

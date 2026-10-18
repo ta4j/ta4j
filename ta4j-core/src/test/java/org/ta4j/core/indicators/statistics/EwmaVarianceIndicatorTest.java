@@ -60,6 +60,24 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void emptyMomentReadsDoNotPoisonLaterInitialization() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EwmaVarianceIndicator actual = new EwmaVarianceIndicator(series, 2, 0.5);
+        for (int index : new int[] { 0, series.getEndIndex() }) {
+            assertTrue(actual.getValue(index).isNaN());
+            assertTrue(actual.getMeanIndicator().getValue(index).isNaN());
+        }
+        series.barBuilder().closePrice(2).add();
+        assertTrue(actual.getValue(0).isNaN());
+        series.barBuilder().closePrice(4).add();
+        assertNumEquals(3, actual.getMeanIndicator().getValue(1));
+        assertNumEquals(1, actual.getValue(1));
+        series.barBuilder().closePrice(6).add();
+        assertNumEquals(4.5, actual.getMeanIndicator().getValue(2));
+        assertNumEquals(5, actual.getValue(2));
+    }
+
+    @Test
     public void continuedMomentsMatchUnboundedHistoryInEitherAccessOrder() {
         BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
