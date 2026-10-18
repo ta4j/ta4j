@@ -31,6 +31,11 @@ public class AccumulationDistributionIndicatorTest extends AbstractIndicatorTest
             unbounded.barBuilder().closePrice(3).highPrice(4).lowPrice(0).volume(10).add();
             assertNumEquals(5 * index, expected.getValue(index));
             assertNumEquals(expected.getValue(index), actual.getValue(index));
+            if (index > 0) {
+                assertNumEquals(5 * index, actual.getValue(index - 1));
+                assertNumEquals(5 * index, actual.getValue(0));
+                assertNumEquals(5 * index, actual.getValue(index));
+            }
         }
     }
 

@@ -1227,6 +1227,19 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     private T getFirstBarValue(BarSeries series, int removedBarsCount) {
         if (hasRecursiveDependencies()) {
+            // In a one-bar window the retained head is still terminal and its
+            // consumed value has not been promoted into the main cache. Peek
+            // without calculating: a missing value must still use the recursion
+            // base case rather than re-enter the terminal computation.
+            synchronized (lastBarLock) {
+                if (lastBarCachedIndex == removedBarsCount) {
+                    LastBarState state1 = LastBarState.capture(series, removedBarsCount);
+                    LastBarState state2 = LastBarState.capture(series, removedBarsCount);
+                    if (state1 != null && state1.isSameAs(state2) && state1.isSameAs(lastBarState)) {
+                        return lastBarCachedResult;
+                    }
+                }
+            }
             // An unbounded-history chain keeps its full-history value at the first
             // available bar; serve it rather than a re-seed from calculate(0), so
             // every request for that bar agrees. Peeking computes nothing, so
