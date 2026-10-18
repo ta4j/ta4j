@@ -556,11 +556,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
             if (headAdvanced && !discardWholeCache && minimumCacheableIndex == firstRetainedIndex
                     && hasRecursiveDependencies() && snapshot.endIndex() >= sinceSnapshot.endIndex()
-                    && (long) snapshot.endIndex() <= (long) sinceSnapshot.endIndex() + 1
-                    && sourceLookbackIsRetained(snapshot.endIndex()) && sourceCanRecomputeInvalidatedInput) {
-                // A consumed predecessor remains valid after a capacity-only shrink
-                // or one append. Missed appends or a missing source lookback cannot
-                // supply the next recurrence input.
+                    && (long) firstRetainedIndex <= (long) sinceSnapshot.endIndex() + 1
+                    && sourceLookbackIsRetained(
+                            snapshot.endIndex() > sinceSnapshot.endIndex() ? sinceSnapshot.endIndex() + 1
+                                    : snapshot.endIndex())
+                    && sourceCanRecomputeInvalidatedInput) {
+                // Keep a consumed predecessor across a shrink or missed reads only
+                // when every following input remains reconstructible. A gap that
+                // already lost its first input must start a fresh recurrence.
                 minimumCacheableIndex = Math.max(0, firstRetainedIndex - 1);
             }
 
