@@ -776,12 +776,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * retained window alone and the retained recurrence is still the full-history
      * value; the next appended bar continues that recurrence. Reconciliation also
      * retains the consumed predecessor in the bounded ring after a capacity-only
-     * shrink or single append, provided the new bar's source unstable range is
-     * still retained. They discard their whole cache only when their source graph
+     * shrink or single append, provided the next input meets its source's effective
+     * cache floor. An edited retained head also drops that predecessor when its
+     * source can no longer reconstruct the head input, even if the source declares
+     * no unstable bars. They discard their whole cache only when their source graph
      * contains a {@link CachedIndicator} that explicitly requires full invalidation
      * (a discontinuity the chain cannot continue across). Numeric source floors do
-     * not propagate into them: such a floor only re-evaluates source values the
-     * chain has already consumed.
+     * not invalidate unchanged values that the chain has already consumed.
      * </p>
      *
      * <p>
@@ -844,12 +845,20 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private boolean sourceLookbackIsRetained(int firstRetainedIndex, int endIndex) {
         for (Indicator<?> source : sourceIndicators) {
-            if (source instanceof CachedIndicator<?> cached && cached.hasRecursiveDependencies()) {
-                // A live recursive source needs its consumed predecessor, not
-                // its original initialization window, to produce the next value.
-                continue;
+            long sourceFloor;
+            if (source instanceof CachedIndicator<?> cached) {
+                if (cached.hasRecursiveDependencies()) {
+                    // A live recursive source needs its consumed predecessor, not
+                    // its original initialization window, to produce the next value.
+                    continue;
+                }
+                // A source can consume removed lookback without declaring unstable
+                // bars (for example true range's previous close).
+                sourceFloor = cached.minimumCacheableIndexAfterHeadAdvanceOf(getBarSeries(), firstRetainedIndex);
+            } else {
+                sourceFloor = (long) firstRetainedIndex + source.getCountOfUnstableBars();
             }
-            if ((long) firstRetainedIndex + source.getCountOfUnstableBars() > endIndex) {
+            if (sourceFloor == Integer.MAX_VALUE || sourceFloor > endIndex) {
                 return false;
             }
         }

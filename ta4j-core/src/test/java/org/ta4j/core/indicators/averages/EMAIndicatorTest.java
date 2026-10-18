@@ -21,6 +21,7 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
@@ -160,6 +161,29 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         assertNumEquals(fresh.getValue(7), actual.getValue(7));
         series.barBuilder().closePrice(127).add();
         assertNumEquals(fresh.getValue(8), actual.getValue(8));
+    }
+
+    @Test
+    public void retainedHeadEditReseedsWhenSourceCacheFloorExceedsItsWarmUp() {
+        for (boolean observeHeadAdvance : List.of(false, true)) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            series.setMaximumBarCount(3);
+            EMAIndicator actual = new EMAIndicator(new TRIndicator(series), 2);
+            for (int index = 0; index < 8; index++) {
+                double close = 100 + index * 7 % 19;
+                series.barBuilder().openPrice(close).highPrice(close + 1).lowPrice(close - 1).closePrice(close).add();
+                actual.getValue(index);
+            }
+            series.barBuilder().openPrice(127).highPrice(128).lowPrice(126).closePrice(127).add();
+            if (observeHeadAdvance) {
+                actual.getValue(8);
+            }
+            series.getBar(series.getBeginIndex()).addPrice(numOf(150));
+            EMAIndicator fresh = new EMAIndicator(new TRIndicator(series), 2);
+            assertNumEquals(fresh.getValue(8), actual.getValue(8));
+            series.barBuilder().openPrice(115).highPrice(116).lowPrice(114).closePrice(115).add();
+            assertNumEquals(fresh.getValue(9), actual.getValue(9));
+        }
     }
 
     @Test
