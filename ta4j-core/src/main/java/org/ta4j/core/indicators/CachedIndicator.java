@@ -545,6 +545,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
 
             boolean sourceCanRecomputeInvalidatedInput = invalidateFrom < 0
+                    || (headAdvanced && !hasRecursiveDependencies())
                     || sourceLookbackIsRetained(Math.max(firstRetainedIndex, invalidateFrom));
             if (invalidateFrom > firstRetainedIndex && invalidateFrom <= sinceSnapshot.endIndex()
                     && !sourceCanRecomputeInvalidatedInput && hasRecursiveDependencies()) {
