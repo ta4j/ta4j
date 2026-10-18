@@ -544,13 +544,19 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 return snapshot;
             }
 
-            boolean sourceCanRecomputeInvalidatedHead = invalidateFrom < 0 || invalidateFrom > firstRetainedIndex
-                    || sourceLookbackIsRetained(firstRetainedIndex);
+            boolean sourceCanRecomputeInvalidatedInput = invalidateFrom < 0
+                    || sourceLookbackIsRetained(Math.max(firstRetainedIndex, invalidateFrom));
+            if (invalidateFrom > firstRetainedIndex && invalidateFrom <= sinceSnapshot.endIndex()
+                    && !sourceCanRecomputeInvalidatedInput && hasRecursiveDependencies()) {
+                // Replaying an input below its source floor would mix a truncated
+                // source window with an intact full-history recurrence prefix.
+                invalidateFrom = firstRetainedIndex;
+            }
 
             if (headAdvanced && !discardWholeCache && minimumCacheableIndex == firstRetainedIndex
                     && hasRecursiveDependencies() && snapshot.endIndex() >= sinceSnapshot.endIndex()
                     && (long) snapshot.endIndex() <= (long) sinceSnapshot.endIndex() + 1
-                    && sourceLookbackIsRetained(snapshot.endIndex()) && sourceCanRecomputeInvalidatedHead) {
+                    && sourceLookbackIsRetained(snapshot.endIndex()) && sourceCanRecomputeInvalidatedInput) {
                 // A consumed predecessor remains valid after a capacity-only shrink
                 // or one append. Missed appends or a missing source lookback cannot
                 // supply the next recurrence input.
@@ -558,9 +564,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
 
             if (!headAdvanced && !discardWholeCache && minimumCacheableIndex == firstRetainedIndex
-                    && sourceCanRecomputeInvalidatedHead) {
-                // Keep the consumed predecessor only if a changed retained-head
-                // input can be recomputed without its removed source lookback.
+                    && sourceCanRecomputeInvalidatedInput) {
+                // Keep the consumed predecessor only if the changed input can be
+                // recomputed without its removed source lookback.
                 int firstCachedIndex = cache.getFirstCachedIndex();
                 if (firstCachedIndex >= 0) {
                     minimumCacheableIndex = Math.min(minimumCacheableIndex, firstCachedIndex);

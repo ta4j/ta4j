@@ -198,6 +198,41 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void retainedInteriorEditReseedsOnlyBelowSourceCacheFloor() {
+        for (int changedOffset : List.of(1, 3, 4)) {
+            for (boolean wrapped : List.of(false, true)) {
+                for (boolean observeHeadAdvance : List.of(false, true)) {
+                    BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+                    BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+                    Indicator<Num> source = new SMAIndicator(new ClosePriceIndicator(series), 5);
+                    EMAIndicator actual = new EMAIndicator(wrapped ? UnaryOperationIndicator.abs(source) : source, 2);
+                    for (int index = 0; index < 12; index++) {
+                        double close = 100 + index * 7 % 19;
+                        series.barBuilder().closePrice(close).add();
+                        unbounded.barBuilder().closePrice(close).add();
+                        actual.getValue(index);
+                    }
+                    series.setMaximumBarCount(7);
+                    if (observeHeadAdvance) {
+                        actual.getValue(11);
+                    }
+                    int changedIndex = series.getBeginIndex() + changedOffset;
+                    series.getBar(changedIndex).addPrice(numOf(150));
+                    unbounded.getBar(changedIndex).addPrice(numOf(150));
+                    BarSeries expectedSeries = changedOffset < 4 ? series : unbounded;
+                    Indicator<Num> freshSource = new SMAIndicator(new ClosePriceIndicator(expectedSeries), 5);
+                    EMAIndicator expected = new EMAIndicator(
+                            wrapped ? UnaryOperationIndicator.abs(freshSource) : freshSource, 2);
+                    assertNumEquals(expected.getValue(11), actual.getValue(11));
+                    series.barBuilder().closePrice(127).add();
+                    unbounded.barBuilder().closePrice(127).add();
+                    assertNumEquals(expected.getValue(12), actual.getValue(12));
+                }
+            }
+        }
+    }
+
+    @Test
     public void emptySeriesReturnsNaNWithoutRecursing() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
