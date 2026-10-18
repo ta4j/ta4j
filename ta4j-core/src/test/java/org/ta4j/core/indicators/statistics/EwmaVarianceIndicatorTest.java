@@ -59,6 +59,30 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void continuedMomentsMatchUnboundedHistoryInEitherAccessOrder() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(3);
+        EwmaVarianceIndicator actual = new EwmaVarianceIndicator(bounded, 2, 0.5);
+        EwmaVarianceIndicator expected = new EwmaVarianceIndicator(unbounded, 2, 0.5);
+        Indicator<Num> sharedMean = actual.getMeanIndicator();
+        for (int index = 0; index < 12; index++) {
+            int close = 10 + index * 7 % 5;
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            if (index % 2 == 0) {
+                assertNumEquals(expected.getMeanIndicator().getValue(index), sharedMean.getValue(index));
+            }
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+            assertNumEquals(expected.getMeanIndicator().getValue(index), sharedMean.getValue(index));
+            assertTrue(sharedMean == actual.getMeanIndicator(), "head eviction must not replace the shared estimator");
+            if (index > 0) {
+                assertNumEquals(expected.getValue(index - 1), actual.getValue(index - 1));
+            }
+        }
+    }
+
+    @Test
     public void seedsWithRollingPopulationVarianceAfterWarmUp() {
         assertTrue(ewmaVariance.getValue(0).isNaN());
         assertTrue(ewmaVariance.getValue(1).isNaN());
@@ -661,31 +685,24 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
-    public void reanchorsAfterRetainedHeadPrunes() {
-        // Retained-head pruning invalidates the caches and rebuilds the
-        // control mean: values computed against the discarded prefix must not
-        // survive. The recursion re-anchors only once the full seed window is
-        // available at the retained head: earlier indices stay NaN so no
-        // future bar leaks into a historical value.
+    public void continuedAndFreshEstimatorsHaveDifferentCausalHistoriesAfterShrink() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         EwmaVarianceIndicator pruned = new EwmaVarianceIndicator(
                 new MockIndicator(series, 0, numOf(1), numOf(2), numOf(3), numOf(4), numOf(5)), 2, 0.5);
 
-        // Fill the caches across the whole series.
-        pruned.getValue(4);
+        Num retainedHead = pruned.getValue(2);
+        Num retainedNext = pruned.getValue(3);
+        Num retainedEnd = pruned.getValue(4);
 
         series.setMaximumBarCount(3);
 
-        // beginIndex = 2. The full seed window [2, 3] is not available at the
-        // new head: NaN.
-        assertTrue(pruned.getValue(2).isNaN());
-        // index 3 re-seeds from the rolling variance of [2, 3] = 0.25.
-        assertNumEquals(0.25, pruned.getValue(3));
-        // index 4: the rebuilt control mean at 3 is the configured seed
-        // SMA(3, 4) = 3.5, so sigma^2_4 = 0.5 * 0.25 + 0.5 * (5 - 3.5)^2 =
-        // 1.25. A stale cached value (2.8359375 from the discarded prefix)
-        // would surface otherwise.
-        assertNumEquals(1.25, pruned.getValue(4));
+        assertNumEquals(retainedHead, pruned.getValue(2));
+        assertNumEquals(retainedNext, pruned.getValue(3));
+        assertNumEquals(retainedEnd, pruned.getValue(4));
+        EwmaVarianceIndicator fresh = new EwmaVarianceIndicator(series, 2, 0.5);
+        assertTrue(fresh.getValue(2).isNaN());
+        assertNumEquals(0.25, fresh.getValue(3));
+        assertNumEquals(1.25, fresh.getValue(4));
     }
 
     @Test
@@ -763,67 +780,52 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void sharedMeanReadAtRemovedIndexAnchorsAtRetainedHead() {
-        // A consumer reading the shared mean at a removed index must receive
-        // the first retained bar's seed, not NaN from the warm-up guard
-        // evaluating a discarded prefix index. With barCount 1 the retained
-        // head is its own seed window.
+        // Removed reads use the retained recurrence; fresh owners seed at that head.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         EwmaVarianceIndicator pruned = new EwmaVarianceIndicator(
                 new MockIndicator(series, 0, numOf(1), numOf(2), numOf(3), numOf(4), numOf(5)), 1, 0.5);
 
         pruned.getValue(4);
+        Num retainedMean = pruned.getMeanIndicator().getValue(2);
 
         series.setMaximumBarCount(3);
 
-        assertNumEquals(numOf(3), pruned.getMeanIndicator().getValue(0));
+        assertNumEquals(retainedMean, pruned.getMeanIndicator().getValue(0));
+        assertNumEquals(numOf(3), new EwmaVarianceIndicator(series, 1, 0.5).getMeanIndicator().getValue(0));
     }
 
     @Test
-    public void reanchoredMeanUsesConfiguredSeedWindow() {
-        // After pruning, the rebuilt control mean keeps the configured
-        // barCount so its seed at the re-anchoring index is the SMA of the
-        // retained seed window, not a single-window EWMA decayed across it.
+    public void freshMeanUsesConfiguredSeedWindowAfterPrune() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 5, 6, 7, 8)
                 .build();
         EwmaVarianceIndicator pruned = new EwmaVarianceIndicator(new MockIndicator(series, 0, numOf(1), numOf(2),
                 numOf(3), numOf(4), numOf(5), numOf(6), numOf(7), numOf(8)), 3, 0.5);
 
-        pruned.getValue(7);
-
         series.setMaximumBarCount(4);
 
-        // beginIndex = 4; the combined warm-up (2 bars) covers 4 and 5.
+        // Fresh chain: beginIndex = 4, with two warm-up bars.
         assertTrue(pruned.getValue(4).isNaN());
         assertTrue(pruned.getValue(5).isNaN());
         // index 6 re-seeds from the rolling variance of [4, 6] = [5, 6, 7] =
         // 2/3.
         assertNumEquals(2.0 / 3.0, pruned.getValue(6));
-        // index 7: the rebuilt control mean at 6 is the configured SMA seed
-        // SMA(5, 6, 7) = 6, so sigma^2_7 = 0.5 * 2/3 + 0.5 * (8 - 6)^2 =
-        // 7/3. A window-1 rebuild would decay the mean to 6.25 and yield
-        // 1.8645833333... instead.
+        // The shared mean seeds at SMA(5, 6, 7) = 6, not a one-bar EWMA seed.
         assertNumEquals(7.0 / 3.0, pruned.getValue(7));
     }
 
     @Test
-    public void reseedWaitsForSourceWarmUpAfterPrunes() {
-        // A source with its own unstable bars must not have unstable values
-        // pulled into the re-anchoring window: indices inside the combined
-        // warm-up stay NaN, and the first source-stable index re-seeds from
-        // the first full window of source-stable values.
+    public void freshSeedWaitsForSourceWarmUpAfterPrune() {
+        // A fresh owner must not pull source-unstable values into its seed window.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
                 .build();
         EwmaVarianceIndicator pruned = new EwmaVarianceIndicator(new MockIndicator(series, 2, numOf(1), numOf(2),
                 numOf(3), numOf(4), numOf(5), numOf(6), numOf(7), numOf(8), numOf(9), numOf(10)), 3, 0.5);
 
-        pruned.getValue(9);
-
         series.setMaximumBarCount(5);
 
-        // beginIndex = 5; combined warm-up = 2 + 2 = 4 bars, so 5, 6, 7 and 8
-        // publish NaN even though reseedIndex = 7 holds a full window.
+        // Fresh chain: beginIndex = 5; combined warm-up is four bars.
         assertTrue(pruned.getValue(5).isNaN());
         assertTrue(pruned.getValue(6).isNaN());
         assertTrue(pruned.getValue(7).isNaN());
@@ -931,18 +933,15 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void removedIndexReadAnchorsAtRetainedHead() {
-        // Reading a pruned index maps to the synthetic zero evaluation; it must
-        // anchor at the retained head instead of returning NaN for the removed
-        // index.
+        // A removed read returns the retained head's consumed-history value.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
         EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
                 new MockIndicator(series, 0, numOf(1), numOf(2), numOf(3), numOf(4)), 1, 0.94);
-        variance.getValue(3);
+        Num retained = variance.getValue(3);
         series.setMaximumBarCount(1);
 
-        // The anchored read returns the variance of the single retained bar
-        // (0) instead of NaN for the removed index.
-        assertNumEquals(numOf(0), variance.getValue(0));
+        assertNumEquals(retained, variance.getValue(0));
+        assertNumEquals(numOf(0), new EwmaVarianceIndicator(series, 1, 0.94).getValue(0));
     }
 
     @Test

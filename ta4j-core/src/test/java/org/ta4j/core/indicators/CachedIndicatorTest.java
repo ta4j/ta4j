@@ -2336,45 +2336,44 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
-    public void recursiveDependentResetsWithSelfReanchoringStatistics() {
-        // EwmaVarianceIndicator and CusumIndicator re-anchor their recursions at the
-        // retained head on every head advance. A recursive consumer must reset with
-        // them instead of continuing from a full-history predecessor.
+    public void recursiveDependentContinuesWithStatisticalSources() {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         barSeries.setMaximumBarCount(6);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator expected = new EMAIndicator(new EwmaVarianceIndicator(unbounded, 2, 0.5), 2);
         EMAIndicator dependent = new EMAIndicator(new EwmaVarianceIndicator(barSeries, 2, 0.5), 2);
         int finiteAfterHeadAdvance = 0;
         for (int i = 0; i < 12; i++) {
             barSeries.barBuilder().closePrice(10 + (i * 7) % 5).add();
+            unbounded.barBuilder().closePrice(10 + (i * 7) % 5).add();
             Num value = dependent.getValue(i);
-            EMAIndicator fresh = new EMAIndicator(new EwmaVarianceIndicator(barSeries, 2, 0.5), 2);
-            assertNumEquals(fresh.getValue(i), value);
+            assertNumEquals(expected.getValue(i), value);
             if (barSeries.getBeginIndex() > 0 && !value.isNaN()) {
                 finiteAfterHeadAdvance++;
             }
         }
 
         assertTrue(finiteAfterHeadAdvance > 0);
-        assertEquals(Integer.MAX_VALUE,
+        assertEquals(1,
                 new EMAIndicator(new CusumIndicator(barSeries, 10, 0.5), 2).minimumCacheableIndexAfterHeadAdvance(1));
     }
 
     @Test
     public void recursiveIndicatorIgnoresResetHookOfSourceOnSeriesThatDidNotAdvance() {
-        // CusumIndicator declares a full reset on head advances of its own series.
+        // An explicitly resetting source resets only when its own series advances.
         // When only the consumer's series advances, the source on the other series
         // did not reset, so the consumer keeps continuing its chain.
         BarSeries seriesB = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 20; i++) {
             seriesB.barBuilder().closePrice(10 + i % 3).add();
         }
-        CusumIndicator cusumOnB = new CusumIndicator(seriesB, 10, 0.5);
+        HeadAdvanceDiscardingIndicator sourceOnB = new HeadAdvanceDiscardingIndicator(seriesB);
         BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         seriesA.setMaximumBarCount(5);
-        RecursiveCachedIndicator<Num> chainLength = new RecursiveCachedIndicator<>(seriesA, cusumOnB) {
+        RecursiveCachedIndicator<Num> chainLength = new RecursiveCachedIndicator<>(seriesA, sourceOnB) {
             @Override
             protected Num calculate(int index) {
-                cusumOnB.getValue(index);
+                sourceOnB.getValue(index);
                 Num one = getBarSeries().numFactory().one();
                 return index <= getBarSeries().getBeginIndex() ? one : getValue(index - 1).plus(one);
             }

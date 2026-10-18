@@ -5,7 +5,6 @@ package org.ta4j.core.indicators.statistics;
 
 import java.math.BigDecimal;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -54,11 +53,11 @@ import org.ta4j.core.num.NumFactory;
  * preserves both arithmetic and descriptor / JSON round trips.
  *
  * <p>
- * While the source indicator is warming up ({@code index - beginIndex <
- * getCountOfUnstableBars()}) the value is {@code NaN}. Non-finite inputs carry
- * the previous CUSUM value forward (seeded at zero on the first addressable
- * bar) and leave the deviation scale unchanged, so a gap in the data neither
- * triggers nor resets the statistic.
+ * While the source indicator is warming up from the chain's seed origin the
+ * value is {@code NaN}. Non-finite inputs carry the previous CUSUM value
+ * forward (seeded at zero on the first addressable bar) and leave the deviation
+ * scale unchanged, so a gap in the data neither triggers nor resets the
+ * statistic.
  *
  * If the derived deviation, the deviation scale, or the accumulated CUSUM
  * overflows the numeric representation (a {@code DoubleNum} series jumping
@@ -74,13 +73,12 @@ import org.ta4j.core.num.NumFactory;
  * {@code (1e400 + 1e308) - 0 - 1e400 = 1e308}).
  *
  * <p>
- * When the backing series prunes its retained head (for example through
- * {@link org.ta4j.core.BarSeries#setMaximumBarCount(int)}), the recursion is
- * re-anchored at the new first addressable bar: cached values computed against
- * the discarded prefix are dropped and the statistic resumes from the new head
- * as if the series had started there. The retained-head check and complete
- * recursive cache read are serialized on this indicator, enforcing a consistent
- * monitor-before-cache-write lock order while a concurrent prune is reconciled.
+ * A live instance continues its statistic and deviation scale across
+ * retained-head eviction. A fresh instance, or an invalidated chain with no
+ * cached predecessor, seeds at the first retained bar. Both the rounded scale
+ * and any exact underflow residue share one bounded cache entry and one
+ * invalidation lifecycle. Reads serialize monitor-before-cache lock acquisition
+ * and retry a concurrent prune.
  *
  * <p>
  * Typical use is a statistical control-limit kill switch on an equity curve or
@@ -102,7 +100,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     private final transient boolean exactOutlierClipFactorArithmetic;
     private final BigDecimal scaleDecay;
     private final transient DeviationScaleIndicator deviationScale;
-    private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
+    private transient int chainStartIndex;
 
     /**
      * {@inheritDoc}
@@ -117,46 +115,11 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         BarSeries series = getBarSeries();
         while (true) {
             int removedBarsCount = series.getRemovedBarsCount();
-            if (removedBarsCount != observedRemovedBarsCount) {
-                resetForRetainedHead(removedBarsCount);
-            }
             Num value = super.getValue(index);
+            deviationScale.getValue(index);
             if (series.getRemovedBarsCount() == removedBarsCount) {
                 return value;
             }
-            // A prune raced the cached read, so the value may still be
-            // computed against the discarded prefix: reset and read again
-            // until a full read completes against a stable removal count. The
-            // cached read is cheap once re-anchored, so this settles as soon
-            // as the series stops pruning concurrently.
-        }
-    }
-
-    /**
-     * This indicator re-anchors its recursion at the retained head whenever the
-     * series head advances (see {@code resetForRetainedHead}), so a dependent that
-     * continued across the advance would combine a full-history predecessor with a
-     * re-anchored value. Declaring the reset makes those dependents reset too.
-     *
-     * @return {@code true}
-     */
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
-    }
-
-    private synchronized void resetForRetainedHead(int removedBarsCount) {
-        if (removedBarsCount != observedRemovedBarsCount && !isCacheWriteLockedByCurrentThread()) {
-            // Invalidate first, publish last: a concurrent reader that
-            // observes the new count must never see caches still computed
-            // from the discarded prefix. When the cache write lock is held by
-            // this thread the call is recursive from an in-flight calculate(),
-            // so defer to the top-level read: resetting here would let the
-            // in-flight computation repopulate the cache with a mixed-head
-            // result after this reset, and the retry loop would then reuse it.
-            invalidateCache();
-            deviationScale.invalidateForRetainedHead();
-            observedRemovedBarsCount = removedBarsCount;
         }
     }
 
@@ -313,29 +276,41 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        int beginIndex = getBarSeries().getBeginIndex();
-        if (index == 0 && beginIndex > 0) {
-            // Removed-index reads map to the synthetic zero; anchor at the
-            // retained head so the recursion never backtracks into pruned bars.
-            index = beginIndex;
+        while (true) {
+            int beginIndex = getBarSeries().getBeginIndex();
+            Num value = calculateRetained(index, beginIndex);
+            if (getBarSeries().getBeginIndex() == beginIndex) {
+                return value;
+            }
         }
-        if (index - beginIndex < getCountOfUnstableBars()) {
+    }
+
+    private Num calculateRetained(int index, int beginIndex) {
+        if (index < beginIndex) {
+            return getValue(beginIndex);
+        }
+        Num previous;
+        if (index == beginIndex) {
+            chainStartIndex = index;
+            previous = getBarSeries().numFactory().zero();
+        } else {
+            previous = getValue(index - 1);
+        }
+        if (index < (long) chainStartIndex + getCountOfUnstableBars()) {
             return NaN.NaN;
         }
         Num current = indicator.getValue(index);
         if (!Num.isFinite(current)) {
-            Num previous = index == beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
             return Num.isFinite(previous) ? previous : getBarSeries().numFactory().zero();
         }
         Num deviation = exactDeviation(targetMean, current, allowance);
         if (index > beginIndex) {
-            Num previousScale = deviationScale.getValue(index - 1);
-            if (Num.isFinite(previousScale)) {
-                Num bound = clippingBound(previousScale, index - 1);
+            ScaleState previousScale = deviationScale.getValue(index - 1);
+            if (Num.isFinite(previousScale.value())) {
+                Num bound = clippingBound(previousScale);
                 deviation = deviation.max(bound.negate()).min(bound);
             }
         }
-        Num previous = index == beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
         if (!Num.isFinite(previous)) {
             previous = getBarSeries().numFactory().zero();
         }
@@ -390,8 +365,9 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
      * underflowed, overflowed, was saturated, or the completed multiplication
      * overflowed; only the final bound is narrowed or saturated.
      */
-    private Num clippingBound(Num previousScale, int scaleIndex) {
-        BigDecimal exactScale = previousScale.isZero() ? deviationScale.exactUnderflowedValue(scaleIndex) : null;
+    private Num clippingBound(ScaleState previous) {
+        Num previousScale = previous.value();
+        BigDecimal exactScale = previous.exactUnderflow();
         if (exactScale == null && !exactOutlierClipFactorArithmetic) {
             Num bound = previousScale.multipliedBy(appliedOutlierClipFactor);
             if (Num.isFinite(bound)) {
@@ -440,21 +416,26 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         return exact.signum() < 0 ? magnitude.negate() : magnitude;
     }
 
+    private record ScaleState(Num value, BigDecimal exactUnderflow) {
+        private ScaleState(Num value) {
+            this(value, null);
+        }
+    }
+
     /**
      * Exponentially smoothed mean absolute deviation of the raw CUSUM increment
      * {@code mu0 - X_t - k}, using the parent's exact-complement update weight.
      * Follows the parent's non-finite convention: gaps carry the previous scale
      * forward and are seeded at zero on the first addressable bar.
      */
-    private static final class DeviationScaleIndicator extends RecursiveCachedIndicator<Num> {
+    private static final class DeviationScaleIndicator extends RecursiveCachedIndicator<ScaleState> {
 
         private final Indicator<Num> indicator;
         private final BigDecimal targetMean;
         private final BigDecimal allowance;
         private final Num oneMinusScaleDecay;
         private final BigDecimal rawComplementScaleDecay;
-        private final ConcurrentHashMap<Integer, BigDecimal> exactUnderflowedValues = new ConcurrentHashMap<>();
-        private volatile boolean hasExactUnderflowedValues;
+        private transient int chainStartIndex;
 
         private DeviationScaleIndicator(Indicator<Num> indicator, BigDecimal targetMean, BigDecimal allowance,
                 Num oneMinusScaleDecay, BigDecimal rawComplementScaleDecay) {
@@ -466,66 +447,58 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             this.rawComplementScaleDecay = rawComplementScaleDecay;
         }
 
-        private void invalidateForRetainedHead() {
-            invalidateCache();
-            exactUnderflowedValues.clear();
-            hasExactUnderflowedValues = false;
-        }
-
-        private BigDecimal exactUnderflowedValue(int index) {
-            return hasExactUnderflowedValues ? exactUnderflowedValues.get(index) : null;
-        }
-
         @Override
         public int getCountOfUnstableBars() {
             return indicator.getCountOfUnstableBars();
         }
 
         @Override
-        protected Num calculate(int index) {
-            int beginIndex = getBarSeries().getBeginIndex();
-            if (index - beginIndex < getCountOfUnstableBars()) {
-                return NaN.NaN;
+        protected ScaleState calculate(int index) {
+            while (true) {
+                int beginIndex = getBarSeries().getBeginIndex();
+                ScaleState value = calculateRetained(index, beginIndex);
+                if (getBarSeries().getBeginIndex() == beginIndex) {
+                    return value;
+                }
             }
-            if (hasExactUnderflowedValues) {
-                exactUnderflowedValues.remove(index);
+        }
+
+        private ScaleState calculateRetained(int index, int beginIndex) {
+            if (index < beginIndex) {
+                return getValue(beginIndex);
+            }
+            ScaleState prior;
+            if (index == beginIndex) {
+                chainStartIndex = index;
+                prior = new ScaleState(NaN.NaN);
+            } else {
+                prior = getValue(index - 1);
+            }
+            if (index < (long) chainStartIndex + getCountOfUnstableBars()) {
+                return new ScaleState(NaN.NaN);
             }
             Num current = indicator.getValue(index);
             if (!Num.isFinite(current)) {
-                Num previous = index == beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
-                if (index > beginIndex) {
-                    carryExactUnderflow(index - 1, index, previous);
-                }
-                return Num.isFinite(previous) ? previous : getBarSeries().numFactory().zero();
+                return Num.isFinite(prior.value()) ? prior : new ScaleState(getBarSeries().numFactory().zero());
             }
-            // Exact deviation keeps cancellation between raw out-of-range
-            // parameters intact for both the CUSUM and its clipping scale.
             Num increment = CusumIndicator.exactDeviation(targetMean, current, allowance).abs();
-            if (index == beginIndex) {
-                return increment;
-            }
-            Num previous = getValue(index - 1);
+            Num previous = prior.value();
             if (!Num.isFinite(previous)) {
-                return increment;
+                return new ScaleState(increment);
             }
-            // Weight the finite difference before combining. A low-magnitude
-            // result or delta can misround on the active primitive grid, and
-            // the published scale drives the parent's winsorization bound.
-            // Such updates recombine exact operands without intermediate
-            // rounding and narrow once. If the exact update itself underflows,
-            // retain it alongside the public Num cache so a later multiplication
-            // by the clipping factor can recover a representable bound.
+            // Retain the exact residue in the same entry as its rounded value:
+            // cache replacement, suffix invalidation and eviction affect both.
             Num delta = increment.minus(previous);
             Num weightedDelta = delta.multipliedBy(oneMinusScaleDecay);
             Num updated = previous.plus(weightedDelta);
-            BigDecimal exactPrevious = previous.isZero() ? exactUnderflowedValue(index - 1) : null;
+            BigDecimal exactPrevious = prior.exactUnderflow();
             if (exactPrevious != null || ExactDecimalArithmetic.requiresExactRecovery(updated, weightedDelta)) {
-                return recoverExactUpdate(index, previous, exactPrevious, increment);
+                return recoverExactUpdate(previous, exactPrevious, increment);
             }
-            return updated;
+            return new ScaleState(updated);
         }
 
-        private Num recoverExactUpdate(int index, Num previous, BigDecimal exactPrevious, Num increment) {
+        private ScaleState recoverExactUpdate(Num previous, BigDecimal exactPrevious, Num increment) {
             if (exactPrevious == null) {
                 exactPrevious = ExactDecimalArithmetic.exactValueOf(previous);
             }
@@ -533,21 +506,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             BigDecimal exactUpdated = exactPrevious.multiply(BigDecimal.ONE.subtract(updateWeight))
                     .add(ExactDecimalArithmetic.exactValueOf(increment).multiply(updateWeight));
             Num narrowed = getBarSeries().numFactory().numOf(exactUpdated);
-            if (narrowed.isZero() && exactUpdated.signum() != 0) {
-                exactUnderflowedValues.put(index, exactUpdated);
-                hasExactUnderflowedValues = true;
-            }
-            return narrowed;
-        }
-
-        private void carryExactUnderflow(int previousIndex, int index, Num previous) {
-            if (!previous.isZero()) {
-                return;
-            }
-            BigDecimal exactPrevious = exactUnderflowedValue(previousIndex);
-            if (exactPrevious != null) {
-                exactUnderflowedValues.put(index, exactPrevious);
-            }
+            return new ScaleState(narrowed, narrowed.isZero() && exactUpdated.signum() != 0 ? exactUpdated : null);
         }
 
         /**
