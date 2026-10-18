@@ -514,19 +514,24 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 return snapshot;
             }
 
+            boolean sourceCanRecomputeInvalidatedHead = invalidateFrom < 0 || invalidateFrom > firstRetainedIndex
+                    || sourceLookbackIsRetained(firstRetainedIndex, firstRetainedIndex);
+
             if (headAdvanced && !discardWholeCache && minimumCacheableIndex == firstRetainedIndex
                     && hasRecursiveDependencies() && snapshot.endIndex() >= sinceSnapshot.endIndex()
                     && (long) snapshot.endIndex() <= (long) sinceSnapshot.endIndex() + 1
-                    && sourceLookbackIsRetained(firstRetainedIndex, snapshot.endIndex())) {
+                    && sourceLookbackIsRetained(firstRetainedIndex, snapshot.endIndex())
+                    && sourceCanRecomputeInvalidatedHead) {
                 // A consumed predecessor remains valid after a capacity-only shrink
                 // or one append. Missed appends or a missing source lookback cannot
                 // supply the next recurrence input.
                 minimumCacheableIndex = Math.max(0, firstRetainedIndex - 1);
             }
 
-            if (!headAdvanced && !discardWholeCache && minimumCacheableIndex == firstRetainedIndex) {
-                // A same-head revision invalidates its changed suffix, not the
-                // consumed predecessor retained by an earlier head advance.
+            if (!headAdvanced && !discardWholeCache && minimumCacheableIndex == firstRetainedIndex
+                    && sourceCanRecomputeInvalidatedHead) {
+                // Keep the consumed predecessor only if a changed retained-head
+                // input can be recomputed without its removed source lookback.
                 int firstCachedIndex = cache.getFirstCachedIndex();
                 if (firstCachedIndex >= 0) {
                     minimumCacheableIndex = Math.min(minimumCacheableIndex, firstCachedIndex);
@@ -839,6 +844,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private boolean sourceLookbackIsRetained(int firstRetainedIndex, int endIndex) {
         for (Indicator<?> source : sourceIndicators) {
+            if (source instanceof CachedIndicator<?> cached && cached.hasRecursiveDependencies()) {
+                // A live recursive source needs its consumed predecessor, not
+                // its original initialization window, to produce the next value.
+                continue;
+            }
             if ((long) firstRetainedIndex + source.getCountOfUnstableBars() > endIndex) {
                 return false;
             }

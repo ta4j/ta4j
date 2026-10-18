@@ -138,7 +138,8 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             this.decay = factory.one().minus(this.oneMinusDecay);
             this.exactOneMinusDecay = ExactDecimalArithmetic.exactValueOf(this.oneMinusDecay);
         }
-        this.meanIndicator = new SharedMeanIndicator(indicator, barCount, decay, oneMinusDecay, exactOneMinusDecay);
+        this.meanIndicator = new SharedMeanIndicator(this, indicator, barCount, decay, oneMinusDecay,
+                exactOneMinusDecay);
     }
 
     private static Parameters validateParameters(Indicator<Num> indicator, int barCount, double decayFactor) {
@@ -179,7 +180,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // Advance both moments before this bar can leave the source. Otherwise
             // a variance-only reader leaves its mean one bar behind at capacity one.
             Num value = super.getValue(index);
-            meanIndicator.getValue(index);
+            meanIndicator.readValue(index);
             if (series.getRemovedBarsCount() == removedBarsCount) {
                 return value;
             }
@@ -408,7 +409,8 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      * The estimator is the same recursion {@link #getValue(int)} deviates from, so
      * composing the mean and the variance from this single estimator keeps both
      * moments consistent. The reference remains stable across head eviction and may
-     * be retained by callers; both recursions continue their consumed history.
+     * be retained by callers. Reading either moment advances both recursions before
+     * the consumed source history can be evicted.
      *
      * <p>
      * The accessor is public rather than package-private because the forecast state
@@ -439,6 +441,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      */
     private static final class SharedMeanIndicator extends RecursiveCachedIndicator<Num> {
 
+        private final EwmaVarianceIndicator owner;
         private final Indicator<Num> indicator;
         private final int barCount;
         private final Num decay;
@@ -446,9 +449,10 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         private final BigDecimal exactOneMinusDecay;
         private transient int chainStartIndex;
 
-        private SharedMeanIndicator(Indicator<Num> indicator, int barCount, Num decay, Num oneMinusDecay,
-                BigDecimal exactOneMinusDecay) {
+        private SharedMeanIndicator(EwmaVarianceIndicator owner, Indicator<Num> indicator, int barCount, Num decay,
+                Num oneMinusDecay, BigDecimal exactOneMinusDecay) {
             super(indicator);
+            this.owner = owner;
             this.indicator = indicator;
             this.barCount = barCount;
             this.decay = decay;
@@ -457,7 +461,16 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         @Override
-        public synchronized Num getValue(int index) {
+        public Num getValue(int index) {
+            // Use the same owner-first lock order as a variance read. Internal
+            // recursion reads the mean directly, without reentering the owner.
+            synchronized (owner) {
+                owner.getValue(index);
+                return readValue(index);
+            }
+        }
+
+        private synchronized Num readValue(int index) {
             while (true) {
                 int beginIndex = getBarSeries().getBeginIndex();
                 Num value = super.getValue(index);
@@ -483,12 +496,12 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
                 synchronizeCacheWithSeries(getBarSeries());
                 return getCachedValueOrNull(index - 1);
             }
-            return getValue(index - 1);
+            return readValue(index - 1);
         }
 
         private Num calculateRetained(int index, int beginIndex) {
             if (index < beginIndex) {
-                return getValue(beginIndex);
+                return readValue(beginIndex);
             }
             Num previousMean = previousValue(index, beginIndex);
             if (previousMean == null) {

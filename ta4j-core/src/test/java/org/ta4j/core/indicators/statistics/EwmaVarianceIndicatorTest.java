@@ -105,6 +105,28 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void meanOnlyReadsAdvanceBothMomentsBeforeHistoryIsEvicted() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        EwmaVarianceIndicator actual = new EwmaVarianceIndicator(bounded, 1, 0.5);
+        EwmaVarianceIndicator expected = new EwmaVarianceIndicator(unbounded, 1, 0.5);
+        Indicator<Num> mean = actual.getMeanIndicator();
+        for (int index = 0; index < 4; index++) {
+            int close = 100 + index * 7;
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            expected.getValue(index);
+            assertNumEquals(expected.getMeanIndicator().getValue(index), mean.getValue(index));
+        }
+        assertNumEquals(expected.getValue(3), actual.getValue(3));
+        bounded.getLastBar().addPrice(numOf(127));
+        unbounded.getLastBar().addPrice(numOf(127));
+        assertNumEquals(expected.getMeanIndicator().getValue(3), mean.getValue(3));
+        assertNumEquals(expected.getValue(3), actual.getValue(3));
+    }
+
+    @Test
     public void capacityOnlyPruningRetainsMomentsForAnEditedRetainedBar() {
         BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();

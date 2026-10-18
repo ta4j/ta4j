@@ -20,6 +20,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
@@ -125,6 +126,40 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             assertNumEquals(actual.getValue(index), actual.getValue(-1));
         }
         assertTrue(new EMAIndicator(new ClosePriceIndicator(moving), 3).getValue(7).isNaN());
+    }
+
+    @Test
+    public void warmedRecursiveSourceContinuesBelowItsInitialWarmUpCapacity() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator actual = new EMAIndicator(new EMAIndicator(new ClosePriceIndicator(bounded), 4), 2);
+        EMAIndicator expected = new EMAIndicator(new EMAIndicator(new ClosePriceIndicator(unbounded), 4), 2);
+        for (int index = 0; index < 10; index++) {
+            bounded.barBuilder().closePrice(100 + index * 7 % 19).add();
+            unbounded.barBuilder().closePrice(100 + index * 7 % 19).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+        }
+        bounded.setMaximumBarCount(1);
+        assertNumEquals(expected.getValue(9), actual.getValue(9));
+        bounded.barBuilder().closePrice(123).add();
+        unbounded.barBuilder().closePrice(123).add();
+        assertNumEquals(expected.getValue(10), actual.getValue(10));
+    }
+
+    @Test
+    public void retainedHeadEditReseedsWhenSourceLookbackWasRemoved() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(3);
+        EMAIndicator actual = new EMAIndicator(new LogReturnIndicator(series), 2);
+        for (int index = 0; index < 8; index++) {
+            series.barBuilder().closePrice(100 + index * 7 % 19).add();
+            actual.getValue(index);
+        }
+        series.getBar(series.getBeginIndex()).addPrice(numOf(150));
+        EMAIndicator fresh = new EMAIndicator(new LogReturnIndicator(series), 2);
+        assertNumEquals(fresh.getValue(7), actual.getValue(7));
+        series.barBuilder().closePrice(127).add();
+        assertNumEquals(fresh.getValue(8), actual.getValue(8));
     }
 
     @Test
