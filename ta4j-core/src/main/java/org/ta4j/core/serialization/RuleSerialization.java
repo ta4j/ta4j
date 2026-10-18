@@ -1798,9 +1798,10 @@ public final class RuleSerialization {
 
         // Preserve __customName if it exists in the original descriptor
         // (it was set by describe() when the rule had a custom name)
-        if (descriptor.getParameters().containsKey("__customName")) {
+        Object customName = descriptor.getParameters().get("__customName");
+        if (customName != null) {
             Map<String, Object> params = new LinkedHashMap<>(result.getParameters());
-            params.put("__customName", descriptor.getParameters().get("__customName"));
+            params.put("__customName", customName);
             builder.withParameters(params);
             result = builder.build();
         }
