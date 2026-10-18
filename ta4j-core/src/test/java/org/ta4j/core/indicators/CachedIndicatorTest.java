@@ -2835,6 +2835,75 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertNumEquals(before3, ema.getValue(3));
     }
 
+    @Test
+    public void advancingConsumerHeadKeepsPredecessorWhenSourceStillRetainsLookback() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        Indicator<Num> source = new TRIndicator(sourceSeries);
+        RecursiveCachedIndicator<Num> actual = cumulativeOn(bounded, source);
+        RecursiveCachedIndicator<Num> expected = cumulativeOn(unbounded, source);
+        for (int index = 0; index < 6; index++) {
+            double close = 100 + index * 7 % 19;
+            sourceSeries.barBuilder().highPrice(close + 1).lowPrice(close - 1).closePrice(close).add();
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+        }
+    }
+
+    private RecursiveCachedIndicator<Num> cumulativeOn(BarSeries series, Indicator<Num> source) {
+        return new RecursiveCachedIndicator<Num>(series, source) {
+            @Override
+            protected Num calculate(int index) {
+                if (index == 0) {
+                    return source.getValue(0);
+                }
+                Num previous = getCachedValueOrNull(index - 1);
+                return (previous == null ? getValue(index - 1) : previous).plus(source.getValue(index));
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+    }
+
+    @Test
+    public void undeclaredRawLookbackDoesNotBridgeRemovedPredecessor() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        RecursiveCachedIndicator<Num> actual = rawPriceChanges(moving);
+        for (int index = 0; index < 4; index++) {
+            moving.barBuilder().closePrice(100 + index * 3).add();
+            assertNumEquals(index * 3, actual.getValue(index));
+        }
+        moving.setMaximumBarCount(1);
+        assertNumEquals(9, actual.getValue(3));
+        moving.barBuilder().closePrice(115).add();
+        assertNumEquals(rawPriceChanges(moving).getValue(4), actual.getValue(4));
+    }
+
+    private RecursiveCachedIndicator<Num> rawPriceChanges(BarSeries series) {
+        return new RecursiveCachedIndicator<Num>(series) {
+            @Override
+            protected Num calculate(int index) {
+                if (index == 0) {
+                    return numOf(0);
+                }
+                Num previous = getCachedValueOrNull(index - 1);
+                return (previous == null ? getValue(index - 1) : previous).plus(series.getBar(index).getClosePrice())
+                        .minus(series.getBar(index - 1).getClosePrice());
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+    }
+
     /**
      * The direct cross-series registration itself must reconcile the dependency:
      * advancing the moving average's series rebuilds the cached distance values
