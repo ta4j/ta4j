@@ -422,4 +422,11 @@ public class ComponentSerializationTest {
         assertThat(ComponentDescriptor.typeOnly(String.class.getName()).getTypeClass()).isEqualTo(String.class);
         assertThat(ComponentDescriptor.typeOnly("NoSuchComponent").getTypeClass()).isNull();
     }
+
+    @Test
+    public void resolveSubtypeSafelyHandlesClassLoadingErrors() {
+        Class<?> resolved = ComponentDescriptor.resolveSubtype("non.existent.Invalid$Class", Object.class,
+                "org.ta4j.core");
+        assertThat(resolved).isNull();
+    }
 }

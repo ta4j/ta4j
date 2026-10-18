@@ -462,7 +462,7 @@ public final class AnalysisCriterionSerialization {
     private static void initializeCriterionClass(Class<? extends AnalysisCriterion> criterionType) {
         try {
             Class.forName(criterionType.getName(), true, criterionType.getClassLoader());
-        } catch (ClassNotFoundException ex) {
+        } catch (ClassNotFoundException | LinkageError ex) {
             throw new IllegalStateException("Failed to initialize analysis criterion: " + criterionType.getName(), ex);
         }
     }
