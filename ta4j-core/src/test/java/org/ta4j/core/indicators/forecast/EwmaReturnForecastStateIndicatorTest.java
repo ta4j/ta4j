@@ -144,6 +144,28 @@ public class EwmaReturnForecastStateIndicatorTest
     }
 
     @Test
+    public void oneBarReturnStreamContinuesMomentsAndObservationCount() {
+        Num[] returns = { numOf(0.01), numOf(0.03), numOf(-0.02), numOf(0.04) };
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        EwmaReturnForecastStateIndicator actual = new EwmaReturnForecastStateIndicator(
+                new FixedReturnIndicator(bounded, ReturnRepresentation.LOG, returns), 1, 0.5);
+        EwmaReturnForecastStateIndicator expected = new EwmaReturnForecastStateIndicator(
+                new FixedReturnIndicator(unbounded, ReturnRepresentation.LOG, returns), 1, 0.5);
+        for (int index = 0; index < returns.length; index++) {
+            bounded.barBuilder().closePrice(100 + index).add();
+            unbounded.barBuilder().closePrice(100 + index).add();
+            ReturnForecastState value = actual.getValue(index);
+            ReturnForecastState reference = expected.getValue(index);
+            assertEquals(index + 1, value.observationCount());
+            assertNumEquals(reference.mean(), value.mean());
+            assertNumEquals(reference.variance(), value.variance());
+            assertEquals(reference.isStable(), value.isStable());
+        }
+    }
+
+    @Test
     public void continuedForecastMatchesUnboundedHistoryWithAndWithoutRevisions() {
         for (boolean revisionless : List.of(false, true)) {
             BarSeries bounded = instrumentedSeries(revisionless, new AtomicInteger(), new AtomicBoolean(), 100);

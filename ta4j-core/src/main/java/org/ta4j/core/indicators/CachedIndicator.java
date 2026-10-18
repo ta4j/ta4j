@@ -514,6 +514,24 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 return snapshot;
             }
 
+            if (headAdvanced && !discardWholeCache && minimumCacheableIndex == firstRetainedIndex
+                    && hasRecursiveDependencies()
+                    && (long) snapshot.endIndex() == (long) sinceSnapshot.endIndex() + 1) {
+                // A consumed terminal followed by one append is a valid bridge even
+                // when it has just left the retained series. Do not create a bridge
+                // across missed appends, whose source lookbacks may already be gone.
+                minimumCacheableIndex = Math.max(0, firstRetainedIndex - 1);
+            }
+
+            if (!headAdvanced && !discardWholeCache && minimumCacheableIndex == firstRetainedIndex) {
+                // A same-head revision invalidates its changed suffix, not the
+                // consumed predecessor retained by an earlier head advance.
+                int firstCachedIndex = cache.getFirstCachedIndex();
+                if (firstCachedIndex >= 0) {
+                    minimumCacheableIndex = Math.min(minimumCacheableIndex, firstCachedIndex);
+                }
+            }
+
             LastBarSync<T> lastBarSync = synchronizeLastBarCache(snapshot, invalidateFrom, minimumCacheableIndex);
 
             // The first-bar cache holds the indicator value for the first available
@@ -750,9 +768,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * ({@link #hasRecursiveDependencies()} returns {@code true}) keep every
      * retained cached value, because their results cannot be recomputed from the
      * retained window alone and the retained recurrence is still the full-history
-     * value; the next appended bar continues that recurrence. They discard their
-     * whole cache only when their source graph contains a {@link CachedIndicator}
-     * that explicitly requires full invalidation (a discontinuity the chain cannot
+     * value; the next appended bar continues that recurrence. Reconciliation also
+     * retains the consumed predecessor in the bounded ring after a single append,
+     * even when only the new terminal bar remains. They discard their whole cache
+     * only when their source graph contains a {@link CachedIndicator} that
+     * explicitly requires full invalidation (a discontinuity the chain cannot
      * continue across). Numeric source floors do not propagate into them: such a
      * floor only re-evaluates source values the chain has already consumed.
      * </p>
@@ -1052,6 +1072,32 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     private T getOrComputeAndCache(int index) {
         return cache.getOrCompute(index, calculator, computedIndexRecorder);
+    }
+
+    /**
+     * Reads an already computed value from the main cache without evaluating a
+     * missing value or mapping a pruned index to the retained head.
+     *
+     * <p>
+     * Call after {@link #synchronizeCacheWithSeries(BarSeries)} so series revisions
+     * and the subclass's retention policy have been applied. Returns {@code null}
+     * if a recursive calculation raced a head advance whose reconciliation is still
+     * deferred. The mutable last-bar cache is not included.
+     *
+     * @param index the exact cached index
+     * @return the cached value, or {@code null} when absent, cached as null, or
+     *         awaiting head reconciliation
+     * @since 0.26.1
+     */
+    protected final T getCachedValueOrNull(int index) {
+        BarSeries series = getBarSeries();
+        if (series != null && observedSeriesSnapshot.get().removedThroughIndex() != series.getRemovedBarsCount() - 1) {
+            // Recursive reconciliation defers trimming while calculate holds the
+            // ring lock. Entries produced during that head race are not a consumed
+            // predecessor from the reconciled series state.
+            return null;
+        }
+        return cache.get(index);
     }
 
     /**

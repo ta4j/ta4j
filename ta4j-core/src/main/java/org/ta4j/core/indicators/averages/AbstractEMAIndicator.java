@@ -64,15 +64,14 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
                 // Empty series: there is no bar to seed from or recurse to.
                 return NaN;
             }
-            // CachedIndicator maps unavailable history to calculate(0). Serve the
-            // first available bar's value: the retained recurrence when the chain
-            // continued past the head, otherwise its seed. calculate(beginIndex)
-            // never reads a predecessor, so this cannot recurse back here.
+            // Removed-index aliases must not seed a cached recurrence at a head
+            // that has never been consumed.
             if (index < beginIndex) {
-                return getValue(beginIndex);
+                return getCachedValueOrNull(beginIndex - 1) == null ? seed(beginIndex) : getValue(beginIndex);
             }
 
-            Num value = index == beginIndex ? seed(index) : continueChain(index);
+            Num predecessor = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
+            Num value = predecessor == null ? seed(index) : continueChain(index, predecessor);
             if (getBarSeries().getBeginIndex() == beginIndex) {
                 return value;
             }
@@ -95,11 +94,7 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
         return Num.isFinite(current) ? initialValue(index, current) : NaN;
     }
 
-    private Num continueChain(int index) {
-        // Resolve the predecessor first: when it is not cached the recursion walks
-        // back to the retained head and re-seeds there, which updates the chain
-        // start used by the warm-up check below.
-        Num prevValue = getValue(index - 1);
+    private Num continueChain(int index, Num prevValue) {
         if (index < (long) chainStartIndex + getCountOfUnstableBars()) {
             // Warm-up is counted from where the chain was seeded, not from the
             // current head: a chain carried across head advances keeps its

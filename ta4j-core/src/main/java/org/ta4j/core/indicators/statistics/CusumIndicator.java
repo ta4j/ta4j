@@ -74,11 +74,11 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * A live instance continues its statistic and deviation scale across
- * retained-head eviction. A fresh instance, or an invalidated chain with no
- * cached predecessor, seeds at the first retained bar. Both the rounded scale
- * and any exact underflow residue share one bounded cache entry and one
- * invalidation lifecycle. Reads serialize monitor-before-cache lock acquisition
- * and retry a concurrent prune.
+ * retained-head eviction, including a one-bar window read on every append. A
+ * fresh instance, or an invalidated chain with no cached predecessor, seeds at
+ * the first retained bar. Both the rounded scale and any exact underflow
+ * residue share one bounded cache entry and one invalidation lifecycle. Reads
+ * serialize monitor-before-cache lock acquisition and retry a concurrent prune.
  *
  * <p>
  * Typical use is a statistical control-limit kill switch on an equity curve or
@@ -289,12 +289,10 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         if (index < beginIndex) {
             return getValue(beginIndex);
         }
-        Num previous;
-        if (index == beginIndex) {
+        Num previous = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
+        if (previous == null) {
             chainStartIndex = index;
             previous = getBarSeries().numFactory().zero();
-        } else {
-            previous = getValue(index - 1);
         }
         if (index < (long) chainStartIndex + getCountOfUnstableBars()) {
             return NaN.NaN;
@@ -304,12 +302,10 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             return Num.isFinite(previous) ? previous : getBarSeries().numFactory().zero();
         }
         Num deviation = exactDeviation(targetMean, current, allowance);
-        if (index > beginIndex) {
-            ScaleState previousScale = deviationScale.getValue(index - 1);
-            if (Num.isFinite(previousScale.value())) {
-                Num bound = clippingBound(previousScale);
-                deviation = deviation.max(bound.negate()).min(bound);
-            }
+        ScaleState previousScale = deviationScale.previousState(index, beginIndex);
+        if (previousScale != null && Num.isFinite(previousScale.value())) {
+            Num bound = clippingBound(previousScale);
+            deviation = deviation.max(bound.negate()).min(bound);
         }
         if (!Num.isFinite(previous)) {
             previous = getBarSeries().numFactory().zero();
@@ -463,16 +459,22 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             }
         }
 
+        private ScaleState previousState(int index, int beginIndex) {
+            if (index == beginIndex) {
+                synchronizeCacheWithSeries(getBarSeries());
+                return getCachedValueOrNull(index - 1);
+            }
+            return getValue(index - 1);
+        }
+
         private ScaleState calculateRetained(int index, int beginIndex) {
             if (index < beginIndex) {
                 return getValue(beginIndex);
             }
-            ScaleState prior;
-            if (index == beginIndex) {
+            ScaleState prior = previousState(index, beginIndex);
+            if (prior == null) {
                 chainStartIndex = index;
                 prior = new ScaleState(NaN.NaN);
-            } else {
-                prior = getValue(index - 1);
             }
             if (index < (long) chainStartIndex + getCountOfUnstableBars()) {
                 return new ScaleState(NaN.NaN);

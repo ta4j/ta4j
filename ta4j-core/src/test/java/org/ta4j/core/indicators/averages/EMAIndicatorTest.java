@@ -108,6 +108,26 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void oneBarWindowPreservesWarmUpAndConsumedHistory() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(1);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator actual = new EMAIndicator(new ClosePriceIndicator(moving), 3);
+        EMAIndicator expected = new EMAIndicator(new ClosePriceIndicator(unbounded), 3);
+        assertEquals(3, actual.getCountOfUnstableBars());
+        for (int index = 0; index < 8; index++) {
+            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
+            unbounded.barBuilder().closePrice(10 + index * 7 % 11).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+            moving.getLastBar().addPrice(numOf(20 + index));
+            unbounded.getLastBar().addPrice(numOf(20 + index));
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+            assertNumEquals(actual.getValue(index), actual.getValue(-1));
+        }
+        assertTrue(new EMAIndicator(new ClosePriceIndicator(moving), 3).getValue(7).isNaN());
+    }
+
+    @Test
     public void emptySeriesReturnsNaNWithoutRecursing() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();

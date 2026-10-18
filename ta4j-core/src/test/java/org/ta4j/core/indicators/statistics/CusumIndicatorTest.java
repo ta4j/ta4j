@@ -471,6 +471,25 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void oneBarWindowContinuesStatisticAndScaleAcrossTerminalEdits() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        CusumIndicator actual = new CusumIndicator(bounded, 10, 0, 2, 0.5);
+        CusumIndicator expected = new CusumIndicator(unbounded, 10, 0, 2, 0.5);
+        for (int index = 0; index < 8; index++) {
+            int close = index % 4 == 3 ? -20 : 9 - index % 3;
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+            bounded.getLastBar().addPrice(numOf(close + 2));
+            unbounded.getLastBar().addPrice(numOf(close + 2));
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+            assertNumEquals(actual.getValue(index), actual.getValue(-1));
+        }
+    }
+
+    @Test
     public void liveStatisticSurvivesShrinkWhileFreshStatisticSeedsAtHead() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1).build();
         CusumIndicator pruned = new CusumIndicator(new MockIndicator(series, 0, numOf(1), numOf(1), numOf(1), numOf(1)),

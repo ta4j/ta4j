@@ -83,6 +83,27 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void oneBarWindowContinuesPairedMomentsAcrossTerminalEdits() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        EwmaVarianceIndicator actual = new EwmaVarianceIndicator(bounded, 1, 0.5);
+        EwmaVarianceIndicator expected = new EwmaVarianceIndicator(unbounded, 1, 0.5);
+        for (int index = 0; index < 8; index++) {
+            int close = 100 + index * 7 % 19;
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+            assertNumEquals(expected.getMeanIndicator().getValue(index), actual.getMeanIndicator().getValue(index));
+            bounded.getLastBar().addPrice(numOf(close + 2));
+            unbounded.getLastBar().addPrice(numOf(close + 2));
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+            assertNumEquals(expected.getMeanIndicator().getValue(index), actual.getMeanIndicator().getValue(index));
+            assertNumEquals(actual.getValue(index), actual.getValue(-1));
+        }
+    }
+
+    @Test
     public void seedsWithRollingPopulationVarianceAfterWarmUp() {
         assertTrue(ewmaVariance.getValue(0).isNaN());
         assertTrue(ewmaVariance.getValue(1).isNaN());

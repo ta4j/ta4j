@@ -57,11 +57,12 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * A live instance continues both moments across retained-head eviction from its
- * cached predecessor. A fresh instance, or a chain whose predecessor was
- * invalidated, seeds causally from the retained head and counts warm-up from
- * that seed origin. Retained cached values therefore describe the consumed
- * history, not a newly constructed estimator over only the current window.
- * Reads bracket the removal count and retry when pruning races the calculation.
+ * cached predecessor, including a one-bar seed in a one-bar window read on each
+ * append. A fresh instance, or a chain whose predecessor was invalidated, seeds
+ * causally from the retained head and counts warm-up from that seed origin.
+ * Retained cached values describe the consumed history, not a newly constructed
+ * estimator over only the current window. Reads bracket the removal count and
+ * retry when pruning races the calculation.
  *
  * <p>
  * Combined with {@link CusumIndicator} this provides the volatility leg of a
@@ -198,13 +199,11 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         if (index < beginIndex) {
             return getValue(beginIndex);
         }
-        Num previousVariance;
-        if (index == beginIndex) {
+        Num previousVariance = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
+        boolean seed = previousVariance == null;
+        if (seed) {
             chainStartIndex = index;
             previousVariance = NaN.NaN;
-        } else {
-            // A missing predecessor establishes the actual seed origin first.
-            previousVariance = getValue(index - 1);
         }
         if (index < (long) chainStartIndex + getCountOfUnstableBars()) {
             return NaN.NaN;
@@ -213,10 +212,13 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         if (!Num.isFinite(current)) {
             return NaN.NaN;
         }
-        if (index == beginIndex) {
+        if (seed) {
             return rollingWindowVariance(index);
         }
-        Num previousMean = meanIndicator.getValue(index - 1);
+        Num previousMean = meanIndicator.previousValue(index, beginIndex);
+        if (previousMean == null) {
+            previousMean = NaN.NaN;
+        }
         if (!Num.isFinite(previousVariance)) {
             if (!Num.isFinite(previousMean)) {
                 // Both legs of the recursion collapsed: re-anchor on the
@@ -468,16 +470,22 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             }
         }
 
+        private Num previousValue(int index, int beginIndex) {
+            if (index == beginIndex) {
+                synchronizeCacheWithSeries(getBarSeries());
+                return getCachedValueOrNull(index - 1);
+            }
+            return getValue(index - 1);
+        }
+
         private Num calculateRetained(int index, int beginIndex) {
             if (index < beginIndex) {
                 return getValue(beginIndex);
             }
-            Num previousMean;
-            if (index == beginIndex) {
+            Num previousMean = previousValue(index, beginIndex);
+            if (previousMean == null) {
                 chainStartIndex = index;
                 previousMean = NaN.NaN;
-            } else {
-                previousMean = getValue(index - 1);
             }
             if (index < (long) chainStartIndex + getCountOfUnstableBars()) {
                 return NaN.NaN;

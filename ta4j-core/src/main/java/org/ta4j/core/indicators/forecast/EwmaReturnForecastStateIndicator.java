@@ -290,13 +290,10 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
             if (index < beginIndex) {
                 return getValue(beginIndex);
             }
-            int previousCount;
-            if (index == beginIndex) {
+            Integer previousCount = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
+            if (previousCount == null) {
                 chainStartIndex = index;
                 previousCount = 0;
-            } else {
-                // Resolve a missing predecessor before checking the seed origin.
-                previousCount = getValue(index - 1);
             }
             long firstValidIndex = (long) chainStartIndex + indicator.getCountOfUnstableBars();
             if (index < firstValidIndex || !Num.isFinite(indicator.getValue(index))) {

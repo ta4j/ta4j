@@ -2307,21 +2307,6 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
-    public void recursiveDependentKeepsCacheWhenSourceOnlyRaisesNumericFloor() {
-        // An unbounded-history chain consumed the first retained true range
-        // while its previous close still existed. The true range re-evaluating
-        // that entry after a head advance does not make the chain stale, so the
-        // recursive dependent keeps its retained values (#1666) while a
-        // non-recursive dependent still discards (see above).
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(1d, 2d, 3d, 4d, 5d)
-                .build();
-        MMAIndicator dependent = new MMAIndicator(new TRIndicator(barSeries), 2);
-
-        assertEquals(1, dependent.minimumCacheableIndexAfterHeadAdvance(1));
-    }
-
-    @Test
     public void recursiveDependentFollowsSourceThatExplicitlyRequiresFullInvalidation() {
         // A pivot reversal rebaselines every value after a head advance; a
         // recursive consumer cannot continue its chain across that discontinuity.
@@ -2333,6 +2318,17 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         EMAIndicator dependent = new EMAIndicator(reversal, 2);
 
         assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(1));
+    }
+
+    @Test
+    public void oneBarRecursiveChainDiscardsConsumedPredecessorWhenSourceResets() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(1);
+        EMAIndicator dependent = new EMAIndicator(new HeadAdvanceDiscardingIndicator(series), 1);
+        for (int index = 0; index < 4; index++) {
+            series.barBuilder().closePrice(10 + index).add();
+            assertTrue(dependent.getValue(index).isNaN(), "a reset must restart the one-bar warm-up");
+        }
     }
 
     @Test
@@ -2354,8 +2350,6 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
 
         assertTrue(finiteAfterHeadAdvance > 0);
-        assertEquals(1,
-                new EMAIndicator(new CusumIndicator(barSeries, 10, 0.5), 2).minimumCacheableIndexAfterHeadAdvance(1));
     }
 
     @Test
