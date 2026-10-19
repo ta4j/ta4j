@@ -210,56 +210,82 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void headAdvanceRebuildsAverageTrueRangeFromRetainedHead() {
-        // The average true range chains every value from its predecessor, so a
-        // head advance that severs the chain must rebuild from the new first
-        // retained bar instead of serving stale chained values.
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(-3).add();
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(7).add();
-        series.barBuilder().openPrice(20).closePrice(20).highPrice(20).lowPrice(17).add();
-        series.barBuilder().openPrice(30).closePrice(30).highPrice(30).lowPrice(27).add();
-        series.barBuilder().openPrice(40).closePrice(40).highPrice(40).lowPrice(37).add();
-        series.barBuilder().openPrice(50).closePrice(50).highPrice(50).lowPrice(47).add();
+    public void headAdvanceKeepsAverageTrueRangeChainWhileFreshIndicatorReseedsAtRetainedHead() {
+        // Retained average true ranges are full-history values (#1666): a head
+        // advance keeps them instead of rebuilding from the first retained bar.
+        // Only an indicator without cached predecessors re-seeds at the head,
+        // where the first retained true range loses its previous close.
+        BarSeries series = steppedSeries();
+        BarSeries unbounded = steppedSeries();
         ATRIndicator atr = new ATRIndicator(series, 2);
         atr.getValue(5);
 
         series.setMaximumBarCount(3);
         assertEquals(3, series.getBeginIndex());
 
-        ATRIndicator fresh = new ATRIndicator(series, 2);
+        ATRIndicator reference = new ATRIndicator(unbounded, 2);
         for (int i = 3; i <= 5; i++) {
-            assertNumEquals(fresh.getValue(i), atr.getValue(i));
+            assertNumEquals(reference.getValue(i), atr.getValue(i));
         }
+        assertNumEquals(10, atr.getValue(3));
+
+        ATRIndicator fresh = new ATRIndicator(series, 2);
+        assertTrue(fresh.getValue(3).isNaN());
+        assertTrue(fresh.getValue(4).isNaN());
+        assertNumEquals(10, fresh.getValue(5));
+    }
+
+    private BarSeries steppedSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i <= 5; i++) {
+            int price = i * 10;
+            series.barBuilder().openPrice(price).closePrice(price).highPrice(price).lowPrice(price - 3).add();
+        }
+        return series;
     }
 
     @Test
-    public void headAdvanceReanchorsOuterCacheBeyondItsOwnUnstableFloor() {
-        // The average true range re-anchors its whole chain at the first retained
-        // bar, so values cached above the wrapper's own unstable-range floor
-        // (computed from the pre-advance chain) must be discarded too: the
-        // alternating true ranges keep the smoothed value distinct from a chain
-        // rebuilt at the retained head. Without the invalidation, bar 17 serves
-        // the severed chain's tail instead of the re-anchored 12.
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        for (int i = 0; i <= 19; i++) {
-            int closePrice = i * 10 + 5 * (i % 2);
-            series.barBuilder()
-                    .openPrice(closePrice)
-                    .closePrice(closePrice)
-                    .highPrice(closePrice + 2)
-                    .lowPrice(closePrice - 2)
-                    .add();
-        }
+    public void headAdvanceContinuesChainAboveItsOwnUnstableFloor() {
+        // The alternating true ranges keep the smoothed value sensitive to where
+        // the chain started. After a head advance, appended bars must extend the
+        // retained full-history chain (matching an unbounded series) instead of
+        // a chain rebuilt from the retained head.
+        BarSeries series = alternatingSeries(19);
+        BarSeries unbounded = alternatingSeries(19);
         ATRIndicator atr = new ATRIndicator(series, 2);
         atr.getValue(19);
 
         series.setMaximumBarCount(6);
         assertEquals(14, series.getBeginIndex());
+        addAlternatingBar(series, 20);
+        addAlternatingBar(unbounded, 20);
 
+        ATRIndicator reference = new ATRIndicator(unbounded, 2);
         ATRIndicator fresh = new ATRIndicator(series, 2);
-        for (int i = 16; i <= 19; i++) {
-            assertNumEquals(fresh.getValue(i), atr.getValue(i));
+        for (int i = 15; i <= 20; i++) {
+            assertNumEquals(reference.getValue(i), atr.getValue(i));
         }
+        // A fresh indicator seeds at the retained head (bar 15) and warms up from
+        // there, so its first stable value at bar 17 is that bar's true range.
+        assertNumEquals(17, fresh.getValue(17));
+        assertFalse(atr.getValue(17).isEqual(fresh.getValue(17)));
+    }
+
+    private BarSeries alternatingSeries(int lastIndex) {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i <= lastIndex; i++) {
+            addAlternatingBar(series, i);
+        }
+        return series;
+    }
+
+    private static void addAlternatingBar(BarSeries series, int i) {
+        int closePrice = i * 10 + 5 * (i % 2);
+        series.barBuilder()
+                .openPrice(closePrice)
+                .closePrice(closePrice)
+                .highPrice(closePrice + 2)
+                .lowPrice(closePrice - 2)
+                .add();
     }
 }
