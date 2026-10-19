@@ -12,104 +12,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
-import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.elliott.EmpiricalElliottWaveForecastIndicator.Settings;
 import org.ta4j.core.indicators.elliott.EmpiricalElliottWaveForecastIndicator.WaveForecast;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.DecimalNumFactory;
-import org.ta4j.core.num.DoubleNumFactory;
-import org.ta4j.core.num.NumFactory;
 
 class EmpiricalElliottWaveForecastIndicatorTest {
-
-    @Test
-    void retainedForecastAndCachedConsumerRebuildAfterHeadAdvances() {
-        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
-            for (boolean tailFirst : List.of(false, true)) {
-                BarSeries series = flatSeries(100, factory);
-                series.setMaximumBarCount(100);
-                FixedScenarioIndicator scenarios = new FixedScenarioIndicator(series, null, new AtomicInteger());
-                Settings settings = new Settings(ElliottDegree.SUB_MINUETTE, 80, 80, 8, 100.0d, 0.0d);
-                EmpiricalElliottWaveForecastIndicator indicator = new EmpiricalElliottWaveForecastIndicator(series,
-                        scenarios, settings);
-                CachedIndicator<WaveForecast> consumer = new CachedIndicator<>(indicator) {
-                    @Override
-                    protected WaveForecast calculate(int index) {
-                        return indicator.getValue(index);
-                    }
-
-                    @Override
-                    public int getCountOfUnstableBars() {
-                        return indicator.getCountOfUnstableBars();
-                    }
-                };
-                assertThat(consumer.getValue(70).waveNumberForecast().sampleCount()).isEqualTo(49);
-                for (int advance = 1; advance <= 2; advance++) {
-                    series.barBuilder()
-                            .openPrice(100)
-                            .highPrice(100.5)
-                            .lowPrice(99.5)
-                            .closePrice(100)
-                            .volume(100)
-                            .add();
-                    if (tailFirst) {
-                        consumer.getValue(series.getEndIndex());
-                    }
-                    WaveForecast fresh = new EmpiricalElliottWaveForecastIndicator(series, scenarios, settings)
-                            .getValue(70);
-                    assertThat(fresh.waveNumberForecast().sampleCount()).isEqualTo(49 - advance);
-                    assertMatchingForecast(indicator.getValue(70), fresh);
-                    assertMatchingForecast(consumer.getValue(70), fresh);
-                }
-            }
-        }
-    }
-
-    private static void assertMatchingForecast(WaveForecast actual, WaveForecast expected) {
-        assertThat(actual.isStable()).isEqualTo(expected.isStable());
-        assertThat(actual.waveNumberForecast().sampleCount()).isEqualTo(expected.waveNumberForecast().sampleCount());
-        assertThat(actual.phaseProbabilities()).isEqualTo(expected.phaseProbabilities());
-        assertThat(actual.mostLikelyPhase()).isEqualTo(expected.mostLikelyPhase());
-        assertThat(actual.probability()).isEqualByComparingTo(expected.probability());
-        assertThat(actual.waveNumberForecast().mean()).isEqualByComparingTo(expected.waveNumberForecast().mean());
-    }
-
-    @Test
-    void observesTransitiveChangesInSuppliedScenarioSource() {
-        BarSeries series = flatSeries(43);
-        BarSeries external = flatSeries(1);
-        ClosePriceIndicator externalClose = new ClosePriceIndicator(external);
-        FixedScenarioIndicator wave2 = new FixedScenarioIndicator(series, ElliottPhase.WAVE2, new AtomicInteger());
-        FixedScenarioIndicator wave3 = new FixedScenarioIndicator(series, ElliottPhase.WAVE3, new AtomicInteger());
-        Indicator<ElliottScenarioSet> scenarios = new AbstractIndicator<>(series) {
-            @Override
-            public ElliottScenarioSet getValue(int index) {
-                return (externalClose.getValue(0).isGreaterThan(series.numFactory().numOf(100)) ? wave3 : wave2)
-                        .getValue(index);
-            }
-
-            @Override
-            public List<Indicator<?>> getDependencies() {
-                return List.of(externalClose);
-            }
-
-            @Override
-            public int getCountOfUnstableBars() {
-                return 0;
-            }
-        };
-        Settings settings = new Settings(ElliottDegree.SUB_MINUETTE, 10, 1, 1, 100.0d, 0.0d);
-        EmpiricalElliottWaveForecastIndicator indicator = new EmpiricalElliottWaveForecastIndicator(series, scenarios,
-                settings);
-        assertThat(indicator.getValue(41).mostLikelyPhase()).isEqualTo(ElliottPhase.WAVE2);
-        external.getBar(0).addPrice(external.numFactory().numOf(101));
-        assertThat(indicator.getValue(41).mostLikelyPhase()).isEqualTo(ElliottPhase.WAVE3);
-    }
 
     @Test
     void forecastsOnlyFromEarlierEmpiricalStructures() {
@@ -251,11 +161,7 @@ class EmpiricalElliottWaveForecastIndicatorTest {
     }
 
     private static BarSeries flatSeries(final int count) {
-        return flatSeries(count, DecimalNumFactory.getInstance());
-    }
-
-    private static BarSeries flatSeries(final int count, final NumFactory factory) {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+        BarSeries series = new MockBarSeriesBuilder().build();
         for (int index = 0; index < count; index++) {
             series.barBuilder()
                     .openPrice(100.0d)

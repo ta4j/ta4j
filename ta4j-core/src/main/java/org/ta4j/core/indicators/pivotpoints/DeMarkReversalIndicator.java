@@ -72,15 +72,14 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
      * The underlying pivot look-back spans an unbounded number of bars, so the zero
      * stable count would retain reversal values that still depend on evicted bars:
      * the whole cache is discarded on head advance so that every retained index is
-     * recomputed from the bars that remain available. Declaring this through the
-     * explicit policy also resets recursive consumers, which cannot continue a
-     * chain across the rebaselined values.
+     * recomputed from the bars that remain available.
      *
-     * @return {@code true}
+     * @param firstRetainedIndex the first series index that remains available
+     * @return {@link Integer#MAX_VALUE}, evicting every cached entry
      */
     @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        return Integer.MAX_VALUE;
     }
 
     @Override

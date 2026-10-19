@@ -27,8 +27,6 @@ import org.ta4j.core.*;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.averages.EDMAIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
-import org.ta4j.core.indicators.averages.KAMAIndicator;
-import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.VIDYAIndicator;
 import org.ta4j.core.indicators.averages.WildersMAIndicator;
@@ -41,12 +39,6 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
-import org.ta4j.core.indicators.pivotpoints.PivotLevel;
-import org.ta4j.core.indicators.pivotpoints.PivotPointIndicator;
-import org.ta4j.core.indicators.pivotpoints.StandardReversalIndicator;
-import org.ta4j.core.indicators.pivotpoints.TimeLevel;
-import org.ta4j.core.indicators.statistics.CusumIndicator;
-import org.ta4j.core.indicators.statistics.EwmaVarianceIndicator;
 import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
 import org.ta4j.core.indicators.statistics.ZScoreIndicator;
 import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
@@ -432,8 +424,9 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // value is recursive by definition even when it does not extend
         // RecursiveCachedIndicator: the head-advance cache floor must not
         // evict the retained band and reseed it from a different history.
-        // This test uses a plain self-recursive subclass that keeps the default
-        // policy without depending on any averaging implementation.
+        // SMMA is the deliberate exception: it re-anchors its chain at the
+        // retained head (see SMMAIndicatorTest), so this test uses a plain
+        // self-recursive subclass that keeps the default policy.
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1d, 2d, 3d, 4d, 5d, 6d, 7d)
                 .build();
@@ -1936,44 +1929,6 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    /**
-     * A bar that does not publish its own mutations and, once armed, changes its
-     * close price right after its amount is next read.
-     */
-    private static final class CloseChangingBar extends BaseBar {
-
-        private static final long serialVersionUID = 1L;
-        private volatile Num close;
-        private volatile Num closeOnNextAmountRead;
-
-        private CloseChangingBar(Bar source) {
-            super(source.getTimePeriod(), source.getBeginTime(), source.getEndTime(), source.getOpenPrice(),
-                    source.getHighPrice(), source.getLowPrice(), source.getClosePrice(), source.getVolume(),
-                    source.getAmount(), source.getTrades());
-            close = source.getClosePrice();
-        }
-
-        private void changeCloseOnNextAmountRead(Num newClose) {
-            closeOnNextAmountRead = newClose;
-        }
-
-        @Override
-        public Num getClosePrice() {
-            return close;
-        }
-
-        @Override
-        public Num getAmount() {
-            Num amount = super.getAmount();
-            Num newClose = closeOnNextAmountRead;
-            if (newClose != null) {
-                closeOnNextAmountRead = null;
-                close = newClose;
-            }
-            return amount;
-        }
-    }
-
     private final static class BlockingTradesBar implements Bar {
 
         private final AtomicBoolean blockingEnabled = new AtomicBoolean();
@@ -2304,142 +2259,6 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         };
 
         assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(1));
-    }
-
-    @Test
-    public void recursiveDependentKeepsCacheWhenSourceOnlyRaisesNumericFloor() {
-        // An unbounded-history chain consumed the first retained true range
-        // while its previous close still existed. The true range re-evaluating
-        // that entry after a head advance does not make the chain stale, so the
-        // recursive dependent keeps its retained values (#1666) while a
-        // non-recursive dependent still discards (see above).
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(1d, 2d, 3d, 4d, 5d)
-                .build();
-        MMAIndicator dependent = new MMAIndicator(new TRIndicator(barSeries), 2);
-
-        assertEquals(1, dependent.minimumCacheableIndexAfterHeadAdvance(1));
-    }
-
-    @Test
-    public void recursiveDependentFollowsSourceThatExplicitlyRequiresFullInvalidation() {
-        // A pivot reversal rebaselines every value after a head advance; a
-        // recursive consumer cannot continue its chain across that discontinuity.
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(1d, 2d, 3d, 4d, 5d)
-                .build();
-        PivotPointIndicator pivot = new PivotPointIndicator(barSeries, TimeLevel.BARBASED);
-        StandardReversalIndicator reversal = new StandardReversalIndicator(pivot, PivotLevel.RESISTANCE_1);
-        EMAIndicator dependent = new EMAIndicator(reversal, 2);
-
-        assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(1));
-    }
-
-    @Test
-    public void recursiveDependentResetsWithSelfReanchoringStatistics() {
-        // EwmaVarianceIndicator and CusumIndicator re-anchor their recursions at the
-        // retained head on every head advance. A recursive consumer must reset with
-        // them instead of continuing from a full-history predecessor.
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        barSeries.setMaximumBarCount(6);
-        EMAIndicator dependent = new EMAIndicator(new EwmaVarianceIndicator(barSeries, 2, 0.5), 2);
-        int finiteAfterHeadAdvance = 0;
-        for (int i = 0; i < 12; i++) {
-            barSeries.barBuilder().closePrice(10 + (i * 7) % 5).add();
-            Num value = dependent.getValue(i);
-            EMAIndicator fresh = new EMAIndicator(new EwmaVarianceIndicator(barSeries, 2, 0.5), 2);
-            assertNumEquals(fresh.getValue(i), value);
-            if (barSeries.getBeginIndex() > 0 && !value.isNaN()) {
-                finiteAfterHeadAdvance++;
-            }
-        }
-
-        assertTrue(finiteAfterHeadAdvance > 0);
-        assertEquals(Integer.MAX_VALUE,
-                new EMAIndicator(new CusumIndicator(barSeries, 10, 0.5), 2).minimumCacheableIndexAfterHeadAdvance(1));
-    }
-
-    @Test
-    public void recursiveIndicatorIgnoresResetHookOfSourceOnSeriesThatDidNotAdvance() {
-        // CusumIndicator declares a full reset on head advances of its own series.
-        // When only the consumer's series advances, the source on the other series
-        // did not reset, so the consumer keeps continuing its chain.
-        BarSeries seriesB = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        for (int i = 0; i < 20; i++) {
-            seriesB.barBuilder().closePrice(10 + i % 3).add();
-        }
-        CusumIndicator cusumOnB = new CusumIndicator(seriesB, 10, 0.5);
-        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        seriesA.setMaximumBarCount(5);
-        RecursiveCachedIndicator<Num> chainLength = new RecursiveCachedIndicator<>(seriesA, cusumOnB) {
-            @Override
-            protected Num calculate(int index) {
-                cusumOnB.getValue(index);
-                Num one = getBarSeries().numFactory().one();
-                return index <= getBarSeries().getBeginIndex() ? one : getValue(index - 1).plus(one);
-            }
-
-            @Override
-            public int getCountOfUnstableBars() {
-                return 0;
-            }
-        };
-
-        for (int i = 0; i < 20; i++) {
-            seriesA.barBuilder().closePrice(10).add();
-            assertNumEquals(i + 1, chainLength.getValue(i));
-        }
-
-        // Once the source's own series advances, the source resets and so must the
-        // consumer: the chain restarts at the consumer's retained head.
-        seriesB.setMaximumBarCount(20);
-        seriesB.barBuilder().closePrice(10).add();
-        int endIndex = seriesA.getEndIndex();
-        assertNumEquals(endIndex - seriesA.getBeginIndex() + 1, chainLength.getValue(endIndex));
-    }
-
-    @Test
-    public void removedIndexReadServesRetainedRecurrenceOfRecursiveIndicator() {
-        // A removed index maps to the first available bar. For a recursive
-        // indicator read continuously, that bar holds a retained full-history value,
-        // which the removed read must serve instead of re-seeding through
-        // calculate(0).
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        barSeries.setMaximumBarCount(20);
-        KAMAIndicator kama = new KAMAIndicator(new ClosePriceIndicator(barSeries), 3, 2, 30);
-        for (int i = 0; i < 40; i++) {
-            barSeries.barBuilder().closePrice(10 + (i % 5) + i * 0.1).add();
-            kama.getValue(i);
-        }
-        int beginIndex = barSeries.getBeginIndex();
-
-        assertNumEquals(kama.getValue(beginIndex), kama.getValue(beginIndex - 1));
-        assertNumEquals(kama.getValue(beginIndex), kama.getValue(0));
-    }
-
-    @Test
-    public void promotedTerminalValueIsDroppedWhenItsBarChangesDuringPromotion() {
-        // The former terminal bar does not publish its own mutations and changes
-        // after its intact check but before its value reaches the main cache. Once
-        // no longer terminal, nothing fingerprints it, so the promoted value must
-        // be dropped rather than continue the recursive chain.
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        for (int i = 0; i < 4; i++) {
-            barSeries.barBuilder().closePrice(10 + i).add();
-        }
-        CloseChangingBar terminal = new CloseChangingBar(barSeries.barBuilder().closePrice(20).build());
-        barSeries.addBar(terminal);
-        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(barSeries), 2);
-        assertNumEquals(new EMAIndicator(new ClosePriceIndicator(barSeries), 2).getValue(4), ema.getValue(4));
-
-        terminal.changeCloseOnNextAmountRead(numFactory.numOf(40));
-        barSeries.barBuilder().closePrice(22).add();
-        Num appended = ema.getValue(5);
-
-        EMAIndicator fresh = new EMAIndicator(new ClosePriceIndicator(barSeries), 2);
-        assertNumEquals(40, barSeries.getBar(4).getClosePrice());
-        assertNumEquals(fresh.getValue(5), appended);
-        assertNumEquals(fresh.getValue(4), ema.getValue(4));
     }
 
     @Test
@@ -2792,13 +2611,12 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     /**
      * A cross-series dependency reached only through an intermediate indicator
-     * backed by the consumer's own series must still be observed, and a
-     * dependency-series head advance applies the same policy as an own-series one:
-     * the windowed distance is re-evaluated, while the recursive EMA keeps its
-     * retained chain.
+     * backed by the consumer's own series must still be observed: the EMA consumes
+     * a distance indicator on seriesA whose moving average reads seriesB, so
+     * advancing seriesB alone must recompute the cached EMA values.
      */
     @Test
-    public void nestedCrossSeriesDependencyHeadAdvanceKeepsRecursiveChain() {
+    public void nestedCrossSeriesDependencyHeadAdvanceInvalidatesDependentCache() {
         BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
         BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10d, 20d, 30d, 40d, 50d, 60d)
@@ -2806,40 +2624,19 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
                 new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
         EMAIndicator ema = new EMAIndicator(distance, 2);
-        Num distanceBefore2 = distance.getValue(2);
         Num before2 = ema.getValue(2);
         Num before3 = ema.getValue(3);
         seriesB.setMaximumBarCount(4); // head advances; the EMA never reads seriesB directly
+        Num after2 = ema.getValue(2);
+        Num after3 = ema.getValue(3);
 
-        // The EMA consumed distance(2) while seriesB still held its full window, so
-        // its chain stays the full-history value (#1666) ...
-        assertNumEquals(before2, ema.getValue(2));
-        assertNumEquals(before3, ema.getValue(3));
-        // ... while the windowed distance is still re-evaluated against seriesB's
-        // retained window.
-        assertThat(distance.getValue(2)).isNotEqualTo(distanceBefore2);
-    }
-
-    @Test
-    public void crossSeriesDependencyHeadAdvanceKeepsConsumerIndexSpace() {
-        // seriesB advances its head to index 8 while seriesA still retains every
-        // bar. The recursive EMA's cache lives in seriesA's index space, so its
-        // values below seriesB's head must not be evicted and re-seeded.
-        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
-        BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(10d, 20d, 30d, 40d, 50d, 60d, 70d, 80d, 90d, 100d, 110d, 120d)
-                .build();
-        DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
+        DistanceFromMAIndicator freshDistance = new DistanceFromMAIndicator(seriesA,
                 new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
-        EMAIndicator ema = new EMAIndicator(distance, 2);
-        Num before2 = ema.getValue(2);
-        Num before3 = ema.getValue(3);
-
-        seriesB.setMaximumBarCount(4);
-        assertEquals(8, seriesB.getBeginIndex());
-
-        assertNumEquals(before2, ema.getValue(2));
-        assertNumEquals(before3, ema.getValue(3));
+        EMAIndicator freshEma = new EMAIndicator(freshDistance, 2);
+        assertNumEquals(freshEma.getValue(2), after2);
+        assertNumEquals(freshEma.getValue(3), after3);
+        assertThat(after2).isNotEqualTo(before2);
+        assertThat(after3).isNotEqualTo(before3);
     }
 
     /**

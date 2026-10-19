@@ -198,19 +198,6 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         }
     }
 
-    /**
-     * This indicator re-anchors its recursion at the retained head whenever the
-     * series head advances (see {@code resetForRetainedHead}), so a dependent that
-     * continued across the advance would combine a full-history predecessor with a
-     * re-anchored value. Declaring the reset makes those dependents reset too.
-     *
-     * @return {@code true}
-     */
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
-    }
-
     private synchronized void resetForRetainedHead(int removedBarsCount) {
         if (removedBarsCount != observedRemovedBarsCount && !isCacheWriteLockedByCurrentThread()) {
             // Invalidate first, publish last: a concurrent reader that

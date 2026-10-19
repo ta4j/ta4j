@@ -5,7 +5,6 @@ package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -39,33 +38,14 @@ public class SMMAIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        while (true) {
-            final int beginIndex = getBarSeries().getBeginIndex();
-            if (beginIndex < 0) {
-                // Empty series: there is no bar to seed from or recurse to.
-                return NaN.NaN;
-            }
-            if (index < beginIndex) {
-                // A removed index mapped here by CachedIndicator: serve the first
-                // available bar's value (the retained recursion, or its seed).
-                // calculate(beginIndex) reads no predecessor, so this cannot recurse.
-                return getValue(beginIndex);
-            }
-            // Seed at the first retained bar: for a full series this is the first
-            // data point. On a bounded series retained values survive head
-            // advances, so this seed is only reached when no cached predecessor
-            // exists (for example a fresh indicator).
-            Num value = index == beginIndex ? indicator.getValue(index) : continueChain(index);
-            if (getBarSeries().getBeginIndex() == beginIndex) {
-                return value;
-            }
-            // The head advanced while this value was computed, so its predecessor
-            // or source may have been read from bars that are now removed. Retry
-            // against the new head.
-        }
-    }
 
-    private Num continueChain(int index) {
+        if (index <= getBarSeries().getBeginIndex()) {
+            // Seed at the first retained bar: for a full series this is the first
+            // data point; for a bounded series it re-anchors the recursion after
+            // a head advance evicted the previous seed.
+            return indicator.getValue(index);
+        }
+
         // Previous SMMA value
         Num previousSMMA = getValue(index - 1);
 
@@ -83,6 +63,20 @@ public class SMMAIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return indicator.getCountOfUnstableBars() + barCount;
+    }
+
+    /**
+     * The SMMA recursion seeds at the first retained bar (see
+     * {@link #calculate(int)}), so after a head advance every cached value embeds
+     * the pre-advance chain. Discard the whole cache so the retained head
+     * re-anchors the recurrence from the first retained bar instead of serving
+     * stale values.
+     *
+     * @return {@code true}
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
     @Override

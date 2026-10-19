@@ -22,7 +22,6 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.RecentSwingIndicator;
-import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -33,37 +32,6 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
 
 class ElliottSwingIndicatorTest {
-
-    @Test
-    void retainedSwingListsAndCachedConsumersRebuildAfterPruning() {
-        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
-            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
-            for (double close : new double[] { 1, 3, 1, 4, 1, 5, 1 }) {
-                series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
-            }
-            series.setMaximumBarCount(7);
-            ElliottSwingIndicator indicator = new ElliottSwingIndicator(series, 1, 1, 0, ElliottDegree.MINOR);
-            CachedIndicator<List<ElliottSwing>> consumer = new CachedIndicator<>(indicator) {
-                @Override
-                protected List<ElliottSwing> calculate(int index) {
-                    return indicator.getValue(index);
-                }
-
-                @Override
-                public int getCountOfUnstableBars() {
-                    return indicator.getCountOfUnstableBars();
-                }
-            };
-            assertThat(consumer.getValue(5)).hasSize(3);
-            series.barBuilder().openPrice(2).highPrice(2).lowPrice(2).closePrice(2).volume(0).add();
-            List<ElliottSwing> fresh = new ElliottSwingIndicator(indicator.getSwingHighIndicator(),
-                    indicator.getSwingLowIndicator(), ElliottDegree.MINOR).getValue(5);
-            assertThat(fresh).hasSize(2);
-            assertThat(indicator.getPivotIndexes(5)).containsExactly(2, 3, 4);
-            assertThat(indicator.getValue(5)).isEqualTo(fresh);
-            assertThat(consumer.getValue(5)).isEqualTo(fresh);
-        }
-    }
 
     @Test
     void detectsSwingsWithoutLookahead() {

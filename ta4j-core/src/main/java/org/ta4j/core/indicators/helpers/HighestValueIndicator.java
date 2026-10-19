@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -33,53 +32,14 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
 
     @Override
     public Num calculate(int index) {
-        Num currentVal = indicator.getValue(index);
-
-        BarSeries series = indicator.getBarSeries();
-        int beginIndex = Math.max(0, series != null ? series.getBeginIndex() : 0);
-
-        if (currentVal.isNaN()) {
-            if (barCount == 1) {
-                return currentVal;
-            }
-            int end = Math.max(beginIndex, index - barCount + 1);
-            Num highest = currentVal;
-            for (int i = index - 1; i >= end; i--) {
-                Num val = indicator.getValue(i);
-                if (!val.isNaN()) {
-                    if (highest.isNaN() || highest.isLessThan(val)) {
-                        highest = val;
-                    }
-                }
-            }
-            return highest;
+        if (indicator.getValue(index).isNaN() && barCount != 1) {
+            return new HighestValueIndicator(indicator, barCount - 1).getValue(index - 1);
         }
-
-        if (index > beginIndex && isCached(index - 1)) {
-            Num highestPrev = getValue(index - 1);
-            if (!highestPrev.isNaN()) {
-                if (currentVal.isGreaterThan(highestPrev)) {
-                    return currentVal;
-                }
-                int oldStartIndex = index - barCount;
-                if (oldStartIndex < beginIndex) {
-                    return highestPrev;
-                }
-                Num droppedVal = indicator.getValue(oldStartIndex);
-                if (droppedVal.isNaN() || highestPrev.isGreaterThan(droppedVal)) {
-                    return highestPrev;
-                }
-            }
-        }
-
-        int end = Math.max(beginIndex, index - barCount + 1);
-        Num highest = currentVal;
+        int end = Math.max(0, index - barCount + 1);
+        Num highest = indicator.getValue(index);
         for (int i = index - 1; i >= end; i--) {
-            Num val = indicator.getValue(i);
-            if (!val.isNaN()) {
-                if (highest.isLessThan(val)) {
-                    highest = val;
-                }
+            if (highest.isLessThan(indicator.getValue(i))) {
+                highest = indicator.getValue(i);
             }
         }
         return highest;

@@ -204,33 +204,23 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
                         .build()) {
                     String[] line;
                     while ((line = csvReader.readNext()) != null) {
-                        if (line.length < 6) {
-                            LOG.warn("Skipping incomplete CSV line in {}: line length is {}", filename, line.length);
-                            continue;
-                        }
-                        try {
-                            Instant date = LocalDate.parse(line[0], DATE_FORMAT)
-                                    .atStartOfDay(ZoneOffset.UTC)
-                                    .toInstant();
-                            double open = Double.parseDouble(line[1]);
-                            double high = Double.parseDouble(line[2]);
-                            double low = Double.parseDouble(line[3]);
-                            double close = Double.parseDouble(line[4]);
-                            double volume = Double.parseDouble(line[5]);
+                        Instant date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneOffset.UTC).toInstant();
+                        double open = Double.parseDouble(line[1]);
+                        double high = Double.parseDouble(line[2]);
+                        double low = Double.parseDouble(line[3]);
+                        double close = Double.parseDouble(line[4]);
+                        double volume = Double.parseDouble(line[5]);
 
-                            series.barBuilder()
-                                    .timePeriod(Duration.ofDays(1))
-                                    .endTime(date)
-                                    .openPrice(open)
-                                    .closePrice(close)
-                                    .highPrice(high)
-                                    .lowPrice(low)
-                                    .volume(volume)
-                                    .amount(0)
-                                    .add();
-                        } catch (Exception e) {
-                            LOG.warn("Skipping malformed CSV line in {}: {}", filename, e.getMessage());
-                        }
+                        series.barBuilder()
+                                .timePeriod(Duration.ofDays(1))
+                                .endTime(date)
+                                .openPrice(open)
+                                .closePrice(close)
+                                .highPrice(high)
+                                .lowPrice(low)
+                                .volume(volume)
+                                .amount(0)
+                                .add();
                     }
                 } catch (CsvValidationException e) {
                     LOG.error("Unable to load bars from CSV. File is not valid csv.", e);
