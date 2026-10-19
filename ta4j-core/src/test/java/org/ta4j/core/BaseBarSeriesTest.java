@@ -1093,6 +1093,48 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void deserializedTruncatedRangesAppendAtRetainedTail() throws Exception {
+        for (int offset : new int[] { 0, 7 }) {
+            for (int logicalLength : new int[] { 0, 1 }) {
+                SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
+                state.bars = new ArrayList<>(testBars.subList(0, 2));
+                state.removedBarsCount = offset;
+                state.seriesBeginIndex = offset;
+                state.seriesEndIndex = offset + logicalLength - 1;
+                BaseBarSeries restored = restoreSeriesState(state);
+                Bar appended = testBars.get(2);
+
+                restored.addBar(appended);
+
+                assertEquals(offset + 2, restored.getEndIndex());
+                assertSame(appended, restored.getLastBar());
+                assertSame(appended, restored.getBar(offset + 2));
+                assertEquals(3, restored.getBarCount());
+                assertEquals(offset, restored.getBeginIndex());
+                assertEquals(offset, restored.getRemovedBarsCount());
+            }
+        }
+    }
+
+    @Test
+    public void deserializedTruncatedRangeReplacementReportsRetainedTailIndex() throws Exception {
+        SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
+        state.bars = new ArrayList<>(testBars.subList(0, 2));
+        state.removedBarsCount = 7;
+        state.seriesBeginIndex = 7;
+        state.seriesEndIndex = 7;
+        BaseBarSeries restored = restoreSeriesState(state);
+        long revision = restored.getBarHistoryRevision();
+        Bar replacement = testBars.get(2);
+
+        restored.addBar(replacement, true);
+
+        assertSame(replacement, restored.getBar(8));
+        assertEquals(7, restored.getEndIndex());
+        assertEquals(8, restored.getBarSeriesChangeSnapshot(revision).earliestChangedIndex());
+    }
+
+    @Test
     public void deserializationRejectsInvalidHistoryRevisions() throws Exception {
         for (long revision : new long[] { -1L, Long.MIN_VALUE, Long.MAX_VALUE }) {
             SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);

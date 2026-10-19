@@ -465,15 +465,13 @@ public class BaseBarSeries implements BarSeries {
 
         if (!this.bars.isEmpty()) {
             if (replace) {
-                final Bar previousBar = this.bars.set(this.bars.size() - 1, bar);
-                detachBarMutationTracking(previousBar, this.seriesEndIndex);
-                attachBarMutationTracking(bar, this.seriesEndIndex);
-                recordBarHistoryChange(this.seriesEndIndex);
+                final int lastBarIndex = this.bars.size() - 1;
+                final int absoluteLastBarIndex = Math.addExact(this.removedBarsCount, lastBarIndex);
+                final Bar previousBar = this.bars.set(lastBarIndex, bar);
+                detachBarMutationTracking(previousBar, absoluteLastBarIndex);
+                attachBarMutationTracking(bar, absoluteLastBarIndex);
+                recordBarHistoryChange(absoluteLastBarIndex);
                 return;
-            }
-            if (this.seriesEndIndex == Integer.MAX_VALUE
-                    || (long) this.removedBarsCount + this.bars.size() > Integer.MAX_VALUE) {
-                throw new ArithmeticException("Bar series index overflow");
             }
             final int lastBarIndex = this.bars.size() - 1;
             final Instant seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
@@ -484,12 +482,13 @@ public class BaseBarSeries implements BarSeries {
             }
         }
 
+        final int newBarIndex = Math.addExact(this.removedBarsCount, this.bars.size());
         this.bars.add(bar);
         if (this.seriesBeginIndex == -1) {
             // The begin index is set to 0 if not already initialized:
             this.seriesBeginIndex = 0;
         }
-        this.seriesEndIndex = Math.incrementExact(this.seriesEndIndex);
+        this.seriesEndIndex = newBarIndex;
         attachBarMutationTracking(bar, this.seriesEndIndex);
         removeExceedingBars();
     }
