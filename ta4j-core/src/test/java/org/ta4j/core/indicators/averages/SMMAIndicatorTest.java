@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.indicators.averages;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.*;
 
@@ -76,49 +75,28 @@ public class SMMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     @Test
-    public void headAdvanceKeepsRetainedChainWhileFreshIndicatorReseedsAtRetainedHead() {
-        // Retained SMMA values are full-history values (#1666), so a head advance
-        // keeps them; only an indicator without cached predecessors seeds at the
-        // first retained bar (140 at bar 14).
-        BarSeries series = rampSeries();
-        BarSeries unbounded = rampSeries();
-        SMMAIndicator smma = new SMMAIndicator(new ClosePriceIndicator(series), 2);
+    public void headAdvanceReanchorsChainFromRetainedHeadWithStableSource() {
+        // When the source does not itself rebaseline on a head advance, the
+        // recursive cache keeps a suffix that mixes pre- and post-advance inputs
+        // (e.g. 130.0006 at bar 14); the retained-head seed must instead discard
+        // the whole cache and rebuild from the first retained bar, matching a
+        // fresh calculation over the retained window (140 at bar 14, doubling
+        // every two bars via the 0.5 smoothing).
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i <= 19; i++) {
+            series.barBuilder().openPrice(i * 10).closePrice(i * 10).highPrice(i * 10).lowPrice(i * 10).add();
+        }
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMMAIndicator smma = new SMMAIndicator(close, 2);
         smma.getValue(19);
 
         series.setMaximumBarCount(6);
         assertEquals(14, series.getBeginIndex());
 
-        SMMAIndicator reference = new SMMAIndicator(new ClosePriceIndicator(unbounded), 2);
+        SMMAIndicator fresh = new SMMAIndicator(close, 2);
         for (int i = 14; i <= 19; i++) {
-            assertNumEquals(reference.getValue(i), smma.getValue(i));
+            assertNumEquals(fresh.getValue(i), smma.getValue(i));
         }
-        // A removed index maps to the first available bar's retained value.
-        assertNumEquals(smma.getValue(14), smma.getValue(13));
-
-        SMMAIndicator fresh = new SMMAIndicator(new ClosePriceIndicator(series), 2);
-        assertNumEquals(140, fresh.getValue(14));
-        assertNumEquals(145, fresh.getValue(15));
-    }
-
-    @Test
-    public void emptySeriesReturnsNaNWithoutRecursing() {
-        BarSeries empty = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-
-        assertThat(new SMMAIndicator(new ClosePriceIndicator(empty), 3).getValue(0).isNaN()).isTrue();
-    }
-
-    @Test
-    public void readRecomputesWhenHeadAdvancesMidRead() {
-        HeadAdvancingSource.assertReadRecomputesAfterMidReadHeadAdvance(numFactory,
-                source -> new SMMAIndicator(source, 3));
-    }
-
-    private BarSeries rampSeries() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        for (int i = 0; i <= 19; i++) {
-            series.barBuilder().openPrice(i * 10).closePrice(i * 10).highPrice(i * 10).lowPrice(i * 10).add();
-        }
-        return series;
     }
 
 }

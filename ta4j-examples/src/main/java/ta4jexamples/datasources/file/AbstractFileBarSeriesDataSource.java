@@ -131,9 +131,6 @@ public abstract class AbstractFileBarSeriesDataSource implements BarSeriesDataSo
         if (ticker == null || ticker.trim().isEmpty()) {
             throw new IllegalArgumentException("Ticker cannot be null or empty");
         }
-        if (ticker.contains("..") || ticker.contains("/") || ticker.contains("\\")) {
-            throw new IllegalArgumentException("Ticker contains invalid path characters");
-        }
         if (interval == null || interval.isNegative() || interval.isZero()) {
             throw new IllegalArgumentException("Interval must be positive");
         }

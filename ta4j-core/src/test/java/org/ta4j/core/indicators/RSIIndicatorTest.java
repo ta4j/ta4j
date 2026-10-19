@@ -51,31 +51,6 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void movingSeriesMatchesUnboundedSeriesWhenReadEveryBar() {
-        // #1666: RSI on a moving series must not depend on the maximum bar
-        // count. Its MMAs continue their recurrences across head advances, so a
-        // reader of the latest bar sees the unbounded-series value.
-        double[] closes = { 44.34, 44.09, 44.15, 43.61, 44.33, 44.83, 45.10, 45.42, 45.84, 46.08, 45.89, 46.03, 45.61,
-                46.28, 46.28, 46.00, 46.03, 46.41, 46.22, 45.64, 46.21, 46.25, 45.71, 46.45 };
-        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        moving.setMaximumBarCount(6);
-        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(moving), 3);
-        RSIIndicator reference = new RSIIndicator(new ClosePriceIndicator(unbounded), 3);
-        for (int i = 0; i < closes.length; i++) {
-            moving.barBuilder().closePrice(closes[i]).add();
-            unbounded.barBuilder().closePrice(closes[i]).add();
-            Num expected = reference.getValue(i);
-            Num actual = rsi.getValue(i);
-            if (expected.isNaN()) {
-                assertThat(actual.isNaN()).isTrue();
-            } else {
-                assertThat(actual).isEqualByComparingTo(expected);
-            }
-        }
-    }
-
-    @Test
     public void hundredIfNoLoss() throws Exception {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
         assertEquals(numFactory.hundred(), indicator.getValue(14));

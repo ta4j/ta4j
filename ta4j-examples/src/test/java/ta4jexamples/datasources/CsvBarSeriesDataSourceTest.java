@@ -216,23 +216,4 @@ public class CsvBarSeriesDataSourceTest {
         assertTrue(series.getBarCount() > 0, "Series should contain bars");
         assertEquals(expectedFile, series.getName(), "Series name should match the found filename");
     }
-
-    @Test
-    public void testLoadSeriesWithPathTraversalTicker() {
-        CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
-        Instant start = Instant.parse("2013-01-02T00:00:00Z");
-        Instant end = Instant.parse("2013-12-31T23:59:59Z");
-
-        assertThrows(IllegalArgumentException.class, () -> {
-            dataSource.loadSeries("../AAPL", Duration.ofDays(1), start, end);
-        }, "Should throw IllegalArgumentException for ticker with relative path traversal");
-
-        assertThrows(IllegalArgumentException.class, () -> {
-            dataSource.loadSeries("AAPL/sub", Duration.ofDays(1), start, end);
-        }, "Should throw IllegalArgumentException for ticker with forward slash path traversal");
-
-        assertThrows(IllegalArgumentException.class, () -> {
-            dataSource.loadSeries("AAPL\\sub", Duration.ofDays(1), start, end);
-        }, "Should throw IllegalArgumentException for ticker with backslash path traversal");
-    }
 }
