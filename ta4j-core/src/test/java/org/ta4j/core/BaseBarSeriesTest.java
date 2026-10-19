@@ -1072,6 +1072,52 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void deserializationRejectsInvalidHistoryRevisions() throws Exception {
+        for (long revision : new long[] { -1L, Long.MIN_VALUE, Long.MAX_VALUE }) {
+            SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
+            state.barHistoryRevision = revision;
+            assertThrows(InvalidObjectException.class, () -> restoreSeriesState(state));
+        }
+    }
+
+    @Test
+    public void deserializationRejectsBoundedConstrainedSeries() throws Exception {
+        SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
+        state.constrained = true;
+        state.maximumBarCount = 2;
+        assertThrows(InvalidObjectException.class, () -> restoreSeriesState(state));
+    }
+
+    @Test
+    public void deserializedImmutableListsSupportRetentionMutationAndClear() throws Exception {
+        for (List<Bar> bars : List.of(Arrays.asList(testBars.get(0), testBars.get(1)),
+                List.of(testBars.get(0), testBars.get(1)))) {
+            SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
+            state.bars = bars;
+            state.maximumBarCount = 2;
+            state.seriesBeginIndex = 0;
+            state.seriesEndIndex = 1;
+            state.barHistoryRevision = 17;
+            BaseBarSeries restored = restoreSeriesState(state);
+            restored.addPrice(numFactory.numOf(42));
+            assertEquals(18, restored.getBarHistoryRevision());
+            assertNumEquals(42, restored.getLastBar().getClosePrice());
+            appendBar(restored);
+            assertEquals(1, restored.getBeginIndex());
+            assertEquals(2, restored.getEndIndex());
+            assertNumEquals(42, restored.getBar(1).getClosePrice());
+            restored.clear();
+            assertTrue(restored.isEmpty());
+            assertEquals(-1, restored.getBeginIndex());
+            assertEquals(-1, restored.getEndIndex());
+            restored.addBar(testBars.get(0));
+            assertEquals(0, restored.getBeginIndex());
+            assertEquals(0, restored.getEndIndex());
+            assertEquals(testBars.get(0).getClosePrice(), restored.getBar(0).getClosePrice());
+        }
+    }
+
+    @Test
     public void deserializedBoundedSeriesRetainsOffsetsAndAcceptsNewBars() throws Exception {
         SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
         state.bars = new ArrayList<>(testBars.subList(0, 2));

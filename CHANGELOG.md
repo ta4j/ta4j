@@ -2,7 +2,7 @@
 
 ### Fixed
 
-- **Safe bar-series object loading**: `BaseBarSeries` rejects serialized state with missing factories, null bars, invalid capacity or empty-series indexes, and overflowing retained-bar offsets, while preserving valid bounded-series histories.
+- **Safe bar-series object loading**: `BaseBarSeries` rejects serialized state with missing factories, null bars, invalid capacity, revision or constrained-series state, inconsistent empty-series indexes, and overflowing retained-bar offsets. Valid histories retain mutable storage for appends, retention and clearing, including streams containing immutable bar lists.
 
 ## 0.27.0 (2026-10-19)
 

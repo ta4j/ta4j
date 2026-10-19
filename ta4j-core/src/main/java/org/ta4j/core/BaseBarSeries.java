@@ -51,7 +51,7 @@ public class BaseBarSeries implements BarSeries {
     /**
      * The list of bars of the bar series.
      */
-    private final List<Bar> bars;
+    private List<Bar> bars;
     private final BarBuilderFactory barBuilderFactory;
 
     private final NumFactory numFactory;
@@ -86,12 +86,13 @@ public class BaseBarSeries implements BarSeries {
         // before any retained-bar access can reach the trace-logging branch.
         this.log = LoggerFactory.getLogger(getClass());
         validateDeserializedState();
+        this.bars = new ArrayList<>(this.bars);
         if (!defersRetainedBarMutationTracking()) {
             attachRetainedBarMutationTracking();
         }
     }
 
-    private void validateDeserializedState() throws InvalidObjectException {
+    private synchronized void validateDeserializedState() throws InvalidObjectException {
         if (this.bars == null) {
             throw new InvalidObjectException("bars list cannot be null");
         }
@@ -100,6 +101,12 @@ public class BaseBarSeries implements BarSeries {
         }
         if (this.barBuilderFactory == null) {
             throw new InvalidObjectException("barBuilderFactory cannot be null");
+        }
+        if (this.barHistoryRevision < 0 || this.barHistoryRevision == Long.MAX_VALUE) {
+            throw new InvalidObjectException("Bar history revision must be non-negative and allow a next revision");
+        }
+        if (this.constrained && this.maximumBarCount != Integer.MAX_VALUE) {
+            throw new InvalidObjectException("Constrained series must retain an unbounded maximum bar count");
         }
         if (this.maximumBarCount <= 0 || this.bars.size() > this.maximumBarCount) {
             throw new InvalidObjectException("Maximum bar count must be positive and contain all retained bars");
