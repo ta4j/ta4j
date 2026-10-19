@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.27.0 (2026-10-19)
+
 ### Added
 
 - **Composable Monte Carlo techniques**: any `MonteCarloMethod` now chains decorators fluently: `pooledWith(other)` pools two techniques 50/50 through derived sub-generators, `widenedByRecentVolatility()` widens terminal samples by the bounded ratio of recent realized to state volatility, and `withStudentTScaleMixing()` fattens tails with a mean-normalized Student-t scale-mixing factor; `NormalInverseGammaForecastMethod.overResiduals(method)` and `overSmoothedResiduals()` layer posterior parameter uncertainty over another technique's standardized residual paths. For example `shockPath.pooledWith(NormalInverseGammaForecastMethod.withEmpiricalPriors().overSmoothedResiduals()).widenedByRecentVolatility().withStudentTScaleMixing()` is passed straight to `.monteCarloMethod(...)`. Every composition draws exclusively from `MonteCarloContext.random()`, so seeded forecasts stay reproducible, and degrades to an unstable forecast when a component returns null, miscounts, or emits non-finite samples. Widening scales around the inner technique's empirical center (dispersion only, never a location shift); Student-t mixing stays finite with bounded expected cost for arbitrarily large degrees of freedom; and foreign-precision inner samples are normalized through the context's `NumFactory`. `WalkForwardCalibrationBakeoffExample` builds its arms with this API, forecasts through `MonteCarloReturnProjectionIndicator`, persists per-arm checkpoints incrementally, and serializes empty volatility regimes as `null`.
