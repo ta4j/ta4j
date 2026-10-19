@@ -20,6 +20,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
@@ -416,11 +418,12 @@ class ParameterResearchTest {
         assertThat(report.trainingLeaderboard().get(2).parameters().intValue("a")).isEqualTo(3);
     }
 
-    @Test
-    void geneticSearchIsSeededAndDeterministic() {
+    @ParameterizedTest
+    @ValueSource(longs = { 0L, 42L, Long.MIN_VALUE })
+    void geneticSearchIsSeededAndDeterministic(long seed) {
         BarSeries series = series(1d, 2d, 3d, 4d);
-        ParameterResearchReport first = runGenetic(series, 42L);
-        ParameterResearchReport second = runGenetic(series, 42L);
+        ParameterResearchReport first = runGenetic(series, seed);
+        ParameterResearchReport second = runGenetic(series, seed);
         List<String> firstIds = first.trainingLeaderboard().stream().map(RankedCandidate::candidateId).toList();
         List<String> secondIds = second.trainingLeaderboard().stream().map(RankedCandidate::candidateId).toList();
         assertThat(secondIds).isEqualTo(firstIds);
@@ -431,6 +434,25 @@ class ParameterResearchTest {
                         .map(RankedCandidate::trainingScore)
                         .map(Num::toString)
                         .toList());
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = { 0L, 42L, Long.MIN_VALUE })
+    void particleSwarmSearchIsSeededAndDeterministic(long seed) {
+        BarSeries series = series(1d, 2d, 3d, 4d);
+        ParameterResearchReport first = runParticleSwarm(series, seed);
+        ParameterResearchReport second = runParticleSwarm(series, seed);
+        assertThat(second.trainingLeaderboard().stream().map(RankedCandidate::candidateId).toList())
+                .isEqualTo(first.trainingLeaderboard().stream().map(RankedCandidate::candidateId).toList());
+        assertThat(
+                second.trainingLeaderboard().stream().map(RankedCandidate::trainingScore).map(Num::toString).toList())
+                .isEqualTo(first.trainingLeaderboard()
+                        .stream()
+                        .map(RankedCandidate::trainingScore)
+                        .map(Num::toString)
+                        .toList());
+        assertThat(second.counts()).isEqualTo(first.counts());
+        assertThat(second.terminationReason()).isEqualTo(first.terminationReason());
     }
 
     @Test
@@ -1990,6 +2012,17 @@ class ParameterResearchTest {
                 .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
                         .of(window.series().numFactory().numOf(candidate)))
                 .search(SearchPlan.genetic(10, seed, new ParameterResearch.GeneticSettings(4, 1, 2, 0.9, 0.1)))
+                .run();
+    }
+
+    private static ParameterResearchReport runParticleSwarm(BarSeries series, long seed) {
+        return ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 10)
+                .integer("b", 1, 10)
+                .candidate((window, parameters) -> parameters.intValue("a") + parameters.intValue("b"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.particleSwarm(10, seed, new SwarmSettings(4, 0.5, 0.5, 1.49618, 0.2)))
                 .run();
     }
 
