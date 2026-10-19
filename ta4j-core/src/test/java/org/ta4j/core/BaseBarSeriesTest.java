@@ -16,6 +16,10 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InvalidObjectException;
+import java.io.IOException;
+import java.io.ObjectStreamClass;
+import java.io.Serial;
+import java.io.Serializable;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
@@ -1021,35 +1025,111 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void deserializationRejectsInvalidState() throws Exception {
-        BaseBarSeries series = new BaseBarSeriesBuilder().withName("testNullBars").build();
-        java.lang.reflect.Field barsField = BaseBarSeries.class.getDeclaredField("bars");
-        barsField.setAccessible(true);
-        barsField.set(series, null);
+    public void deserializationRejectsMissingState() throws Exception {
+        SerializedSeriesState missingBars = new SerializedSeriesState(numFactory, barBuilderFactory);
+        missingBars.bars = null;
+        assertThrows(InvalidObjectException.class, () -> restoreSeriesState(missingBars));
+        SerializedSeriesState missingNumFactory = new SerializedSeriesState(numFactory, barBuilderFactory);
+        missingNumFactory.numFactory = null;
+        assertThrows(InvalidObjectException.class, () -> restoreSeriesState(missingNumFactory));
+        SerializedSeriesState missingBarBuilder = new SerializedSeriesState(numFactory, barBuilderFactory);
+        missingBarBuilder.barBuilderFactory = null;
+        assertThrows(InvalidObjectException.class, () -> restoreSeriesState(missingBarBuilder));
+    }
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-            oos.writeObject(series);
+    @Test
+    public void deserializationRejectsInvalidMaximumBarCount() throws Exception {
+        for (int maximum : new int[] { 0, -1 }) {
+            SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
+            state.maximumBarCount = maximum;
+            assertThrows(InvalidObjectException.class, () -> restoreSeriesState(state));
         }
+        SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
+        state.bars = new ArrayList<>(testBars.subList(0, 2));
+        state.seriesBeginIndex = 0;
+        state.seriesEndIndex = 1;
+        state.maximumBarCount = 1;
+        assertThrows(InvalidObjectException.class, () -> restoreSeriesState(state));
+    }
 
-        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
-            InvalidObjectException exception = assertThrows(InvalidObjectException.class, ois::readObject);
-            assertEquals("bars list cannot be null", exception.getMessage());
+    @Test
+    public void deserializationRejectsNullBars() throws Exception {
+        SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
+        state.bars = Arrays.asList(testBars.get(0), null);
+        state.seriesBeginIndex = 0;
+        state.seriesEndIndex = 1;
+        assertThrows(InvalidObjectException.class, () -> restoreSeriesState(state));
+    }
+
+    @Test
+    public void deserializationRejectsOverflowingRetainedIndexes() throws Exception {
+        SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
+        state.bars = new ArrayList<>(testBars.subList(0, 2));
+        state.removedBarsCount = Integer.MAX_VALUE;
+        state.seriesBeginIndex = Integer.MAX_VALUE;
+        state.seriesEndIndex = Integer.MAX_VALUE;
+        assertThrows(InvalidObjectException.class, () -> restoreSeriesState(state));
+    }
+
+    @Test
+    public void deserializedBoundedSeriesRetainsOffsetsAndAcceptsNewBars() throws Exception {
+        SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
+        state.bars = new ArrayList<>(testBars.subList(0, 2));
+        state.maximumBarCount = 2;
+        state.removedBarsCount = 7;
+        state.seriesBeginIndex = 7;
+        state.seriesEndIndex = 8;
+        BaseBarSeries restored = restoreSeriesState(state);
+        assertEquals(7, restored.getBeginIndex());
+        assertEquals(8, restored.getEndIndex());
+        assertEquals(testBars.get(1).getClosePrice(), restored.getBar(8).getClosePrice());
+        appendBar(restored);
+        assertEquals(8, restored.getBeginIndex());
+        assertEquals(9, restored.getEndIndex());
+        assertEquals(2, restored.getBarCount());
+        assertEquals(testBars.get(1).getEndTime().plus(testBars.get(1).getTimePeriod()),
+                restored.getBar(9).getEndTime());
+    }
+
+    private BaseBarSeries restoreSeriesState(SerializedSeriesState state) throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ObjectOutputStream output = new ObjectOutputStream(bytes)) {
+            output.writeObject(state);
         }
-
-        BaseBarSeries series2 = new BaseBarSeriesBuilder().withName("testNullNumFactory").build();
-        java.lang.reflect.Field numFactoryField = BaseBarSeries.class.getDeclaredField("numFactory");
-        numFactoryField.setAccessible(true);
-        numFactoryField.set(series2, null);
-
-        ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
-        try (ObjectOutputStream oos2 = new ObjectOutputStream(baos2)) {
-            oos2.writeObject(series2);
+        try (ObjectInputStream input = new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray())) {
+            @Override
+            protected ObjectStreamClass readClassDescriptor() throws IOException, ClassNotFoundException {
+                ObjectStreamClass descriptor = super.readClassDescriptor();
+                return descriptor.getName().equals(SerializedSeriesState.class.getName())
+                        ? ObjectStreamClass.lookup(BaseBarSeries.class)
+                        : descriptor;
+            }
+        }) {
+            return (BaseBarSeries) input.readObject();
         }
+    }
 
-        try (ObjectInputStream ois2 = new ObjectInputStream(new ByteArrayInputStream(baos2.toByteArray()))) {
-            InvalidObjectException exception = assertThrows(InvalidObjectException.class, ois2::readObject);
-            assertEquals("numFactory cannot be null", exception.getMessage());
+    /**
+     * Writes legacy series state without mutating private production fields. Its
+     * fields match the serialized BaseBarSeries schema, not its runtime helpers.
+     */
+    private static final class SerializedSeriesState implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 1L;
+        private long barHistoryRevision;
+        private BarBuilderFactory barBuilderFactory;
+        private List<Bar> bars = new ArrayList<>();
+        private boolean constrained;
+        private int maximumBarCount = Integer.MAX_VALUE;
+        private String name = "serialized-series";
+        private NumFactory numFactory;
+        private int removedBarsCount;
+        private int seriesBeginIndex = -1;
+        private int seriesEndIndex = -1;
+
+        private SerializedSeriesState(NumFactory numFactory, BarBuilderFactory barBuilderFactory) {
+            this.numFactory = numFactory;
+            this.barBuilderFactory = barBuilderFactory;
         }
     }
 }

@@ -101,6 +101,14 @@ public class BaseBarSeries implements BarSeries {
         if (this.barBuilderFactory == null) {
             throw new InvalidObjectException("barBuilderFactory cannot be null");
         }
+        if (this.maximumBarCount <= 0 || this.bars.size() > this.maximumBarCount) {
+            throw new InvalidObjectException("Maximum bar count must be positive and contain all retained bars");
+        }
+        for (Bar bar : this.bars) {
+            if (bar == null) {
+                throw new InvalidObjectException("Retained bars must not contain null");
+            }
+        }
         if (this.bars.isEmpty()) {
             if (this.seriesBeginIndex != -1 || this.seriesEndIndex != -1 || this.removedBarsCount != 0) {
                 throw new InvalidObjectException(
@@ -112,6 +120,9 @@ public class BaseBarSeries implements BarSeries {
             }
             if (this.removedBarsCount < 0 || this.seriesBeginIndex < this.removedBarsCount) {
                 throw new InvalidObjectException("Removed bars count must be non-negative and <= begin index");
+            }
+            if ((long) this.removedBarsCount + this.bars.size() - 1 > Integer.MAX_VALUE) {
+                throw new InvalidObjectException("Retained bar indexes exceed the supported integer range");
             }
             if ((long) this.seriesEndIndex >= (long) this.removedBarsCount + this.bars.size()) {
                 throw new InvalidObjectException("End index must be within the offset bar list");

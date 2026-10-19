@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Fixed
+
+- **Safe bar-series object loading**: `BaseBarSeries` rejects serialized state with missing factories, null bars, invalid capacity or empty-series indexes, and overflowing retained-bar offsets, while preserving valid bounded-series histories.
 
 ## 0.27.0 (2026-10-19)
 
