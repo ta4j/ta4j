@@ -70,7 +70,7 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
     /**
      * {@inheritDoc}
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean hasRecursiveDependencies() {

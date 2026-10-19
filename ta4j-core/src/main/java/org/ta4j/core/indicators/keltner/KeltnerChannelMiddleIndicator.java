@@ -68,7 +68,7 @@ public class KeltnerChannelMiddleIndicator extends CachedIndicator<Num> {
 
     /**
      * @return {@code true}, because the EMA retains full-history state
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean hasRecursiveDependencies() {

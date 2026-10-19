@@ -609,7 +609,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * Retains the historical state consumed by the EMA-weighted branches.
      *
      * @return {@code true}
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean hasRecursiveDependencies() {

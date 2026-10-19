@@ -69,7 +69,7 @@ public class EDMAIndicator extends CachedIndicator<Num> {
 
     /**
      * @return {@code true}, because the displaced EMA retains full-history state
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean hasRecursiveDependencies() {

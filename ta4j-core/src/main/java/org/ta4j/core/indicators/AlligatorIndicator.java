@@ -188,7 +188,7 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
      * The displaced output retains the smoothing chain's historical state.
      *
      * @return {@code true}
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean hasRecursiveDependencies() {

@@ -66,7 +66,7 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
     /**
      * @return {@code true}, because both EMA stages retain full-history state
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean hasRecursiveDependencies() {

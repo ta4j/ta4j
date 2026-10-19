@@ -79,7 +79,7 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
 
     /**
      * @return {@code true}, because all EMA stages retain full-history state
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean hasRecursiveDependencies() {

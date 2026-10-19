@@ -80,7 +80,7 @@ public class ATRIndicator extends CachedIndicator<Num> {
 
     /**
      * @return {@code true}, because the Wilder average retains full-history state
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean hasRecursiveDependencies() {

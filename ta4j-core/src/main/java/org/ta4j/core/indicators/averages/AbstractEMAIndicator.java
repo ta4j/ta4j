@@ -125,7 +125,7 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
      *
      * @param firstRetainedIndex the first bar still available from the series
      * @return the inherited floor, extended by one predecessor when continuous
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {

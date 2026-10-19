@@ -674,7 +674,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      * Retains the historical state consumed by the EMA and ATR branches.
      *
      * @return {@code true}
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean hasRecursiveDependencies() {
@@ -686,7 +686,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      *
      * @param firstRetainedIndex the first retained series index
      * @return the cache floor derived from all three calculated branches
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
