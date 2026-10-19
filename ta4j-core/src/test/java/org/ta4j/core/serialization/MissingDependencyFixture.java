@@ -11,12 +11,17 @@ import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.rules.BooleanRule;
+import org.ta4j.core.rules.ChainRule;
+import org.ta4j.core.rules.FixedRule;
+import org.ta4j.core.rules.NotRule;
+import org.ta4j.core.rules.OverIndicatorRule;
 
 /** Loads real component classes while withholding their optional dependency. */
 final class MissingDependencyFixture implements AutoCloseable {
@@ -101,6 +106,40 @@ final class MissingDependencyFixture implements AutoCloseable {
                     ComponentDescriptor.typeOnly(BrokenRule.class.getName()));
         }
 
+        public static Object deserializeNestedIndicatorRule() {
+            ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                    .withType(OverIndicatorRule.class.getName())
+                    .addComponent(ComponentDescriptor.typeOnly("MissingDependencyIndicator"))
+                    .addComponent(ComponentDescriptor.typeOnly("ClosePriceIndicator"))
+                    .build();
+            return RuleSerialization.fromDescriptor(new BaseBarSeriesBuilder().build(), descriptor);
+        }
+
+        public static Object deserializeNestedRule() {
+            return RuleSerialization.fromDescriptor(new BaseBarSeriesBuilder().build(),
+                    negating(ComponentDescriptor.typeOnly(BrokenRule.class.getName())));
+        }
+
+        public static Object deserializeTwiceNestedRule() {
+            return RuleSerialization.fromDescriptor(new BaseBarSeriesBuilder().build(),
+                    negating(negating(ComponentDescriptor.typeOnly(BrokenRule.class.getName()))));
+        }
+
+        public static Object deserializeChainLinkRule() {
+            ComponentDescriptor initialRule = ComponentDescriptor.builder()
+                    .withType(FixedRule.class.getName())
+                    .withParameters(Map.of("indexes", List.of(1)))
+                    .build();
+            ComponentDescriptor brokenRule = ComponentDescriptor.typeOnly(BrokenRule.class.getName());
+            Map<String, Object> chainLink = Map.of("rule", ComponentSerialization.toJson(brokenRule), "threshold", 0);
+            ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                    .withType(ChainRule.class.getName())
+                    .addComponent(initialRule)
+                    .withParameters(Map.of("chainLinks", List.of(chainLink)))
+                    .build();
+            return RuleSerialization.fromDescriptor(new BaseBarSeriesBuilder().build(), descriptor);
+        }
+
         public static Object deserializeCriterion() {
             return AnalysisCriterionSerialization
                     .fromDescriptor(ComponentDescriptor.typeOnly(BrokenCriterion.class.getName()));
@@ -120,6 +159,10 @@ final class MissingDependencyFixture implements AutoCloseable {
                             .build())
                     .build();
             return StrategySerialization.fromDescriptor(new BaseBarSeriesBuilder().build(), descriptor);
+        }
+
+        private static ComponentDescriptor negating(ComponentDescriptor rule) {
+            return ComponentDescriptor.builder().withType(NotRule.class.getName()).addComponent(rule).build();
         }
     }
 }
