@@ -32,6 +32,7 @@ import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.DefaultOHLCDataset;
 import org.jfree.data.xy.OHLCDataItem;
+import org.jfree.data.xy.OHLCDataset;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
@@ -1718,16 +1719,57 @@ public final class TradingChartFactory {
     }
 
     /**
+     * Serializable snapshot of the bar end times addressed by bar-index charts.
+     * <p>
+     * Bar-index charts keep this neutral representation instead of the caller's
+     * {@link BarSeries}. Any public {@code BarSeries} implementation can therefore
+     * be charted and deep-copied without widening the display serialization
+     * allowlist, and later series mutations never change the chart's date labels.
+     */
+    private static final class BarIndexTimeline implements Serializable {
+
+        private static final long serialVersionUID = 1L;
+        private final int beginIndex;
+        private final long[] endTimeEpochMillis;
+
+        private BarIndexTimeline(BarSeries series) {
+            boolean hasBars = !series.isEmpty() && series.getEndIndex() >= series.getBeginIndex();
+            this.beginIndex = hasBars ? series.getBeginIndex() : 0;
+            this.endTimeEpochMillis = new long[hasBars ? series.getEndIndex() - series.getBeginIndex() + 1 : 0];
+            for (int i = 0; i < endTimeEpochMillis.length; i++) {
+                endTimeEpochMillis[i] = series.getBar(beginIndex + i).getEndTime().toEpochMilli();
+            }
+        }
+
+        private boolean isEmpty() {
+            return endTimeEpochMillis.length == 0;
+        }
+
+        private boolean contains(int barIndex) {
+            return barIndex >= beginIndex && barIndex - beginIndex < endTimeEpochMillis.length;
+        }
+
+        private Date endTime(int barIndex) {
+            return new Date(endTimeEpochMillis[barIndex - beginIndex]);
+        }
+
+        private Date endTimeClamped(int barIndex) {
+            int lastIndex = beginIndex + endTimeEpochMillis.length - 1;
+            return endTime(Math.max(beginIndex, Math.min(barIndex, lastIndex)));
+        }
+    }
+
+    /**
      * Tooltip generator that maps bar-indexed X values back to bar timestamps.
      */
     private static final class BarIndexToolTipGenerator implements XYToolTipGenerator, Serializable {
 
         private static final long serialVersionUID = 1L;
-        private final BarSeries series;
+        private final BarIndexTimeline timeline;
         private final DateFormat dateFormat;
 
         private BarIndexToolTipGenerator(BarSeries series, DateFormat dateFormat) {
-            this.series = series;
+            this.timeline = new BarIndexTimeline(series);
             this.dateFormat = dateFormat;
         }
 
@@ -1735,11 +1777,10 @@ public final class TradingChartFactory {
         public String generateToolTip(XYDataset dataset, int seriesIdx, int item) {
             String seriesName = dataset.getSeriesKey(seriesIdx).toString();
             int barIndex = (int) Math.round(dataset.getXValue(seriesIdx, item));
-            if (barIndex < series.getBeginIndex() || barIndex > series.getEndIndex()) {
+            if (!timeline.contains(barIndex)) {
                 return seriesName;
             }
-            Bar bar = series.getBar(barIndex);
-            String dateStr = dateFormat.format(Date.from(bar.getEndTime()));
+            String dateStr = dateFormat.format(timeline.endTime(barIndex));
             double yValue = dataset.getYValue(seriesIdx, item);
             return String.format("%s: %s, Value: %s", seriesName, dateStr, PRICE_FORMAT.get().format(yValue));
         }
@@ -1751,11 +1792,11 @@ public final class TradingChartFactory {
     private static final class BarIndexOhlcToolTipGenerator implements XYToolTipGenerator, Serializable {
 
         private static final long serialVersionUID = 1L;
-        private final BarSeries series;
+        private final BarIndexTimeline timeline;
         private final DateFormat dateFormat;
 
         private BarIndexOhlcToolTipGenerator(BarSeries series, DateFormat dateFormat) {
-            this.series = series;
+            this.timeline = new BarIndexTimeline(series);
             this.dateFormat = dateFormat;
         }
 
@@ -1763,16 +1804,15 @@ public final class TradingChartFactory {
         public String generateToolTip(XYDataset dataset, int seriesIdx, int item) {
             String seriesName = dataset.getSeriesKey(seriesIdx).toString();
             int barIndex = (int) Math.round(dataset.getXValue(seriesIdx, item));
-            if (barIndex < series.getBeginIndex() || barIndex > series.getEndIndex()) {
+            if (!timeline.contains(barIndex) || !(dataset instanceof OHLCDataset ohlcDataset)) {
                 return seriesName;
             }
-            Bar bar = series.getBar(barIndex);
-            String dateStr = dateFormat.format(Date.from(bar.getEndTime()));
+            String dateStr = dateFormat.format(timeline.endTime(barIndex));
             return String.format("%s --> Date=%s High=%s Low=%s Open=%s Close=%s", seriesName, dateStr,
-                    PRICE_FORMAT.get().format(bar.getHighPrice().doubleValue()),
-                    PRICE_FORMAT.get().format(bar.getLowPrice().doubleValue()),
-                    PRICE_FORMAT.get().format(bar.getOpenPrice().doubleValue()),
-                    PRICE_FORMAT.get().format(bar.getClosePrice().doubleValue()));
+                    PRICE_FORMAT.get().format(ohlcDataset.getHighValue(seriesIdx, item)),
+                    PRICE_FORMAT.get().format(ohlcDataset.getLowValue(seriesIdx, item)),
+                    PRICE_FORMAT.get().format(ohlcDataset.getOpenValue(seriesIdx, item)),
+                    PRICE_FORMAT.get().format(ohlcDataset.getCloseValue(seriesIdx, item)));
         }
     }
 
@@ -1782,28 +1822,19 @@ public final class TradingChartFactory {
     private static final class BarIndexDateFormat extends NumberFormat implements Serializable {
 
         private static final long serialVersionUID = 1L;
-        private final BarSeries series;
+        private final BarIndexTimeline timeline;
         private final DateFormat dateFormat;
-        private final int beginIndex;
-        private final int endIndex;
 
         private BarIndexDateFormat(BarSeries series, DateFormat dateFormat) {
-            this.series = series;
+            this.timeline = new BarIndexTimeline(series);
             this.dateFormat = dateFormat;
-            this.beginIndex = series.getBeginIndex();
-            this.endIndex = series.getEndIndex();
         }
 
         @Override
         public StringBuffer format(double number, StringBuffer toAppendTo, FieldPosition pos) {
-            int index = (int) Math.round(number);
-            if (index < beginIndex) {
-                index = beginIndex;
-            } else if (index > endIndex) {
-                index = endIndex;
+            if (!timeline.isEmpty()) {
+                toAppendTo.append(dateFormat.format(timeline.endTimeClamped((int) Math.round(number))));
             }
-            Bar bar = series.getBar(index);
-            toAppendTo.append(dateFormat.format(Date.from(bar.getEndTime())));
             return toAppendTo;
         }
 
