@@ -150,6 +150,15 @@ final class OffsetNumBuffer {
         return values.size();
     }
 
+    /**
+     * Checks whether the buffer is empty.
+     *
+     * @return {@code true} if the buffer contains no elements
+     */
+    boolean isEmpty() {
+        return values.isEmpty();
+    }
+
     Stream<Num> stream() {
         return values.stream();
     }

@@ -1077,7 +1077,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      *
      * @param index the exact cached index
      * @return the cached value, or {@code null} when absent or cached as null
-     * @since 0.26.1
+     * @since 0.27.1
      */
     protected final T getCachedValueOrNull(int index) {
         return cache.get(index);
@@ -1415,5 +1415,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     CachedBuffer<T> getCache() {
         return cache;
+    }
+
+    /**
+     * Checks whether the specified index is already computed and cached.
+     *
+     * @param index the bar index
+     * @return true if the index is cached, false otherwise
+     */
+    protected boolean isCached(int index) {
+        return cache.isCached(index);
     }
 }
