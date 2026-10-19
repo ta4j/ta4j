@@ -13,6 +13,11 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -1013,5 +1018,38 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
                 assertThrows(IllegalStateException.class, () -> seriesWithBars.withReadLock((Runnable) () -> {
                     throw failure;
                 })));
+    }
+
+    @Test
+    public void deserializationRejectsInvalidState() throws Exception {
+        BaseBarSeries series = new BaseBarSeriesBuilder().withName("testNullBars").build();
+        java.lang.reflect.Field barsField = BaseBarSeries.class.getDeclaredField("bars");
+        barsField.setAccessible(true);
+        barsField.set(series, null);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(series);
+        }
+
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+            InvalidObjectException exception = assertThrows(InvalidObjectException.class, ois::readObject);
+            assertEquals("bars list cannot be null", exception.getMessage());
+        }
+
+        BaseBarSeries series2 = new BaseBarSeriesBuilder().withName("testNullNumFactory").build();
+        java.lang.reflect.Field numFactoryField = BaseBarSeries.class.getDeclaredField("numFactory");
+        numFactoryField.setAccessible(true);
+        numFactoryField.set(series2, null);
+
+        ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos2 = new ObjectOutputStream(baos2)) {
+            oos2.writeObject(series2);
+        }
+
+        try (ObjectInputStream ois2 = new ObjectInputStream(new ByteArrayInputStream(baos2.toByteArray()))) {
+            InvalidObjectException exception = assertThrows(InvalidObjectException.class, ois2::readObject);
+            assertEquals("numFactory cannot be null", exception.getMessage());
+        }
     }
 }

@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.time.Instant;
@@ -84,8 +85,37 @@ public class BaseBarSeries implements BarSeries {
         // Transient fields are null after deserialization; restore the logger
         // before any retained-bar access can reach the trace-logging branch.
         this.log = LoggerFactory.getLogger(getClass());
+        validateDeserializedState();
         if (!defersRetainedBarMutationTracking()) {
             attachRetainedBarMutationTracking();
+        }
+    }
+
+    private void validateDeserializedState() throws InvalidObjectException {
+        if (this.bars == null) {
+            throw new InvalidObjectException("bars list cannot be null");
+        }
+        if (this.numFactory == null) {
+            throw new InvalidObjectException("numFactory cannot be null");
+        }
+        if (this.barBuilderFactory == null) {
+            throw new InvalidObjectException("barBuilderFactory cannot be null");
+        }
+        if (this.bars.isEmpty()) {
+            if (this.seriesBeginIndex != -1 || this.seriesEndIndex != -1 || this.removedBarsCount != 0) {
+                throw new InvalidObjectException(
+                        "Empty bar series must have beginIndex=-1, endIndex=-1, and removedBarsCount=0");
+            }
+        } else {
+            if (this.seriesEndIndex < this.seriesBeginIndex - 1) {
+                throw new InvalidObjectException("End index must be >= to begin index - 1");
+            }
+            if (this.removedBarsCount < 0 || this.seriesBeginIndex < this.removedBarsCount) {
+                throw new InvalidObjectException("Removed bars count must be non-negative and <= begin index");
+            }
+            if ((long) this.seriesEndIndex >= (long) this.removedBarsCount + this.bars.size()) {
+                throw new InvalidObjectException("End index must be within the offset bar list");
+            }
         }
     }
 
