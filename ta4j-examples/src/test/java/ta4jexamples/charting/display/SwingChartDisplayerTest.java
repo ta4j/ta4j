@@ -10,11 +10,23 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+
+import ta4jexamples.charting.ChartingTestFixtures;
+import ta4jexamples.charting.compose.TradingChartFactory;
+import ta4jexamples.charting.builder.TimeAxisMode;
 
 import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GraphicsEnvironment;
 import java.util.UUID;
+import java.io.InvalidClassException;
+import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.JFrame;
 
@@ -50,6 +62,49 @@ class SwingChartDisplayerTest {
         System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
         System.clearProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY);
         System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+    }
+
+    @ParameterizedTest
+    @EnumSource(TimeAxisMode.class)
+    void testDeepCopyPreservesTradingChart(TimeAxisMode timeAxisMode) throws Exception {
+        BarSeries series = new BaseBarSeriesBuilder().withBars(ChartingTestFixtures.standardDailySeries().getBarData())
+                .build();
+        JFreeChart chart = new TradingChartFactory().createTradingRecordChart(series, "Trades",
+                ChartingTestFixtures.completedTradeRecord(series), timeAxisMode);
+        JFreeChart copy = displayer.deepCopyChart(chart);
+        assertNotSame(chart, copy);
+        assertEquals(chart.getTitle().getText(), copy.getTitle().getText());
+        assertEquals(chart.getXYPlot().getDataset().getYValue(0, 2), copy.getXYPlot().getDataset().getYValue(0, 2));
+        assertEquals(chart.getXYPlot().getDomainAxis().getLabel(), copy.getXYPlot().getDomainAxis().getLabel());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "maxdepth=1", "!org.jfree.chart.JFreeChart;*" })
+    void testDeepCopyPreservesJvmFilter(String filter) throws Exception {
+        String javaExecutable = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        String classpath = System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
+        Process process = new ProcessBuilder(javaExecutable, "-Djdk.serialFilter=" + filter, "-cp", classpath,
+                RestrictedFilterProbe.class.getName()).redirectErrorStream(true).start();
+        try {
+            assertTrue(process.waitFor(15, TimeUnit.SECONDS), "filter probe did not terminate");
+            String output = new String(process.getInputStream().readAllBytes(),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            assertEquals(0, process.exitValue(), output);
+        } finally {
+            process.destroyForcibly();
+        }
+    }
+
+    public static final class RestrictedFilterProbe {
+        public static void main(String[] args) throws Exception {
+            JFreeChart chart = ChartFactory.createLineChart("Restricted", "X", "Y", null);
+            try {
+                new SwingChartDisplayer().deepCopyChart(chart);
+            } catch (InvalidClassException expected) {
+                return;
+            }
+            throw new AssertionError("JVM-wide chart restriction was discarded");
+        }
     }
 
     @Test
@@ -464,15 +519,6 @@ class SwingChartDisplayerTest {
         } finally {
             System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
         }
-    }
-
-    @Test
-    void testDeepCopyChartWithFilter() {
-        JFreeChart chart = ChartFactory.createLineChart("Test Chart", "X", "Y", null);
-        assertDoesNotThrow(() -> {
-            JFreeChart copy = displayer.deepCopyChart(chart);
-            assertNotNull(copy, "Deep copy should succeed for valid JFreeChart");
-        });
     }
 
     private JFrame findFrameByTitle(String title) {

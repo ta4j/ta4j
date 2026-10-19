@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Fixed
+
+- **Safe deep copies of trading charts**: Swing chart display accepts the application's candlestick renderers, tooltips and bar-index data while rejecting unrelated serialized classes and preserving JVM-wide deserialization restrictions and resource limits.
 
 ## 0.27.0 (2026-10-19)
 
