@@ -1072,6 +1072,27 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void deserializedExhaustedRetainedOffsetRejectsAppendWithoutMutation() throws Exception {
+        SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
+        state.bars = new ArrayList<>(List.of(testBars.get(0)));
+        state.removedBarsCount = Integer.MAX_VALUE;
+        state.seriesBeginIndex = Integer.MAX_VALUE;
+        state.seriesEndIndex = Integer.MAX_VALUE - 1;
+        BaseBarSeries restored = restoreSeriesState(state);
+        Bar retainedBar = restored.getBar(Integer.MAX_VALUE);
+        long revision = restored.getBarHistoryRevision();
+
+        assertThrows(ArithmeticException.class, () -> restored.addBar(testBars.get(1)));
+
+        assertEquals(List.of(retainedBar), restored.getBarData());
+        assertSame(retainedBar, restored.getBar(Integer.MAX_VALUE));
+        assertEquals(Integer.MAX_VALUE, restored.getBeginIndex());
+        assertEquals(Integer.MAX_VALUE - 1, restored.getEndIndex());
+        assertEquals(Integer.MAX_VALUE, restored.getRemovedBarsCount());
+        assertEquals(revision, restored.getBarHistoryRevision());
+    }
+
+    @Test
     public void deserializationRejectsInvalidHistoryRevisions() throws Exception {
         for (long revision : new long[] { -1L, Long.MIN_VALUE, Long.MAX_VALUE }) {
             SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);

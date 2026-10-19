@@ -450,8 +450,8 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * @throws NullPointerException if {@code bar} is {@code null}
-     * @throws ArithmeticException  if appending would advance the absolute index
-     *                              beyond {@link Integer#MAX_VALUE}
+     * @throws ArithmeticException  if appending would advance a retained or logical
+     *                              absolute index beyond {@link Integer#MAX_VALUE}
      */
     @Override
     @SuppressFBWarnings(value = "AT_STALE_THREAD_WRITE_OF_PRIMITIVE", justification = "BaseBarSeries structural indexes are intentionally single-threaded; concurrent callers must use ConcurrentBarSeries.")
@@ -471,7 +471,8 @@ public class BaseBarSeries implements BarSeries {
                 recordBarHistoryChange(this.seriesEndIndex);
                 return;
             }
-            if (this.seriesEndIndex == Integer.MAX_VALUE) {
+            if (this.seriesEndIndex == Integer.MAX_VALUE
+                    || (long) this.removedBarsCount + this.bars.size() > Integer.MAX_VALUE) {
                 throw new ArithmeticException("Bar series index overflow");
             }
             final int lastBarIndex = this.bars.size() - 1;
