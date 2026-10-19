@@ -239,11 +239,11 @@ public interface RebalancePolicy {
     final class Context {
 
         private final PortfolioSeries series;
-        private final int index;
-        private final Num[] prices;
-        private final Num[] units;
-        private final Num cash;
-        private final Num portfolioValue;
+        private int index;
+        private Num[] prices;
+        private Num[] units;
+        private Num cash;
+        private Num portfolioValue;
         private final Num[] targetWeights;
         private Num maxDrift;
 
@@ -256,6 +256,15 @@ public interface RebalancePolicy {
             this.cash = cash;
             this.portfolioValue = portfolioValue;
             this.targetWeights = targetWeights;
+        }
+
+        void update(int index, Num[] prices, Num[] units, Num cash, Num portfolioValue) {
+            this.index = index;
+            this.prices = prices;
+            this.units = units;
+            this.cash = cash;
+            this.portfolioValue = portfolioValue;
+            this.maxDrift = null;
         }
 
         /**

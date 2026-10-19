@@ -3,61 +3,56 @@
  */
 package org.ta4j.core.portfolio;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NumFactory;
 
-/**
- * Benchmark for PortfolioSeriesManager allocation check and run execution over
- * large asset sets.
- */
 @Tag("benchmark")
-class PortfolioSeriesManagerBenchmarkTest {
-
-    private static final Logger LOG = LogManager.getLogger(PortfolioSeriesManagerBenchmarkTest.class);
-
-    private static final int ASSET_COUNT = 500;
-    private static final int ITERATIONS = 5_000;
+public class PortfolioSeriesManagerBenchmarkTest {
 
     @Test
-    void benchmarkExecutionOverLargePortfolio() {
-        List<BarSeries> seriesList = new ArrayList<>(ASSET_COUNT);
-        Map<String, Double> weights = new LinkedHashMap<>();
-        double weight = 1.0 / ASSET_COUNT;
+    public void benchmarkPortfolioSeriesManagerRun() {
+        int barCount = 10_000;
+        int assetCount = 5;
+        NumFactory numFactory = DoubleNumFactory.getInstance();
 
-        for (int i = 0; i < ASSET_COUNT; i++) {
-            String assetName = "ASSET_" + i;
-            seriesList.add(PortfolioFixtures.series(assetName, 100.0, 105.0));
-            weights.put(assetName, weight);
+        BarSeries[] assetSeries = new BarSeries[assetCount];
+        Map<String, Double> weightsMap = new LinkedHashMap<>();
+
+        for (int a = 0; a < assetCount; a++) {
+            String name = "ASSET_" + a;
+            String[] closes = new String[barCount];
+            double basePrice = 100.0 + a * 10.0;
+            for (int i = 0; i < barCount; i++) {
+                closes[i] = Double.toString(basePrice + Math.sin(i * 0.1 + a));
+            }
+            assetSeries[a] = PortfolioFixtures.series(name, numFactory, 0, closes);
+            weightsMap.put(name, 1.0 / assetCount);
         }
 
-        PortfolioSeries series = new PortfolioSeries(seriesList);
-        PortfolioSeriesManager manager = new PortfolioSeriesManager(series);
-        PortfolioAllocation allocation = new PortfolioAllocation(weights);
+        PortfolioSeries portfolioSeries = new PortfolioSeries(assetSeries);
+        PortfolioSeriesManager manager = new PortfolioSeriesManager(portfolioSeries);
+        PortfolioAllocation allocation = new PortfolioAllocation(weightsMap);
 
         // Warmup
-        for (int i = 0; i < 200; i++) {
-            manager.run(allocation, 10_000);
+        for (int i = 0; i < 5; i++) {
+            manager.run(allocation, 100_000, RebalancePolicy.everyBar());
         }
 
         long start = System.nanoTime();
-        PortfolioExecutionResult lastResult = null;
-        for (int i = 0; i < ITERATIONS; i++) {
-            lastResult = manager.run(allocation, 10_000);
+        int iterations = 20;
+        for (int i = 0; i < iterations; i++) {
+            manager.run(allocation, 100_000, RebalancePolicy.everyBar());
         }
-        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+        long elapsed = System.nanoTime() - start;
 
-        assertNotNull(lastResult);
-        LOG.info("PortfolioSeriesManager benchmark: {} assets x {} iterations -> {} ms", ASSET_COUNT, ITERATIONS,
-                elapsedMs);
+        System.out.printf(
+                "PortfolioSeriesManagerBenchmark: %d iterations over %d bars x %d assets took %.3f ms (avg %.3f ms/run)%n",
+                iterations, barCount, assetCount, elapsed / 1e6, (elapsed / 1e6) / iterations);
     }
 }

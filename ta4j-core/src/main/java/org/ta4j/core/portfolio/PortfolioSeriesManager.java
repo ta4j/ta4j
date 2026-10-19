@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.portfolio;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -212,16 +213,22 @@ public final class PortfolioSeriesManager {
             Num cash = initialCash;
             Num previousValue = initialCash;
             List<PortfolioSnapshot> snapshots = new ArrayList<>(series.getBarCount());
+            Num[] prices = new Num[assetCount];
+            List<Instant> endTimes = series.getEndTimes();
+
+            RebalancePolicy.Context context = new RebalancePolicy.Context(series, 0, prices, units, cash, zero,
+                    targetWeights);
 
             for (int index = 0; index < series.getBarCount(); index++) {
-                Num[] prices = pricesAt(index);
+                pricesAt(index, prices);
                 Num preTradeValue = portfolioValue(cash, units, prices);
                 Num transactionCost = zero;
                 Num tradedNotional = zero;
                 RebalanceStatus status = RebalanceStatus.NOT_SCHEDULED;
 
-                if (rebalancePolicy.shouldRebalance(new RebalancePolicy.Context(series, index, prices, units, cash,
-                        preTradeValue, targetWeights))) {
+                context.update(index, prices, units, cash, preTradeValue);
+
+                if (rebalancePolicy.shouldRebalance(context)) {
                     Rebalance rebalance = new Rebalance(prices, units, cash, preTradeValue);
                     rebalance.execute();
                     units = rebalance.units;
@@ -236,16 +243,15 @@ public final class PortfolioSeriesManager {
                 Num periodReturn = previousValue.isZero() ? zero
                         : portfolioValue.minus(previousValue).dividedBy(previousValue);
                 Num turnover = preTradeValue.isZero() ? zero : tradedNotional.dividedBy(preTradeValue);
-                snapshots.add(new PortfolioSnapshot(index, series.getEndTimes().get(index), toMap(prices), holdings,
-                        cash, portfolioValue, periodReturn, transactionCost, tradedNotional, turnover, status));
+                snapshots.add(new PortfolioSnapshot(index, endTimes.get(index), toMap(prices), holdings, cash,
+                        portfolioValue, periodReturn, transactionCost, tradedNotional, turnover, status));
                 previousValue = portfolioValue;
             }
 
             return new PortfolioExecutionResult(series, allocation, initialCash, snapshots);
         }
 
-        private Num[] pricesAt(int index) {
-            Num[] prices = new Num[assets.size()];
+        private void pricesAt(int index, Num[] prices) {
             for (int position = 0; position < prices.length; position++) {
                 Num price = series.closePrice(position, index);
                 if (!Num.isFinite(price) || price.isNegativeOrZero()) {
@@ -254,7 +260,6 @@ public final class PortfolioSeriesManager {
                 }
                 prices[position] = price;
             }
-            return prices;
         }
 
         private Num portfolioValue(Num cash, Num[] units, Num[] prices) {
