@@ -93,12 +93,18 @@ public final class AnalysisCriterionSerialization {
      *
      * @param descriptor descriptor
      * @return reconstructed criterion
+     * @throws IllegalStateException if a resolved criterion has an unavailable
+     *                               dependency
      * @since 0.23.1
      */
     public static AnalysisCriterion fromDescriptor(ComponentDescriptor descriptor) {
         Objects.requireNonNull(descriptor, "descriptor");
         Class<? extends AnalysisCriterion> criterionType = resolveCriterionClass(descriptor.getType());
-        return instantiate(criterionType, descriptor);
+        try {
+            return instantiate(criterionType, descriptor);
+        } catch (LinkageError ex) {
+            throw new IllegalStateException("Failed to construct analysis criterion: " + criterionType.getName(), ex);
+        }
     }
 
     /**

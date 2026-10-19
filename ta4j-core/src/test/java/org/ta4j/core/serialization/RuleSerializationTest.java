@@ -65,6 +65,15 @@ import org.ta4j.core.rules.XorRule;
  */
 public class RuleSerializationTest {
 
+    @Test
+    public void fromDescriptorWrapsMissingConstructorDependency() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeRule"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class);
+        }
+    }
+
     // ==================== Nested Components Tests ====================
 
     /**

@@ -249,6 +249,9 @@ public final class RuleSerialization {
      * @throws RuleSerializationException if the rule type does not support
      *                                    deserialization (e.g., no matching
      *                                    constructor can be found)
+     * @throws IllegalStateException      if construction fails, including an
+     *                                    unavailable dependency of the resolved
+     *                                    type
      * @throws NullPointerException       if series or descriptor is null
      */
     public static Rule fromDescriptor(BarSeries series, ComponentDescriptor descriptor,
@@ -263,11 +266,11 @@ public final class RuleSerialization {
 
         Class<? extends Rule> ruleType = resolveRuleType(type);
 
-        // Infer constructor signature from children and parameters
-        ReconstructionContext context = new ReconstructionContext(series, descriptor, parentContext);
-        DeserializationMatch match = inferConstructor(ruleType, descriptor, context);
-
         try {
+            // Infer constructor signature from children and parameters.
+            ReconstructionContext context = new ReconstructionContext(series, descriptor, parentContext);
+            DeserializationMatch match = inferConstructor(ruleType, descriptor, context);
+
             try {
                 match.constructor.setAccessible(true);
             } catch (SecurityException ex) {
@@ -300,7 +303,7 @@ public final class RuleSerialization {
             }
 
             return rule;
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | LinkageError ex) {
             throw new IllegalStateException("Failed to construct rule: " + ruleType.getName(), ex);
         }
     }

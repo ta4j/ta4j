@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Fixed
+
+- **Resilient component deserialization**: indicator, rule, strategy and criterion reconstruction reports unavailable optional dependencies through its serialization exceptions, including dependencies resolved only when inspecting constructors or factory methods. Component descriptor resolution treats unloadable types as unresolved instead of leaking `LinkageError`.
 
 ## 0.27.0 (2026-10-19)
 
