@@ -24,7 +24,6 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.ConcurrentBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -205,12 +204,39 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
         assertFreshRetainedReference(series, continued);
     }
 
+    @Test
+    public void restartsTheCompleteWarmupAfterSeedingAtAPositiveRetainedHead() {
+        for (boolean readBeforeGap : new boolean[] { false, true }) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            series.setMaximumBarCount(12);
+            KlingerVolumeOscillatorIndicator actual = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+            for (int index = 0; index < 32; index++) {
+                appendContinuationBar(series, index + 45);
+                if (readBeforeGap && index == 15) {
+                    actual.getValue(index);
+                }
+            }
+            if (!readBeforeGap) {
+                actual = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+            }
+            int beginIndex = series.getBeginIndex();
+            assertThat(Num.isNaNOrNull(actual.getValue(beginIndex + 5))).isTrue();
+            assertThat(Num.isFinite(actual.getValue(beginIndex + 6))).isTrue();
+            assertFreshRetainedReference(series, actual);
+        }
+    }
+
     private void assertFreshRetainedReference(BarSeries series, KlingerVolumeOscillatorIndicator actual) {
-        BarSeries independent = ConstrainedSeriesSupport.retainedCopy("retained-reference", series);
+        BarSeries independent = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(series.getBarData())
+                .build();
         KlingerVolumeOscillatorIndicator reference = new KlingerVolumeOscillatorIndicator(independent, 3, 5);
-        assertSameNumOrNaN(reference.getValue(series.getEndIndex()), actual.getValue(series.getEndIndex()));
-        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
-            assertSameNumOrNaN(reference.getValue(index), actual.getValue(index));
+        int beginIndex = series.getBeginIndex();
+        assertThat(actual.getCountOfUnstableBars()).isEqualTo(6);
+        assertSameNumOrNaN(reference.getValue(series.getEndIndex() - beginIndex),
+                actual.getValue(series.getEndIndex()));
+        for (int index = beginIndex; index <= series.getEndIndex(); index++) {
+            assertSameNumOrNaN(reference.getValue(index - beginIndex), actual.getValue(index));
         }
     }
 

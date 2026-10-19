@@ -39,8 +39,9 @@ import org.ta4j.core.num.Num;
  * must remain available for the current and previous price/measurement inputs;
  * the chain is primed even during public warm-up. Previously computed retained
  * values therefore keep their full-history meaning. A new instance or a gap
- * that loses its predecessor instead starts from retained history. Custom input
- * indicators that explicitly reanchor after pruning reset the dependent chain.
+ * that loses its predecessor instead starts from retained history and completes
+ * warm-up relative to that new seed. Custom input indicators that explicitly
+ * reanchor after pruning reset the dependent chain and its warm-up.
  *
  * @see <a href=
  *      "https://www.tradingview.com/support/solutions/43000589157-klinger-oscillator/">TradingView:
@@ -83,6 +84,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
     private final transient VolumeForceIndicator volumeForceIndicator;
     private final transient EMAIndicator shortEmaIndicator;
     private final transient EMAIndicator longEmaIndicator;
+    private final transient ChainStartIndicator chainStartIndicator;
 
     /**
      * Constructor using canonical periods (34, 55).
@@ -203,6 +205,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         this.volumeForceIndicator = config.volumeForceIndicator();
         this.shortEmaIndicator = config.shortEmaIndicator();
         this.longEmaIndicator = config.longEmaIndicator();
+        this.chainStartIndicator = new ChainStartIndicator(shortEmaIndicator, longEmaIndicator);
     }
 
     private static Config validatedConfig(final BarSeries series, final int shortPeriod, final int longPeriod,
@@ -253,10 +256,12 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
             volumeForceIndicator.getValue(index);
             Num shortValue = shortEmaIndicator.getValue(index);
             Num longValue = longEmaIndicator.getValue(index);
+            int chainStartIndex = chainStartIndicator.getValue(index);
             if (getBarSeries().getBeginIndex() != beginIndex) {
                 continue;
             }
-            if (index < getCountOfUnstableBars() || isInvalid(shortValue) || isInvalid(longValue)) {
+            if (index < (long) chainStartIndex + getCountOfUnstableBars() || isInvalid(shortValue)
+                    || isInvalid(longValue)) {
                 return NaN;
             }
             return shortValue.minus(longValue);
@@ -267,7 +272,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * Retains oscillator values derived from the continued trend and EMA chains.
      *
      * @return {@code true}
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean hasRecursiveDependencies() {
@@ -275,7 +280,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Returns the first stable index for Klinger oscillator values.
+     * Returns the number of unstable bars following the current chain's seed.
      *
      * @return unstable bar count
      */
@@ -328,6 +333,33 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
             TrendDirectionIndicator trendDirectionIndicator,
             CumulativeMeasurementIndicator cumulativeMeasurementIndicator, VolumeForceIndicator volumeForceIndicator,
             EMAIndicator shortEmaIndicator, EMAIndicator longEmaIndicator) {
+    }
+
+    /**
+     * Carries the retained chain's origin through the same cache lifecycle as its
+     * EMAs, without exposing mutable warm-up state from either smoothing component.
+     */
+    private static final class ChainStartIndicator extends RecursiveCachedIndicator<Integer> {
+
+        private ChainStartIndicator(Indicator<Num> shortEma, Indicator<Num> longEma) {
+            super(shortEma, longEma);
+        }
+
+        @Override
+        protected Integer calculate(int index) {
+            while (true) {
+                int beginIndex = getBarSeries().getBeginIndex();
+                Integer start = index <= beginIndex ? Integer.valueOf(beginIndex) : getValue(index - 1);
+                if (getBarSeries().getBeginIndex() == beginIndex) {
+                    return start;
+                }
+            }
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
     }
 
     private static final class CumulativeMeasurementIndicator extends RecursiveCachedIndicator<Num> {

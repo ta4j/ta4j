@@ -2,7 +2,7 @@
 
 ### Fixed
 
-- **Klinger oscillator stays consistent as live history rolls forward (CF-722)**: `KlingerVolumeOscillatorIndicator` now preserves its full-history values when a bounded series drops old bars, including negative-trend plateaus, reversals and recovery after zero volume. Read it after each append and retain at least two bars; warm-up no longer prevents the underlying chain from consuming those inputs. Fresh instances and gaps without a predecessor still seed from retained history, and custom sources that explicitly reset still rebuild the whole dependent chain. Moving-series values differ from 0.26.0.
+- **Klinger oscillator stays consistent as live history rolls forward (CF-722)**: `KlingerVolumeOscillatorIndicator` now preserves its full-history values when a bounded series drops old bars, including negative-trend plateaus, reversals and recovery after zero volume. Read it after each append and retain at least two bars; warm-up no longer prevents the underlying chain from consuming those inputs. Fresh instances and gaps without a predecessor seed from retained history and complete their full warm-up again; custom sources that explicitly reset rebuild the whole dependent chain and its warm-up. Moving-series values differ from 0.26.0.
 
 ## 0.27.0 (2026-10-19)
 
