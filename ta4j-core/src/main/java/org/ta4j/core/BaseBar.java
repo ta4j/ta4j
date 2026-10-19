@@ -747,6 +747,10 @@ public class BaseBar implements Bar {
         if (timePeriod == null || beginTime == null || endTime == null) {
             throw new InvalidObjectException("Time period, begin time, and end time must not be null");
         }
+        if (timePeriod.compareTo(Duration.between(beginTime, endTime)) != 0) {
+            throw new InvalidObjectException(
+                    "The calculated timePeriod between beginTime and endTime does not match the given timePeriod.");
+        }
         try {
             validatePrices(openPrice, highPrice, lowPrice, closePrice);
         } catch (IllegalArgumentException e) {

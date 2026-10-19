@@ -167,6 +167,18 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void testSerializedBarWithInconsistentTimePeriodIsRejected() throws Exception {
+        final BaseBar bar = new BaseBar(Duration.ofSeconds(123456789L), endTime.minusSeconds(123456789L), endTime,
+                numFactory.numOf(10), numFactory.numOf(20), numFactory.numOf(5), numFactory.numOf(15),
+                numFactory.zero(), numFactory.zero(), 0);
+        final byte[] serialized = serialize(bar);
+        final int periodOffset = indexOfLong(serialized, 123456789L);
+        assertTrue(periodOffset >= 0, "serialized stream must contain the period");
+        writeLong(serialized, periodOffset, 123456788L);
+        assertThrows(InvalidObjectException.class, () -> deserialize(serialized));
+    }
+
+    @Test
     public void testSerializedBarViolatingOhlcInvariantIsRejected() throws Exception {
         // Use a DoubleNum-backed bar so the serialized stream contains raw double
         // fields that can be patched deterministically.
