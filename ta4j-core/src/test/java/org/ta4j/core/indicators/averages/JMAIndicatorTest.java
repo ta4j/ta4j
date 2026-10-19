@@ -340,6 +340,31 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void unreadTerminalMutationContinuesOnlyWhileItsInputRemainsRetained() {
+        for (int capacity : new int[] { 1, 2 }) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10).build();
+            moving.setMaximumBarCount(capacity);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10).build();
+            JMAIndicator actual = new JMAIndicator(new ClosePriceIndicator(moving), 3, 50, 2);
+            JMAIndicator expected = new JMAIndicator(new ClosePriceIndicator(unbounded), 3, 50, 2);
+            assertNumEquals(expected.getValue(0), actual.getValue(0));
+            moving.barBuilder().closePrice(30).add();
+            unbounded.barBuilder().closePrice(30).add();
+            assertNumEquals(expected.getValue(1), actual.getValue(1));
+            moving.addPrice(80);
+            unbounded.addPrice(80);
+            moving.barBuilder().closePrice(15).add();
+            unbounded.barBuilder().closePrice(15).add();
+            if (capacity == 1) {
+                // Neither the invalidated predecessor nor its finalized input exists.
+                assertNumEquals(15, actual.getValue(2));
+            } else {
+                assertNumEquals(expected.getValue(2), actual.getValue(2));
+            }
+        }
+    }
+
+    @Test
     public void freshMovingSeriesSeedsAtRetainedHead() {
         BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 30, 12, 28, 15, 24, 17, 31)

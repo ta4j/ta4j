@@ -21,8 +21,12 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * On a bounded series, retained values keep the full-history recurrence. Read
  * each appended bar to continue the chain at a cost independent of the retained
- * window, including a one-bar window. A fresh indicator, or a reader that loses
- * every cached predecessor, seeds from the first retained bar instead.
+ * window, including a one-bar window. Finalized input mutations must also be
+ * consumed before their bars are evicted: with one-bar retention, read after
+ * the final mutation and before appending, or retain at least two bars so the
+ * previous bar can be recomputed on the next read. A fresh indicator, or a
+ * reader that loses every valid cached predecessor and its required inputs,
+ * seeds from the first retained bar instead.
  *
  */
 public class JMAIndicator extends CachedIndicator<Num> {
@@ -65,7 +69,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
      * Retains full-history values carried by the shared recursive state.
      *
      * @return {@code true}
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean hasRecursiveDependencies() {

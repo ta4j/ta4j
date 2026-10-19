@@ -2,7 +2,7 @@
 
 ### Fixed
 
-- **JMA continues across moving-series head advances**: `JMAIndicator` now retains its full-history recurrence when bounded series evict old bars, even with `maximumBarCount = 1`, so live and retained values match an unbounded series when read every bar. Terminal edits feed the next appended state. Each append computes only the new state instead of replaying the retained window; a fresh indicator still seeds at the first retained bar.
+- **JMA continues across moving-series head advances**: `JMAIndicator` now retains its full-history recurrence when bounded series evict old bars, including `maximumBarCount = 1`, so live and retained values match an unbounded series when each appended bar and finalized input mutation is read before eviction. With one-bar retention, read after the final mutation before appending, or retain at least two bars to recompute the previous input. Each append computes only the new state instead of replaying the retained window; a fresh indicator or a chain whose required inputs were lost seeds at the first retained bar.
 
 ## 0.27.0 (2026-10-19)
 
