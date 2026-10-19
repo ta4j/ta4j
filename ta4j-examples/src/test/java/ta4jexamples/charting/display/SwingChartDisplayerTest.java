@@ -16,6 +16,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.ConcurrentBarSeriesBuilder;
+import org.ta4j.core.backtest.BacktestExecutionResult;
+import org.ta4j.core.backtest.BacktestRuntimeReport;
 
 import ta4jexamples.charting.ChartingTestFixtures;
 import ta4jexamples.charting.compose.TradingChartFactory;
@@ -24,6 +26,7 @@ import ta4jexamples.charting.builder.TimeAxisMode;
 import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GraphicsEnvironment;
+import java.util.List;
 import java.util.UUID;
 import java.io.InvalidClassException;
 import java.nio.file.Path;
@@ -107,6 +110,27 @@ class SwingChartDisplayerTest {
                         .getRenderer()
                         .getDefaultToolTipGenerator()
                         .generateToolTip(copy.getXYPlot().getDataset(), 0, lastItem));
+    }
+
+    @ParameterizedTest
+    @EnumSource(TimeAxisMode.class)
+    void testDeepCopyPreservesImmutableBacktestSnapshot(TimeAxisMode timeAxisMode) throws Exception {
+        BarSeries source = ChartingTestFixtures.standardDailySeries();
+        BarSeries snapshot = new BacktestExecutionResult(source, List.of(), BacktestRuntimeReport.empty()).barSeries();
+        JFreeChart chart = new TradingChartFactory().createTradingRecordChart(snapshot, "Backtest snapshot",
+                ChartingTestFixtures.completedTradeRecord(snapshot), timeAxisMode);
+        JFreeChart copy = displayer.deepCopyChart(chart);
+        assertNotSame(chart.getXYPlot().getDataset(), copy.getXYPlot().getDataset());
+        assertEquals(chart.getXYPlot().getDataset().getYValue(0, 2), copy.getXYPlot().getDataset().getYValue(0, 2));
+        assertEquals(
+                chart.getXYPlot()
+                        .getRenderer()
+                        .getDefaultToolTipGenerator()
+                        .generateToolTip(chart.getXYPlot().getDataset(), 0, 2),
+                copy.getXYPlot()
+                        .getRenderer()
+                        .getDefaultToolTipGenerator()
+                        .generateToolTip(copy.getXYPlot().getDataset(), 0, 2));
     }
 
     @ParameterizedTest

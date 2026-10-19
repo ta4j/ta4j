@@ -374,6 +374,8 @@ public final class SwingChartDisplayer implements ChartDisplayer {
                     .createFilter("org.jfree.**;ta4jexamples.charting.compose.TradingChartFactory$*;"
                             + "ta4jexamples.charting.renderer.**;org.ta4j.core.BaseBarSeries;"
                             + "org.ta4j.core.ConcurrentBarSeries;org.ta4j.core.BaseBar;org.ta4j.core.BaseRealtimeBar;"
+                            + "org.ta4j.core.backtest.BacktestExecutionResult$FrozenBarSeries;"
+                            + "org.ta4j.core.backtest.BacktestExecutionResult$ImmutableBar;"
                             + "org.ta4j.core.bars.**;org.ta4j.core.num.**;" + "java.base/*;java.desktop/*;!*");
             ObjectInputFilter inheritedFilter = ois.getObjectInputFilter();
             ois.setObjectInputFilter(
