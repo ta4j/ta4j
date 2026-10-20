@@ -39,6 +39,7 @@ import org.jfree.data.xy.XYSeriesCollection;
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.SwingPointMarkerIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.Num;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
@@ -132,8 +133,8 @@ public final class TradingChartFactory {
         return AXIS_FACTORY.axisLabel(timeAxisMode);
     }
 
-    private static double toDomainValue(BarSeries series, int index, TimeAxisMode timeAxisMode) {
-        return AXIS_FACTORY.domainValue(series, index, timeAxisMode);
+    private static double toDomainValue(ChartBarSnapshot snapshot, int index, TimeAxisMode timeAxisMode) {
+        return AXIS_FACTORY.domainValue(snapshot, index, timeAxisMode);
     }
 
     /**
@@ -151,9 +152,9 @@ public final class TradingChartFactory {
         return label.substring(0, MAX_AXIS_LABEL_LENGTH - 3) + "...";
     }
 
-    private ValueAxis createDomainAxis(BarSeries series, Duration duration, TimeAxisMode timeAxisMode, String label,
+    private ValueAxis createDomainAxis(ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode, String label,
             double lowerMargin, double upperMargin) {
-        return AXIS_FACTORY.createDomainAxis(series, duration, timeAxisMode, label, lowerMargin, upperMargin);
+        return AXIS_FACTORY.createDomainAxis(snapshot, timeAxisMode, label, lowerMargin, upperMargin);
     }
 
     private static final class AxisFactory {
@@ -165,14 +166,13 @@ public final class TradingChartFactory {
             return resolveTimeAxisModeStrategy(timeAxisMode).axisLabel();
         }
 
-        double domainValue(BarSeries series, int index, TimeAxisMode timeAxisMode) {
-            return resolveTimeAxisModeStrategy(timeAxisMode).domainValue(series, index);
+        double domainValue(ChartBarSnapshot snapshot, int index, TimeAxisMode timeAxisMode) {
+            return resolveTimeAxisModeStrategy(timeAxisMode).domainValue(snapshot, index);
         }
 
-        ValueAxis createDomainAxis(BarSeries series, Duration duration, TimeAxisMode timeAxisMode, String label,
+        ValueAxis createDomainAxis(ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode, String label,
                 double lowerMargin, double upperMargin) {
-            return resolveTimeAxisModeStrategy(timeAxisMode).createAxis(series, duration, label, lowerMargin,
-                    upperMargin);
+            return resolveTimeAxisModeStrategy(timeAxisMode).createAxis(snapshot, label, lowerMargin, upperMargin);
         }
 
         private static TimeAxisModeStrategy resolveTimeAxisModeStrategy(TimeAxisMode timeAxisMode) {
@@ -191,10 +191,9 @@ public final class TradingChartFactory {
 
             String axisLabel();
 
-            double domainValue(BarSeries series, int index);
+            double domainValue(ChartBarSnapshot snapshot, int index);
 
-            ValueAxis createAxis(BarSeries series, Duration duration, String label, double lowerMargin,
-                    double upperMargin);
+            ValueAxis createAxis(ChartBarSnapshot snapshot, String label, double lowerMargin, double upperMargin);
         }
 
         private static final class RealTimeAxisModeStrategy implements TimeAxisModeStrategy {
@@ -205,15 +204,15 @@ public final class TradingChartFactory {
             }
 
             @Override
-            public double domainValue(BarSeries series, int index) {
-                return series.getBar(index).getEndTime().toEpochMilli();
+            public double domainValue(ChartBarSnapshot snapshot, int index) {
+                return snapshot.endTimeMillis(index);
             }
 
             @Override
-            public ValueAxis createAxis(BarSeries series, Duration duration, String label, double lowerMargin,
+            public ValueAxis createAxis(ChartBarSnapshot snapshot, String label, double lowerMargin,
                     double upperMargin) {
                 DateAxis axis = new DateAxis(label);
-                axis.setDateFormatOverride(resolveDateFormat(duration));
+                axis.setDateFormatOverride(resolveDateFormat(snapshot.timePeriod()));
                 applyDomainAxisStyle(axis, lowerMargin, upperMargin);
                 return axis;
             }
@@ -227,16 +226,17 @@ public final class TradingChartFactory {
             }
 
             @Override
-            public double domainValue(BarSeries series, int index) {
+            public double domainValue(ChartBarSnapshot snapshot, int index) {
                 return index;
             }
 
             @Override
-            public ValueAxis createAxis(BarSeries series, Duration duration, String label, double lowerMargin,
+            public ValueAxis createAxis(ChartBarSnapshot snapshot, String label, double lowerMargin,
                     double upperMargin) {
                 NumberAxis axis = new NumberAxis(label);
                 axis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
-                axis.setNumberFormatOverride(new BarIndexDateFormat(series, resolveDateFormat(duration)));
+                axis.setNumberFormatOverride(
+                        new BarIndexDateFormat(snapshot.timeline(), resolveDateFormat(snapshot.timePeriod())));
                 applyDomainAxisStyle(axis, lowerMargin, upperMargin);
                 return axis;
             }
@@ -293,11 +293,11 @@ public final class TradingChartFactory {
             TimeAxisMode timeAxisMode, int sourcePositionStart) {
         TimeAxisMode resolvedTimeAxisMode = requireTimeAxisMode(timeAxisMode);
         int resolvedSourcePositionStart = requireSourcePositionStart(sourcePositionStart, tradingRecord);
-        DefaultOHLCDataset data = datasetFactory.createChartDataset(series, resolvedTimeAxisMode);
-        String chartTitle = buildChartTitle(series.getName(), strategyName);
-        JFreeChart chart = buildChart(chartTitle, series, series.getFirstBar().getTimePeriod(), data,
-                resolvedTimeAxisMode);
-        addTradingRecordToChart((XYPlot) chart.getPlot(), series, tradingRecord, resolvedTimeAxisMode,
+        ChartBarSnapshot snapshot = ChartBarSnapshot.capture(series);
+        DefaultOHLCDataset data = datasetFactory.createChartDataset(snapshot, resolvedTimeAxisMode);
+        String chartTitle = buildChartTitle(snapshot.name(), strategyName);
+        JFreeChart chart = buildChart(chartTitle, snapshot, data, resolvedTimeAxisMode);
+        addTradingRecordToChart((XYPlot) chart.getPlot(), snapshot, tradingRecord, resolvedTimeAxisMode,
                 resolvedSourcePositionStart);
         return chart;
     }
@@ -341,8 +341,10 @@ public final class TradingChartFactory {
                     resolvedSourcePositionStart);
         }
 
-        JFreeChart chart = createIndicatorChart(series, resolvedTimeAxisMode, indicators);
-        String chartTitle = buildChartTitle(series.getName(), strategyName);
+        ChartBarSnapshots captures = new ChartBarSnapshots();
+        JFreeChart chart = buildIndicatorChart(captures, series, resolvedTimeAxisMode, indicators);
+        ChartBarSnapshot snapshot = captures.of(series);
+        String chartTitle = buildChartTitle(snapshot.name(), strategyName);
         if (chart.getTitle() != null) {
             chart.getTitle().setText(chartTitle);
         } else {
@@ -355,11 +357,11 @@ public final class TradingChartFactory {
         if (chart.getPlot() instanceof CombinedDomainXYPlot combinedPlot) {
             List<XYPlot> subplots = combinedPlot.getSubplots();
             if (subplots != null && !subplots.isEmpty()) {
-                addTradingRecordToChart(subplots.get(0), series, tradingRecord, resolvedTimeAxisMode,
+                addTradingRecordToChart(subplots.get(0), snapshot, tradingRecord, resolvedTimeAxisMode,
                         resolvedSourcePositionStart);
             }
         } else if (chart.getPlot() instanceof XYPlot plot) {
-            addTradingRecordToChart(plot, series, tradingRecord, resolvedTimeAxisMode, resolvedSourcePositionStart);
+            addTradingRecordToChart(plot, snapshot, tradingRecord, resolvedTimeAxisMode, resolvedSourcePositionStart);
         }
 
         return chart;
@@ -376,18 +378,21 @@ public final class TradingChartFactory {
         TimeAxisMode resolvedTimeAxisMode = requireTimeAxisMode(timeAxisMode);
         if (indicators == null || indicators.length == 0) {
             // No indicators, return simple OHLC chart
-            DefaultOHLCDataset data = datasetFactory.createChartDataset(series, resolvedTimeAxisMode);
-            String chartTitle = series.toString();
-            if (series.getName() != null) {
-                chartTitle = series.getName();
-            }
-            return buildChart(chartTitle, series, series.getFirstBar().getTimePeriod(), data, resolvedTimeAxisMode);
+            ChartBarSnapshot snapshot = ChartBarSnapshot.capture(series);
+            DefaultOHLCDataset data = datasetFactory.createChartDataset(snapshot, resolvedTimeAxisMode);
+            return buildChart(resolveSeriesTitle(series, snapshot), snapshot, data, resolvedTimeAxisMode);
         }
 
+        return buildIndicatorChart(new ChartBarSnapshots(), series, resolvedTimeAxisMode, indicators);
+    }
+
+    private JFreeChart buildIndicatorChart(ChartBarSnapshots captures, BarSeries series, TimeAxisMode timeAxisMode,
+            Indicator<Num>[] indicators) {
+        ChartBarSnapshot snapshot = captures.of(series);
+
         // Create shared domain axis (X-axis)
-        Duration duration = series.getFirstBar().getTimePeriod();
-        ValueAxis domainAxis = createDomainAxis(series, duration, resolvedTimeAxisMode,
-                resolveDomainAxisLabel(resolvedTimeAxisMode), 0.03, 0.07);
+        ValueAxis domainAxis = createDomainAxis(snapshot, timeAxisMode, resolveDomainAxisLabel(timeAxisMode), 0.03,
+                0.07);
 
         // Create combined plot
         CombinedDomainXYPlot combinedPlot = new CombinedDomainXYPlot(domainAxis);
@@ -399,22 +404,18 @@ public final class TradingChartFactory {
         combinedPlot.setRangeGridlinePaint(GRIDLINE_COLOR);
 
         // Create main OHLC candlestick plot
-        DefaultOHLCDataset ohlcData = datasetFactory.createChartDataset(series, resolvedTimeAxisMode);
-        XYPlot mainPlot = createOHLCPlot(series, duration, ohlcData, resolvedTimeAxisMode);
+        DefaultOHLCDataset ohlcData = datasetFactory.createChartDataset(snapshot, timeAxisMode);
+        XYPlot mainPlot = createOHLCPlot(snapshot, ohlcData, timeAxisMode);
         combinedPlot.add(mainPlot, calculateMainPlotWeight(indicators.length));
 
         // Create a separate subplot for each indicator
         for (Indicator<Num> indicator : indicators) {
-            XYPlot indicatorPlot = createIndicatorSubplot(series, indicator, resolvedTimeAxisMode);
+            XYPlot indicatorPlot = createIndicatorSubplot(captures, snapshot, indicator, timeAxisMode);
             combinedPlot.add(indicatorPlot, calculateIndicatorPlotWeight(indicators.length));
         }
 
         // Create chart with combined plot
-        String chartTitle = series.toString();
-        if (series.getName() != null) {
-            chartTitle = series.getName();
-        }
-        JFreeChart chart = new JFreeChart(chartTitle, null, combinedPlot, true);
+        JFreeChart chart = new JFreeChart(resolveSeriesTitle(series, snapshot), null, combinedPlot, true);
         applyChartStyling(chart);
 
         return chart;
@@ -435,19 +436,25 @@ public final class TradingChartFactory {
                 "Base plot cannot be null");
 
         TimeAxisMode timeAxisMode = requireTimeAxisMode(metadata.timeAxisMode());
-        CombinedDomainXYPlot combinedPlot = createCombinedPlot(baseDefinition.series(), timeAxisMode);
-        XYPlot basePlot = buildPlotFromDefinition(baseDefinition, timeAxisMode);
+        // Every definition.series() call returns a new copy: read it once per plot so
+        // the shared axis and the plot's datasets are built from the same capture.
+        ChartBarSnapshots captures = new ChartBarSnapshots();
+        BarSeries baseSeries = baseDefinition.series();
+        ChartBarSnapshot baseSnapshot = captures.of(baseDefinition, baseSeries);
+        CombinedDomainXYPlot combinedPlot = createCombinedPlot(baseSnapshot, timeAxisMode);
+        XYPlot basePlot = buildPlotFromDefinition(baseDefinition, baseSeries, captures, timeAxisMode);
         combinedPlot.add(basePlot, calculateMainPlotWeight(definition.subplots().size()));
 
         if (!definition.subplots().isEmpty()) {
             int subplotWeight = calculateIndicatorPlotWeight(definition.subplots().size());
             for (ChartBuilder.PlotDefinition subplot : definition.subplots()) {
-                combinedPlot.add(buildPlotFromDefinition(subplot, timeAxisMode), subplotWeight);
+                combinedPlot.add(buildPlotFromDefinition(subplot, subplot.series(), captures, timeAxisMode),
+                        subplotWeight);
             }
         }
 
         String resolvedTitle = metadata.title() != null && !metadata.title().trim().isEmpty() ? metadata.title()
-                : buildChartTitle(baseDefinition.series() != null ? baseDefinition.series().getName() : "", "");
+                : buildChartTitle(baseSnapshot.name(), "");
         JFreeChart chart = new JFreeChart(resolvedTitle, JFreeChart.DEFAULT_TITLE_FONT, combinedPlot, true);
         applyChartStyling(chart);
         return chart;
@@ -468,14 +475,14 @@ public final class TradingChartFactory {
     public JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle, TimeAxisMode timeAxisMode) {
         TimeAxisMode resolvedTimeAxisMode = requireTimeAxisMode(timeAxisMode);
+        ChartBarSnapshot snapshot = ChartBarSnapshot.capture(series);
         String effectiveTitle = chartTitle != null && !chartTitle.trim().isEmpty() ? chartTitle
-                : (series.getName() != null ? series.getName() : series.toString());
-        Duration duration = series.getFirstBar().getTimePeriod();
+                : resolveSeriesTitle(series, snapshot);
 
         if (resolvedTimeAxisMode == TimeAxisMode.REAL_TIME) {
-            TimeSeriesCollection primaryDataset = datasetFactory.createTimeSeriesDataset(series, primaryIndicator,
+            TimeSeriesCollection primaryDataset = datasetFactory.createTimeSeriesDataset(snapshot, primaryIndicator,
                     primaryLabel, false);
-            TimeSeriesCollection secondaryDataset = datasetFactory.createTimeSeriesDataset(series, secondaryIndicator,
+            TimeSeriesCollection secondaryDataset = datasetFactory.createTimeSeriesDataset(snapshot, secondaryIndicator,
                     secondaryLabel, false);
 
             JFreeChart chart = ChartFactory.createTimeSeriesChart(effectiveTitle,
@@ -483,24 +490,24 @@ public final class TradingChartFactory {
             applyChartStyling(chart);
 
             XYPlot plot = (XYPlot) chart.getPlot();
-            configureDualAxisPlot(plot, series, duration, resolvedTimeAxisMode);
-            addSecondaryAxis(plot, secondaryDataset, secondaryLabel, resolvedTimeAxisMode, series, duration);
+            configureDualAxisPlot(plot, snapshot, resolvedTimeAxisMode);
+            addSecondaryAxis(plot, secondaryDataset, secondaryLabel, resolvedTimeAxisMode, snapshot);
 
             return chart;
         }
 
-        XYSeriesCollection primaryDataset = datasetFactory.createIndexSeriesDataset(series, primaryIndicator,
+        XYSeriesCollection primaryDataset = datasetFactory.createIndexSeriesDataset(snapshot, primaryIndicator,
                 primaryLabel, false);
-        XYSeriesCollection secondaryDataset = datasetFactory.createIndexSeriesDataset(series, secondaryIndicator,
+        XYSeriesCollection secondaryDataset = datasetFactory.createIndexSeriesDataset(snapshot, secondaryIndicator,
                 secondaryLabel, false);
 
         StandardXYItemRenderer primaryRenderer = new StandardXYItemRenderer();
-        DateFormat dateFormat = resolveDateFormat(duration);
-        primaryRenderer.setDefaultToolTipGenerator(new BarIndexToolTipGenerator(series, dateFormat));
+        DateFormat dateFormat = resolveDateFormat(snapshot.timePeriod());
+        primaryRenderer.setDefaultToolTipGenerator(new BarIndexToolTipGenerator(snapshot.timeline(), dateFormat));
 
         XYPlot plot = new XYPlot(primaryDataset, null, new NumberAxis(primaryLabel), primaryRenderer);
-        configureDualAxisPlot(plot, series, duration, resolvedTimeAxisMode);
-        addSecondaryAxis(plot, secondaryDataset, secondaryLabel, resolvedTimeAxisMode, series, duration);
+        configureDualAxisPlot(plot, snapshot, resolvedTimeAxisMode);
+        addSecondaryAxis(plot, secondaryDataset, secondaryLabel, resolvedTimeAxisMode, snapshot);
 
         JFreeChart chart = new JFreeChart(effectiveTitle, JFreeChart.DEFAULT_TITLE_FONT, plot, true);
         applyChartStyling(chart);
@@ -542,12 +549,12 @@ public final class TradingChartFactory {
         TimeAxisMode timeAxisMode = mainPlot.getDomainAxis() instanceof NumberAxis ? TimeAxisMode.BAR_INDEX
                 : TimeAxisMode.REAL_TIME;
 
+        ChartBarSnapshot snapshot = ChartBarSnapshot.capture(series);
         XYDataset criterionDataset = timeAxisMode == TimeAxisMode.BAR_INDEX
-                ? datasetFactory.createIndexSeriesDataset(series, criterionIndicator, criterionLabel, false)
-                : datasetFactory.createTimeSeriesDataset(series, criterionIndicator, criterionLabel, false);
+                ? datasetFactory.createIndexSeriesDataset(snapshot, criterionIndicator, criterionLabel, false)
+                : datasetFactory.createTimeSeriesDataset(snapshot, criterionIndicator, criterionLabel, false);
 
-        addSecondaryAxis(mainPlot, criterionDataset, criterionLabel, timeAxisMode, series,
-                series.getFirstBar().getTimePeriod());
+        addSecondaryAxis(mainPlot, criterionDataset, criterionLabel, timeAxisMode, snapshot);
 
         return chart;
     }
@@ -563,16 +570,20 @@ public final class TradingChartFactory {
         return strategyName + "@" + shortenedBarSeriesName[0];
     }
 
-    private JFreeChart buildChart(String chartTitle, BarSeries series, Duration duration, DefaultOHLCDataset dataSet,
+    private static String resolveSeriesTitle(BarSeries series, ChartBarSnapshot snapshot) {
+        return snapshot.name() != null ? snapshot.name() : series.toString();
+    }
+
+    private JFreeChart buildChart(String chartTitle, ChartBarSnapshot snapshot, DefaultOHLCDataset dataSet,
             TimeAxisMode timeAxisMode) {
         String domainLabel = resolveDomainAxisLabel(timeAxisMode);
         JFreeChart chart = ChartFactory.createCandlestickChart(chartTitle, domainLabel, "Price (USD)", dataSet, true);
         applyChartStyling(chart);
 
         XYPlot plot = (XYPlot) chart.getPlot();
-        plot.setDomainAxis(createDomainAxis(series, duration, timeAxisMode, domainLabel, 0.03, 0.07));
+        plot.setDomainAxis(createDomainAxis(snapshot, timeAxisMode, domainLabel, 0.03, 0.07));
         configureRangeAxis(plot);
-        configureCandlestickRenderer(plot, series, timeAxisMode);
+        configureCandlestickRenderer(plot, snapshot, timeAxisMode);
         configurePlotAppearance(plot);
 
         return chart;
@@ -595,7 +606,7 @@ public final class TradingChartFactory {
         rangeAxis.setLabelPaint(Color.LIGHT_GRAY);
     }
 
-    private void configureCandlestickRenderer(XYPlot plot, BarSeries series, TimeAxisMode timeAxisMode) {
+    private void configureCandlestickRenderer(XYPlot plot, ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
         BaseCandleStickRenderer candleStickRenderer = new BaseCandleStickRenderer();
         candleStickRenderer.setDownPaint(BaseCandleStickRenderer.DEFAULT_DOWN_COLOR);
         candleStickRenderer.setUpPaint(BaseCandleStickRenderer.DEFAULT_UP_COLOR);
@@ -605,8 +616,9 @@ public final class TradingChartFactory {
         candleStickRenderer.setUseOutlinePaint(true);
         candleStickRenderer.setDrawVolume(false);
         if (timeAxisMode == TimeAxisMode.BAR_INDEX) {
-            DateFormat dateFormat = resolveDateFormat(series.getFirstBar().getTimePeriod());
-            candleStickRenderer.setDefaultToolTipGenerator(new BarIndexOhlcToolTipGenerator(series, dateFormat));
+            DateFormat dateFormat = resolveDateFormat(snapshot.timePeriod());
+            candleStickRenderer
+                    .setDefaultToolTipGenerator(new BarIndexOhlcToolTipGenerator(snapshot.timeline(), dateFormat));
         }
         plot.setRenderer(candleStickRenderer);
     }
@@ -618,11 +630,9 @@ public final class TradingChartFactory {
         plot.setRangeGridlinePaint(GRIDLINE_COLOR);
     }
 
-    private CombinedDomainXYPlot createCombinedPlot(BarSeries series, TimeAxisMode timeAxisMode) {
-        Objects.requireNonNull(series, "BarSeries cannot be null");
-        Duration duration = series.getFirstBar().getTimePeriod();
-        ValueAxis domainAxis = createDomainAxis(series, duration, timeAxisMode, resolveDomainAxisLabel(timeAxisMode),
-                0.02, 0.02);
+    private CombinedDomainXYPlot createCombinedPlot(ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
+        ValueAxis domainAxis = createDomainAxis(snapshot, timeAxisMode, resolveDomainAxisLabel(timeAxisMode), 0.02,
+                0.02);
 
         CombinedDomainXYPlot combinedPlot = new CombinedDomainXYPlot(domainAxis);
         combinedPlot.setGap(10.0);
@@ -634,45 +644,50 @@ public final class TradingChartFactory {
         return combinedPlot;
     }
 
-    private XYPlot buildPlotFromDefinition(ChartBuilder.PlotDefinition definition, TimeAxisMode timeAxisMode) {
+    /**
+     * Builds one plot of a composed chart. {@code plotSeries} is the definition's
+     * series, resolved once by the caller because every
+     * {@link ChartBuilder.PlotDefinition#series()} call returns a new copy; every
+     * dataset, axis and tooltip of the plot reads the capture registered for it.
+     */
+    private XYPlot buildPlotFromDefinition(ChartBuilder.PlotDefinition definition, BarSeries plotSeries,
+            ChartBarSnapshots captures, TimeAxisMode timeAxisMode) {
+        ChartBarSnapshot snapshot = captures.of(definition, plotSeries);
         XYPlot plot = switch (definition.type()) {
-        case CANDLESTICK -> buildCandlestickPlot(definition, timeAxisMode);
-        case INDICATOR -> buildIndicatorPlot(definition, timeAxisMode);
-        case TRADING_RECORD -> buildTradingRecordPlot(definition, timeAxisMode);
+        case CANDLESTICK -> buildCandlestickPlot(snapshot, timeAxisMode);
+        case INDICATOR -> buildIndicatorPlot(definition, captures, snapshot, timeAxisMode);
+        case TRADING_RECORD -> buildTradingRecordPlot(definition, plotSeries, snapshot, timeAxisMode);
         };
-        attachChannelFills(plot, definition, timeAxisMode);
-        attachOverlays(plot, definition, timeAxisMode);
+        attachChannelFills(plot, definition, captures, snapshot, timeAxisMode);
+        attachOverlays(plot, definition, captures, snapshot, timeAxisMode);
         attachHorizontalMarkers(plot, definition);
         return plot;
     }
 
-    private XYPlot buildCandlestickPlot(ChartBuilder.PlotDefinition definition, TimeAxisMode timeAxisMode) {
-        DefaultOHLCDataset dataset = datasetFactory.createChartDataset(definition.series(), timeAxisMode);
-        return createOHLCPlot(definition.series(), definition.series().getFirstBar().getTimePeriod(), dataset,
-                timeAxisMode);
+    private XYPlot buildCandlestickPlot(ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
+        DefaultOHLCDataset dataset = datasetFactory.createChartDataset(snapshot, timeAxisMode);
+        return createOHLCPlot(snapshot, dataset, timeAxisMode);
     }
 
-    private XYPlot buildIndicatorPlot(ChartBuilder.PlotDefinition definition, TimeAxisMode timeAxisMode) {
+    private XYPlot buildIndicatorPlot(ChartBuilder.PlotDefinition definition, ChartBarSnapshots captures,
+            ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
         Indicator<Num> indicator = Objects.requireNonNull(definition.baseIndicator(),
                 "Indicator plot requires a base indicator");
-        return createIndicatorSubplot(definition.series(), indicator, timeAxisMode);
+        return createIndicatorSubplot(captures, snapshot, indicator, timeAxisMode);
     }
 
-    private XYPlot buildTradingRecordPlot(ChartBuilder.PlotDefinition definition, TimeAxisMode timeAxisMode) {
+    private XYPlot buildTradingRecordPlot(ChartBuilder.PlotDefinition definition, BarSeries plotSeries,
+            ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
         TradingRecord tradingRecord = Objects.requireNonNull(definition.tradingRecord(),
                 "Trading record plot requires trading data");
-        BarSeries series = Objects.requireNonNull(definition.series(),
-                "Trading record plots require a BarSeries for context");
 
         XYPlot plot = new XYPlot();
-        XYSeriesCollection dataset = datasetFactory.createDataSeriesForIndicator(new ClosePriceIndicator(series),
-                timeAxisMode);
+        XYSeriesCollection dataset = datasetFactory.createDataSeriesForIndicator(snapshot,
+                new ClosePriceIndicator(plotSeries), timeAxisMode);
         plot.setDataset(0, dataset);
 
         // Create and configure domain axis
-        Duration duration = series.getFirstBar().getTimePeriod();
-        plot.setDomainAxis(
-                createDomainAxis(series, duration, timeAxisMode, resolveDomainAxisLabel(timeAxisMode), 0.02, 0.02));
+        plot.setDomainAxis(createDomainAxis(snapshot, timeAxisMode, resolveDomainAxisLabel(timeAxisMode), 0.02, 0.02));
 
         NumberAxis rangeAxis = new NumberAxis("Trade price");
         rangeAxis.setAutoRangeIncludesZero(false);
@@ -685,22 +700,23 @@ public final class TradingChartFactory {
         renderer.setSeriesStroke(0, new BasicStroke(1.1f));
         plot.setRenderer(0, renderer);
         configurePlotAppearance(plot);
-        addTradingRecordToChart(plot, series, tradingRecord, timeAxisMode);
+        addTradingRecordToChart(plot, snapshot, tradingRecord, timeAxisMode);
         return plot;
     }
 
-    private void attachChannelFills(XYPlot plot, ChartBuilder.PlotDefinition definition, TimeAxisMode timeAxisMode) {
+    private void attachChannelFills(XYPlot plot, ChartBuilder.PlotDefinition definition, ChartBarSnapshots captures,
+            ChartBarSnapshot plotSnapshot, TimeAxisMode timeAxisMode) {
         for (ChartBuilder.ChannelOverlayDefinition channel : definition.channelOverlays()) {
             Indicator<Num> upper = channel.upper();
             Indicator<Num> lower = channel.lower();
             if (upper == null || lower == null) {
                 continue;
             }
-            BarSeries series = upper.getBarSeries() != null ? upper.getBarSeries() : definition.series();
-            if (series == null || series.getBarCount() == 0) {
+            ChartBarSnapshot snapshot = resolveIndicatorSnapshot(upper, captures, plotSnapshot);
+            if (snapshot.isEmpty()) {
                 continue;
             }
-            XYDataset dataset = datasetFactory.createChannelFillDataset(series, upper, lower, timeAxisMode);
+            XYDataset dataset = datasetFactory.createChannelFillDataset(snapshot, upper, lower, timeAxisMode);
             if (dataset.getSeriesCount() == 0) {
                 continue;
             }
@@ -717,15 +733,16 @@ public final class TradingChartFactory {
         }
     }
 
-    private void attachOverlays(XYPlot plot, ChartBuilder.PlotDefinition definition, TimeAxisMode timeAxisMode) {
+    private void attachOverlays(XYPlot plot, ChartBuilder.PlotDefinition definition, ChartBarSnapshots captures,
+            ChartBarSnapshot plotSnapshot, TimeAxisMode timeAxisMode) {
         for (ChartBuilder.OverlayDefinition overlay : definition.overlays()) {
             switch (overlay.type()) {
             case INDICATOR:
             case ANALYSIS_CRITERION:
-                attachIndicatorOverlay(plot, definition, overlay, timeAxisMode);
+                attachIndicatorOverlay(plot, overlay, captures, plotSnapshot, timeAxisMode);
                 break;
             case TRADING_RECORD:
-                addTradingRecordToChart(plot, definition.series(), overlay.tradingRecord(), timeAxisMode);
+                addTradingRecordToChart(plot, plotSnapshot, overlay.tradingRecord(), timeAxisMode);
                 break;
             default:
                 break;
@@ -733,31 +750,41 @@ public final class TradingChartFactory {
         }
     }
 
-    private void attachIndicatorOverlay(XYPlot plot, ChartBuilder.PlotDefinition definition,
-            ChartBuilder.OverlayDefinition overlay, TimeAxisMode timeAxisMode) {
+    /**
+     * Resolves the capture of the series an indicator evaluates on, falling back to
+     * the plot's own capture for indicators that are not attached to a series.
+     */
+    private static ChartBarSnapshot resolveIndicatorSnapshot(Indicator<Num> indicator, ChartBarSnapshots captures,
+            ChartBarSnapshot plotSnapshot) {
+        BarSeries indicatorSeries = indicator.getBarSeries();
+        return indicatorSeries != null ? captures.of(indicatorSeries) : plotSnapshot;
+    }
+
+    private void attachIndicatorOverlay(XYPlot plot, ChartBuilder.OverlayDefinition overlay, ChartBarSnapshots captures,
+            ChartBarSnapshot plotSnapshot, TimeAxisMode timeAxisMode) {
         Indicator<Num> indicator = overlay.indicator();
         if (indicator == null) {
             return;
         }
-        BarSeries series = indicator.getBarSeries() != null ? indicator.getBarSeries() : definition.series();
-        if (series != null && series.getBarCount() > 0) {
-            indicator.getValue(series.getEndIndex()); // warm caches so retrospective swing markers render
+        ChartBarSnapshot snapshot = resolveIndicatorSnapshot(indicator, captures, plotSnapshot);
+        if (!snapshot.isEmpty()) {
+            indicator.getValue(snapshot.endIndex()); // warm caches so retrospective swing markers render
         }
         boolean connectGaps = overlay.style().connectGaps();
         String label = overlay.label() != null ? overlay.label() : indicator.toString();
         XYDataset dataset;
         if (indicator instanceof BarSeriesLabelIndicator labelIndicator) {
             dataset = timeAxisMode == TimeAxisMode.BAR_INDEX
-                    ? datasetFactory.createIndexBarSeriesLabelDataset(series, labelIndicator, label)
-                    : datasetFactory.createBarSeriesLabelDataset(series, labelIndicator, label);
+                    ? datasetFactory.createIndexBarSeriesLabelDataset(snapshot, labelIndicator, label)
+                    : datasetFactory.createBarSeriesLabelDataset(snapshot, labelIndicator, label);
         } else if (indicator instanceof SwingPointMarkerIndicator swingMarker) {
             dataset = timeAxisMode == TimeAxisMode.BAR_INDEX
-                    ? datasetFactory.createIndexSwingMarkerDataset(series, swingMarker, label)
-                    : datasetFactory.createSwingMarkerDataset(series, swingMarker, label);
+                    ? datasetFactory.createIndexSwingMarkerDataset(snapshot, swingMarker, label)
+                    : datasetFactory.createSwingMarkerDataset(snapshot, swingMarker, label);
         } else {
             dataset = timeAxisMode == TimeAxisMode.BAR_INDEX
-                    ? datasetFactory.createIndexSeriesDataset(series, indicator, label, connectGaps)
-                    : datasetFactory.createTimeSeriesDataset(series, indicator, label, connectGaps);
+                    ? datasetFactory.createIndexSeriesDataset(snapshot, indicator, label, connectGaps)
+                    : datasetFactory.createTimeSeriesDataset(snapshot, indicator, label, connectGaps);
         }
         // Add dataset at the next available index (after base OHLC dataset)
         // This ensures overlays (including swing markers) are rendered on top of
@@ -767,16 +794,16 @@ public final class TradingChartFactory {
 
         if (indicator instanceof BarSeriesLabelIndicator labelIndicator) {
             plot.setRenderer(datasetIndex,
-                    overlayRendererFactory.createBarSeriesLabelRenderer(dataset, overlay, series, timeAxisMode));
-            attachBarSeriesLabelAnnotations(plot, series, labelIndicator, overlay, timeAxisMode);
+                    overlayRendererFactory.createBarSeriesLabelRenderer(dataset, overlay, snapshot, timeAxisMode));
+            attachBarSeriesLabelAnnotations(plot, snapshot, labelIndicator, overlay, timeAxisMode);
         } else if (indicator instanceof SwingPointMarkerIndicator) {
             // Swing markers are rendered after the base dataset, ensuring they appear in
             // front of candles
             plot.setRenderer(datasetIndex,
-                    overlayRendererFactory.createSwingMarkerRenderer(dataset, overlay, series, timeAxisMode));
+                    overlayRendererFactory.createSwingMarkerRenderer(dataset, overlay, snapshot, timeAxisMode));
         } else {
             plot.setRenderer(datasetIndex,
-                    overlayRendererFactory.createStandardOverlayRenderer(dataset, overlay, series, timeAxisMode));
+                    overlayRendererFactory.createStandardOverlayRenderer(dataset, overlay, snapshot, timeAxisMode));
         }
 
         int axisIndex = overlay.axisSlot() == ChartBuilder.AxisSlot.SECONDARY ? 1 : 0;
@@ -805,7 +832,7 @@ public final class TradingChartFactory {
         }
 
         private StandardXYItemRenderer createStandardOverlayRenderer(XYDataset dataset,
-                ChartBuilder.OverlayDefinition overlay, BarSeries series, TimeAxisMode timeAxisMode) {
+                ChartBuilder.OverlayDefinition overlay, ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
             StandardXYItemRenderer renderer = new StandardXYItemRenderer();
             Color baseColor = overlay.style().color();
             float opacity = overlay.style().opacity();
@@ -815,12 +842,12 @@ public final class TradingChartFactory {
                 renderer.setSeriesPaint(i, colorWithOpacity);
                 renderer.setSeriesStroke(i, createStroke(overlay.style()));
             }
-            renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(series, timeAxisMode));
+            renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(snapshot, timeAxisMode));
             return renderer;
         }
 
         private XYLineAndShapeRenderer createSwingMarkerRenderer(XYDataset dataset,
-                ChartBuilder.OverlayDefinition overlay, BarSeries series, TimeAxisMode timeAxisMode) {
+                ChartBuilder.OverlayDefinition overlay, ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
             boolean connectLines = overlay.style().connectGaps();
             XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(connectLines, true);
             Color baseColor = overlay.style().color();
@@ -841,7 +868,7 @@ public final class TradingChartFactory {
                 renderer.setSeriesStroke(i, createStroke(overlay.style()));
                 renderer.setSeriesLinesVisible(i, connectLines);
             }
-            renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(series, timeAxisMode));
+            renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(snapshot, timeAxisMode));
             renderer.setDefaultShapesFilled(true);
             renderer.setUseFillPaint(true);
             renderer.setUseOutlinePaint(false);
@@ -849,7 +876,7 @@ public final class TradingChartFactory {
         }
 
         private XYLineAndShapeRenderer createBarSeriesLabelRenderer(XYDataset dataset,
-                ChartBuilder.OverlayDefinition overlay, BarSeries series, TimeAxisMode timeAxisMode) {
+                ChartBuilder.OverlayDefinition overlay, ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
             XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(true, true);
             Color baseColor = overlay.style().color();
             float opacity = overlay.style().opacity();
@@ -868,7 +895,7 @@ public final class TradingChartFactory {
                 renderer.setSeriesLinesVisible(i, false);
             }
 
-            renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(series, timeAxisMode));
+            renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(snapshot, timeAxisMode));
             renderer.setDefaultShapesFilled(true);
             renderer.setUseFillPaint(true);
             renderer.setUseOutlinePaint(false);
@@ -884,20 +911,19 @@ public final class TradingChartFactory {
             return new BasicStroke(style.lineWidth());
         }
 
-        private XYToolTipGenerator createOverlayToolTipGenerator(BarSeries series, TimeAxisMode timeAxisMode) {
+        private XYToolTipGenerator createOverlayToolTipGenerator(ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
             if (timeAxisMode == TimeAxisMode.BAR_INDEX) {
-                DateFormat dateFormat = resolveDateFormat(series.getFirstBar().getTimePeriod());
-                return new BarIndexToolTipGenerator(series, dateFormat);
+                DateFormat dateFormat = resolveDateFormat(snapshot.timePeriod());
+                return new BarIndexToolTipGenerator(snapshot.timeline(), dateFormat);
             }
             return new TimeSeriesToolTipGenerator();
         }
     }
 
-    private XYToolTipGenerator createSeriesToolTipGenerator(BarSeries series, Duration duration,
-            TimeAxisMode timeAxisMode) {
-        DateFormat dateFormat = resolveDateFormat(duration);
+    private XYToolTipGenerator createSeriesToolTipGenerator(ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
+        DateFormat dateFormat = resolveDateFormat(snapshot.timePeriod());
         if (timeAxisMode == TimeAxisMode.BAR_INDEX) {
-            return new BarIndexToolTipGenerator(series, dateFormat);
+            return new BarIndexToolTipGenerator(snapshot.timeline(), dateFormat);
         }
         return new XYSeriesToolTipGenerator(dateFormat);
     }
@@ -914,12 +940,12 @@ public final class TradingChartFactory {
         plot.setRangeAxis(1, secondaryAxis);
     }
 
-    private void addTradingRecordToChart(XYPlot plot, BarSeries series, TradingRecord tradingRecord,
+    private void addTradingRecordToChart(XYPlot plot, ChartBarSnapshot snapshot, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
-        addTradingRecordToChart(plot, series, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER);
+        addTradingRecordToChart(plot, snapshot, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER);
     }
 
-    private void addTradingRecordToChart(XYPlot plot, BarSeries series, TradingRecord tradingRecord,
+    private void addTradingRecordToChart(XYPlot plot, ChartBarSnapshot snapshot, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode, int sourcePositionStart) {
         try {
             XYSeries buyMarkers = createTradeSeries("Buy trades");
@@ -928,11 +954,11 @@ public final class TradingChartFactory {
 
             for (Position position : tradingRecord.getPositions()) {
                 int displayPositionNumber = sourcePositionStart + localPositionIndex - FIRST_POSITION_NUMBER;
-                addTradeMarker(buyMarkers, sellMarkers, plot, series, position.getEntry(), displayPositionNumber,
+                addTradeMarker(buyMarkers, sellMarkers, plot, snapshot, position.getEntry(), displayPositionNumber,
                         timeAxisMode);
-                addTradeMarker(buyMarkers, sellMarkers, plot, series, position.getExit(), displayPositionNumber,
+                addTradeMarker(buyMarkers, sellMarkers, plot, snapshot, position.getExit(), displayPositionNumber,
                         timeAxisMode);
-                addPositionBand(plot, series, localPositionIndex, displayPositionNumber, position.getEntry(),
+                addPositionBand(plot, snapshot, localPositionIndex, displayPositionNumber, position.getEntry(),
                         position.getExit(), timeAxisMode);
                 localPositionIndex++;
             }
@@ -941,10 +967,10 @@ public final class TradingChartFactory {
                 int displayPositionNumber = sourcePositionStart + localPositionIndex - FIRST_POSITION_NUMBER;
                 Trade lastTrade = tradingRecord.getLastTrade();
                 if (lastTrade != null) {
-                    addTradeMarker(buyMarkers, sellMarkers, plot, series, lastTrade, displayPositionNumber,
+                    addTradeMarker(buyMarkers, sellMarkers, plot, snapshot, lastTrade, displayPositionNumber,
                             timeAxisMode);
                 }
-                addPositionBand(plot, series, localPositionIndex, displayPositionNumber,
+                addPositionBand(plot, snapshot, localPositionIndex, displayPositionNumber,
                         tradingRecord.getCurrentPosition().getEntry(), null, timeAxisMode);
             }
 
@@ -954,23 +980,30 @@ public final class TradingChartFactory {
         }
     }
 
-    private void addTradeMarker(XYSeries buyMarkers, XYSeries sellMarkers, XYPlot plot, BarSeries series, Trade trade,
-            int displayPositionNumber, TimeAxisMode timeAxisMode) {
+    private void addTradeMarker(XYSeries buyMarkers, XYSeries sellMarkers, XYPlot plot, ChartBarSnapshot snapshot,
+            Trade trade, int displayPositionNumber, TimeAxisMode timeAxisMode) {
         if (trade == null) {
             return;
         }
 
-        Instant seriesStartTime = series.getFirstBar().getEndTime();
-        Instant seriesEndTime = series.getLastBar().getEndTime();
-        Instant tradeTime = series.getBar(trade.getIndex()).getEndTime();
-
-        if (!isTradeTimeInRange(tradeTime, seriesStartTime, seriesEndTime)) {
-            LOG.debug("Trade at {} not added to chart - outside range [{}, {}]", tradeTime, seriesStartTime,
-                    seriesEndTime);
+        if (trade.getIndex() > snapshot.endIndex()) {
+            // Recorded after the snapshot was taken: the chart has no bar for this trade.
+            LOG.debug("Trade at index {} not added to chart - after the last charted bar {}", trade.getIndex(),
+                    snapshot.endIndex());
             return;
         }
 
-        double orderDateTime = toDomainValue(series, trade.getIndex(), timeAxisMode);
+        long seriesStartTime = snapshot.endTimeMillis(snapshot.beginIndex());
+        long seriesEndTime = snapshot.endTimeMillis(snapshot.endIndex());
+        long tradeTime = snapshot.endTimeMillis(trade.getIndex());
+
+        if (!isTradeTimeInRange(tradeTime, seriesStartTime, seriesEndTime)) {
+            LOG.debug("Trade at {} not added to chart - outside range [{}, {}]", Instant.ofEpochMilli(tradeTime),
+                    Instant.ofEpochMilli(seriesStartTime), Instant.ofEpochMilli(seriesEndTime));
+            return;
+        }
+
+        double orderDateTime = toDomainValue(snapshot, trade.getIndex(), timeAxisMode);
         double price = trade.getPricePerAsset().doubleValue();
 
         if (trade.isBuy()) {
@@ -979,10 +1012,10 @@ public final class TradingChartFactory {
             sellMarkers.add(orderDateTime, price);
         }
 
-        annotateTrade(plot, series, trade, displayPositionNumber, orderDateTime, price);
+        annotateTrade(plot, snapshot, trade, displayPositionNumber, orderDateTime, price);
     }
 
-    private void annotateTrade(XYPlot plot, BarSeries series, Trade trade, int displayPositionNumber,
+    private void annotateTrade(XYPlot plot, ChartBarSnapshot snapshot, Trade trade, int displayPositionNumber,
             double orderDateTime, double price) {
         String labelPrefix = trade.isBuy() ? "B" : "S";
         String label = labelPrefix + displayPositionNumber + " @" + PRICE_FORMAT.get().format(price);
@@ -991,14 +1024,14 @@ public final class TradingChartFactory {
         annotation.setFont(TRADE_LABEL_FONT);
         annotation.setPaint(trade.isBuy() ? BUY_MARKER_COLOR : SELL_MARKER_COLOR);
         annotation.setBackgroundPaint(TRADE_LABEL_BACKGROUND);
-        annotation.setTextAnchor(resolveTradeLabelAnchor(trade, series));
+        annotation.setTextAnchor(resolveTradeLabelAnchor(trade, snapshot));
         plot.addAnnotation(annotation);
     }
 
-    private TextAnchor resolveTradeLabelAnchor(Trade trade, BarSeries series) {
+    private TextAnchor resolveTradeLabelAnchor(Trade trade, ChartBarSnapshot snapshot) {
         int index = trade.getIndex();
-        int begin = series.getBeginIndex();
-        int end = series.getEndIndex();
+        int begin = snapshot.beginIndex();
+        int end = snapshot.endIndex();
         boolean nearStart = index - begin <= LABEL_EDGE_BARS;
         boolean nearEnd = end - index <= LABEL_EDGE_BARS;
 
@@ -1047,19 +1080,18 @@ public final class TradingChartFactory {
         return new XYSeries(key, false, true);
     }
 
-    private void addPositionBand(XYPlot plot, BarSeries series, int localPositionIndex, int displayPositionNumber,
-            Trade entry, Trade exit, TimeAxisMode timeAxisMode) {
-        if (entry == null) {
+    private void addPositionBand(XYPlot plot, ChartBarSnapshot snapshot, int localPositionIndex,
+            int displayPositionNumber, Trade entry, Trade exit, TimeAxisMode timeAxisMode) {
+        // Trades recorded after the snapshot lie beyond the charted bars: such an entry
+        // gets no band and an exit there ends the band at the last charted bar.
+        if (entry == null || entry.getIndex() > snapshot.endIndex()) {
             return;
         }
 
-        long start = Math.round(toDomainValue(series, entry.getIndex(), timeAxisMode));
-        long end;
-        if (exit != null) {
-            end = Math.round(toDomainValue(series, exit.getIndex(), timeAxisMode));
-        } else {
-            end = Math.round(toDomainValue(series, series.getEndIndex(), timeAxisMode));
-        }
+        long start = Math.round(toDomainValue(snapshot, entry.getIndex(), timeAxisMode));
+        int lastIndex = snapshot.endIndex();
+        int endIndex = exit != null ? Math.min(exit.getIndex(), lastIndex) : lastIndex;
+        long end = Math.round(toDomainValue(snapshot, endIndex, timeAxisMode));
         if (end <= start) {
             end = start + 1;
         }
@@ -1071,13 +1103,13 @@ public final class TradingChartFactory {
         marker.setLabel("Position " + displayPositionNumber);
         marker.setLabelFont(POSITION_LABEL_FONT);
         marker.setLabelPaint(Color.LIGHT_GRAY);
-        setPositionLabelAnchors(marker, entry.getIndex(), series);
+        setPositionLabelAnchors(marker, entry.getIndex(), snapshot);
         plot.addDomainMarker(marker, Layer.BACKGROUND);
     }
 
-    private void setPositionLabelAnchors(IntervalMarker marker, int entryIndex, BarSeries series) {
-        int begin = series.getBeginIndex();
-        int end = series.getEndIndex();
+    private void setPositionLabelAnchors(IntervalMarker marker, int entryIndex, ChartBarSnapshot snapshot) {
+        int begin = snapshot.beginIndex();
+        int end = snapshot.endIndex();
         boolean nearEnd = end - entryIndex <= LABEL_EDGE_BARS;
         boolean nearStart = entryIndex - begin <= LABEL_EDGE_BARS;
         if (nearEnd && !nearStart) {
@@ -1108,19 +1140,16 @@ public final class TradingChartFactory {
         return new Color(color.getRed(), color.getGreen(), color.getBlue(), alphaChannel);
     }
 
-    private boolean isTradeTimeInRange(Instant tradeTime, Instant startTime, Instant endTime) {
-        return (tradeTime.equals(startTime) || tradeTime.isAfter(startTime))
-                && (tradeTime.equals(endTime) || tradeTime.isBefore(endTime));
+    private boolean isTradeTimeInRange(long tradeTimeMillis, long startTimeMillis, long endTimeMillis) {
+        return tradeTimeMillis >= startTimeMillis && tradeTimeMillis <= endTimeMillis;
     }
 
-    private XYPlot createOHLCPlot(BarSeries series, Duration duration, DefaultOHLCDataset data,
-            TimeAxisMode timeAxisMode) {
+    private XYPlot createOHLCPlot(ChartBarSnapshot snapshot, DefaultOHLCDataset data, TimeAxisMode timeAxisMode) {
         XYPlot plot = new XYPlot();
         plot.setDataset(0, data);
 
         // Configure domain axis
-        plot.setDomainAxis(
-                createDomainAxis(series, duration, timeAxisMode, resolveDomainAxisLabel(timeAxisMode), 0.02, 0.02));
+        plot.setDomainAxis(createDomainAxis(snapshot, timeAxisMode, resolveDomainAxisLabel(timeAxisMode), 0.02, 0.02));
 
         // Configure range axis
         NumberAxis rangeAxis = new NumberAxis("Price (USD)");
@@ -1130,22 +1159,23 @@ public final class TradingChartFactory {
         plot.setRangeAxis(rangeAxis);
 
         // Configure candlestick renderer
-        configureCandlestickRenderer(plot, series, timeAxisMode);
+        configureCandlestickRenderer(plot, snapshot, timeAxisMode);
         configurePlotAppearance(plot);
 
         return plot;
     }
 
-    private XYPlot createIndicatorSubplot(BarSeries series, Indicator<Num> indicator, TimeAxisMode timeAxisMode) {
-        XYSeriesCollection dataset = datasetFactory.createDataSeriesForIndicator(indicator, timeAxisMode);
+    private XYPlot createIndicatorSubplot(ChartBarSnapshots captures, ChartBarSnapshot snapshot,
+            Indicator<Num> indicator, TimeAxisMode timeAxisMode) {
+        XYSeriesCollection dataset = datasetFactory.createDataSeriesForIndicator(captures.of(indicator.getBarSeries()),
+                indicator, timeAxisMode);
 
         XYPlot plot = new XYPlot();
         plot.setDataset(0, dataset);
 
         // Configure domain axis (will be shared by CombinedDomainXYPlot, but we set it
         // for consistency)
-        Duration duration = series.getFirstBar().getTimePeriod();
-        plot.setDomainAxis(createDomainAxis(series, duration, timeAxisMode, null, 0.02, 0.02));
+        plot.setDomainAxis(createDomainAxis(snapshot, timeAxisMode, null, 0.02, 0.02));
 
         // Configure range axis with indicator label (truncated to prevent overlap)
         String indicatorLabel = truncateAxisLabel(indicator.toString());
@@ -1159,7 +1189,7 @@ public final class TradingChartFactory {
         StandardXYItemRenderer renderer = new StandardXYItemRenderer();
         // Set tooltip generator to show series name, date, and value
         // For XYSeriesCollection with epoch milliseconds, use a custom format
-        renderer.setDefaultToolTipGenerator(createSeriesToolTipGenerator(series, duration, timeAxisMode));
+        renderer.setDefaultToolTipGenerator(createSeriesToolTipGenerator(snapshot, timeAxisMode));
         plot.setRenderer(0, renderer);
         configurePlotAppearance(plot);
 
@@ -1212,20 +1242,19 @@ public final class TradingChartFactory {
 
     private final class DatasetFactory {
 
-        private DefaultOHLCDataset createChartDataset(BarSeries series, TimeAxisMode timeAxisMode) {
+        private DefaultOHLCDataset createChartDataset(ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
             List<OHLCDataItem> dataItems = new ArrayList<>();
 
-            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-                Bar bar = series.getBar(i);
+            for (int i = snapshot.beginIndex(); i <= snapshot.endIndex(); i++) {
+                BarPrices prices = snapshot.prices(i);
                 Date barDate = timeAxisMode == TimeAxisMode.BAR_INDEX ? Date.from(Instant.EPOCH.plusMillis(i))
-                        : Date.from(bar.getEndTime());
-                OHLCDataItem item = new OHLCDataItem(barDate, bar.getOpenPrice().doubleValue(),
-                        bar.getHighPrice().doubleValue(), bar.getLowPrice().doubleValue(),
-                        bar.getClosePrice().doubleValue(), bar.getVolume().doubleValue());
+                        : new Date(snapshot.endTimeMillis(i));
+                OHLCDataItem item = new OHLCDataItem(barDate, prices.open().doubleValue(), prices.high().doubleValue(),
+                        prices.low().doubleValue(), prices.close().doubleValue(), prices.volume().doubleValue());
                 dataItems.add(item);
             }
 
-            String seriesName = series.getName() != null ? series.getName().split(" ")[0] : "Unknown";
+            String seriesName = snapshot.name() != null ? snapshot.name().split(" ")[0] : "Unknown";
             return new DefaultOHLCDataset(seriesName, dataItems.toArray(new OHLCDataItem[0]));
         }
 
@@ -1234,18 +1263,19 @@ public final class TradingChartFactory {
          * When NaN values are encountered, the series is split into multiple segments
          * to create visual gaps in the chart.
          *
+         * @param snapshot  the captured bars of the indicator's series
          * @param indicator the indicator to convert
          * @return XYSeriesCollection containing one or more series segments
          */
-        private XYSeriesCollection createDataSeriesForIndicator(Indicator<Num> indicator, TimeAxisMode timeAxisMode) {
+        private XYSeriesCollection createDataSeriesForIndicator(ChartBarSnapshot snapshot, Indicator<Num> indicator,
+                TimeAxisMode timeAxisMode) {
             XYSeriesCollection collection = new XYSeriesCollection();
-            BarSeries series = indicator.getBarSeries();
             String baseName = indicator.toString();
 
             XYSeries currentSegment = null;
             int segmentIndex = 0;
 
-            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            for (int i = snapshot.beginIndex(); i <= snapshot.endIndex(); i++) {
                 Num value = indicator.getValue(i);
                 boolean isValid = Num.isValid(value);
 
@@ -1257,7 +1287,7 @@ public final class TradingChartFactory {
                         currentSegment = new XYSeries(segmentName);
                         segmentIndex++;
                     }
-                    double orderDateTime = toDomainValue(series, i, timeAxisMode);
+                    double orderDateTime = toDomainValue(snapshot, i, timeAxisMode);
                     currentSegment.add(orderDateTime, value.doubleValue());
                 } else {
                     // NaN encountered - finish current segment if it exists
@@ -1282,23 +1312,22 @@ public final class TradingChartFactory {
          * segments. When connectGaps is true, NaN values are skipped but non-NaN values
          * are connected in a single series.
          *
-         * @param series      the bar series
+         * @param snapshot    the captured bars of the series
          * @param indicator   the indicator to convert
          * @param seriesName  the base name for the series
          * @param connectGaps if true, connect non-NaN values across NaN gaps; if false,
          *                    split on NaN
          * @return TimeSeriesCollection containing one or more series segments
          */
-        private TimeSeriesCollection createTimeSeriesDataset(BarSeries series, Indicator<Num> indicator,
+        private TimeSeriesCollection createTimeSeriesDataset(ChartBarSnapshot snapshot, Indicator<Num> indicator,
                 String seriesName, boolean connectGaps) {
             TimeSeriesCollection collection = new TimeSeriesCollection();
             TimeSeries currentSegment = null;
             int segmentIndex = 0;
-            Duration barDuration = series.getFirstBar().getTimePeriod();
+            Duration barDuration = snapshot.timePeriod();
 
-            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-                Bar bar = series.getBar(i);
-                Date barDate = Date.from(bar.getEndTime());
+            for (int i = snapshot.beginIndex(); i <= snapshot.endIndex(); i++) {
+                Date barDate = new Date(snapshot.endTimeMillis(i));
                 Num value = indicator.getValue(i);
                 boolean isValid = Num.isValid(value);
 
@@ -1335,13 +1364,13 @@ public final class TradingChartFactory {
             return collection;
         }
 
-        private XYSeriesCollection createIndexSeriesDataset(BarSeries series, Indicator<Num> indicator,
+        private XYSeriesCollection createIndexSeriesDataset(ChartBarSnapshot snapshot, Indicator<Num> indicator,
                 String seriesName, boolean connectGaps) {
             XYSeriesCollection collection = new XYSeriesCollection();
             XYSeries currentSegment = null;
             int segmentIndex = 0;
 
-            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            for (int i = snapshot.beginIndex(); i <= snapshot.endIndex(); i++) {
                 Num value = indicator.getValue(i);
                 boolean isValid = Num.isValid(value);
 
@@ -1352,7 +1381,7 @@ public final class TradingChartFactory {
                         currentSegment = new XYSeries(segmentName);
                         segmentIndex++;
                     }
-                    currentSegment.add(toDomainValue(series, i, TimeAxisMode.BAR_INDEX), value.doubleValue());
+                    currentSegment.add(toDomainValue(snapshot, i, TimeAxisMode.BAR_INDEX), value.doubleValue());
                 } else if (!connectGaps && currentSegment != null) {
                     collection.addSeries(currentSegment);
                     currentSegment = null;
@@ -1366,18 +1395,18 @@ public final class TradingChartFactory {
             return collection;
         }
 
-        private XYDataset createChannelFillDataset(BarSeries series, Indicator<Num> upper, Indicator<Num> lower,
-                TimeAxisMode timeAxisMode) {
+        private XYDataset createChannelFillDataset(ChartBarSnapshot snapshot, Indicator<Num> upper,
+                Indicator<Num> lower, TimeAxisMode timeAxisMode) {
             if (timeAxisMode == TimeAxisMode.BAR_INDEX) {
                 XYSeriesCollection collection = new XYSeriesCollection();
                 XYSeries upperSeries = new XYSeries("Channel upper");
                 XYSeries lowerSeries = new XYSeries("Channel lower");
 
-                for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                for (int i = snapshot.beginIndex(); i <= snapshot.endIndex(); i++) {
                     Num upperValue = upper.getValue(i);
                     Num lowerValue = lower.getValue(i);
                     if (Num.isValid(upperValue) && Num.isValid(lowerValue)) {
-                        double x = toDomainValue(series, i, timeAxisMode);
+                        double x = toDomainValue(snapshot, i, timeAxisMode);
                         upperSeries.add(x, upperValue.doubleValue());
                         lowerSeries.add(x, lowerValue.doubleValue());
                     }
@@ -1393,11 +1422,10 @@ public final class TradingChartFactory {
             TimeSeriesCollection collection = new TimeSeriesCollection();
             TimeSeries upperSeries = new TimeSeries("Channel upper");
             TimeSeries lowerSeries = new TimeSeries("Channel lower");
-            Duration barDuration = series.getFirstBar().getTimePeriod();
+            Duration barDuration = snapshot.timePeriod();
 
-            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-                Bar bar = series.getBar(i);
-                Date barDate = Date.from(bar.getEndTime());
+            for (int i = snapshot.beginIndex(); i <= snapshot.endIndex(); i++) {
+                Date barDate = new Date(snapshot.endTimeMillis(i));
                 Num upperValue = upper.getValue(i);
                 Num lowerValue = lower.getValue(i);
                 if (Num.isValid(upperValue) && Num.isValid(lowerValue)) {
@@ -1414,24 +1442,28 @@ public final class TradingChartFactory {
             return collection;
         }
 
-        private TimeSeriesCollection createSwingMarkerDataset(BarSeries series, SwingPointMarkerIndicator marker,
-                String seriesName) {
+        private TimeSeriesCollection createSwingMarkerDataset(ChartBarSnapshot snapshot,
+                SwingPointMarkerIndicator marker, String seriesName) {
             TimeSeriesCollection collection = new TimeSeriesCollection();
-            if (series == null || series.isEmpty()) {
+            if (snapshot.isEmpty()) {
                 return collection;
             }
 
             List<Integer> swingIndexes = new ArrayList<>(marker.getSwingPointIndexes());
             Collections.sort(swingIndexes);
             TimeSeries swingSeries = new TimeSeries(seriesName);
-            Duration barDuration = series.getFirstBar().getTimePeriod();
+            Duration barDuration = snapshot.timePeriod();
             for (Integer index : swingIndexes) {
+                if (index > snapshot.endIndex()) {
+                    // Detected after the snapshot was taken: the chart has no bar for it.
+                    continue;
+                }
                 Num value = marker.getPriceIndicator().getValue(index);
                 if (Num.isNaNOrNull(value)) {
-                    value = series.getBar(index).getClosePrice();
+                    value = snapshot.prices(index).close();
                 }
                 if (Num.isValid(value)) {
-                    Date barDate = Date.from(series.getBar(index).getEndTime());
+                    Date barDate = new Date(snapshot.endTimeMillis(index));
                     RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
                     swingSeries.addOrUpdate(timePeriod, value.doubleValue());
                 }
@@ -1442,10 +1474,10 @@ public final class TradingChartFactory {
             return collection;
         }
 
-        private XYSeriesCollection createIndexSwingMarkerDataset(BarSeries series, SwingPointMarkerIndicator marker,
-                String seriesName) {
+        private XYSeriesCollection createIndexSwingMarkerDataset(ChartBarSnapshot snapshot,
+                SwingPointMarkerIndicator marker, String seriesName) {
             XYSeriesCollection collection = new XYSeriesCollection();
-            if (series == null || series.isEmpty()) {
+            if (snapshot.isEmpty()) {
                 return collection;
             }
 
@@ -1453,12 +1485,16 @@ public final class TradingChartFactory {
             Collections.sort(swingIndexes);
             XYSeries swingSeries = new XYSeries(seriesName);
             for (Integer index : swingIndexes) {
+                if (index > snapshot.endIndex()) {
+                    // Detected after the snapshot was taken: the chart has no bar for it.
+                    continue;
+                }
                 Num value = marker.getPriceIndicator().getValue(index);
                 if (Num.isNaNOrNull(value)) {
-                    value = series.getBar(index).getClosePrice();
+                    value = snapshot.prices(index).close();
                 }
                 if (Num.isValid(value)) {
-                    double x = toDomainValue(series, index, TimeAxisMode.BAR_INDEX);
+                    double x = toDomainValue(snapshot, index, TimeAxisMode.BAR_INDEX);
                     swingSeries.add(x, value.doubleValue());
                 }
             }
@@ -1468,10 +1504,10 @@ public final class TradingChartFactory {
             return collection;
         }
 
-        private TimeSeriesCollection createBarSeriesLabelDataset(BarSeries series,
+        private TimeSeriesCollection createBarSeriesLabelDataset(ChartBarSnapshot snapshot,
                 BarSeriesLabelIndicator labelIndicator, String seriesName) {
             TimeSeriesCollection collection = new TimeSeriesCollection();
-            if (series == null || series.isEmpty()) {
+            if (snapshot.isEmpty()) {
                 return collection;
             }
 
@@ -1481,17 +1517,17 @@ public final class TradingChartFactory {
             }
 
             TimeSeries labelSeries = new TimeSeries(seriesName);
-            Duration barDuration = series.getFirstBar().getTimePeriod();
+            Duration barDuration = snapshot.timePeriod();
             for (BarLabel barLabel : labels) {
                 int index = barLabel.barIndex();
-                if (index < series.getBeginIndex() || index > series.getEndIndex()) {
+                if (!snapshot.contains(index)) {
                     continue;
                 }
                 Num value = barLabel.yValue();
                 if (Num.isNaNOrNull(value)) {
                     continue;
                 }
-                Date barDate = Date.from(series.getBar(index).getEndTime());
+                Date barDate = new Date(snapshot.endTimeMillis(index));
                 RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
                 labelSeries.addOrUpdate(timePeriod, value.doubleValue());
             }
@@ -1503,10 +1539,10 @@ public final class TradingChartFactory {
             return collection;
         }
 
-        private XYSeriesCollection createIndexBarSeriesLabelDataset(BarSeries series,
+        private XYSeriesCollection createIndexBarSeriesLabelDataset(ChartBarSnapshot snapshot,
                 BarSeriesLabelIndicator labelIndicator, String seriesName) {
             XYSeriesCollection collection = new XYSeriesCollection();
-            if (series == null || series.isEmpty()) {
+            if (snapshot.isEmpty()) {
                 return collection;
             }
 
@@ -1518,14 +1554,14 @@ public final class TradingChartFactory {
             XYSeries labelSeries = new XYSeries(seriesName);
             for (BarLabel barLabel : labels) {
                 int index = barLabel.barIndex();
-                if (index < series.getBeginIndex() || index > series.getEndIndex()) {
+                if (!snapshot.contains(index)) {
                     continue;
                 }
                 Num value = barLabel.yValue();
                 if (Num.isNaNOrNull(value)) {
                     continue;
                 }
-                double x = toDomainValue(series, index, TimeAxisMode.BAR_INDEX);
+                double x = toDomainValue(snapshot, index, TimeAxisMode.BAR_INDEX);
                 labelSeries.add(x, value.doubleValue());
             }
 
@@ -1537,9 +1573,9 @@ public final class TradingChartFactory {
         }
     }
 
-    private void attachBarSeriesLabelAnnotations(XYPlot plot, BarSeries series, BarSeriesLabelIndicator labelIndicator,
-            ChartBuilder.OverlayDefinition overlay, TimeAxisMode timeAxisMode) {
-        if (plot == null || series == null || labelIndicator == null) {
+    private void attachBarSeriesLabelAnnotations(XYPlot plot, ChartBarSnapshot snapshot,
+            BarSeriesLabelIndicator labelIndicator, ChartBuilder.OverlayDefinition overlay, TimeAxisMode timeAxisMode) {
+        if (plot == null || snapshot == null || labelIndicator == null) {
             return;
         }
 
@@ -1551,14 +1587,14 @@ public final class TradingChartFactory {
                 continue;
             }
             int index = label.barIndex();
-            if (index < series.getBeginIndex() || index > series.getEndIndex()) {
+            if (!snapshot.contains(index)) {
                 continue;
             }
             Num yValue = label.yValue();
             if (Num.isNaNOrNull(yValue)) {
                 continue;
             }
-            double x = toDomainValue(series, index, timeAxisMode);
+            double x = toDomainValue(snapshot, index, timeAxisMode);
             double y = yValue.doubleValue();
 
             XYTextAnnotation annotation = new XYTextAnnotation(label.text(), x, y);
@@ -1567,7 +1603,7 @@ public final class TradingChartFactory {
             Color annotationColor = label.color() != null ? label.color() : overlayColor;
             annotation.setPaint(applyOpacity(annotationColor, opacity));
             annotation.setBackgroundPaint(TRADE_LABEL_BACKGROUND);
-            annotation.setTextAnchor(resolveBarLabelAnchor(label, series));
+            annotation.setTextAnchor(resolveBarLabelAnchor(label, snapshot));
             // Annotations are automatically rendered on top of data series in JFreeChart
             // Adding them after the data series ensures they appear in front
             plot.addAnnotation(annotation);
@@ -1579,10 +1615,10 @@ public final class TradingChartFactory {
         return new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), alpha);
     }
 
-    private TextAnchor resolveBarLabelAnchor(BarLabel label, BarSeries series) {
+    private TextAnchor resolveBarLabelAnchor(BarLabel label, ChartBarSnapshot snapshot) {
         int index = label.barIndex();
-        int begin = series.getBeginIndex();
-        int end = series.getEndIndex();
+        int begin = snapshot.beginIndex();
+        int end = snapshot.endIndex();
         boolean nearStart = index - begin <= LABEL_EDGE_BARS;
         boolean nearEnd = end - index <= LABEL_EDGE_BARS;
 
@@ -1617,15 +1653,14 @@ public final class TradingChartFactory {
         };
     }
 
-    private void configureDualAxisPlot(XYPlot plot, BarSeries series, Duration duration, TimeAxisMode timeAxisMode) {
-        plot.setDomainAxis(
-                createDomainAxis(series, duration, timeAxisMode, resolveDomainAxisLabel(timeAxisMode), 0.03, 0.07));
+    private void configureDualAxisPlot(XYPlot plot, ChartBarSnapshot snapshot, TimeAxisMode timeAxisMode) {
+        plot.setDomainAxis(createDomainAxis(snapshot, timeAxisMode, resolveDomainAxisLabel(timeAxisMode), 0.03, 0.07));
         configureRangeAxis(plot);
         configurePlotAppearance(plot);
     }
 
     private void addSecondaryAxis(XYPlot plot, XYDataset dataset, String label, TimeAxisMode timeAxisMode,
-            BarSeries series, Duration duration) {
+            ChartBarSnapshot snapshot) {
         NumberAxis secondaryAxis = null;
         if (plot.getRangeAxisCount() > 1) {
             secondaryAxis = (NumberAxis) plot.getRangeAxis(1);
@@ -1654,8 +1689,8 @@ public final class TradingChartFactory {
         }
         // Set tooltip generator to show series name, date, and value
         if (timeAxisMode == TimeAxisMode.BAR_INDEX) {
-            DateFormat dateFormat = resolveDateFormat(duration);
-            secondaryRenderer.setDefaultToolTipGenerator(new BarIndexToolTipGenerator(series, dateFormat));
+            DateFormat dateFormat = resolveDateFormat(snapshot.timePeriod());
+            secondaryRenderer.setDefaultToolTipGenerator(new BarIndexToolTipGenerator(snapshot.timeline(), dateFormat));
         } else {
             secondaryRenderer.setDefaultToolTipGenerator(new TimeSeriesToolTipGenerator());
         }
@@ -1725,6 +1760,9 @@ public final class TradingChartFactory {
      * {@link BarSeries}. Any public {@code BarSeries} implementation can therefore
      * be charted and deep-copied without widening the display serialization
      * allowlist, and later series mutations never change the chart's date labels.
+     * The timeline is read exactly once per series by
+     * {@link ChartBarSnapshot#capture(BarSeries)} and shared by every dataset, axis
+     * and tooltip built for that series so they describe the same retained window.
      */
     private static final class BarIndexTimeline implements Serializable {
 
@@ -1732,30 +1770,196 @@ public final class TradingChartFactory {
         private final int beginIndex;
         private final long[] endTimeEpochMillis;
 
-        private BarIndexTimeline(BarSeries series) {
-            boolean hasBars = !series.isEmpty() && series.getEndIndex() >= series.getBeginIndex();
-            this.beginIndex = hasBars ? series.getBeginIndex() : 0;
-            this.endTimeEpochMillis = new long[hasBars ? series.getEndIndex() - series.getBeginIndex() + 1 : 0];
-            for (int i = 0; i < endTimeEpochMillis.length; i++) {
-                endTimeEpochMillis[i] = series.getBar(beginIndex + i).getEndTime().toEpochMilli();
-            }
+        private BarIndexTimeline(int beginIndex, long[] endTimeEpochMillis) {
+            this.beginIndex = beginIndex;
+            this.endTimeEpochMillis = endTimeEpochMillis;
         }
 
         private boolean isEmpty() {
             return endTimeEpochMillis.length == 0;
         }
 
+        private int beginIndex() {
+            return beginIndex;
+        }
+
+        private int endIndex() {
+            return beginIndex + endTimeEpochMillis.length - 1;
+        }
+
         private boolean contains(int barIndex) {
             return barIndex >= beginIndex && barIndex - beginIndex < endTimeEpochMillis.length;
         }
 
+        /**
+         * Resolves a bar index to its offset in the captured window with the
+         * {@link BarSeries#getBar(int)} convention: indexes below the first retained
+         * bar address that bar, indexes outside the series are rejected.
+         */
+        private int offsetOf(int barIndex) {
+            if (barIndex < 0 || barIndex > endIndex()) {
+                throw new IndexOutOfBoundsException(String.format("Bar index %d is outside the captured bars [%d, %d]",
+                        barIndex, beginIndex, endIndex()));
+            }
+            return Math.max(barIndex, beginIndex) - beginIndex;
+        }
+
+        private long endTimeMillis(int barIndex) {
+            return endTimeEpochMillis[offsetOf(barIndex)];
+        }
+
         private Date endTime(int barIndex) {
-            return new Date(endTimeEpochMillis[barIndex - beginIndex]);
+            return new Date(endTimeMillis(barIndex));
         }
 
         private Date endTimeClamped(int barIndex) {
-            int lastIndex = beginIndex + endTimeEpochMillis.length - 1;
-            return endTime(Math.max(beginIndex, Math.min(barIndex, lastIndex)));
+            return endTime(Math.max(beginIndex, Math.min(barIndex, endIndex())));
+        }
+    }
+
+    /**
+     * Immutable bar field references copied from one bar while its series is read.
+     * The {@link Num} values are converted to primitives only when a dataset is
+     * built, so null or NaN prices behave exactly as they did before snapshots.
+     */
+    private record BarPrices(Num open, Num high, Num low, Num close, Num volume) {
+    }
+
+    /**
+     * Raw bars of one series, read once under the series' read lock.
+     * <p>
+     * The retained indices, end times and OHLCV references are captured together.
+     * Candle datasets, axis labels, tooltips and trade-marker placement for the
+     * series derive from this capture, even if the live series is later appended
+     * to, trimmed or cleared.
+     * <p>
+     * Indicator values are live reads, not part of this snapshot. Indicators and
+     * other callbacks run after the lock is released, for the captured index range
+     * (see {@link BarSeries#withReadLock}). Their values may change, or evaluation
+     * may fail, if the source is trimmed or cleared meanwhile. This snapshot is
+     * transient construction state: charts retain only its serializable timeline.
+     */
+    private static final class ChartBarSnapshot {
+
+        private final String name;
+        private final Duration timePeriod;
+        private final BarIndexTimeline timeline;
+        private final BarPrices[] prices;
+
+        private ChartBarSnapshot(String name, Duration timePeriod, BarIndexTimeline timeline, BarPrices[] prices) {
+            this.name = name;
+            this.timePeriod = timePeriod;
+            this.timeline = timeline;
+            this.prices = prices;
+        }
+
+        private static ChartBarSnapshot capture(BarSeries series) {
+            Objects.requireNonNull(series, "BarSeries cannot be null");
+            return series.withReadLock(() -> read(series));
+        }
+
+        private static ChartBarSnapshot read(BarSeries series) {
+            int firstIndex = series.getBeginIndex();
+            int lastIndex = series.getEndIndex();
+            boolean hasBars = !series.isEmpty() && lastIndex >= firstIndex;
+            int barCount = hasBars ? lastIndex - firstIndex + 1 : 0;
+            long[] endTimes = new long[barCount];
+            BarPrices[] prices = new BarPrices[barCount];
+            Duration timePeriod = null;
+            for (int i = 0; i < barCount; i++) {
+                Bar bar = series.getBar(firstIndex + i);
+                if (i == 0) {
+                    timePeriod = bar.getTimePeriod();
+                }
+                endTimes[i] = bar.getEndTime().toEpochMilli();
+                prices[i] = new BarPrices(bar.getOpenPrice(), bar.getHighPrice(), bar.getLowPrice(),
+                        bar.getClosePrice(), bar.getVolume());
+            }
+            return new ChartBarSnapshot(series.getName(), timePeriod,
+                    new BarIndexTimeline(hasBars ? firstIndex : 0, endTimes), prices);
+        }
+
+        private String name() {
+            return name;
+        }
+
+        private BarIndexTimeline timeline() {
+            return timeline;
+        }
+
+        private boolean isEmpty() {
+            return timeline.isEmpty();
+        }
+
+        private int beginIndex() {
+            return timeline.beginIndex();
+        }
+
+        private int endIndex() {
+            return timeline.endIndex();
+        }
+
+        private boolean contains(int barIndex) {
+            return timeline.contains(barIndex);
+        }
+
+        /**
+         * Returns the time period of the first captured bar, failing like
+         * {@link BarSeries#getFirstBar()} when the series was empty.
+         */
+        private Duration timePeriod() {
+            if (timePeriod == null) {
+                throw new IndexOutOfBoundsException("Cannot read the time period of an empty bar series");
+            }
+            return timePeriod;
+        }
+
+        private long endTimeMillis(int barIndex) {
+            return timeline.endTimeMillis(barIndex);
+        }
+
+        private BarPrices prices(int barIndex) {
+            return prices[timeline.offsetOf(barIndex)];
+        }
+    }
+
+    /**
+     * Hands out one {@link ChartBarSnapshot} per distinct series while a chart is
+     * built, so every consumer of a series shares the same capture. Series are
+     * matched like indicators match their source series, so a read-only view and
+     * the series it wraps resolve to one snapshot.
+     */
+    private static final class ChartBarSnapshots {
+
+        private final List<SeriesCapture> captures = new ArrayList<>();
+
+        private ChartBarSnapshot of(ChartBuilder.PlotDefinition definition, BarSeries capturedSeries) {
+            for (SeriesCapture capture : captures) {
+                if (capture.definition() != null ? capture.definition().hasSameSource(definition)
+                        : definition.hasSameSource(capture.series())) {
+                    return capture.snapshot();
+                }
+            }
+            ChartBarSnapshot snapshot = ChartBarSnapshot.capture(capturedSeries);
+            captures.add(new SeriesCapture(definition, null, snapshot));
+            return snapshot;
+        }
+
+        private ChartBarSnapshot of(BarSeries barSeries) {
+            Objects.requireNonNull(barSeries, "BarSeries cannot be null");
+            for (SeriesCapture capture : captures) {
+                if (capture.definition() != null ? capture.definition().hasSameSource(barSeries)
+                        : IndicatorUtils.isSameSeries(capture.series(), barSeries)) {
+                    return capture.snapshot();
+                }
+            }
+            ChartBarSnapshot snapshot = ChartBarSnapshot.capture(barSeries);
+            captures.add(new SeriesCapture(null, barSeries, snapshot));
+            return snapshot;
+        }
+
+        private record SeriesCapture(ChartBuilder.PlotDefinition definition, BarSeries series,
+                ChartBarSnapshot snapshot) {
         }
     }
 
@@ -1768,8 +1972,8 @@ public final class TradingChartFactory {
         private final BarIndexTimeline timeline;
         private final DateFormat dateFormat;
 
-        private BarIndexToolTipGenerator(BarSeries series, DateFormat dateFormat) {
-            this.timeline = new BarIndexTimeline(series);
+        private BarIndexToolTipGenerator(BarIndexTimeline timeline, DateFormat dateFormat) {
+            this.timeline = timeline;
             this.dateFormat = dateFormat;
         }
 
@@ -1795,8 +1999,8 @@ public final class TradingChartFactory {
         private final BarIndexTimeline timeline;
         private final DateFormat dateFormat;
 
-        private BarIndexOhlcToolTipGenerator(BarSeries series, DateFormat dateFormat) {
-            this.timeline = new BarIndexTimeline(series);
+        private BarIndexOhlcToolTipGenerator(BarIndexTimeline timeline, DateFormat dateFormat) {
+            this.timeline = timeline;
             this.dateFormat = dateFormat;
         }
 
@@ -1825,8 +2029,8 @@ public final class TradingChartFactory {
         private final BarIndexTimeline timeline;
         private final DateFormat dateFormat;
 
-        private BarIndexDateFormat(BarSeries series, DateFormat dateFormat) {
-            this.timeline = new BarIndexTimeline(series);
+        private BarIndexDateFormat(BarIndexTimeline timeline, DateFormat dateFormat) {
+            this.timeline = timeline;
             this.dateFormat = dateFormat;
         }
 

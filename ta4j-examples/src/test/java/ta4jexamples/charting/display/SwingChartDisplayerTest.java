@@ -264,7 +264,10 @@ class SwingChartDisplayerTest {
                 }
                 for (int item = 0; item < dataset.getItemCount(0); item++) {
                     XYToolTipGenerator generator = renderer.getToolTipGenerator(0, item);
-                    String generatorType = generator == null ? "" : generator.getClass().getSimpleName();
+                    if (generator == null) {
+                        continue;
+                    }
+                    String generatorType = generator.getClass().getSimpleName();
                     if (!generatorType.startsWith("BarIndex")) {
                         continue;
                     }
