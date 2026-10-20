@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Changed
+
+- **Leaner analysis and safer saved data**: numerous micro-optimizations reduce allocation and repeated data access in portfolio rebalancing (`PortfolioSeriesManager`), reversal detection (`StandardReversalIndicator`) and minimum-variance allocation (`MinimumVarianceOptimizer`). Custom rebalance policies can still retain each bar's pre-trade context for later comparisons. Separately, object loading rejects invalid `BaseBar` and `BaseBarSeries` state; valid series remain appendable, with correct retained indices and safe failure at index exhaustion. Component reconstruction reports unavailable optional dependencies with their original causes instead of leaking `LinkageError` or misleading constructor errors. Swing chart copies support standard, concurrent, realtime, immutable and custom series plus application renderers and tooltips, while preserving JVM deserialization restrictions and resource limits. Charts capture prices and dates together, keeping axes, tooltips, overlays and trades aligned after live-series trimming, extension or clearing, including indicator-only subplots.
 
 ## 0.27.0 (2026-10-19)
 
