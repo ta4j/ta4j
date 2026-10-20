@@ -1,8 +1,6 @@
 ## Unreleased
 
-### Fixed
-
-- **Resilient component deserialization**: indicator, rule, strategy and criterion reconstruction reports unavailable optional dependencies through its serialization exceptions, including dependencies resolved only when inspecting constructors or factory methods. Dependencies of nested rules, chain links and indicators keep their cause instead of failing with a misleading `No compatible constructor` error. Component descriptor resolution treats unloadable types as unresolved instead of leaking `LinkageError`.
+- _No changes yet._
 
 ## 0.27.0 (2026-10-19)
 
