@@ -91,6 +91,18 @@ class BaseBarTest {
     }
 
     @Test
+    public void testSerializedBarWithNegativeAmountIsRejected() throws Exception {
+        final BaseBar bar = new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10),
+                numFactory.numOf(20), numFactory.numOf(5), numFactory.numOf(15), numFactory.zero(),
+                numFactory.numOf(123456.789d), 0);
+        final byte[] serialized = serialize(bar);
+        final int amountOffset = indexOfDouble(serialized, 123456.789d);
+        assertTrue(amountOffset >= 0, "serialized stream must contain amount");
+        writeDouble(serialized, amountOffset, -1.0d);
+        assertThrows(InvalidObjectException.class, () -> deserialize(serialized));
+    }
+
+    @Test
     public void testSerializedBarWithNegativeTradesIsRejected() throws Exception {
         final DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
         final long testTrades = 9876543210L;
