@@ -1,8 +1,6 @@
 ## Unreleased
 
-### Fixed
-
-- **Safe bar-series object loading**: `BaseBarSeries` rejects serialized state with missing factories, null bars, invalid capacity, revision or constrained-series state, inconsistent empty-series indexes, and overflowing retained-bar offsets. Valid histories retain mutable storage for appends, retention and clearing, including streams containing immutable bar lists. Truncated ranges expose newly appended bars at the correct absolute index and report retained-tail replacements at their actual index; appends fail without mutation when the retained absolute index range is exhausted.
+- _No changes yet._
 
 ## 0.27.0 (2026-10-19)
 
