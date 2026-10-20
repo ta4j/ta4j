@@ -200,7 +200,8 @@ public class SchaffTrendCycleIndicatorTest extends AbstractIndicatorTest<Indicat
         bounded.addBar(bounded.barBuilder().endTime(bounded.getLastBar().getEndTime()).closePrice(80).build(), true);
         unbounded.addBar(unbounded.barBuilder().endTime(unbounded.getLastBar().getEndTime()).closePrice(80).build(),
                 true);
-        assertThat(indicator.getValue(95)).isEqualByComparingTo(reference.getValue(95)).isNotEqualByComparingTo(before);
+        assertThat(indicator.getValue(95)).isEqualByComparingTo(reference.getValue(95))
+                .isNotEqualByComparingTo(mutated);
         bounded.barBuilder().closePrice(90).add();
         unbounded.barBuilder().closePrice(90).add();
         assertThat(indicator.getValue(96)).isEqualByComparingTo(reference.getValue(96));
