@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,6 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 class BaseBarTest {
@@ -39,8 +41,8 @@ class BaseBarTest {
     @MethodSource("numFactories")
     void testSerializedValidBarRoundTrips(NumFactory numFactory) throws Exception {
         final BaseBar original = new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10),
-                numFactory.numOf(20), numFactory.numOf(5), numFactory.numOf(15), numFactory.zero(), numFactory.zero(),
-                0);
+                numFactory.numOf(20), numFactory.numOf(5), numFactory.numOf(15), numFactory.numOf(25),
+                numFactory.numOf(30), 2);
         final BaseBar restored = (BaseBar) deserialize(serialize(original));
         assertEquals(original.getOpenPrice(), restored.getOpenPrice());
         assertEquals(original.getHighPrice(), restored.getHighPrice());
@@ -48,6 +50,9 @@ class BaseBarTest {
         assertEquals(original.getClosePrice(), restored.getClosePrice());
         assertEquals(original.getBeginTime(), restored.getBeginTime());
         assertEquals(original.getEndTime(), restored.getEndTime());
+        assertEquals(original.getVolume(), restored.getVolume());
+        assertEquals(original.getAmount(), restored.getAmount());
+        assertEquals(original.getTrades(), restored.getTrades());
     }
 
     @Test
@@ -75,6 +80,32 @@ class BaseBarTest {
         assertTrue(highOffset >= 0, "serialized stream must contain the high price");
         writeDouble(serialized, highOffset, 1.0d);
         assertThrows(InvalidObjectException.class, () -> deserialize(serialized));
+    }
+
+    @Test
+    void testSerializedBarWithMixedNumericPricesIsRejected() throws Exception {
+        final Num highPrice = numFactory.numOf(20);
+        final BaseBar bar = new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), highPrice,
+                numFactory.numOf(5), numFactory.numOf(15), numFactory.zero(), numFactory.zero(), 0);
+        final byte[] serialized;
+        try (ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                ObjectOutputStream out = new ObjectOutputStream(bytes) {
+                    {
+                        enableReplaceObject(true);
+                    }
+
+                    @Override
+                    protected Object replaceObject(Object value) {
+                        return value == highPrice ? DecimalNumFactory.getInstance().numOf(20) : value;
+                    }
+                }) {
+            out.writeObject(bar);
+            out.flush();
+            serialized = bytes.toByteArray();
+        }
+        final InvalidObjectException exception = assertThrows(InvalidObjectException.class,
+                () -> deserialize(serialized));
+        assertInstanceOf(ClassCastException.class, exception.getCause());
     }
 
     @Test

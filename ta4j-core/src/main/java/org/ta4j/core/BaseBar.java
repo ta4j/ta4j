@@ -737,7 +737,8 @@ public class BaseBar implements Bar {
      * @throws IOException            if deserialization fails
      * @throws ClassNotFoundException if a serialized class is unavailable
      * @throws InvalidObjectException if any serialized field violates domain
-     *                                invariants
+     *                                invariants or OHLC numeric implementations
+     *                                cannot be compared
      */
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         stream.defaultReadObject();
@@ -753,8 +754,11 @@ public class BaseBar implements Bar {
         }
         try {
             validatePrices(openPrice, highPrice, lowPrice, closePrice);
-        } catch (IllegalArgumentException e) {
-            throw new InvalidObjectException("Serialized bar violates the OHLC invariant: " + e.getMessage());
+        } catch (IllegalArgumentException | ClassCastException e) {
+            final InvalidObjectException invalid = new InvalidObjectException(
+                    "Serialized bar violates the OHLC invariant: " + e.getMessage());
+            invalid.initCause(e);
+            throw invalid;
         }
         if (volume != null && volume.isNegative()) {
             throw new InvalidObjectException("Volume cannot be negative, but was " + volume);
