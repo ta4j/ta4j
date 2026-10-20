@@ -1167,8 +1167,8 @@ public final class TradingChartFactory {
 
     private XYPlot createIndicatorSubplot(ChartBarSnapshots captures, ChartBarSnapshot snapshot,
             Indicator<Num> indicator, TimeAxisMode timeAxisMode) {
-        XYSeriesCollection dataset = datasetFactory.createDataSeriesForIndicator(captures.of(indicator.getBarSeries()),
-                indicator, timeAxisMode);
+        XYSeriesCollection dataset = datasetFactory.createDataSeriesForIndicator(
+                resolveIndicatorSnapshot(indicator, captures, snapshot), indicator, timeAxisMode);
 
         XYPlot plot = new XYPlot();
         plot.setDataset(0, dataset);

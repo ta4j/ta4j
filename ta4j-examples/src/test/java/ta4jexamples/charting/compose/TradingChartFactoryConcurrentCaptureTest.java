@@ -15,13 +15,16 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.labels.XYToolTipGenerator;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.xy.OHLCDataset;
 import org.jfree.data.xy.XYDataset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -31,6 +34,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
+import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.builder.TimeAxisMode;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
@@ -80,7 +84,7 @@ class TradingChartFactoryConcurrentCaptureTest {
     void composedOverlaysKeepThePlanWindowWhenTheirLiveSourceIsCleared() {
         Interleaving source = new Interleaving(Mutation.CLEAR);
         Indicator<Num> indicator = indexIndicator(source.view, source);
-        var plan = new ChartWorkflow().builder()
+        ChartPlan plan = new ChartWorkflow().builder()
                 .withTimeAxisMode(TimeAxisMode.BAR_INDEX)
                 .withSeries(source.view)
                 .withIndicatorOverlay(indicator)
@@ -121,12 +125,12 @@ class TradingChartFactoryConcurrentCaptureTest {
         assertEquals(
                 expected.getAnnotations()
                         .stream()
-                        .map(annotation -> (org.jfree.chart.annotations.XYTextAnnotation) annotation)
+                        .map(annotation -> (XYTextAnnotation) annotation)
                         .map(annotation -> List.of(annotation.getX(), annotation.getY()))
                         .toList(),
                 actual.getAnnotations()
                         .stream()
-                        .map(annotation -> (org.jfree.chart.annotations.XYTextAnnotation) annotation)
+                        .map(annotation -> (XYTextAnnotation) annotation)
                         .map(annotation -> List.of(annotation.getX(), annotation.getY()))
                         .toList());
         XYDataset overlay = actual.getDataset(actual.getDatasetCount() - 1);
@@ -138,6 +142,45 @@ class TradingChartFactoryConcurrentCaptureTest {
             assertEquals(axis.format(2),
                     ((NumberAxis) plots(composed).get(1).getDomainAxis()).getNumberFormatOverride().format(2));
         }
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "REAL_TIME,false", "REAL_TIME,true", "BAR_INDEX,false", "BAR_INDEX,true" })
+    void seriesLessSubplotsKeepThePlotWindowWhenEvaluationClearsItsSource(TimeAxisMode mode, boolean tradingRecord) {
+        ConcurrentBarSeries source = series();
+        List<Long> timestamps = source.getBarData().stream().map(bar -> bar.getEndTime().toEpochMilli()).toList();
+        Num constant = source.numFactory().numOf(7);
+        Indicator<Num> indicator = new AbstractIndicator<Num>(source) {
+            @Override
+            public BarSeries getBarSeries() {
+                return null;
+            }
+
+            @Override
+            public Num getValue(int index) {
+                source.clear();
+                return constant;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        TradingChartFactory factory = new TradingChartFactory();
+
+        JFreeChart chart = tradingRecord
+                ? factory.createTradingRecordChart(source, "Capture", new BaseTradingRecord(), mode, indicator)
+                : factory.createIndicatorChart(source, mode, indicator);
+
+        XYDataset subplot = plots(chart).get(1).getDataset();
+        assertEquals(4, subplot.getItemCount(0));
+        for (int i = 0; i < 4; i++) {
+            assertEquals(mode == TimeAxisMode.BAR_INDEX ? 2 + i : timestamps.get(i).doubleValue(),
+                    subplot.getXValue(0, i));
+            assertEquals(7.0, subplot.getYValue(0, i));
+        }
+        assertEquals(0, source.getBarCount());
     }
 
     private static JFreeChart indicatorChart(Entry entry, Interleaving source) {
@@ -207,7 +250,7 @@ class TradingChartFactoryConcurrentCaptureTest {
                     values.add(ohlc.getOpen(s, i) + ":" + ohlc.getHigh(s, i) + ":" + ohlc.getLow(s, i) + ":"
                             + ohlc.getClose(s, i) + ":" + ohlc.getVolume(s, i));
                 }
-                var tooltip = plot.getRenderer(datasetIndex).getToolTipGenerator(s, i);
+                XYToolTipGenerator tooltip = plot.getRenderer(datasetIndex).getToolTipGenerator(s, i);
                 if (tooltip != null) {
                     values.add(tooltip.generateToolTip(dataset, s, i));
                 }

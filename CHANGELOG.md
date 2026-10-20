@@ -2,7 +2,7 @@
 
 ### Fixed
 
-- **Safe deep copies of trading charts**: Swing chart display accepts the application's candlestick renderers, tooltips and bar-index data for any `BarSeries` implementation, including standard, concurrent and realtime series, immutable backtest-result snapshots and custom series, while rejecting unrelated serialized classes and preserving JVM-wide deserialization restrictions and resource limits. Live-series charts capture candle prices and dates together, so axes and tooltips keep the dates the chart was built with after trimming, extension or clearing. Composed charts preserve retained absolute bar indices, keeping candles, overlays and trade markers aligned on windowed series.
+- **Safe deep copies of trading charts**: Swing chart display accepts the application's candlestick renderers, tooltips and bar-index data for any `BarSeries` implementation, including standard, concurrent and realtime series, immutable backtest-result snapshots and custom series, while rejecting unrelated serialized classes and preserving JVM-wide deserialization restrictions and resource limits. Live-series charts capture candle prices and dates together, so axes and tooltips keep the dates the chart was built with after trimming, extension or clearing. Composed charts preserve retained absolute bar indices, keeping candles, overlays and trade markers aligned on windowed series. Indicator subplots without an attached series use the chart's captured window.
 
 ## 0.27.0 (2026-10-19)
 
