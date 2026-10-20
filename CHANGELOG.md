@@ -1,8 +1,6 @@
 ## Unreleased
 
-### Fixed
-
-- **Serialized bars preserve their construction invariants**: `BaseBar` rejects inconsistent time periods and timestamps, invalid OHLC ranges, and negative volume, amount or trade counts with `InvalidObjectException` when loading legacy or externally supplied object streams.
+- _No changes yet._
 
 ## 0.27.0 (2026-10-19)
 
