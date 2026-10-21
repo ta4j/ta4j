@@ -99,7 +99,9 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   whole cache is discarded on head advance instead of preserving stale
   pre-advance results. `StochasticIndicator` follows this policy and
   extends `RecursiveCachedIndicator` so the inherited prefill rebuilds
-  long flat stretches iteratively after the eviction.
+  long flat stretches iteratively after the eviction. The private stochastic
+  stages in `SchaffTrendCycleIndicator` instead continue their flat-range carry
+  with the MACD and smoothing chain; standalone stochastic semantics are unchanged.
 - Head-advance invalidation must cover every downstream component of a
   rebaselining chain, not only the recursive core. The Klinger volume
   oscillator applies `Integer.MAX_VALUE` eviction to the trend direction,
