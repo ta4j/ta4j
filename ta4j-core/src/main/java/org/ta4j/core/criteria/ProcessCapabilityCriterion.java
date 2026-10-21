@@ -146,7 +146,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory factory = series.numFactory();
         List<Num> values = new ArrayList<>();
-        for (Position position : tradingRecord.getPositions()) {
+        for (Position position : tradingRecord.getContainedPositions(series)) {
             if (!position.isClosed()) {
                 continue;
             }
@@ -322,7 +322,8 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         MathContext context = recoveryMathContext(factory);
         boolean hasLongReturns = false;
         boolean hasShortReturns = false;
-        for (Position position : tradingRecord.getPositions()) {
+        List<Position> positions = tradingRecord.getContainedPositions(series);
+        for (Position position : positions) {
             if (position.isClosed()) {
                 hasLongReturns |= position.getEntry().isBuy();
                 hasShortReturns |= !position.getEntry().isBuy();
@@ -333,7 +334,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
                 : hasShortReturns ? BigDecimal.valueOf(2) : BigDecimal.ZERO;
         BigDecimal shortReturnBase = BigDecimal.valueOf(2).subtract(returnCenter);
         List<BigDecimal> returns = new ArrayList<>();
-        for (Position position : tradingRecord.getPositions()) {
+        for (Position position : positions) {
             if (!position.isClosed()) {
                 continue;
             }

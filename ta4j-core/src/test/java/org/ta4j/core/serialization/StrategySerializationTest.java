@@ -5,15 +5,15 @@ package org.ta4j.core.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
@@ -45,12 +45,21 @@ import org.ta4j.core.strategy.named.NamedStrategyFixture;
 
 public class StrategySerializationTest {
 
+    @Test
+    public void fromDescriptorWrapsMissingFactoryMethodDependency() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeStrategy"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class);
+        }
+    }
+
     /**
      * Cleans up static registrations made by test fixtures to prevent interference
      * between test runs, especially when tests execute in parallel or the test
      * suite runs multiple times in the same JVM.
      */
-    @After
+    @AfterEach
     public void tearDown() {
         // Unregister test-specific named strategies that use static initializers
         NamedStrategy.unregisterImplementation(ToggleNamedStrategy.class);

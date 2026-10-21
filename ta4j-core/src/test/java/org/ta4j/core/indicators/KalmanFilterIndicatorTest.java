@@ -3,9 +3,9 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -29,7 +29,7 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 15, 20, 22, 30, 50).build();
         closePrice = new ClosePriceIndicator(series);
@@ -39,24 +39,24 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void testKalmanFilterIndicatorWithDefaultParameters() {
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(closePrice);
 
-        Assert.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
-        Assert.assertEquals(12.61791, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
-        Assert.assertEquals(15.45321, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
-        Assert.assertEquals(17.58865, kalmanIndicator.getValue(3).doubleValue(), 1e-5);
-        Assert.assertEquals(21.29749, kalmanIndicator.getValue(4).doubleValue(), 1e-5);
-        Assert.assertEquals(29.48101, kalmanIndicator.getValue(5).doubleValue(), 1e-5);
+        Assertions.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
+        Assertions.assertEquals(12.61791, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
+        Assertions.assertEquals(15.45321, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
+        Assertions.assertEquals(17.58865, kalmanIndicator.getValue(3).doubleValue(), 1e-5);
+        Assertions.assertEquals(21.29749, kalmanIndicator.getValue(4).doubleValue(), 1e-5);
+        Assertions.assertEquals(29.48101, kalmanIndicator.getValue(5).doubleValue(), 1e-5);
     }
 
     @Test
     public void testKalmanFilterIndicatorWithCustomParameters() {
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(closePrice, 1e-4, 1e-6);
 
-        Assert.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
-        Assert.assertEquals(14.95098, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
-        Assert.assertEquals(19.95049, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
-        Assert.assertEquals(21.97990, kalmanIndicator.getValue(3).doubleValue(), 1e-5);
-        Assert.assertEquals(29.92136, kalmanIndicator.getValue(4).doubleValue(), 1e-5);
-        Assert.assertEquals(49.80313, kalmanIndicator.getValue(5).doubleValue(), 1e-5);
+        Assertions.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
+        Assertions.assertEquals(14.95098, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
+        Assertions.assertEquals(19.95049, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
+        Assertions.assertEquals(21.97990, kalmanIndicator.getValue(3).doubleValue(), 1e-5);
+        Assertions.assertEquals(29.92136, kalmanIndicator.getValue(4).doubleValue(), 1e-5);
+        Assertions.assertEquals(49.80313, kalmanIndicator.getValue(5).doubleValue(), 1e-5);
     }
 
     @Test
@@ -68,12 +68,12 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(noiseClosePrice, 1e-3, 1e-5);
 
-        Assert.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
-        Assert.assertEquals(10.99019, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
-        Assert.assertEquals(99.12727, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
-        Assert.assertEquals(13.84446, kalmanIndicator.getValue(3).doubleValue(), 1e-5);
-        Assert.assertEquals(13.99847, kalmanIndicator.getValue(4).doubleValue(), 1e-5);
-        Assert.assertEquals(14.99018, kalmanIndicator.getValue(5).doubleValue(), 1e-5);
+        Assertions.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
+        Assertions.assertEquals(10.99019, kalmanIndicator.getValue(1).doubleValue(), 1e-5);
+        Assertions.assertEquals(99.12727, kalmanIndicator.getValue(2).doubleValue(), 1e-5);
+        Assertions.assertEquals(13.84446, kalmanIndicator.getValue(3).doubleValue(), 1e-5);
+        Assertions.assertEquals(13.99847, kalmanIndicator.getValue(4).doubleValue(), 1e-5);
+        Assertions.assertEquals(14.99018, kalmanIndicator.getValue(5).doubleValue(), 1e-5);
     }
 
     @Test
@@ -83,7 +83,7 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(singleBarClosePrice, 1e-3, 1e-5);
 
-        Assert.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
+        Assertions.assertEquals(10.0, kalmanIndicator.getValue(0).doubleValue(), 1e-5);
     }
 
     @Test
@@ -93,13 +93,13 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(emptySeriesClosePrice, 1e-3, 1e-5);
 
-        Assert.assertEquals(NaN.NaN, kalmanIndicator.getValue(0));
+        Assertions.assertEquals(NaN.NaN, kalmanIndicator.getValue(0));
     }
 
     @Test
     public void testUnstableBars() {
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(closePrice);
-        Assert.assertEquals(0, kalmanIndicator.getCountOfUnstableBars());
+        Assertions.assertEquals(0, kalmanIndicator.getCountOfUnstableBars());
     }
 
     @Test
@@ -113,8 +113,8 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 new KalmanNoiseIndicator(measurementNoise));
         KalmanFilterIndicator baseline = new KalmanFilterIndicator(closePrice);
 
-        Assert.assertEquals(baseline.getValue(0).doubleValue(), dynamic.getValue(0).doubleValue(), 1e-12);
-        Assert.assertTrue(
+        Assertions.assertEquals(baseline.getValue(0).doubleValue(), dynamic.getValue(0).doubleValue(), 1e-12);
+        Assertions.assertTrue(
                 dynamic.getValue(1).minus(numOf(15)).abs().isLessThan(baseline.getValue(1).minus(numOf(15)).abs()));
     }
 
@@ -140,7 +140,7 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         Num expected = fresh.getValue(beginIndex);
         Num actual = subject.getValue(beginIndex);
 
-        Assert.assertTrue("Cached state must follow rebaselined dynamic noise", actual.isEqual(expected));
+        Assertions.assertTrue(actual.isEqual(expected), "Cached state must follow rebaselined dynamic noise");
     }
 
     @Test
@@ -151,11 +151,11 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         KalmanFilterIndicator dynamic = new KalmanFilterIndicator(source, new KalmanNoiseIndicator(processNoise),
                 KalmanNoiseIndicator.constant(series, 1e-3));
 
-        Assert.assertTrue(dynamic.getValue(1).isNaN());
+        Assertions.assertTrue(dynamic.getValue(1).isNaN());
 
         BarSeries comparisonSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 30).build();
         KalmanFilterIndicator comparison = new KalmanFilterIndicator(new ClosePriceIndicator(comparisonSeries));
-        Assert.assertEquals(comparison.getValue(1).doubleValue(), dynamic.getValue(2).doubleValue(), 1e-12);
+        Assertions.assertEquals(comparison.getValue(1).doubleValue(), dynamic.getValue(2).doubleValue(), 1e-12);
     }
 
     @Test
@@ -181,11 +181,11 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
             // A cold tail read must also initialize from the first usable observation.
             subject.getValue(series.getEndIndex());
-            Assert.assertTrue(subject.getValue(0).isNaN());
-            Assert.assertTrue(subject.getValue(1).isNaN());
-            Assert.assertEquals(numOf(100), subject.getValue(2));
+            Assertions.assertTrue(subject.getValue(0).isNaN());
+            Assertions.assertTrue(subject.getValue(1).isNaN());
+            Assertions.assertEquals(numOf(100), subject.getValue(2));
             for (int index = series.getEndIndex(); index >= 2; index--) {
-                Assert.assertEquals(comparison.getValue(index - 2), subject.getValue(index));
+                Assertions.assertEquals(comparison.getValue(index - 2), subject.getValue(index));
             }
         }
     }
@@ -202,10 +202,10 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         KalmanFilterIndicator comparison = new KalmanFilterIndicator(new ClosePriceIndicator(comparisonSeries), 0.01,
                 1);
 
-        Assert.assertEquals(comparison.getValue(1), subject.getValue(5));
-        Assert.assertTrue(subject.getValue(series.getBeginIndex()).isNaN());
-        Assert.assertTrue(subject.getValue(3).isNaN());
-        Assert.assertEquals(numOf(100), subject.getValue(4));
+        Assertions.assertEquals(comparison.getValue(1), subject.getValue(5));
+        Assertions.assertTrue(subject.getValue(series.getBeginIndex()).isNaN());
+        Assertions.assertTrue(subject.getValue(3).isNaN());
+        Assertions.assertEquals(numOf(100), subject.getValue(4));
     }
 
     @Test
@@ -216,24 +216,24 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         KalmanFilterIndicator filter = new KalmanFilterIndicator(source);
 
         if (numFactory == org.ta4j.core.num.DoubleNumFactory.getInstance()) {
-            Assert.assertTrue(filter.getValue(1).isNaN());
+            Assertions.assertTrue(filter.getValue(1).isNaN());
             BarSeries comparisonSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10).build();
             KalmanFilterIndicator comparison = new KalmanFilterIndicator(new ClosePriceIndicator(comparisonSeries));
-            Assert.assertEquals(comparison.getValue(0), filter.getValue(2));
+            Assertions.assertEquals(comparison.getValue(0), filter.getValue(2));
         } else {
-            Assert.assertTrue(Num.isFinite(filter.getValue(1)));
-            Assert.assertTrue(Num.isFinite(filter.getValue(2)));
+            Assertions.assertTrue(Num.isFinite(filter.getValue(1)));
+            Assertions.assertTrue(Num.isFinite(filter.getValue(2)));
         }
     }
 
     @Test
     public void rejectsInvalidStaticNoiseAndDifferentSeries() {
-        Assert.assertThrows(IllegalArgumentException.class, () -> new KalmanFilterIndicator(closePrice, 0, 1e-3));
-        Assert.assertThrows(IllegalArgumentException.class, () -> new KalmanFilterIndicator(closePrice, 1e-4, -1));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new KalmanFilterIndicator(closePrice, 0, 1e-3));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new KalmanFilterIndicator(closePrice, 1e-4, -1));
 
         BarSeries otherSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         KalmanNoiseIndicator otherNoise = KalmanNoiseIndicator.constant(otherSeries, 1e-4);
-        Assert.assertThrows(IllegalArgumentException.class, () -> new KalmanFilterIndicator(closePrice, otherNoise,
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new KalmanFilterIndicator(closePrice, otherNoise,
                 KalmanNoiseIndicator.constant(closePrice.getBarSeries(), 1e-3)));
     }
 
@@ -246,11 +246,11 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         Indicator<?> descriptorCopy = IndicatorSerialization.fromDescriptor(series, original.toDescriptor());
         Indicator<?> jsonCopy = Indicator.fromJson(series, original.toJson());
 
-        Assert.assertEquals(original.toDescriptor(), descriptorCopy.toDescriptor());
-        Assert.assertEquals(original.toDescriptor(), jsonCopy.toDescriptor());
+        Assertions.assertEquals(original.toDescriptor(), descriptorCopy.toDescriptor());
+        Assertions.assertEquals(original.toDescriptor(), jsonCopy.toDescriptor());
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            Assert.assertEquals(original.getValue(i), descriptorCopy.getValue(i));
-            Assert.assertEquals(original.getValue(i), jsonCopy.getValue(i));
+            Assertions.assertEquals(original.getValue(i), descriptorCopy.getValue(i));
+            Assertions.assertEquals(original.getValue(i), jsonCopy.getValue(i));
         }
     }
 
@@ -265,9 +265,9 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         Indicator<?> restored = IndicatorSerialization.fromDescriptor(closePrice.getBarSeries(), legacyDescriptor);
         KalmanFilterIndicator expected = new KalmanFilterIndicator(closePrice);
 
-        Assert.assertTrue(restored instanceof KalmanFilterIndicator);
+        Assertions.assertTrue(restored instanceof KalmanFilterIndicator);
         for (int i = closePrice.getBarSeries().getBeginIndex(); i <= closePrice.getBarSeries().getEndIndex(); i++) {
-            Assert.assertEquals(expected.getValue(i), restored.getValue(i));
+            Assertions.assertEquals(expected.getValue(i), restored.getValue(i));
         }
     }
 
@@ -281,11 +281,11 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         KalmanFilterIndicator kalmanFilterIndicator = new KalmanFilterIndicator(mockRsi);
 
-        Assert.assertEquals(3, kalmanFilterIndicator.getCountOfUnstableBars());
-        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(0));
-        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(1));
-        Assert.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(2));
-        Assert.assertEquals(numOf(50), kalmanFilterIndicator.getValue(3));
+        Assertions.assertEquals(3, kalmanFilterIndicator.getCountOfUnstableBars());
+        Assertions.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(0));
+        Assertions.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(1));
+        Assertions.assertEquals(NaN.NaN, kalmanFilterIndicator.getValue(2));
+        Assertions.assertEquals(numOf(50), kalmanFilterIndicator.getValue(3));
 
         // An unavailable prefix must not alter the valid suffix's initialization.
         BarSeries comparisonSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
@@ -293,7 +293,7 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 .build();
         KalmanFilterIndicator comparison = new KalmanFilterIndicator(new ClosePriceIndicator(comparisonSeries));
         for (int index = 3; index <= series.getEndIndex(); index++) {
-            Assert.assertEquals(comparison.getValue(index - 3), kalmanFilterIndicator.getValue(index));
+            Assertions.assertEquals(comparison.getValue(index - 3), kalmanFilterIndicator.getValue(index));
         }
     }
 
@@ -313,8 +313,8 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
             kalmanFilterIndicator.getValue(i);
         }
 
-        Assert.assertTrue("High-watermark then reverse reads should reuse cached Kalman state",
-                source.readCount() <= barCount + 2L);
+        Assertions.assertTrue(source.readCount() <= barCount + 2L,
+                "High-watermark then reverse reads should reuse cached Kalman state");
     }
 
 }
