@@ -1029,7 +1029,7 @@ public final class IndicatorSerialization {
                 list.add(type);
                 return list;
             });
-        } catch (ClassNotFoundException ignored) {
+        } catch (ClassNotFoundException | LinkageError ignored) {
             // Ignore classes that cannot be loaded
         }
     }
