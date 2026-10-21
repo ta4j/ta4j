@@ -3,6 +3,8 @@
 ### Fixed
 
 - **JMA continues across moving-series head advances**: `JMAIndicator` now retains its full-history recurrence when bounded series evict old bars, including `maximumBarCount = 1`, so live and retained values match an unbounded series when each appended bar and finalized input mutation is read before eviction. With one-bar retention, read after the final mutation before appending, or retain at least two bars to recompute the previous input. Each append computes only the new state instead of replaying the retained window; a fresh indicator or a chain whose required inputs were lost seeds at the first retained bar.
+- **Consistent rolling Schaff Trend Cycle**: `SchaffTrendCycleIndicator` continues its smoothing and stochastic carry across bounded-series head advances when read on every bar, preserving live and retained full-history values without rebuilding the retained window on every append. Fresh instances still seed from retained history, and explicitly resetting sources still invalidate the chain (CF-720).
+- **Parabolic SAR on moving series (`CF-725`)**: SAR, trend, extreme and acceleration now continue together across retained-head advances. An instance read on each bar matches unbounded history without rebuilding the whole window on every append. Fresh instances still seed with NaN at the retained head; mutable terminal bars and historical replacements invalidate the complete recurrence state.
 
 ## 0.27.0 (2026-10-19)
 
