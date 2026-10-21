@@ -98,6 +98,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         var sar = new ParabolicSarIndicator(mockBarSeries);
 
+        assertEquals(1, sar.getCountOfUnstableBars());
         assertEquals(NaN.NaN, sar.getValue(mockBarSeries.getBeginIndex()));
         assertEquals(NaN.NaN, sar.getValue(mockBarSeries.getRemovedBarsCount()));
 
