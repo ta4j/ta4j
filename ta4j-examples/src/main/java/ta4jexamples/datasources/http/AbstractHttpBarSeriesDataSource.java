@@ -283,14 +283,21 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
         Instant truncatedEnd = truncateTimestampForCache(endDateTime, interval);
 
         String sourcePrefix = getSourceName().isEmpty() ? "" : getSourceName() + "-";
-        String notesSuffix = (notes != null && !notes.trim().isEmpty()) ? "_" + notes.trim() : "";
+        // Sanitize notes to prevent path traversal via user-supplied notes
+        String sanitizedNotes = notes == null ? "" : notes.trim().replaceAll("[^a-zA-Z0-9-]", "_");
+        String notesSuffix = !sanitizedNotes.isEmpty() ? "_" + sanitizedNotes : "";
         // Use Duration.toString() for standardized format (e.g., "PT24H" for 1 day,
         // "PT1H" for 1 hour)
         String durationString = interval.toString();
         String filename = String.format("%s%s-%s-%d-%d%s.json", sourcePrefix, encodeTickerForCacheFilename(symbol),
                 durationString, truncatedStart.getEpochSecond(), truncatedEnd.getEpochSecond(), notesSuffix);
 
-        return Paths.get(responseCacheDir, filename);
+        Path cacheDir = Paths.get(responseCacheDir).normalize().toAbsolutePath();
+        Path resolvedPath = cacheDir.resolve(filename).normalize();
+        if (!resolvedPath.startsWith(cacheDir)) {
+            throw new IllegalArgumentException("Invalid cache file path outside cache directory");
+        }
+        return resolvedPath;
     }
 
     /**

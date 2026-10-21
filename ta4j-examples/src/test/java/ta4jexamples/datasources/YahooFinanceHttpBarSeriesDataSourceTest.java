@@ -1501,4 +1501,42 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
             deleteDirectory(cacheDirPath);
         }
     }
+
+    @Test
+    public void testPathTraversalInNotesIsSanitized() throws Exception {
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        String customCacheDir = "temp/yahoo-path-traversal-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2023-01-01T00:00:00Z");
+            Instant end = Instant.parse("2023-01-10T00:00:00Z");
+
+            // Pass notes with path traversal characters
+            BarSeries series = dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end,
+                    "../../path_traversal_note");
+
+            assertNotNull(series, "Series should load successfully");
+            // Verify that cached file resides strictly inside customCachePath
+            try (java.util.stream.Stream<Path> files = Files.list(customCachePath)) {
+                List<Path> cachedFiles = files.toList();
+                assertFalse(cachedFiles.isEmpty(), "Cache file should be created");
+                for (Path file : cachedFiles) {
+                    assertTrue(file.normalize().toAbsolutePath().startsWith(customCachePath),
+                            "Cache file path must remain strictly inside cache directory");
+                    assertFalse(file.getFileName().toString().contains(".."),
+                            "Cache file name must not contain path traversal sequence '..'");
+                }
+            }
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
 }
