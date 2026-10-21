@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Changed
+
+- **Borrowing-cost conventions (CF-635)**: the `LinearBorrowingCostModel` documentation and `TradeCost` example now state the entry-value base, fee-per-index-step units and side applicability. Calendar spans and later marks do not alter the legacy approximation; fair-value marks continue to exclude hypothetical liquidation fees. Existing formulas and defaults are unchanged.
 
 ## 0.27.0 (2026-10-19)
 
