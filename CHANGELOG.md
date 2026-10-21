@@ -4,6 +4,12 @@
 
 - **Leaner analysis and safer saved data**: numerous micro-optimizations reduce allocation and repeated data access in portfolio rebalancing (`PortfolioSeriesManager`), reversal detection (`StandardReversalIndicator`) and minimum-variance allocation (`MinimumVarianceOptimizer`). Custom rebalance policies can still retain each bar's pre-trade context for later comparisons. Separately, object loading rejects invalid `BaseBar` and `BaseBarSeries` state; valid series remain appendable, with correct retained indices and safe failure at index exhaustion. Component reconstruction reports unavailable optional dependencies with their original causes instead of leaking `LinkageError` or misleading constructor errors. Swing chart copies support standard, concurrent, realtime, immutable and custom series plus application renderers and tooltips, while preserving JVM deserialization restrictions and resource limits. Charts capture prices and dates together, keeping axes, tooltips, overlays and trades aligned after live-series trimming, extension or clearing, including indicator-only subplots.
 
+
+### Fixed
+
+- **Consistent rolling Schaff Trend Cycle**: `SchaffTrendCycleIndicator` continues its smoothing and stochastic carry across bounded-series head advances when read on every bar, preserving live and retained full-history values without rebuilding the retained window on every append. Fresh instances still seed from retained history, and explicitly resetting sources still invalidate the chain (CF-720).
+- **Parabolic SAR on moving series (`CF-725`)**: SAR, trend, extreme and acceleration now continue together across retained-head advances. An instance read on each bar matches unbounded history without rebuilding the whole window on every append. Fresh instances still seed with NaN at the retained head; mutable terminal bars and historical replacements invalidate the complete recurrence state.
+
 ## 0.27.0 (2026-10-19)
 
 ### Added
