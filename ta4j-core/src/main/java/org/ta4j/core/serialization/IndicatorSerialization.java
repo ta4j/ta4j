@@ -231,7 +231,7 @@ public final class IndicatorSerialization {
         }
         try {
             return instantiate(series, descriptor);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | LinkageError e) {
             if (e instanceof IndicatorSerializationException) {
                 throw e;
             }
