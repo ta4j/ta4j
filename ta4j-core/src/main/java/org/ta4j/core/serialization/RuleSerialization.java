@@ -228,10 +228,16 @@ public final class RuleSerialization {
      *                   factories
      * @param descriptor descriptor describing the rule
      * @return reconstructed rule
-     * @throws RuleSerializationException if the rule type does not support
-     *                                    deserialization (e.g., no matching
-     *                                    constructor can be found)
-     * @throws NullPointerException       if series or descriptor is null
+     * @throws RuleSerializationException      if the rule type does not support
+     *                                         deserialization (e.g., no matching
+     *                                         constructor can be found)
+     * @throws IllegalStateException           if construction fails, including an
+     *                                         unavailable dependency of the
+     *                                         resolved type or of a nested rule
+     * @throws IndicatorSerializationException if a nested indicator cannot be
+     *                                         reconstructed because one of its
+     *                                         dependencies is unavailable
+     * @throws NullPointerException            if series or descriptor is null
      */
     public static Rule fromDescriptor(BarSeries series, ComponentDescriptor descriptor) {
         return fromDescriptor(series, descriptor, null);
@@ -246,10 +252,16 @@ public final class RuleSerialization {
      * @param descriptor    descriptor describing the rule
      * @param parentContext optional parent context for resolving shared components
      * @return reconstructed rule
-     * @throws RuleSerializationException if the rule type does not support
-     *                                    deserialization (e.g., no matching
-     *                                    constructor can be found)
-     * @throws NullPointerException       if series or descriptor is null
+     * @throws RuleSerializationException      if the rule type does not support
+     *                                         deserialization (e.g., no matching
+     *                                         constructor can be found)
+     * @throws IllegalStateException           if construction fails, including an
+     *                                         unavailable dependency of the
+     *                                         resolved type or of a nested rule
+     * @throws IndicatorSerializationException if a nested indicator cannot be
+     *                                         reconstructed because one of its
+     *                                         dependencies is unavailable
+     * @throws NullPointerException            if series or descriptor is null
      */
     public static Rule fromDescriptor(BarSeries series, ComponentDescriptor descriptor,
             ReconstructionContext parentContext) {
@@ -263,11 +275,11 @@ public final class RuleSerialization {
 
         Class<? extends Rule> ruleType = resolveRuleType(type);
 
-        // Infer constructor signature from children and parameters
-        ReconstructionContext context = new ReconstructionContext(series, descriptor, parentContext);
-        DeserializationMatch match = inferConstructor(ruleType, descriptor, context);
-
         try {
+            // Infer constructor signature from children and parameters.
+            ReconstructionContext context = new ReconstructionContext(series, descriptor, parentContext);
+            DeserializationMatch match = inferConstructor(ruleType, descriptor, context);
+
             try {
                 match.constructor.setAccessible(true);
             } catch (SecurityException ex) {
@@ -300,7 +312,7 @@ public final class RuleSerialization {
             }
 
             return rule;
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | LinkageError ex) {
             throw new IllegalStateException("Failed to construct rule: " + ruleType.getName(), ex);
         }
     }
@@ -847,6 +859,22 @@ public final class RuleSerialization {
         return false;
     }
 
+    /**
+     * Tells whether a failure stems from a dependency of the component being
+     * reconstructed that cannot be linked. Unlike a constructor mismatch, no other
+     * constructor can recover from it, and swallowing it would replace the cause
+     * with a misleading "no compatible constructor" error.
+     */
+    private static boolean isLinkageFailure(Throwable failure) {
+        Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Throwable cause = failure; cause != null && visited.add(cause); cause = cause.getCause()) {
+            if (cause instanceof LinkageError) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static Object resolveComponent(ComponentDescriptor component, Class<?> paramType,
             ReconstructionContext context) {
         try {
@@ -869,13 +897,12 @@ public final class RuleSerialization {
                 // Pass the current context as parent so nested components can resolve:
                 // 1. Components from the current rule's context (for nested rules/indicators)
                 // 2. Strategy-level components via the parent chain
-                try {
-                    return RuleSerialization.fromDescriptor(context.series, component, context);
-                } catch (Exception e) {
-                    return null; // Can't resolve, try next match
-                }
+                return RuleSerialization.fromDescriptor(context.series, component, context);
             }
         } catch (Exception e) {
+            if (isLinkageFailure(e)) {
+                throw e;
+            }
             return null; // Can't resolve, try next match
         }
         return null;
@@ -940,6 +967,9 @@ public final class RuleSerialization {
             }
             return null; // Can't resolve, try next match
         } catch (Exception e) {
+            if (isLinkageFailure(e)) {
+                throw e;
+            }
             return null; // Can't resolve, try next match
         }
 

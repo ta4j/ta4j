@@ -4,6 +4,11 @@
 
 - **Borrowing-cost conventions (CF-635)**: the `LinearBorrowingCostModel` documentation and `TradeCost` example now state the entry-value base, fee-per-index-step units and side applicability. Calendar spans and later marks do not alter the legacy approximation; fair-value marks continue to exclude hypothetical liquidation fees. Existing formulas and defaults are unchanged.
 
+### Fixed
+
+- **Consistent rolling Schaff Trend Cycle**: `SchaffTrendCycleIndicator` continues its smoothing and stochastic carry across bounded-series head advances when read on every bar, preserving live and retained full-history values without rebuilding the retained window on every append. Fresh instances still seed from retained history, and explicitly resetting sources still invalidate the chain (CF-720).
+- **Parabolic SAR on moving series (`CF-725`)**: SAR, trend, extreme and acceleration now continue together across retained-head advances. An instance read on each bar matches unbounded history without rebuilding the whole window on every append. Fresh instances still seed with NaN at the retained head; mutable terminal bars and historical replacements invalidate the complete recurrence state.
+
 ## 0.27.0 (2026-10-19)
 
 ### Added
