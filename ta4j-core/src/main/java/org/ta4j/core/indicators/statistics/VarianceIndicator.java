@@ -100,7 +100,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     /**
      * @return the number of bars in the rolling variance window
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public int getBarCount() {
         return barCount;

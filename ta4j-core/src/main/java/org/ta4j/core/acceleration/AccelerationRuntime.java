@@ -263,7 +263,7 @@ public final class AccelerationRuntime {
      * Invalid configuration never silently widens accuracy; it degrades to exact.
      *
      * @return finite positive approximate tolerance, or {@code NaN} for exact
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static double approximateTolerance() {
         String configured = System.getProperty(APPROXIMATE_TOLERANCE_PROPERTY);
