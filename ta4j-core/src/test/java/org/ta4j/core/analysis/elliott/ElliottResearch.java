@@ -119,7 +119,8 @@ final class ElliottResearch {
     private static final String REPORTS_DIR = "reports";
     private static final String TRACES_DIR = "traces";
     private static final List<String> MANAGED_FILES = List.of(RUN_FILE, COMPARISONS_FILE, COVERAGE_FILE, SUMMARY_FILE,
-            ElliottResearchOutcomes.EVENTS_FILE, ElliottResearchOutcomes.OUTCOMES_FILE, ElliottResearchOutcomes.SUMMARY_FILE);
+            ElliottResearchOutcomes.EVENTS_FILE, ElliottResearchOutcomes.OUTCOMES_FILE,
+            ElliottResearchOutcomes.SUMMARY_FILE);
     private static final List<String> MANAGED_DIRECTORIES = List.of(REPORTS_DIR, TRACES_DIR);
     /**
      * Consecutive in-window bars further apart than this many bar periods mark
@@ -300,7 +301,8 @@ final class ElliottResearch {
         return new RunOptions(recipe, values.containsKey("--out") ? Path.of(values.get("--out")) : null, overwrite,
                 trace, block, member, values.containsKey("--source") ? Path.of(values.get("--source")) : null,
                 values.containsKey("--recipe") ? Path.of(values.get("--recipe")) : null,
-                values.get("--expect-fingerprint"), values.get("--expect-source-sha256"), values.get("--expect-revision"));
+                values.get("--expect-fingerprint"), values.get("--expect-source-sha256"),
+                values.get("--expect-revision"));
     }
 
     private static Integer integerOption(final Map<String, String> values, final String option) {
@@ -736,8 +738,9 @@ final class ElliottResearch {
         final RunOptions options = parseRunOptions(args);
         final String revision = gitRevision();
         if (options.expectRevision() != null && !options.expectRevision().equals(revision)) {
-            throw new IllegalArgumentException("current revision is " + revision + ", not the recorded revision "
-                    + options.expectRevision() + "; check out the recorded revision in a separate worktree before recapturing");
+            throw new IllegalArgumentException(
+                    "current revision is " + revision + ", not the recorded revision " + options.expectRevision()
+                            + "; check out the recorded revision in a separate worktree before recapturing");
         }
         final Setup setup;
         final Recipe recipe;
@@ -938,7 +941,8 @@ final class ElliottResearch {
     }
 
     private static void requirePreservedInput(final Path dir, final Path realDir, final Path input) throws IOException {
-        if (isManagedArtifact(dir, input.toAbsolutePath().normalize()) || isManagedArtifact(realDir, input.toRealPath())) {
+        if (isManagedArtifact(dir, input.toAbsolutePath().normalize())
+                || isManagedArtifact(realDir, input.toRealPath())) {
             throw new IllegalArgumentException("--overwrite would remove explore input " + input
                     + "; move --source and --recipe outside the run's managed artifact paths before rerunning");
         }
