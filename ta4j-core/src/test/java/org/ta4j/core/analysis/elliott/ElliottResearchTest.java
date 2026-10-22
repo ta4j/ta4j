@@ -921,11 +921,11 @@ class ElliottResearchTest {
     }
 
     @Test
-    void exploreCoverageIgnoresIntervalsBetweenNoncontiguousPartitions() throws Exception {
+    public void exploreCoverageIgnoresIntervalsBetweenNoncontiguousPartitions() throws Exception {
         final Path recipe = work.resolve("noncontiguous-recipe.json");
         Files.writeString(recipe, noncontiguousRecipe());
         final Path candles = work.resolve("noncontiguous-candles.json");
-        writeCandles(candles, LocalDate.of(2020, 1, 1), 152, date -> date.getMonthValue() % 2 == 1);
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 152, date -> true);
         final Path out = work.resolve("explore-noncontiguous");
         final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
                 "--out", out.toString());
@@ -933,6 +933,50 @@ class ElliottResearchTest {
         final JsonObject coverage = exploreCoverage(out);
         assertEquals("complete", coverage.get("status").getAsString(), coverage.toString());
         assertEquals("", coverage.get("message").getAsString());
+        final JsonObject dataset = readJson(out.resolve("run.json")).getAsJsonArray("datasets")
+                .get(0)
+                .getAsJsonObject();
+        assertEquals(93, dataset.get("bars").getAsInt(), dataset.toString());
+        assertEquals("2020-01-01", dataset.getAsJsonObject("effective").get("from").getAsString());
+        assertEquals("2020-05-31", dataset.getAsJsonObject("effective").get("to").getAsString());
+        assertTrue(Files.readString(out.resolve("coverage.csv"))
+                .contains("noncontiguous,TOY,2020-01-01,2020-05-31,2020-01-01,2020-05-31,93,complete,"));
+    }
+
+    @Test
+    public void exploreCoverageCountsOnlyRequestedBarsAndTheirEffectiveBounds() throws Exception {
+        final Path recipe = work.resolve("coverage-union-recipe.json");
+        Files.writeString(recipe, noncontiguousRecipe());
+        for (final boolean includeRequested : List.of(false, true)) {
+            final Path candles = work.resolve("coverage-union-" + includeRequested + "-candles.json");
+            writeCandles(candles, LocalDate.of(2020, 1, 1), 152,
+                    date -> date.getMonthValue() % 2 == 0 || includeRequested
+                            && !date.isBefore(LocalDate.of(2020, 3, 10)) && !date.isAfter(LocalDate.of(2020, 3, 12)));
+            final Path out = work.resolve("coverage-union-" + includeRequested);
+            final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                    recipe.toString(), "--out", out.toString());
+            assertEquals(0, result.code(), result.err());
+            final JsonObject dataset = readJson(out.resolve("run.json")).getAsJsonArray("datasets")
+                    .get(0)
+                    .getAsJsonObject();
+            assertEquals(includeRequested ? 3 : 0, dataset.get("bars").getAsInt(), dataset.toString());
+            final JsonObject effective = dataset.getAsJsonObject("effective");
+            final String bounds;
+            if (includeRequested) {
+                assertEquals("2020-03-10", effective.get("from").getAsString());
+                assertEquals("2020-03-12", effective.get("to").getAsString());
+                bounds = "2020-03-10,2020-03-12,3";
+            } else {
+                assertTrue(effective.get("from").isJsonNull(), effective.toString());
+                assertTrue(effective.get("to").isJsonNull(), effective.toString());
+                assertEquals("no bars inside the requested window",
+                        dataset.getAsJsonObject("coverage").get("message").getAsString());
+                bounds = ",,0";
+            }
+            assertEquals("partial", dataset.getAsJsonObject("coverage").get("status").getAsString());
+            assertTrue(Files.readString(out.resolve("coverage.csv"))
+                    .contains("noncontiguous,TOY,2020-01-01,2020-05-31," + bounds + ",partial,"));
+        }
     }
 
     @Test

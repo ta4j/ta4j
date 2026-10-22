@@ -1119,15 +1119,15 @@ final class ElliottResearch {
                 if (date.isBefore(from) || date.isAfter(to)) {
                     continue;
                 }
-                first = first == null || date.isBefore(first) ? date : first;
-                last = last == null || date.isAfter(last) ? date : last;
-                count++;
-                final Duration tolerance = bar.getTimePeriod().multipliedBy(INTERNAL_GAP_BAR_PERIODS);
                 for (int partition = 0; partition < partitions.size(); partition++) {
                     final StudyRunner.Partition window = partitions.get(partition);
                     if (!window.contains(date)) {
                         continue;
                     }
+                    first = first == null || date.isBefore(first) ? date : first;
+                    last = last == null || date.isAfter(last) ? date : last;
+                    count++;
+                    final Duration tolerance = bar.getTimePeriod().multipliedBy(INTERNAL_GAP_BAR_PERIODS);
                     if (firstObserved[partition] == null) {
                         firstObserved[partition] = bar;
                     }
@@ -1144,6 +1144,7 @@ final class ElliottResearch {
                         }
                     }
                     previous[partition] = bar;
+                    break;
                 }
             }
             entry.effectiveFrom = first;

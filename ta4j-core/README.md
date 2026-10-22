@@ -203,6 +203,9 @@ replacing artifacts, refusing while a run is writing.
 Completed metadata binds `comparisons.csv` with `comparisonsSha256`; `summarize` and
 `inspect` verify that digest before reading rows. Modified, mixed or older unbound
 bundles must be regenerated rather than paired with the recorded provenance.
+Coverage bar totals and effective date bounds include only the configured partitions,
+never the unrequested intervals between them. If every requested partition is empty,
+coverage has zero bars and no effective dates even when the source has other bars.
 Each comparison sets the observed value against a
 null reference band of member-level 2.5%-97.5% quantiles and an empirical
 reference rank; neither is a confidence interval or a p-value, and partitions
