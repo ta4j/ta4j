@@ -105,14 +105,6 @@ public class JMAIndicator extends CachedIndicator<Num> {
         }
 
         @Override
-        protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-            int floor = super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
-            // The last-bar cache holds the current state; the bounded main cache
-            // can retain its predecessor even when the series holds only one bar.
-            return floor == Integer.MAX_VALUE ? floor : Math.max(0, floor - 1);
-        }
-
-        @Override
         protected JmaData calculate(int index) {
             while (true) {
                 int beginIndex = getBarSeries().getBeginIndex();

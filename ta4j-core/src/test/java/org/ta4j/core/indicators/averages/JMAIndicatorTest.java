@@ -25,6 +25,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.volume.OnBalanceVolumeIndicator;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -289,6 +290,23 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         jma.getValue(series.getEndIndex());
 
         assertIndicatorRoundTrips(series, jma, 0, 3, 7);
+    }
+
+    @Test
+    public void lostRecursiveSourceBridgeReseedsCompoundState() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        JMAIndicator actual = new JMAIndicator(new OnBalanceVolumeIndicator(series), 3, 50, 2);
+        for (int index = 0; index < 6; index++) {
+            series.barBuilder().closePrice(10 + index).volume(10).add();
+            actual.getValue(index);
+        }
+        series.setMaximumBarCount(1);
+        series.barBuilder().closePrice(20).volume(10).add();
+
+        JMAIndicator fresh = new JMAIndicator(new OnBalanceVolumeIndicator(series), 3, 50, 2);
+        assertNumEquals(fresh.getValue(6), actual.getValue(6));
+        series.barBuilder().closePrice(19).volume(15).add();
+        assertNumEquals(fresh.getValue(7), actual.getValue(7));
     }
 
     @Test
