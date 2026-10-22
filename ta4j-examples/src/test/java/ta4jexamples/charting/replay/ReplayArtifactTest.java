@@ -291,7 +291,8 @@ class ReplayArtifactTest {
                 json.remove("comparisonsSha256");
                 Files.writeString(metadata, json.toString(), StandardCharsets.UTF_8);
             }
-            final String message = assertThrows(ReplayArtifactException.class, () -> ReplayArtifact.open(run)).getMessage();
+            final String message = assertThrows(ReplayArtifactException.class, () -> ReplayArtifact.open(run))
+                    .getMessage();
             assertTrue(message.contains("comparisons.csv"), message);
             assertTrue(message.contains("SHA-256"), message);
         }

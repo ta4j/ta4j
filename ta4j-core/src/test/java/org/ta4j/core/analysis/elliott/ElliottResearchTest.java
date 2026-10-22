@@ -479,8 +479,8 @@ class ElliottResearchTest {
                 .collect(java.util.stream.Collectors.joining("\n", "", "\n"));
         Files.writeString(comparisons, relabeled, StandardCharsets.UTF_8);
         final JsonObject relabeledMetadata = readJson(run.resolve("run.json"));
-        relabeledMetadata.addProperty("comparisonsSha256", HexFormat.of().formatHex(
-                MessageDigest.getInstance("SHA-256").digest(relabeled.getBytes(StandardCharsets.UTF_8))));
+        relabeledMetadata.addProperty("comparisonsSha256", HexFormat.of()
+                .formatHex(MessageDigest.getInstance("SHA-256").digest(relabeled.getBytes(StandardCharsets.UTF_8))));
         Files.writeString(run.resolve("run.json"), relabeledMetadata.toString(), StandardCharsets.UTF_8);
         final Result competing = launch("inspect", run.toString(), competingKey);
         assertEquals(0, competing.code(), competing.err());

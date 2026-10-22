@@ -165,7 +165,8 @@ final class ReplayFixture {
                     HEADER + "\n" + row(RULES_KEY, "all-rules", "wave2-origin;wave3-not-shortest") + "\n"
                             + row(TOPOLOGY_KEY, "topology-only", "") + "\n" + competingRow() + "\n",
                     StandardCharsets.UTF_8);
-            run.addProperty("comparisonsSha256", ReplayArtifact.sha256(Files.readAllBytes(directory.resolve("comparisons.csv"))));
+            run.addProperty("comparisonsSha256",
+                    ReplayArtifact.sha256(Files.readAllBytes(directory.resolve("comparisons.csv"))));
             Files.writeString(directory.resolve("run.json"), run.toString(), StandardCharsets.UTF_8);
             writeTrace(directory.resolve("traces/d1-real.jsonl"), options, false);
             if (options.nullTrace) {
@@ -180,7 +181,8 @@ final class ReplayFixture {
     static void refreshComparisonsDigest(final Path directory) throws IOException {
         final Path metadata = directory.resolve("run.json");
         final JsonObject run = JsonParser.parseString(Files.readString(metadata)).getAsJsonObject();
-        run.addProperty("comparisonsSha256", ReplayArtifact.sha256(Files.readAllBytes(directory.resolve("comparisons.csv"))));
+        run.addProperty("comparisonsSha256",
+                ReplayArtifact.sha256(Files.readAllBytes(directory.resolve("comparisons.csv"))));
         Files.writeString(metadata, run.toString(), StandardCharsets.UTF_8);
     }
 
