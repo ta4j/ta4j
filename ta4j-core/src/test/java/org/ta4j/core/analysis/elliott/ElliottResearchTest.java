@@ -398,9 +398,10 @@ class ElliottResearchTest {
         final String recordedRun = Files.readString(smokeRun.resolve("run.json"));
         int caseIndex = 0;
         for (final String artifact : List.of("traces/input.json", "reports/input.json", "summary.md",
-                ElliottResearchOutcomes.EVENTS_FILE, ElliottResearchOutcomes.OUTCOMES_FILE, ElliottResearchOutcomes.SUMMARY_FILE,
-                ElliottResearchCalibration.TABLES_FILE, ElliottResearchCalibration.PREDICTIONS_FILE,
-                ElliottResearchCalibration.SUMMARY_FILE, ElliottResearchCalibration.RELIABILITY_FILE)) {
+                ElliottResearchOutcomes.EVENTS_FILE, ElliottResearchOutcomes.OUTCOMES_FILE,
+                ElliottResearchOutcomes.SUMMARY_FILE, ElliottResearchCalibration.TABLES_FILE,
+                ElliottResearchCalibration.PREDICTIONS_FILE, ElliottResearchCalibration.SUMMARY_FILE,
+                ElliottResearchCalibration.RELIABILITY_FILE)) {
             for (final boolean recipeInput : List.of(false, true)) {
                 for (final boolean symlink : List.of(false, true)) {
                     final Path out = work.resolve("overwrite-managed-" + caseIndex++);
