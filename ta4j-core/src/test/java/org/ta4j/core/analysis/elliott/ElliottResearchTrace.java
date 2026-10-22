@@ -469,9 +469,8 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                     throw corrupt(path, lineNumber, "content after footer");
                 }
                 if (object.has("complete") && !object.has("kind")) {
-                    final JsonElement count = object.get("records");
-                    if (count == null || !count.isJsonPrimitive() || !count.getAsJsonPrimitive().isNumber()
-                            || count.getAsLong() != recordCount) {
+                    final BigDecimal count = requireInteger(path, lineNumber, object, "records", "footer field ");
+                    if (count.compareTo(BigDecimal.valueOf(recordCount)) != 0) {
                         throw corrupt(path, lineNumber, "footer record count " + count + " but read " + recordCount);
                     }
                     // The writer only emits complete:true; any other flag would let records
@@ -548,7 +547,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         }
         final int recordBlockLength = requireCoordinate(path, lineNumber, record, "nullBlockLength", where);
         final int recordMemberIndex = requireCoordinate(path, lineNumber, record, "nullMemberIndex", where);
-        requireInteger(path, lineNumber, record, "asOfIndex", where);
+        requireCoordinate(path, lineNumber, record, "asOfIndex", where);
         if (!datasetId.equals(record.get("dataset").getAsString()) || recordBlockLength != nullBlockLength
                 || recordMemberIndex != nullMemberIndex) {
             throw corrupt(path, lineNumber,
@@ -568,7 +567,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         final JsonArray pivots = requireArray(path, lineNumber, record, "pivots", where);
         for (int i = 0; i < pivots.size(); i++) {
             final JsonObject pivot = requirePlacement(path, lineNumber, pivots.get(i), where + "pivots[" + i + "]");
-            requireInteger(path, lineNumber, pivot, "confirmationIndex", where + "pivots[" + i + "].");
+            requireCoordinate(path, lineNumber, pivot, "confirmationIndex", where + "pivots[" + i + "].");
         }
         final JsonArray candidates = requireArray(path, lineNumber, record, "candidates", where);
         for (int i = 0; i < candidates.size(); i++) {
@@ -604,7 +603,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
     private static JsonObject requirePlacement(final Path path, final long lineNumber, final JsonElement element,
             final String at) {
         final JsonObject placement = requireObject(path, lineNumber, element, at);
-        requireInteger(path, lineNumber, placement, "index", at + ".");
+        requireCoordinate(path, lineNumber, placement, "index", at + ".");
         requireText(path, lineNumber, placement, "price", at + ".");
         requireText(path, lineNumber, placement, "type", at + ".");
         return placement;
