@@ -66,12 +66,14 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
             }
             Num value;
             if (index < beginIndex) {
-                // Preserve an already consumed head, including a terminal value.
-                // Without one, a removed-index alias must not prefill later bars
-                // or move the fresh chain's warm-up anchor into removed history.
-                value = beginIndex == getBarSeries().getEndIndex() || getCachedValueOrNull(beginIndex) != null
-                        ? getValue(beginIndex)
-                        : seed(beginIndex);
+                // Preserve an already consumed head, including a terminal value, and a head
+                // that
+                // continues from a retained cached predecessor. Without either, a removed-index
+                // alias must not prefill later bars or move the fresh chain's warm-up anchor
+                // into removed history.
+                boolean consumedHead = beginIndex == getBarSeries().getEndIndex()
+                        || getCachedValueOrNull(beginIndex) != null || getCachedValueOrNull(beginIndex - 1) != null;
+                value = consumedHead ? getValue(beginIndex) : seed(beginIndex);
             } else {
                 Num predecessor = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
                 value = predecessor == null ? seed(index) : continueChain(index, predecessor);
