@@ -94,7 +94,8 @@ class NamedComponentRegistryTest {
         ClassLoader jarLoader = new ClassLoader(NamedStrategy.class.getClassLoader()) {
             @Override
             public Enumeration<URL> getResources(String name) throws IOException {
-                return name.equals(packagePath) ? Collections.enumeration(List.of(packageUrl)) : super.getResources(name);
+                return name.equals(packagePath) ? Collections.enumeration(List.of(packageUrl))
+                        : super.getResources(name);
             }
         };
         Thread thread = Thread.currentThread();

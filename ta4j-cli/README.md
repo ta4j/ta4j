@@ -218,6 +218,7 @@ cat bars.csv | java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar st
   - `--base-dir`: baseline experiment artifact directory.
   - `--candidate-dir`: candidate experiment artifact directory.
   - Each `performance.json` input is limited to 16 MiB, enforced while reading before JSON materialization; an oversized baseline or candidate is a usage error (exit 2) and creates no comparison directory.
+  - Integer timing, count and checksum fields must be integral and fit their Java integer ranges; counts are positive except that warmups may be zero, timings are non-negative, and checksums may be signed. Throughput must be finite and non-negative. Invalid numbers in either input are usage errors (exit 2) and create no comparison artifacts.
   - `--output-dir`: comparison artifact directory for `comparison.json` and `summary.md`.
   - `--max-regression-pct`: finite, non-negative allowed median runtime regression percentage.
   - `--candidate-dir` must not refer to `--base-dir` (including symlink aliases): comparing an artifact with itself would always pass.

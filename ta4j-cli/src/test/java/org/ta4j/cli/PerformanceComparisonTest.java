@@ -514,11 +514,10 @@ class PerformanceComparisonTest {
     @ParameterizedTest
     @ValueSource(strings = { "repetitions=0", "repetitions=-1", "repetitions=0.5", "repetitions=2147483648",
             "repetitions=1e309", "warmups=-1", "warmups=0.5", "warmups=2147483648", "barCount=0", "barCount=-1",
-            "barCount=16.5", "barCount=4294967312", "checksum=10.5", "checksum=18446744073709551626",
-            "medianNanos=-1", "medianNanos=0.5", "medianNanos=9223372036854775808", "medianNanos=1e309",
-            "operationsPerSecond=-1", "operationsPerSecond=-1e-400", "operationsPerSecond=1e309",
-            "operationsPerSecond=1e-2147483649", "availableProcessors=0",
-            "availableProcessors=1.5", "availableProcessors=2147483648" })
+            "barCount=16.5", "barCount=4294967312", "checksum=10.5", "checksum=18446744073709551626", "medianNanos=-1",
+            "medianNanos=0.5", "medianNanos=9223372036854775808", "medianNanos=1e309", "operationsPerSecond=-1",
+            "operationsPerSecond=-1e-400", "operationsPerSecond=1e309", "operationsPerSecond=1e-2147483649",
+            "availableProcessors=0", "availableProcessors=1.5", "availableProcessors=2147483648" })
     public void comparisonRejectsInvalidNumericInputsBeforeWritingOutput(String invalidNumber) throws Exception {
         String[] parts = invalidNumber.split("=", 2);
         String field = parts[0];
@@ -562,7 +561,10 @@ class PerformanceComparisonTest {
             Path file = dir.resolve("performance.json");
             JsonObject artifact = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
             artifact.addProperty("warmups", 0);
-            artifact.getAsJsonArray("results").get(0).getAsJsonObject().getAsJsonObject("stats")
+            artifact.getAsJsonArray("results")
+                    .get(0)
+                    .getAsJsonObject()
+                    .getAsJsonObject("stats")
                     .addProperty("operationsPerSecond", 0.5d);
             Files.writeString(file, GSON.toJson(artifact), StandardCharsets.UTF_8);
         }
