@@ -179,7 +179,9 @@ Relative paths resolve against the directory you run Maven from, here the
 repository root. Recipes: `smoke` (synthetic,
 real-data trace on by default), `frozen-cf525` (the frozen study over the bundled
 datasets) and `explore --source candles.json --recipe recipe.json` (your own
-candles and study settings). `--trace off|real|selected-null-member` with
+daily candles and study settings). Candle starts must share a daily cadence;
+missing whole days are allowed, but intraday or duplicate starts are rejected.
+`--trace off|real|selected-null-member` with
 `--block L --member M` controls evidence capture; `--overwrite` reuses an existing
 run directory. `help` lists every option.
 
@@ -189,25 +191,31 @@ sources and status), `reports/` (one study report per dataset),
 `comparisons.csv` (one row per dataset, section, mode, detector, partition,
 metric and null block length), `coverage.csv`, `summary.md`, `traces/`
 (JSON lines per as-of bar) and `.run.lock`, which a run holds while it writes so
-a second run into the same directory is refused. Each comparison sets the observed value against a
+a second run into the same directory is refused. `summarize` takes the same lock
+before reading or replacing artifacts and refuses while a run is writing.
+Each comparison sets the observed value against a
 null reference band of member-level 2.5%-97.5% quantiles and an empirical
 reference rank; neither is a confidence interval or a p-value, and partitions
 are never pooled. `inspect` rebuilds a row's support from its trace and lists
-counterexamples and rule disagreements; when the trace is missing or truncated
-it exits with status 2 and prints the recapture command, quoted for a POSIX shell.
+counterexamples and rule disagreements. Every observation must match its trace
+header's dataset and null-member coordinates. When the trace is missing,
+truncated or corrupt, inspection exits with status 2 and prints the recapture
+command, quoted for a POSIX shell.
 The command carries `--expect-fingerprint` (and, for `explore`, `--expect-source-sha256`),
 so a recapture against a changed configuration or edited candles fails instead of
 tracing different data. If no trace was captured and the calibration tables cover
 the requested row, `inspect` prints its calibration estimates with a "real trace
 not captured" note and exits with status 0. Other detector, H2 and competing rows
-still require a trace. Coverage marks a partition `partial`
-when it has no bars or a gap longer than seven bar periods. `summarize` and `inspect`
-read only files that resolve inside the run directory: a trace name that is absolute
-or climbs out with `..`, or a run file or trace that is a link leaving the directory,
-is refused (`inspect` exits with status 2; `summarize` reports such a trace as not
-captured), and `summary.md` is replaced rather than written through, so a link planted
-at that name never redirects the write. A run directory received from someone else is
-still an untrusted local artifact; read it with the care you give any downloaded file.
+still require a trace. Coverage marks a partition `partial` when it has no bars,
+an internal gap, or missing data at either partition boundary longer than seven
+bar periods; intentionally unrequested intervals between partitions do not count.
+`summarize` and `inspect` read only files that
+resolve inside the run directory: a trace name that is absolute or climbs out with
+`..`, or a run file or trace that is a link leaving the directory, is refused
+(`inspect` exits with status 2; `summarize` reports such a trace as not captured),
+and `summary.md` is replaced rather than written through, so a link planted at that
+name never redirects the write. A run directory received from someone else is still
+an untrusted local artifact; read it with the care you give any downloaded file.
 
 Every run also records causal forward-outcome evidence for enrolled `MOTIVE_5`
 events (events enroll once per placement, when it first becomes visible to the
@@ -283,3 +291,27 @@ reported results, and nothing here claims predictive efficacy.
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html
 - Live trading: https://ta4j.github.io/ta4j-wiki/Live-trading.html
 - Risk/criteria: https://ta4j.github.io/ta4j-wiki/Analysis-Criteria-and-Risk-Metrics.html
+
+## Borrowing costs and valuation
+
+`LinearBorrowingCostModel(feePerPeriod)` charges entry trade value times index
+distance times `feePerPeriod`. A period is one index step, not a calendar day.
+The rate is supplied in those units: timestamps, later marks, weekends and
+holidays do not change the arithmetic. The default applies only to short
+positions; `LONG_ONLY` and `BOTH` are opt-in alternatives. An open position needs
+an observation index. The price/amount overload returns zero because it cannot
+determine the holding duration.
+
+For example, borrowing two assets at an entry price of 100 for four index steps
+at 1% per step costs 8, even if the exit price is 250. A Friday-to-Monday hold
+spanning one index step costs 2 with those same inputs; it does not automatically
+charge for three calendar days. A daily or annual rate must not be substituted
+without choosing the intended time and mark convention. Exchange/instrument
+calendar, mark and rate inputs belong to an explicitly selected holding-cost
+model through the existing `CostModel` seam, rather than a silent change to the
+legacy formula.
+
+Fair-value/NAV marks remain the default and intentionally exclude hypothetical
+exit costs. Accrued borrowing and realized transaction fees are distinct from a
+liquidation estimate. This documentation introduces no liquidation output,
+estimated-exit-fee deduction or default migration.
