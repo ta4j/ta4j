@@ -145,7 +145,7 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     private int countPositions(BarSeries series, TradingRecord tradingRecord) {
         int finalIndex = tradingRecord.getEndIndex(series);
-        int closedPositions = countClosedPositionsAtOrBefore(tradingRecord, finalIndex);
+        int closedPositions = countClosedPositionsAtOrBefore(tradingRecord.getContainedPositions(series), finalIndex);
         if (statusFilter == PositionStatusFilter.CLOSED) {
             return closedPositions;
         }
@@ -162,9 +162,9 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
         return Objects.requireNonNull(projectedRecordRef.get(), "projectedRecord");
     }
 
-    private static int countClosedPositionsAtOrBefore(TradingRecord tradingRecord, int endIndex) {
+    private static int countClosedPositionsAtOrBefore(List<Position> positions, int endIndex) {
         int count = 0;
-        for (Position position : tradingRecord.getPositions()) {
+        for (Position position : positions) {
             if (isClosedAt(position, endIndex)) {
                 count++;
             }

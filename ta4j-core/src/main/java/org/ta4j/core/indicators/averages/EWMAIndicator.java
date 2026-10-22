@@ -44,6 +44,11 @@ public class EWMAIndicator extends AbstractEMAIndicator {
     protected Num initialValue(int index, Num current) {
         List<Num> values = new ArrayList<>(getBarCount());
         int startIndex = index - getBarCount() + 1;
+        if (startIndex < getBarSeries().getBeginIndex()) {
+            // The seed window is no longer fully retained on a bounded series;
+            // never average values mapped from removed bars.
+            return NaN.NaN;
+        }
         for (int i = startIndex; i <= index; i++) {
             Num value = indicator.getValue(i);
             if (!Num.isFinite(value)) {

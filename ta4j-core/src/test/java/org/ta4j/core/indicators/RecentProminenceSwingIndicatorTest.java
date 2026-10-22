@@ -10,7 +10,7 @@ import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.time.Instant;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.elliott.swing.ProminenceSwingConfig;

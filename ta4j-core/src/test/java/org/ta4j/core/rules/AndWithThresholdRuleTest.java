@@ -3,19 +3,20 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedNumIndicator;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class AndWithThresholdRuleTest {
 
@@ -24,7 +25,7 @@ public class AndWithThresholdRuleTest {
     private BarSeries series;
     private TraceTestLogger ruleTraceTestLogger;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
@@ -34,7 +35,7 @@ public class AndWithThresholdRuleTest {
         series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10).build();
     }
 
-    @After
+    @AfterEach
     public void tearDownLogger() {
         ruleTraceTestLogger.close();
     }
@@ -169,24 +170,32 @@ public class AndWithThresholdRuleTest {
         assertTrue(rule.isSatisfied(7));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void constructorThrowsExceptionWhenThresholdIsZero() {
-        new AndWithThresholdRule(satisfiedRule, satisfiedRule, 0);
+        assertThrows(IllegalArgumentException.class, () -> {
+            new AndWithThresholdRule(satisfiedRule, satisfiedRule, 0);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void constructorThrowsExceptionWhenThresholdIsNegative() {
-        new AndWithThresholdRule(satisfiedRule, satisfiedRule, -1);
+        assertThrows(IllegalArgumentException.class, () -> {
+            new AndWithThresholdRule(satisfiedRule, satisfiedRule, -1);
+        });
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void constructorThrowsExceptionWhenRule1IsNull() {
-        new AndWithThresholdRule(null, satisfiedRule, 1);
+        assertThrows(NullPointerException.class, () -> {
+            new AndWithThresholdRule(null, satisfiedRule, 1);
+        });
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void constructorThrowsExceptionWhenRule2IsNull() {
-        new AndWithThresholdRule(satisfiedRule, null, 1);
+        assertThrows(NullPointerException.class, () -> {
+            new AndWithThresholdRule(satisfiedRule, null, 1);
+        });
     }
 
     @Test
@@ -227,12 +236,12 @@ public class AndWithThresholdRuleTest {
         rule.isSatisfied(7);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Verbose mode should log threshold AND", logContent.contains("Threshold And#isSatisfied"));
-        assertTrue("Verbose mode should include threshold value", logContent.contains("threshold=4"));
-        assertTrue("Verbose mode should include first child result", logContent.contains("rule1=true"));
-        assertTrue("Verbose mode should include second child result", logContent.contains("rule2=true"));
-        assertTrue("Verbose mode should log first child", logContent.contains("Threshold Rule 1#isSatisfied"));
-        assertTrue("Verbose mode should log second child", logContent.contains("Threshold Rule 2#isSatisfied"));
+        assertTrue(logContent.contains("Threshold And#isSatisfied"), "Verbose mode should log threshold AND");
+        assertTrue(logContent.contains("threshold=4"), "Verbose mode should include threshold value");
+        assertTrue(logContent.contains("rule1=true"), "Verbose mode should include first child result");
+        assertTrue(logContent.contains("rule2=true"), "Verbose mode should include second child result");
+        assertTrue(logContent.contains("Threshold Rule 1#isSatisfied"), "Verbose mode should log first child");
+        assertTrue(logContent.contains("Threshold Rule 2#isSatisfied"), "Verbose mode should log second child");
     }
 
     @Test
@@ -244,13 +253,13 @@ public class AndWithThresholdRuleTest {
         rule.isSatisfiedWithTraceMode(2, null, Rule.TraceMode.SUMMARY);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Summary mode should log threshold AND failure",
-                logContent.contains("Threshold And Failure#isSatisfied"));
-        assertTrue("Summary mode should include threshold", logContent.contains("threshold=4"));
-        assertTrue("Summary mode should include window start", logContent.contains("windowStart=0"));
-        assertTrue("Summary mode should include window end", logContent.contains("windowEnd=2"));
-        assertTrue("Summary mode should include insufficient bars reason",
-                logContent.contains("reason=insufficientBars"));
+        assertTrue(logContent.contains("Threshold And Failure#isSatisfied"),
+                "Summary mode should log threshold AND failure");
+        assertTrue(logContent.contains("threshold=4"), "Summary mode should include threshold");
+        assertTrue(logContent.contains("windowStart=0"), "Summary mode should include window start");
+        assertTrue(logContent.contains("windowEnd=2"), "Summary mode should include window end");
+        assertTrue(logContent.contains("reason=insufficientBars"),
+                "Summary mode should include insufficient bars reason");
     }
 
     @Test

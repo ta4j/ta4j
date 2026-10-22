@@ -132,7 +132,7 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
         var numFactory = series.numFactory();
         Num numberOfPositions = numberOfPositionsCriterion.calculate(series, tradingRecord);
         // Calculate the ratio as a rate of return (0-based)
-        var ratio = numberOfPositions.dividedBy(numFactory.numOf(tradingRecord.getPositionCount()));
+        var ratio = numberOfPositions.dividedBy(numFactory.numOf(tradingRecord.getContainedPositions(series).size()));
         // Convert the ratio to the configured representation
         return returnRepresentation.toRepresentationFromRateOfReturn(ratio);
     }

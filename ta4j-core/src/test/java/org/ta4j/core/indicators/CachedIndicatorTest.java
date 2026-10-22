@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.TestUtils.saturatedRetainedWindowSeries;
 
@@ -21,12 +21,15 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.*;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.averages.EDMAIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.KAMAIndicator;
+import org.ta4j.core.indicators.averages.JMAIndicator;
+import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.VIDYAIndicator;
 import org.ta4j.core.indicators.averages.WildersMAIndicator;
@@ -39,9 +42,18 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
+import org.ta4j.core.indicators.pivotpoints.PivotLevel;
+import org.ta4j.core.indicators.pivotpoints.PivotPointIndicator;
+import org.ta4j.core.indicators.pivotpoints.StandardReversalIndicator;
+import org.ta4j.core.indicators.pivotpoints.TimeLevel;
+import org.ta4j.core.indicators.statistics.CusumIndicator;
+import org.ta4j.core.indicators.statistics.EwmaVarianceIndicator;
 import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
 import org.ta4j.core.indicators.statistics.ZScoreIndicator;
 import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
+import org.ta4j.core.indicators.volume.OnBalanceVolumeIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
@@ -52,6 +64,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+import org.junit.jupiter.api.Timeout;
 
 public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -61,7 +74,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
@@ -74,6 +87,26 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         Num firstTime = sma.getValue(4);
         Num secondTime = sma.getValue(4);
         assertEquals(firstTime, secondTime);
+    }
+
+    @Test
+    public void compoundRecursiveStateRemainsBoundedAfterLongContinuation() {
+        for (int window : new int[] { 1, 2, 64 }) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(window);
+            CachedIndicator<Num> indicator = new JMAIndicator(new ClosePriceIndicator(moving), 3, 50, 2);
+            CachedIndicator<?> state = (CachedIndicator<?>) indicator.getDependencies().get(0);
+            for (int i = 0; i < 1024; i++) {
+                moving.barBuilder().closePrice(20 + (i * 7) % 13).add();
+                indicator.getValue(i);
+                for (CachedIndicator<?> cached : List.of(indicator, state)) {
+                    CachedBuffer<?> buffer = cached.getCache();
+                    assertTrue(buffer.getCapacity() <= window, "allocation must stay within the retained window");
+                    assertTrue(buffer.getHighestResultIndex() - buffer.getFirstCachedIndex() + 1 <= window,
+                            "retained state must not grow with stream length");
+                }
+            }
+        }
     }
 
     @Test
@@ -170,7 +203,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<Num> olderSnapshotRead = executor.submit(() -> indicator.getValue(barSeries.getEndIndex()));
-            assertTrue("Older snapshot was not captured", barSeries.awaitBlockedSnapshot());
+            assertTrue(barSeries.awaitBlockedSnapshot(), "Older snapshot was not captured");
 
             barSeries.setSnapshotMaximumBarCount(2);
             Future<Num> newerSnapshotRead = executor.submit(() -> indicator.getValue(barSeries.getEndIndex()));
@@ -423,9 +456,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // value is recursive by definition even when it does not extend
         // RecursiveCachedIndicator: the head-advance cache floor must not
         // evict the retained band and reseed it from a different history.
-        // SMMA is the deliberate exception: it re-anchors its chain at the
-        // retained head (see SMMAIndicatorTest), so this test uses a plain
-        // self-recursive subclass that keeps the default policy.
+        // This test uses a plain self-recursive subclass that keeps the default
+        // policy without depending on any averaging implementation.
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1d, 2d, 3d, 4d, 5d, 6d, 7d)
                 .build();
@@ -755,11 +787,11 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         ready.await();
         start.countDown();
-        assertTrue("Concurrent tasks did not finish in time", done.await(5, TimeUnit.SECONDS));
+        assertTrue(done.await(5, TimeUnit.SECONDS), "Concurrent tasks did not finish in time");
         executor.shutdownNow();
 
-        assertEquals("Only one calculation should be performed for the requested index despite concurrent access.", 1,
-                indicator.getCalculationCount());
+        assertEquals(1, indicator.getCalculationCount(),
+                "Only one calculation should be performed for the requested index despite concurrent access.");
     }
 
     @Test
@@ -790,16 +822,16 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         ready.await();
         start.countDown();
-        assertTrue("Concurrent tasks did not finish in time", done.await(5, TimeUnit.SECONDS));
+        assertTrue(done.await(5, TimeUnit.SECONDS), "Concurrent tasks did not finish in time");
         executor.shutdownNow();
 
-        assertEquals("Only one calculation should be performed for the last bar despite concurrent access.", 1,
-                indicator.getCalculationCount());
+        assertEquals(1, indicator.getCalculationCount(),
+                "Only one calculation should be performed for the last bar despite concurrent access.");
 
         // Mutate last bar to force invalidation and ensure a recomputation occurs
         barSeries.getLastBar().addTrade(numOf(1), numOf(7));
         indicator.getValue(endIndex);
-        assertEquals("Mutation should trigger recomputation of last-bar cache.", 2, indicator.getCalculationCount());
+        assertEquals(2, indicator.getCalculationCount(), "Mutation should trigger recomputation of last-bar cache.");
     }
 
     @Test
@@ -813,17 +845,17 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<Num> writeLockedFuture = executor.submit(() -> indicator.getValue(endIndex - 1));
-            assertTrue("Write-locked calculation did not start in time",
-                    indicator.writeLockedCalculationStarted.await(30, TimeUnit.SECONDS));
+            assertTrue(indicator.writeLockedCalculationStarted.await(30, TimeUnit.SECONDS),
+                    "Write-locked calculation did not start in time");
 
             Future<Num> lastBarFuture = executor.submit(() -> indicator.getValue(endIndex));
-            assertTrue("Last-bar calculation did not start in time",
-                    indicator.lastBarCalculationStarted.await(30, TimeUnit.SECONDS));
+            assertTrue(indicator.lastBarCalculationStarted.await(30, TimeUnit.SECONDS),
+                    "Last-bar calculation did not start in time");
 
             assertNumEquals(endIndex - 1, writeLockedFuture.get(30, TimeUnit.SECONDS));
             assertNumEquals(endIndex, lastBarFuture.get(30, TimeUnit.SECONDS));
-            assertTrue("Expected last-bar read to occur while holding cache write lock",
-                    indicator.writeLockedDuringLastBarRead.get());
+            assertTrue(indicator.writeLockedDuringLastBarRead.get(),
+                    "Expected last-bar read to occur while holding cache write lock");
         } finally {
             executor.shutdownNow();
             executor.awaitTermination(30, TimeUnit.SECONDS);
@@ -858,7 +890,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             Future<Num> future = executor.submit(() -> indicator.getValue(endIndex));
-            assertTrue("Expected last-bar cache read to start in time", tradesReadStarted.await(30, TimeUnit.SECONDS));
+            assertTrue(tradesReadStarted.await(30, TimeUnit.SECONDS), "Expected last-bar cache read to start in time");
 
             barSeries.addBar(barSeries.barBuilder()
                     .closePrice(2)
@@ -945,8 +977,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         try {
             Future<Num> future = executor.submit(() -> indicator.getValue(endIndex));
 
-            assertTrue("Last-bar calculation did not start in time",
-                    indicator.lastBarCalculationStarted.await(30, TimeUnit.SECONDS));
+            assertTrue(indicator.lastBarCalculationStarted.await(30, TimeUnit.SECONDS),
+                    "Last-bar calculation did not start in time");
 
             indicator.invalidateFrom(endIndex);
             indicator.allowLastBarCalculation.countDown();
@@ -979,8 +1011,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // Access last bar first - should update highestResultIndex
         Num value = indicator.getValue(endIndex);
         assertNumEquals(endIndex, value);
-        assertEquals("highestResultIndex should be updated when last bar is accessed first", endIndex,
-                indicator.getHighestResultIndex());
+        assertEquals(endIndex, indicator.getHighestResultIndex(),
+                "highestResultIndex should be updated when last bar is accessed first");
     }
 
     @Test
@@ -994,7 +1026,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         // Access last bar first - sets highestResultIndex to endIndex
         indicator.getValue(endIndex);
-        assertEquals("highestResultIndex should be set to endIndex", endIndex, indicator.getHighestResultIndex());
+        assertEquals(endIndex, indicator.getHighestResultIndex(), "highestResultIndex should be set to endIndex");
 
         // Access an earlier index - should NOT decrease highestResultIndex
         // The cache's highestResultIndex might be smaller, but we should take the max
@@ -1002,8 +1034,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         indicator.getValue(earlierIndex);
 
         // highestResultIndex should remain at endIndex (or higher), not decrease
-        assertTrue("highestResultIndex should not decrease when accessing earlier index after last bar",
-                indicator.getHighestResultIndex() >= endIndex);
+        assertTrue(indicator.getHighestResultIndex() >= endIndex,
+                "highestResultIndex should not decrease when accessing earlier index after last bar");
     }
 
     @Test
@@ -1022,9 +1054,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // Invalidate from an index that does not affect the cached last-bar index.
         indicator.invalidateFrom(endIndex + 1);
 
-        assertEquals(
-                "highestResultIndex should remain at least at the last-bar cached index when last-bar cache remains valid",
-                endIndex, indicator.getHighestResultIndex());
+        assertEquals(endIndex, indicator.getHighestResultIndex(),
+                "highestResultIndex should remain at least at the last-bar cached index when last-bar cache remains valid");
     }
 
     @Test
@@ -1332,13 +1363,13 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // The recursive last-bar access should NOT advance highestResultIndex because
         // snapshotInvalidationCount is -1 when the write lock is already held.
         // Only the outer calculation (endIndex - 1) should advance it.
-        assertEquals("highestResultIndex should only reflect the outer calculation, not the recursive last-bar access",
-                endIndex - 1, indicator.getHighestResultIndex());
+        assertEquals(endIndex - 1, indicator.getHighestResultIndex(),
+                "highestResultIndex should only reflect the outer calculation, not the recursive last-bar access");
 
         // Accessing the last bar normally should now update highestResultIndex
         indicator.getValue(endIndex);
-        assertEquals("highestResultIndex should be updated after normal last-bar access", endIndex,
-                indicator.getHighestResultIndex());
+        assertEquals(endIndex, indicator.getHighestResultIndex(),
+                "highestResultIndex should be updated after normal last-bar access");
     }
 
     @Test
@@ -1368,7 +1399,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             });
 
             // Wait for first computation to start
-            assertTrue("First computation should start", firstComputationStarted.await(30, TimeUnit.SECONDS));
+            assertTrue(firstComputationStarted.await(30, TimeUnit.SECONDS), "First computation should start");
 
             // Start second thread that should timeout waiting and compute independently
             Future<Num> secondFuture = executor.submit(() -> indicator.getValue(endIndex));
@@ -1380,7 +1411,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                 Num result = secondFuture.get(1, TimeUnit.SECONDS);
                 // Either gets a computed value or times out waiting - both are acceptable
                 // The key is that it doesn't block forever
-                assertNotNull("Second thread should get a result after timeout", result);
+                assertNotNull(result, "Second thread should get a result after timeout");
             } catch (TimeoutException e) {
                 fail("Second thread should not block forever waiting for first computation");
             }
@@ -1431,14 +1462,14 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         ready.await();
         start.countDown();
-        assertTrue("Stress test did not complete in time", done.await(60, TimeUnit.SECONDS));
+        assertTrue(done.await(60, TimeUnit.SECONDS), "Stress test did not complete in time");
         executor.shutdownNow();
 
         // All reads should succeed
-        assertEquals("All reads should succeed", threads * iterationsPerThread, successCount.get());
+        assertEquals(threads * iterationsPerThread, successCount.get(), "All reads should succeed");
 
         // Last bar should only be computed once (subsequent reads use cache)
-        assertEquals("Last bar should be computed exactly once", 1, indicator.getCalculationCount());
+        assertEquals(1, indicator.getCalculationCount(), "Last bar should be computed exactly once");
     }
 
     @Test
@@ -1505,14 +1536,14 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         ready.await();
         start.countDown();
-        assertTrue("Stress test with mutations did not complete in time", done.await(60, TimeUnit.SECONDS));
+        assertTrue(done.await(60, TimeUnit.SECONDS), "Stress test with mutations did not complete in time");
         executor.shutdownNow();
 
         // Should have performed many reads
-        assertTrue("Should have performed many concurrent reads", totalReads.get() >= minimumReads);
+        assertTrue(totalReads.get() >= minimumReads, "Should have performed many concurrent reads");
 
         // Each mutation should trigger a recomputation
-        assertTrue("Should have recomputed after mutations", indicator.getCalculationCount() > 1);
+        assertTrue(indicator.getCalculationCount() > 1, "Should have recomputed after mutations");
     }
 
     private final static class SelfRecursiveKeepingIndicator extends CachedIndicator<Num> {
@@ -1629,8 +1660,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (index == endIndex) {
                 lastBarCalculationStarted.countDown();
                 try {
-                    assertTrue("Last-bar calculation was not allowed to proceed in time",
-                            allowLastBarCalculation.await(30, TimeUnit.SECONDS));
+                    assertTrue(allowLastBarCalculation.await(30, TimeUnit.SECONDS),
+                            "Last-bar calculation was not allowed to proceed in time");
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -1669,8 +1700,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (index == endIndex) {
                 lastBarCalculationStarted.countDown();
                 try {
-                    assertTrue("Write-locked calculation did not start in time",
-                            writeLockedCalculationStarted.await(30, TimeUnit.SECONDS));
+                    assertTrue(writeLockedCalculationStarted.await(30, TimeUnit.SECONDS),
+                            "Write-locked calculation did not start in time");
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -1680,8 +1711,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (index == endIndex - 1) {
                 writeLockedCalculationStarted.countDown();
                 try {
-                    assertTrue("Last-bar calculation did not start in time",
-                            lastBarCalculationStarted.await(30, TimeUnit.SECONDS));
+                    assertTrue(lastBarCalculationStarted.await(30, TimeUnit.SECONDS),
+                            "Last-bar calculation did not start in time");
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -1863,8 +1894,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (maximumBarCount == blockTriggerMaximumBarCount && blockNextSnapshot.compareAndSet(true, false)) {
                 snapshotBlocked.countDown();
                 try {
-                    assertTrue("Timed out waiting to release older snapshot",
-                            releaseSnapshot.await(30, TimeUnit.SECONDS));
+                    assertTrue(releaseSnapshot.await(30, TimeUnit.SECONDS),
+                            "Timed out waiting to release older snapshot");
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     fail("Interrupted while waiting to release older snapshot");
@@ -1926,6 +1957,44 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         int getHighestResultIndex() {
             return highestResultIndex;
+        }
+    }
+
+    /**
+     * A bar that does not publish its own mutations and, once armed, changes its
+     * close price right after its amount is next read.
+     */
+    private static final class CloseChangingBar extends BaseBar {
+
+        private static final long serialVersionUID = 1L;
+        private volatile Num close;
+        private volatile Num closeOnNextAmountRead;
+
+        private CloseChangingBar(Bar source) {
+            super(source.getTimePeriod(), source.getBeginTime(), source.getEndTime(), source.getOpenPrice(),
+                    source.getHighPrice(), source.getLowPrice(), source.getClosePrice(), source.getVolume(),
+                    source.getAmount(), source.getTrades());
+            close = source.getClosePrice();
+        }
+
+        private void changeCloseOnNextAmountRead(Num newClose) {
+            closeOnNextAmountRead = newClose;
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return close;
+        }
+
+        @Override
+        public Num getAmount() {
+            Num amount = super.getAmount();
+            Num newClose = closeOnNextAmountRead;
+            if (newClose != null) {
+                closeOnNextAmountRead = null;
+                close = newClose;
+            }
+            return amount;
         }
     }
 
@@ -1997,8 +2066,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (blockingEnabled.get() && blocked.compareAndSet(false, true)) {
                 tradesReadStarted.countDown();
                 try {
-                    assertTrue("Timed out waiting to allow getTrades to proceed",
-                            allowTradesRead.await(30, TimeUnit.SECONDS));
+                    assertTrue(allowTradesRead.await(30, TimeUnit.SECONDS),
+                            "Timed out waiting to allow getTrades to proceed");
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -2087,7 +2156,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    @Test(timeout = 5000)
+    @Test
+    @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
     public void sharedDependencySubgraphReconciliationStaysBounded() {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(0d, 50d, 50d, 50d, 50d)
@@ -2258,6 +2328,180 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         };
 
         assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(1));
+    }
+
+    @Test
+    public void recursiveDependentFollowsSourceThatExplicitlyRequiresFullInvalidation() {
+        // A pivot reversal rebaselines every value after a head advance; a
+        // recursive consumer cannot continue its chain across that discontinuity.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        PivotPointIndicator pivot = new PivotPointIndicator(barSeries, TimeLevel.BARBASED);
+        StandardReversalIndicator reversal = new StandardReversalIndicator(pivot, PivotLevel.RESISTANCE_1);
+        EMAIndicator dependent = new EMAIndicator(reversal, 2);
+
+        assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(1));
+    }
+
+    @Test
+    public void oneBarRecursiveChainDiscardsConsumedPredecessorWhenSourceResets() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(1);
+        EMAIndicator dependent = new EMAIndicator(new HeadAdvanceDiscardingIndicator(series), 1);
+        for (int index = 0; index < 4; index++) {
+            series.barBuilder().closePrice(10 + index).add();
+            assertTrue(dependent.getValue(index).isNaN(), "a reset must restart the one-bar warm-up");
+        }
+    }
+
+    @Test
+    public void recursiveDependentContinuesWithStatisticalSources() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        barSeries.setMaximumBarCount(6);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator expected = new EMAIndicator(new EwmaVarianceIndicator(unbounded, 2, 0.5), 2);
+        EMAIndicator dependent = new EMAIndicator(new EwmaVarianceIndicator(barSeries, 2, 0.5), 2);
+        int finiteAfterHeadAdvance = 0;
+        for (int i = 0; i < 12; i++) {
+            barSeries.barBuilder().closePrice(10 + (i * 7) % 5).add();
+            unbounded.barBuilder().closePrice(10 + (i * 7) % 5).add();
+            Num value = dependent.getValue(i);
+            assertNumEquals(expected.getValue(i), value);
+            if (barSeries.getBeginIndex() > 0 && !value.isNaN()) {
+                finiteAfterHeadAdvance++;
+            }
+        }
+
+        assertTrue(finiteAfterHeadAdvance > 0);
+    }
+
+    @Test
+    public void recursiveIndicatorIgnoresResetHookOfSourceOnSeriesThatDidNotAdvance() {
+        // An explicitly resetting source resets only when its own series advances.
+        // When only the consumer's series advances, the source on the other series
+        // did not reset, so the consumer keeps continuing its chain.
+        BarSeries seriesB = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 20; i++) {
+            seriesB.barBuilder().closePrice(10 + i % 3).add();
+        }
+        HeadAdvanceDiscardingIndicator sourceOnB = new HeadAdvanceDiscardingIndicator(seriesB);
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        seriesA.setMaximumBarCount(5);
+        RecursiveCachedIndicator<Num> chainLength = new RecursiveCachedIndicator<>(seriesA, sourceOnB) {
+            @Override
+            protected Num calculate(int index) {
+                sourceOnB.getValue(index);
+                Num one = getBarSeries().numFactory().one();
+                return index <= getBarSeries().getBeginIndex() ? one : getValue(index - 1).plus(one);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+
+        for (int i = 0; i < 20; i++) {
+            seriesA.barBuilder().closePrice(10).add();
+            assertNumEquals(i + 1, chainLength.getValue(i));
+        }
+
+        // Once the source's own series advances, the source resets and so must the
+        // consumer: the chain restarts at the consumer's retained head.
+        seriesB.setMaximumBarCount(20);
+        seriesB.barBuilder().closePrice(10).add();
+        int endIndex = seriesA.getEndIndex();
+        assertNumEquals(endIndex - seriesA.getBeginIndex() + 1, chainLength.getValue(endIndex));
+    }
+
+    @Test
+    public void recursiveChainReplaysFullyRetainedGapAfterConsumedTerminal() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(2);
+        EMAIndicator actual = new EMAIndicator(new ClosePriceIndicator(moving), 2);
+        EMAIndicator expected = new EMAIndicator(new ClosePriceIndicator(unbounded), 2);
+        for (int index = 0; index < 6; index++) {
+            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
+            unbounded.barBuilder().closePrice(10 + index * 7 % 11).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+        }
+        for (int index = 6; index < 8; index++) {
+            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
+            unbounded.barBuilder().closePrice(10 + index * 7 % 11).add();
+        }
+
+        assertEquals(6, moving.getBeginIndex());
+        assertNumEquals(expected.getValue(7), actual.getValue(7));
+        assertNumEquals(expected.getValue(6), actual.getValue(6));
+        moving.barBuilder().closePrice(17).add();
+        unbounded.barBuilder().closePrice(17).add();
+        assertNumEquals(expected.getValue(8), actual.getValue(8));
+    }
+
+    @Test
+    public void recursiveChainReseedsWhenGapInputHasBeenRemoved() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(2);
+        EMAIndicator actual = new EMAIndicator(new ClosePriceIndicator(moving), 2);
+        for (int index = 0; index < 6; index++) {
+            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
+            actual.getValue(index);
+        }
+        for (int index = 6; index < 9; index++) {
+            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
+        }
+
+        EMAIndicator fresh = new EMAIndicator(new ClosePriceIndicator(moving), 2);
+        assertTrue(actual.getValue(8).isNaN());
+        assertNumEquals(fresh.getValue(8), actual.getValue(8));
+        moving.barBuilder().closePrice(17).add();
+        assertNumEquals(fresh.getValue(9), actual.getValue(9));
+    }
+
+    @Test
+    public void removedIndexReadServesRetainedRecurrenceOfRecursiveIndicator() {
+        // A removed index maps to the first available bar. For a recursive
+        // indicator read continuously, that bar holds a retained full-history value,
+        // which the removed read must serve instead of re-seeding through
+        // calculate(0).
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        barSeries.setMaximumBarCount(20);
+        KAMAIndicator kama = new KAMAIndicator(new ClosePriceIndicator(barSeries), 3, 2, 30);
+        for (int i = 0; i < 40; i++) {
+            barSeries.barBuilder().closePrice(10 + (i % 5) + i * 0.1).add();
+            kama.getValue(i);
+        }
+        int beginIndex = barSeries.getBeginIndex();
+
+        assertNumEquals(kama.getValue(beginIndex), kama.getValue(beginIndex - 1));
+        assertNumEquals(kama.getValue(beginIndex), kama.getValue(0));
+    }
+
+    @Test
+    public void promotedTerminalValueIsDroppedWhenItsBarChangesDuringPromotion() {
+        // The former terminal bar does not publish its own mutations and changes
+        // after its intact check but before its value reaches the main cache. Once
+        // no longer terminal, nothing fingerprints it, so the promoted value must
+        // be dropped rather than continue the recursive chain.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 4; i++) {
+            barSeries.barBuilder().closePrice(10 + i).add();
+        }
+        CloseChangingBar terminal = new CloseChangingBar(barSeries.barBuilder().closePrice(20).build());
+        barSeries.addBar(terminal);
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(barSeries), 2);
+        assertNumEquals(new EMAIndicator(new ClosePriceIndicator(barSeries), 2).getValue(4), ema.getValue(4));
+
+        terminal.changeCloseOnNextAmountRead(numFactory.numOf(40));
+        barSeries.barBuilder().closePrice(22).add();
+        Num appended = ema.getValue(5);
+
+        EMAIndicator fresh = new EMAIndicator(new ClosePriceIndicator(barSeries), 2);
+        assertNumEquals(40, barSeries.getBar(4).getClosePrice());
+        assertNumEquals(fresh.getValue(5), appended);
+        assertNumEquals(fresh.getValue(4), ema.getValue(4));
     }
 
     @Test
@@ -2610,12 +2854,13 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     /**
      * A cross-series dependency reached only through an intermediate indicator
-     * backed by the consumer's own series must still be observed: the EMA consumes
-     * a distance indicator on seriesA whose moving average reads seriesB, so
-     * advancing seriesB alone must recompute the cached EMA values.
+     * backed by the consumer's own series must still be observed, and a
+     * dependency-series head advance applies the same policy as an own-series one:
+     * the windowed distance is re-evaluated, while the recursive EMA keeps its
+     * retained chain.
      */
     @Test
-    public void nestedCrossSeriesDependencyHeadAdvanceInvalidatesDependentCache() {
+    public void nestedCrossSeriesDependencyHeadAdvanceKeepsRecursiveChain() {
         BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
         BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10d, 20d, 30d, 40d, 50d, 60d)
@@ -2623,19 +2868,184 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
                 new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
         EMAIndicator ema = new EMAIndicator(distance, 2);
+        Num distanceBefore2 = distance.getValue(2);
         Num before2 = ema.getValue(2);
         Num before3 = ema.getValue(3);
         seriesB.setMaximumBarCount(4); // head advances; the EMA never reads seriesB directly
-        Num after2 = ema.getValue(2);
-        Num after3 = ema.getValue(3);
 
-        DistanceFromMAIndicator freshDistance = new DistanceFromMAIndicator(seriesA,
+        // The EMA consumed distance(2) while seriesB still held its full window, so
+        // its chain stays the full-history value (#1666) ...
+        assertNumEquals(before2, ema.getValue(2));
+        assertNumEquals(before3, ema.getValue(3));
+        // ... while the windowed distance is still re-evaluated against seriesB's
+        // retained window.
+        assertThat(distance.getValue(2)).isNotEqualTo(distanceBefore2);
+    }
+
+    @Test
+    public void crossSeriesDependencyHeadAdvanceKeepsConsumerIndexSpace() {
+        // seriesB advances its head to index 8 while seriesA still retains every
+        // bar. The recursive EMA's cache lives in seriesA's index space, so its
+        // values below seriesB's head must not be evicted and re-seeded.
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d, 40d, 50d, 60d, 70d, 80d, 90d, 100d, 110d, 120d)
+                .build();
+        DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
                 new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
-        EMAIndicator freshEma = new EMAIndicator(freshDistance, 2);
-        assertNumEquals(freshEma.getValue(2), after2);
-        assertNumEquals(freshEma.getValue(3), after3);
-        assertThat(after2).isNotEqualTo(before2);
-        assertThat(after3).isNotEqualTo(before3);
+        EMAIndicator ema = new EMAIndicator(distance, 2);
+        Num before2 = ema.getValue(2);
+        Num before3 = ema.getValue(3);
+
+        seriesB.setMaximumBarCount(4);
+        assertEquals(8, seriesB.getBeginIndex());
+
+        assertNumEquals(before2, ema.getValue(2));
+        assertNumEquals(before3, ema.getValue(3));
+    }
+
+    @Test
+    public void advancingConsumerHeadKeepsPredecessorWhenSourceStillRetainsLookback() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        Indicator<Num> source = new TRIndicator(sourceSeries);
+        RecursiveCachedIndicator<Num> actual = cumulativeOn(bounded, source);
+        RecursiveCachedIndicator<Num> expected = cumulativeOn(unbounded, source);
+        for (int index = 0; index < 6; index++) {
+            double close = 100 + index * 7 % 19;
+            sourceSeries.barBuilder().highPrice(close + 1).lowPrice(close - 1).closePrice(close).add();
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+        }
+    }
+
+    private RecursiveCachedIndicator<Num> cumulativeOn(BarSeries series, Indicator<Num> source) {
+        return new RecursiveCachedIndicator<Num>(series, source) {
+            @Override
+            protected Num calculate(int index) {
+                if (index == 0) {
+                    return source.getValue(0);
+                }
+                Num previous = getCachedValueOrNull(index - 1);
+                return (previous == null ? getValue(index - 1) : previous).plus(source.getValue(index));
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+    }
+
+    @Test
+    public void advancingConsumerHeadKeepsPredecessorWhenRawRecursiveSourceSeriesIsUnpruned() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        Indicator<Num> source = new OnBalanceVolumeIndicator(sourceSeries);
+        RecursiveCachedIndicator<Num> actual = cumulativeOn(bounded, source);
+        RecursiveCachedIndicator<Num> expected = cumulativeOn(unbounded, source);
+        for (int index = 0; index < 6; index++) {
+            double close = 100 + index * 7 % 19;
+            sourceSeries.barBuilder().closePrice(close).volume(10 + index).add();
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+        }
+    }
+
+    @Test
+    public void transparentWrappersKeepRecursiveWarmupAcrossOneBarHeadAdvances() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        EMAIndicator boundedInner = new EMAIndicator(new ClosePriceIndicator(bounded), 3);
+        EMAIndicator unboundedInner = new EMAIndicator(new ClosePriceIndicator(unbounded), 3);
+        EMAIndicator actual = new EMAIndicator(NumericIndicator.of(UnaryOperationIndicator
+                .abs(BinaryOperationIndicator.sum(boundedInner, new ClosePriceIndicator(bounded)))), 3);
+        EMAIndicator expected = new EMAIndicator(NumericIndicator.of(UnaryOperationIndicator
+                .abs(BinaryOperationIndicator.sum(unboundedInner, new ClosePriceIndicator(unbounded)))), 3);
+        for (int index = 0; index < 12; index++) {
+            double close = index * 7 % 19 - 9;
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            // The inner recurrence is already live when the wrapped consumer reads it.
+            assertNumEquals(unboundedInner.getValue(index), boundedInner.getValue(index));
+            Num expectedValue = expected.getValue(index);
+            Num actualValue = actual.getValue(index);
+            if (Num.isFinite(expectedValue)) {
+                assertNumEquals(expectedValue, actualValue);
+            } else {
+                assertTrue(actualValue.isNaN());
+            }
+        }
+        assertFalse(actual.getValue(11).isNaN());
+    }
+
+    @Test
+    public void undeclaredRawLookbackDoesNotBridgeRemovedPredecessor() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        RecursiveCachedIndicator<Num> actual = rawPriceChanges(moving);
+        for (int index = 0; index < 4; index++) {
+            moving.barBuilder().closePrice(100 + index * 3).add();
+            assertNumEquals(index * 3, actual.getValue(index));
+        }
+        moving.setMaximumBarCount(1);
+        assertNumEquals(9, actual.getValue(3));
+        moving.barBuilder().closePrice(115).add();
+        assertNumEquals(rawPriceChanges(moving).getValue(4), actual.getValue(4));
+    }
+
+    private RecursiveCachedIndicator<Num> rawPriceChanges(BarSeries series) {
+        return new RecursiveCachedIndicator<Num>(series) {
+            @Override
+            protected Num calculate(int index) {
+                if (index == 0) {
+                    return numOf(0);
+                }
+                Num previous = getCachedValueOrNull(index - 1);
+                return (previous == null ? getValue(index - 1) : previous).plus(series.getBar(index).getClosePrice())
+                        .minus(series.getBar(index - 1).getClosePrice());
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+    }
+
+    @Test
+    public void rawRecursiveTerminalEditKeepsFullHistoryRecurrenceInPrunedWindow() {
+        for (boolean observeEdit : List.of(false, true)) {
+            BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            bounded.setMaximumBarCount(3);
+            RecursiveCachedIndicator<Num> actual = rawPriceChanges(bounded);
+            RecursiveCachedIndicator<Num> expected = rawPriceChanges(unbounded);
+            for (int index = 0; index < 8; index++) {
+                double close = 100 + index * 7 % 19;
+                bounded.barBuilder().closePrice(close).add();
+                unbounded.barBuilder().closePrice(close).add();
+                assertNumEquals(expected.getValue(index), actual.getValue(index));
+            }
+
+            bounded.getLastBar().addPrice(numOf(150));
+            unbounded.getLastBar().addPrice(numOf(150));
+            if (observeEdit) {
+                assertNumEquals(expected.getValue(7), actual.getValue(7));
+            }
+            for (int index = 8; index < 11; index++) {
+                double close = 100 + index * 7 % 19;
+                bounded.barBuilder().closePrice(close).add();
+                unbounded.barBuilder().closePrice(close).add();
+                assertNumEquals(expected.getValue(index), actual.getValue(index));
+            }
+        }
     }
 
     /**

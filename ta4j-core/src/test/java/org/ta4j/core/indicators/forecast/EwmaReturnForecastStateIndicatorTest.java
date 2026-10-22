@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.indicators.forecast;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.lang.reflect.InvocationTargetException;
@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -39,6 +39,28 @@ public class EwmaReturnForecastStateIndicatorTest
 
     public EwmaReturnForecastStateIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void emptyReadsReturnUnstableStateBeforeObservationsArrive() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EwmaReturnForecastStateIndicator actual = new EwmaReturnForecastStateIndicator(new LogReturnIndicator(series),
+                2, 0.5);
+        for (int index : new int[] { 0, series.getEndIndex() }) {
+            ReturnForecastState state = actual.getValue(index);
+            assertFalse(state.isStable());
+            assertEquals(0, state.observationCount());
+            assertTrue(state.mean().isNaN());
+            assertTrue(state.variance().isNaN());
+        }
+        for (int index = 0; index < 3; index++) {
+            series.barBuilder().closePrice(100 * Math.pow(2, index)).add();
+            ReturnForecastState state = actual.getValue(index);
+            assertEquals(index, state.observationCount());
+            assertEquals(index == 2, state.isStable());
+        }
+        assertNumEquals(Math.log(2), actual.getValue(2).mean());
+        assertNumEquals(0, actual.getValue(2).variance());
     }
 
     @Test
@@ -144,11 +166,71 @@ public class EwmaReturnForecastStateIndicatorTest
     }
 
     @Test
-    public void sharedMeanReAnchorsWithVarianceAfterPrune() {
-        // The state must pair the variance with the same EWMA mean the
-        // variance re-anchors on prune; a separate mean estimator would keep
-        // its pre-prune recursion and publish a stale mean/drift next to the
-        // re-anchored variance.
+    public void oneBarReturnStreamContinuesMomentsAndObservationCount() {
+        Num[] returns = { numOf(0.01), numOf(0.03), numOf(-0.02), numOf(0.04) };
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        EwmaReturnForecastStateIndicator actual = new EwmaReturnForecastStateIndicator(
+                new FixedReturnIndicator(bounded, ReturnRepresentation.LOG, returns), 1, 0.5);
+        EwmaReturnForecastStateIndicator expected = new EwmaReturnForecastStateIndicator(
+                new FixedReturnIndicator(unbounded, ReturnRepresentation.LOG, returns), 1, 0.5);
+        for (int index = 0; index < returns.length; index++) {
+            bounded.barBuilder().closePrice(100 + index).add();
+            unbounded.barBuilder().closePrice(100 + index).add();
+            ReturnForecastState value = actual.getValue(index);
+            ReturnForecastState reference = expected.getValue(index);
+            assertEquals(index + 1, value.observationCount());
+            assertNumEquals(reference.mean(), value.mean());
+            assertNumEquals(reference.variance(), value.variance());
+            assertEquals(reference.isStable(), value.isStable());
+        }
+    }
+
+    @Test
+    public void missingReturnLookbackDoesNotBecomeAnObservation() {
+        for (boolean revisionless : List.of(false, true)) {
+            BarSeries series = instrumentedSeries(revisionless, new AtomicInteger(), new AtomicBoolean(), 100);
+            series.setMaximumBarCount(1);
+            EwmaReturnForecastStateIndicator forecast = new EwmaReturnForecastStateIndicator(
+                    new LogReturnIndicator(series), 1, 0.5);
+            assertEquals(0, forecast.getValue(0).observationCount());
+            for (int index = 1; index <= 4; index++) {
+                appendClose(series, 100 + 10 * index);
+                ReturnForecastState value = forecast.getValue(index);
+                assertEquals(0, value.observationCount());
+                assertFalse(value.isStable());
+            }
+            series.setMaximumBarCount(2);
+            appendClose(series, 154);
+            ReturnForecastState recovered = forecast.getValue(5);
+            assertEquals(1, recovered.observationCount());
+            assertTrue(recovered.isStable());
+            assertNumEquals(numOf(Math.log(1.1)), recovered.mean(), 1e-12);
+        }
+    }
+
+    @Test
+    public void continuedForecastMatchesUnboundedHistoryWithAndWithoutRevisions() {
+        for (boolean revisionless : List.of(false, true)) {
+            BarSeries bounded = instrumentedSeries(revisionless, new AtomicInteger(), new AtomicBoolean(), 100);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
+            bounded.setMaximumBarCount(4);
+            EwmaReturnForecastStateIndicator actual = rollingMeanState(new LogReturnIndicator(bounded));
+            EwmaReturnForecastStateIndicator expected = rollingMeanState(new LogReturnIndicator(unbounded));
+            assertStateEquals(expected.getValue(0), actual.getValue(0));
+            for (int index = 1; index < 12; index++) {
+                double close = 100 + index * 7 % 13;
+                appendClose(bounded, close);
+                appendClose(unbounded, close);
+                assertStateEquals(expected.getValue(index), actual.getValue(index));
+                assertStateEquals(expected.getValue(index - 1), actual.getValue(index - 1));
+            }
+        }
+    }
+
+    @Test
+    public void sharedMomentsAndCountContinueTogetherAcrossShrinkAndAppend() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 1.1051709180756477, 1.22140275816017, 1.3498588075760032, 1.4918246976412703,
                         1.6487212707001282, 1.8221188003905089, 2.0137527074704766, 5.4739473917272, 14.879731724872837,
@@ -158,9 +240,14 @@ public class EwmaReturnForecastStateIndicatorTest
         EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 3, 0.9,
                 EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
 
-        // Warm the caches against the full prefix so stale recursions would
-        // surface after the prune.
-        assertTrue(stateIndicator.getValue(10).isStable());
+        BarSeries fullHistory = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (Bar bar : series.getBarData()) {
+            fullHistory.addBar(bar);
+        }
+        EwmaReturnForecastStateIndicator expected = new EwmaReturnForecastStateIndicator(
+                new LogReturnIndicator(fullHistory), 3, 0.9, EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+        ReturnForecastState retained = stateIndicator.getValue(10);
+        assertStateEquals(expected.getValue(10), retained);
 
         series.setMaximumBarCount(6);
         series.addBar(series.barBuilder()
@@ -179,28 +266,16 @@ public class EwmaReturnForecastStateIndicatorTest
                 .lowPrice(44.70118357203251)
                 .closePrice(44.70118357203251)
                 .build());
+        fullHistory.addBar(series.getBar(11));
+        fullHistory.addBar(series.getBar(12));
         ReturnForecastState state = stateIndicator.getValue(12);
         assertTrue(state.isStable());
-        // The observation count re-anchors past the retained head: the head's
-        // log return is an artificial zero computed against the pruned
-        // predecessor, so seven pruned bars plus the one-bar lookback make
-        // the sixth retained bar report the five returns its mean and
-        // variance actually fold.
-        assertEquals(5, state.observationCount());
-
-        // Fresh estimators built after the prune re-anchor from the retained
-        // head; the stale full-history mean (~0.26) would fail this check.
-        assertNumEquals(new EWMAIndicator(returns, 3, 0.9).getValue(12), state.mean(), 1e-9);
-        assertNumEquals(new EwmaVarianceIndicator(returns, 3, 0.9).getValue(12), state.variance(), 1e-9);
-
-        // A retained index whose state was cached before the prune must be
-        // recomputed from the re-anchored estimators: the indicator's own
-        // cache must not serve the pre-prune stable state.
-        ReturnForecastState retainedState = stateIndicator.getValue(10);
-        assertTrue(retainedState.isStable());
-        assertNumEquals(new EWMAIndicator(returns, 3, 0.9).getValue(10), retainedState.mean(), 1e-9);
-        assertNumEquals(new EwmaVarianceIndicator(returns, 3, 0.9).getValue(10), retainedState.variance(), 1e-9);
-        assertEquals(3, retainedState.observationCount());
+        assertStateEquals(expected.getValue(12), state);
+        assertEquals(12, state.observationCount());
+        assertStateEquals(retained, stateIndicator.getValue(10));
+        EwmaReturnForecastStateIndicator fresh = new EwmaReturnForecastStateIndicator(new LogReturnIndicator(series), 3,
+                0.9, EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+        assertEquals(5, fresh.getValue(12).observationCount());
     }
 
     @Test
@@ -433,7 +508,7 @@ public class EwmaReturnForecastStateIndicatorTest
 
             @Override
             public Num getValue(int index) {
-                assertFalse("Return graph evaluated inside source read scope", inReadScope.get());
+                assertFalse(inReadScope.get(), "Return graph evaluated inside source read scope");
                 // Count and shared mean consume the original prefix first.
                 // Change an interior close when variance starts reading it.
                 if (index == 4 && ++targetReads == 3) {

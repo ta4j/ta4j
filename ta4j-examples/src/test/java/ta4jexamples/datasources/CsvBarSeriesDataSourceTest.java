@@ -18,9 +18,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.regex.Pattern;
 
-import static org.hamcrest.core.Is.is;
-import static org.hamcrest.core.IsNull.notNullValue;
-import static org.junit.Assume.assumeThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -45,7 +43,7 @@ public class CsvBarSeriesDataSourceTest {
         // Pattern: {ticker}-{interval}-{startDate}_{endDate}.csv
         String expectedFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
@@ -106,7 +104,7 @@ public class CsvBarSeriesDataSourceTest {
     public void testLoadSeriesFromLocalCsvPath() throws Exception {
         String csvFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(csvFile);
-        assumeThat("File " + csvFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + csvFile + " does not exist");
 
         Path tempFile = Files.createTempFile("ta4j-local-series-", ".csv");
         try {
@@ -206,7 +204,7 @@ public class CsvBarSeriesDataSourceTest {
         Instant end = Instant.parse("2013-12-31T23:59:59Z");
         String expectedFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         BarSeries series = dataSource.loadSeries("AAPL", Duration.ofDays(1), start, end);
         assertNotNull(series, "Should find file without source name prefix");
@@ -228,7 +226,7 @@ public class CsvBarSeriesDataSourceTest {
         // wildcard
         String expectedFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
@@ -252,7 +250,7 @@ public class CsvBarSeriesDataSourceTest {
         // value
         String expectedFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
@@ -278,7 +276,7 @@ public class CsvBarSeriesDataSourceTest {
         // This exercises the date-only broader pattern fallback
         String expectedFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
@@ -327,5 +325,24 @@ public class CsvBarSeriesDataSourceTest {
         } finally {
             Files.deleteIfExists(tempFile);
         }
+    }
+
+    @Test
+    public void testLoadSeriesWithPathTraversalTicker() {
+        CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
+        Instant start = Instant.parse("2013-01-02T00:00:00Z");
+        Instant end = Instant.parse("2013-12-31T23:59:59Z");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("../AAPL", Duration.ofDays(1), start, end);
+        }, "Should throw IllegalArgumentException for ticker with relative path traversal");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("AAPL/sub", Duration.ofDays(1), start, end);
+        }, "Should throw IllegalArgumentException for ticker with forward slash path traversal");
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            dataSource.loadSeries("AAPL\\sub", Duration.ofDays(1), start, end);
+        }, "Should throw IllegalArgumentException for ticker with backslash path traversal");
     }
 }

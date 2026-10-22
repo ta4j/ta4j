@@ -3,17 +3,17 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -212,7 +212,7 @@ public class ThreeInsideUpIndicatorTest extends AbstractIndicatorTest<Indicator<
         ThreeInsideUpIndicator indicator = new ThreeInsideUpIndicator(series);
         assertEquals(7, indicator.getCountOfUnstableBars());
         for (int i = 0; i < indicator.getCountOfUnstableBars(); i++) {
-            assertFalse("expected false at " + i, indicator.getValue(i));
+            assertFalse(indicator.getValue(i), "expected false at " + i);
         }
         assertTrue(indicator.getValue(7));
     }
