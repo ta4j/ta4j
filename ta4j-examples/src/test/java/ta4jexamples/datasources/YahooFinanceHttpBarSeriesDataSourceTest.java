@@ -13,13 +13,17 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -112,7 +116,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
             try {
                 // Delete all files in the directory first
                 if (Files.isDirectory(dirPath)) {
-                    try (var stream = Files.list(dirPath)) {
+                    try (Stream<Path> stream = Files.list(dirPath)) {
                         stream.forEach(path -> {
                             try {
                                 if (Files.isDirectory(path)) {
@@ -926,7 +930,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         // Locate the written cache file for the dashed ticker
         Path cacheDir = Paths.get(AbstractHttpBarSeriesDataSource.DEFAULT_RESPONSE_CACHE_DIR);
         List<Path> cacheFiles;
-        try (var stream = Files.list(cacheDir)) {
+        try (Stream<Path> stream = Files.list(cacheDir)) {
             cacheFiles = stream
                     .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-"))
                     .toList();
@@ -1526,7 +1530,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
 
             assertNotNull(series, "Series should load successfully");
             // Verify that cached file resides strictly inside customCachePath
-            try (java.util.stream.Stream<Path> files = Files.list(customCachePath)) {
+            try (Stream<Path> files = Files.list(customCachePath)) {
                 List<Path> cachedFiles = files.toList();
                 assertFalse(cachedFiles.isEmpty(), "Cache file should be created");
                 for (Path file : cachedFiles) {
@@ -1567,7 +1571,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
             }
             // Every note missed the cache: none was served from another note's file
             verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
-            try (var files = Files.list(customCachePath)) {
+            try (Stream<Path> files = Files.list(customCachePath)) {
                 List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
                 assertEquals(notes.size(), fileNames.size(), "Each distinct note must get its own cache file");
                 assertEquals(notes.size(),
@@ -1602,7 +1606,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
             assertNotNull(dataSource.loadSeriesInstance("AAPL",
                     YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, "Run 1/\u00e4.json%"));
 
-            try (var files = Files.list(customCachePath)) {
+            try (Stream<Path> files = Files.list(customCachePath)) {
                 List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
                 assertEquals(1, fileNames.size(), "A single cache file should be created");
                 assertTrue(fileNames.get(0).endsWith("_%52un%201%2F%C3%A4%2Ejson%25.json"),
@@ -1630,7 +1634,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
                     YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, "   "));
 
             verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
-            try (var files = Files.list(customCachePath)) {
+            try (Stream<Path> files = Files.list(customCachePath)) {
                 List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
                 assertEquals(1, fileNames.size(), "Null and blank notes must share the notes-free cache file");
                 assertTrue(fileNames.get(0).matches("YahooFinance-AAPL-PT24H-\\d+-\\d+\\.json"),
@@ -1658,10 +1662,60 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
                     YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, "run"));
 
             verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
-            try (var files = Files.list(customCachePath)) {
+            try (Stream<Path> files = Files.list(customCachePath)) {
                 List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
                 assertEquals(1, fileNames.size(), "Padded and trimmed notes must share one cache file");
                 assertTrue(fileNames.get(0).endsWith("_run.json"), "Unexpected cache file " + fileNames.get(0));
+            }
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    @Test
+    public void testLongNotesKeepCacheFileNamesBoundedAndDistinct() throws Exception {
+        HttpClientWrapper mockClient = mockClientReturning(VALID_JSON_RESPONSE);
+        Path customCachePath = Files.createTempDirectory("yahoo-long-cache-notes-");
+        Instant start = Instant.parse("2023-01-01T00:00:00Z");
+        Instant end = Instant.parse("2023-01-10T00:00:00Z");
+        int notesBudget = 255
+                - (getCachePrefix() + "AAPL-PT24H-" + start.getEpochSecond() + "-" + end.getEpochSecond() + "_.json")
+                        .length();
+        String boundaryNote = "a".repeat(notesBudget);
+        String uppercaseNote = "A".repeat(69);
+        String digest = HexFormat.of()
+                .withUpperCase()
+                .formatHex(MessageDigest.getInstance("SHA-256").digest(uppercaseNote.getBytes(StandardCharsets.UTF_8)));
+        List<String> notes = List.of(boundaryNote, boundaryNote + "a", uppercaseNote, "\u00e4".repeat(100),
+                "A".repeat(4096), "A".repeat(4095) + "B", "../\u00e4/".repeat(100),
+                "%sha256-" + digest.toLowerCase(Locale.ROOT));
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCachePath.toString());
+            for (int pass = 0; pass < 2; pass++) {
+                for (String note : notes) {
+                    assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                            YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, note));
+                }
+            }
+            verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+            try (Stream<Path> files = Files.list(customCachePath)) {
+                List<Path> cacheFiles = files.toList();
+                List<String> fileNames = cacheFiles.stream().map(file -> file.getFileName().toString()).toList();
+                assertEquals(notes.size(), fileNames.size(), "Every note must have a reusable cache file");
+                assertEquals(notes.size(),
+                        fileNames.stream().map(name -> name.toLowerCase(Locale.ROOT)).distinct().count(),
+                        "Digest keys and literal digest-shaped notes must remain distinct");
+                assertTrue(fileNames.stream().anyMatch(name -> name.endsWith("_" + boundaryNote + ".json")),
+                        "A note that exactly fits the filename budget must keep its readable encoding");
+                assertTrue(fileNames.stream().anyMatch(name -> name.endsWith("_%sha256-" + digest + ".json")),
+                        "The full note must determine the SHA-256 key");
+                for (Path file : cacheFiles) {
+                    assertEquals(customCachePath, file.getParent());
+                    assertTrue(file.getFileName().toString().getBytes(StandardCharsets.UTF_8).length <= 255,
+                            "Cache file must fit the filesystem component limit: " + file);
+                    assertNotNull(dataSource.loadSeries(file.toString()), "Digest-key filenames must remain loadable");
+                }
             }
         } finally {
             deleteDirectory(customCachePath);
