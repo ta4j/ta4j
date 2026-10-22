@@ -571,6 +571,12 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                 for (final String field : List.of("id", "state", "explanation")) {
                     requireText(path, lineNumber, rule, field, ruleAt + ".");
                 }
+                try {
+                    EvidenceState.valueOf(rule.get("state").getAsString());
+                } catch (final IllegalArgumentException e) {
+                    throw corrupt(path, lineNumber,
+                            ruleAt + ".state " + rule.get("state") + " is not an evidence state");
+                }
                 final JsonElement score = rule.get("score");
                 if (score == null
                         || !score.isJsonNull() && !(score.isJsonPrimitive() && score.getAsJsonPrimitive().isNumber())) {
