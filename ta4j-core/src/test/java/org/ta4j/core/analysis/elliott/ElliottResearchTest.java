@@ -515,6 +515,33 @@ class ElliottResearchTest {
     }
 
     @Test
+    public void summarizeRejectsNonRunPathsWithoutCreatingLockFiles() throws Exception {
+        final Path missing = work.resolve("missing-summary-run");
+        final Path other = Files.createDirectories(work.resolve("not-a-summary-run"));
+        Files.writeString(other.resolve("precious.txt"), "keep");
+        for (final Path dir : List.of(missing, other)) {
+            final Result result = launch("summarize", dir.toString());
+            assertEquals(1, result.code(), result.err());
+            assertTrue(result.err().contains("not a run directory"), result.err());
+            assertFalse(Files.exists(dir.resolve(".run.lock")), "refused summary left a lock file");
+        }
+        assertFalse(Files.exists(missing));
+        assertEquals("keep", Files.readString(other.resolve("precious.txt")));
+    }
+
+    @Test
+    public void summarizeRejectsInvalidRunMetadataWithoutCreatingLockFiles() throws Exception {
+        final Path dir = Files.createDirectories(work.resolve("invalid-summary-run"));
+        for (final String metadata : List.of("{", "{}", "{\"artifactSchemaVersion\":\"wrong\"}")) {
+            Files.writeString(dir.resolve("run.json"), metadata);
+            final Result result = launch("summarize", dir.toString());
+            assertEquals(1, result.code(), result.err());
+            assertTrue(result.err().contains("run.json"), result.err());
+            assertFalse(Files.exists(dir.resolve(".run.lock")), "invalid metadata gained a lock file");
+        }
+    }
+
+    @Test
     void traceFooterWithNonTrueCompleteIsCorrupt() throws Exception {
         final Path copy = work.resolve("bad-footer");
         copyTree(smokeRun, copy);

@@ -1773,6 +1773,7 @@ final class ElliottResearch {
             throw new IllegalArgumentException("summarize takes exactly one run directory");
         }
         final Path dir = Path.of(args.get(0)).toAbsolutePath().normalize();
+        loadRun(dir);
         try (FileChannel lock = lockRunDirectory(dir)) {
             final JsonObject run = loadRun(dir);
             final Path comparisons = resolveInside(dir, COMPARISONS_FILE);
