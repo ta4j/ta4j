@@ -4,6 +4,7 @@
 package ta4jexamples.charting.replay;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -17,6 +18,8 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -487,17 +490,15 @@ class ReplayArtifactTest {
             final JsonObject point = placement.get(0).getAsJsonObject();
             final var rules = candidate.getAsJsonArray("rules");
             final JsonObject rule = rules.get(0).getAsJsonObject();
-            final JsonObject secondRule = rule.deepCopy();
-            secondRule.addProperty("id", "wave3-not-shortest");
-            rules.add(secondRule);
-            ReplayFixture.refreshVersion(candidate);
+            final JsonObject secondRule = rules.get(1).getAsJsonObject();
             switch (field) {
             case "candidateKey" -> candidate.addProperty("candidateKey", "0".repeat(32));
             case "version" -> candidate.addProperty("version", "0".repeat(65));
             case "grammar" -> record.addProperty("grammar", "CORRECTIVE_3");
             case "direction" -> candidate.addProperty("direction", "BEARISH");
             case "placement.index" -> point.addProperty("index", 6);
-            case "placement.type" -> point.addProperty("type", "HIGH");
+            case "placement.type" -> point.addProperty("type",
+                    "HIGH".equals(point.get("type").getAsString()) ? "LOW" : "HIGH");
             case "placement.price" -> point.addProperty("price", point.get("price").getAsString() + ".0");
             case "placement.order" -> {
                 final var first = placement.get(0);
@@ -526,6 +527,184 @@ class ReplayArtifactTest {
     }
 
     @Test
+    public void selfConsistentTraceRecordsMustSatisfyDomainInvariantsBeforeFamilyFiltering() throws IOException {
+        for (final String mutation : List.of("complete-empty", "complete-multiple", "ambiguous-empty",
+                "ambiguous-single", "candidate-bound", "rules-omitted", "rules-duplicated", "rules-renamed",
+                "rules-reordered", "rules-extra", "forming-null-direction", "record-unknown-direction",
+                "candidate-unknown-direction", "unknown-grammar", "placement-count", "placement-index-order",
+                "placement-type-order", "placement-negative-index", "placement-invalid-type",
+                "placement-nonfinite-price", "pivot-negative-index", "pivot-confirmation-before-index",
+                "pivot-invalid-type", "pivot-nonfinite-price", "score-on-fail", "score-below-zero",
+                "score-above-one", "score-extreme", "score-tiny-negative")) {
+            final Path run = ReplayFixture.write(temp.resolve("domain-" + mutation));
+            final Path trace = run.resolve("traces/d1-real.jsonl");
+            final List<String> lines = Files.readAllLines(trace);
+            final int line = firstRulesCandidateLine(lines);
+            final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            final JsonArray candidates = record.getAsJsonArray("candidates");
+            final JsonObject candidate = candidates.get(0).getAsJsonObject();
+            final JsonArray rules = candidate.getAsJsonArray("rules");
+            final JsonObject rule = rules.get(0).getAsJsonObject();
+            final JsonArray placement = candidate.getAsJsonArray("placement");
+            final JsonObject point = placement.get(0).getAsJsonObject();
+            final JsonObject pivot = record.getAsJsonArray("pivots").get(0).getAsJsonObject();
+            final String field;
+            switch (mutation) {
+            case "complete-empty", "ambiguous-empty" -> {
+                record.addProperty("status", mutation.startsWith("ambiguous") ? "AMBIGUOUS" : "COMPLETE");
+                record.add("candidates", new JsonArray());
+                field = "candidates";
+            }
+            case "complete-multiple", "candidate-bound" -> {
+                record.addProperty("status", "candidate-bound".equals(mutation) ? "AMBIGUOUS" : "COMPLETE");
+                while (candidates.size() < ("candidate-bound".equals(mutation) ? 65 : 2)) {
+                    candidates.add(candidate.deepCopy());
+                }
+                field = "candidates";
+            }
+            case "ambiguous-single" -> {
+                record.addProperty("status", "AMBIGUOUS");
+                field = "candidates";
+            }
+            case "rules-omitted", "rules-extra", "rules-duplicated", "rules-renamed", "rules-reordered" -> {
+                switch (mutation) {
+                case "rules-omitted" -> rules.remove(1);
+                case "rules-extra" -> rules.add(rule.deepCopy());
+                case "rules-duplicated" -> rules.set(1, rule.deepCopy());
+                case "rules-renamed" -> rule.addProperty("id", "foreign-rule");
+                case "rules-reordered" -> {
+                    rules.set(0, rules.get(1));
+                    rules.set(1, rule);
+                }
+                default -> throw new AssertionError(mutation);
+                }
+                field = "rules";
+            }
+            case "forming-null-direction", "record-unknown-direction" -> {
+                if ("forming-null-direction".equals(mutation)) {
+                    record.addProperty("status", "FORMING");
+                    record.add("direction", JsonNull.INSTANCE);
+                } else {
+                    record.addProperty("direction", "FLAT");
+                }
+                field = "direction";
+            }
+            case "candidate-unknown-direction" -> {
+                candidate.addProperty("direction", "FLAT");
+                field = "direction";
+            }
+            case "unknown-grammar" -> {
+                record.addProperty("grammar", "FOREIGN");
+                field = "grammar";
+            }
+            case "placement-count", "placement-index-order", "placement-type-order", "placement-negative-index",
+                    "placement-invalid-type", "placement-nonfinite-price" -> {
+                switch (mutation) {
+                case "placement-count" -> placement.remove(placement.size() - 1);
+                case "placement-index-order" -> point.addProperty("index",
+                        placement.get(1).getAsJsonObject().get("index").getAsInt());
+                case "placement-type-order" -> point.addProperty("type",
+                        placement.get(1).getAsJsonObject().get("type").getAsString());
+                case "placement-negative-index" -> point.addProperty("index", -1);
+                case "placement-invalid-type" -> point.addProperty("type", "CENTER");
+                case "placement-nonfinite-price" -> point.addProperty("price", "NaN");
+                default -> throw new AssertionError(mutation);
+                }
+                field = "placement";
+            }
+            case "pivot-negative-index", "pivot-confirmation-before-index", "pivot-invalid-type",
+                    "pivot-nonfinite-price" -> {
+                switch (mutation) {
+                case "pivot-negative-index" -> pivot.addProperty("index", -1);
+                case "pivot-confirmation-before-index" -> pivot.addProperty("confirmationIndex", -1);
+                case "pivot-invalid-type" -> pivot.addProperty("type", "CENTER");
+                case "pivot-nonfinite-price" -> pivot.addProperty("price", "Infinity");
+                default -> throw new AssertionError(mutation);
+                }
+                field = "pivots[0]";
+            }
+            case "score-on-fail", "score-below-zero", "score-above-one", "score-extreme", "score-tiny-negative" -> {
+                switch (mutation) {
+                case "score-on-fail" -> rule.addProperty("state", "FAIL");
+                case "score-below-zero" -> rule.addProperty("score", -0.01);
+                case "score-above-one" -> rule.addProperty("score", 1.01);
+                case "score-extreme" -> rule.add("score", JsonParser.parseString("1e1000"));
+                case "score-tiny-negative" -> rule.add("score", JsonParser.parseString("-1e-1000"));
+                default -> throw new AssertionError(mutation);
+                }
+                field = "rules[0].score";
+            }
+            default -> throw new AssertionError(mutation);
+            }
+            ReplayFixture.refreshIdentity(record);
+            lines.set(line, record.toString());
+            Files.write(trace, lines, StandardCharsets.UTF_8);
+            for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
+                final String message = failureOf(run, key);
+                assertTrue(message.contains(field) && message.contains("line " + (line + 1))
+                        && message.contains("traces/d1-real.jsonl") && message.contains("regenerate"),
+                        mutation + ": " + message);
+            }
+        }
+    }
+
+    @Test
+    public void supportedTopologyGrammarsDirectionsAndCandidateBoundsRemainReadable() throws IOException {
+        for (final String grammar : List.of("MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3")) {
+            for (final String direction : List.of("BULLISH", "BEARISH")) {
+                for (final int count : List.of(1, 64)) {
+                    final Path run = ReplayFixture.write(temp.resolve("boundary-" + grammar + "-" + direction + count));
+                    final Path trace = run.resolve("traces/d1-real.jsonl");
+                    final List<String> lines = Files.readAllLines(trace);
+                    final int line = firstRulesCandidateLine(lines);
+                    final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+                    record.addProperty("grammar", grammar);
+                    record.addProperty("direction", direction);
+                    record.addProperty("status", count == 1 ? "COMPLETE" : "AMBIGUOUS");
+                    final JsonArray candidates = record.getAsJsonArray("candidates");
+                    final JsonObject candidate = candidates.get(0).getAsJsonObject();
+                    candidate.addProperty("direction", direction);
+                    final JsonArray placement = candidate.getAsJsonArray("placement");
+                    final int required = "MOTIVE_5".equals(grammar) ? 6 : "CORRECTIVE_3".equals(grammar) ? 4 : 9;
+                    while (placement.size() > required) {
+                        placement.remove(placement.size() - 1);
+                    }
+                    while (placement.size() < required) {
+                        final JsonObject previous = placement.get(placement.size() - 1).getAsJsonObject();
+                        final JsonObject next = previous.deepCopy();
+                        next.addProperty("index", previous.get("index").getAsInt() + 1);
+                        next.addProperty("type", "HIGH".equals(previous.get("type").getAsString()) ? "LOW" : "HIGH");
+                        placement.add(next);
+                    }
+                    placement.get(0).getAsJsonObject().addProperty("price", "-1e1000");
+                    final JsonArray rules = candidate.getAsJsonArray("rules");
+                    rules.get(0).getAsJsonObject().addProperty("score", 0);
+                    rules.get(1).getAsJsonObject().addProperty("state", "PASS");
+                    rules.get(1).getAsJsonObject().addProperty("score", 1);
+                    while (candidates.size() < count) {
+                        candidates.add(candidate.deepCopy());
+                    }
+                    ReplayFixture.refreshIdentity(record);
+                    lines.set(line, record.toString());
+                    Files.write(trace, lines, StandardCharsets.UTF_8);
+                    assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true));
+                }
+            }
+        }
+    }
+
+    private static int firstRulesCandidateLine(final List<String> lines) {
+        for (int line = 1; line < lines.size() - 1; line++) {
+            final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            if ("all-rules".equals(record.get("mode").getAsString())
+                    && record.getAsJsonArray("candidates").size() == 1) {
+                return line;
+            }
+        }
+        throw new AssertionError("fixture has no single-candidate all-rules record");
+    }
+
+    @Test
     public void allRecordedRuleStatesRemainReplayable() throws IOException {
         for (final String state : List.of("PASS", "FAIL", "PENDING", "UNAVAILABLE", "NOT_APPLICABLE")) {
             final Path run = ReplayFixture.write(temp.resolve("valid-state-" + state));
@@ -536,13 +715,13 @@ class ReplayArtifactTest {
                 final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
                 final var candidates = record.getAsJsonArray("candidates");
                 if (!candidates.isEmpty() && !candidates.get(0).getAsJsonObject().getAsJsonArray("rules").isEmpty()) {
-                    candidates.get(0)
-                            .getAsJsonObject()
-                            .getAsJsonArray("rules")
-                            .get(0)
-                            .getAsJsonObject()
-                            .addProperty("state", state);
-                    ReplayFixture.refreshVersion(candidates.get(0).getAsJsonObject());
+                    final JsonObject candidate = candidates.get(0).getAsJsonObject();
+                    final JsonObject rule = candidate.getAsJsonArray("rules").get(0).getAsJsonObject();
+                    rule.addProperty("state", state);
+                    if (!"PASS".equals(state)) {
+                        rule.add("score", JsonNull.INSTANCE);
+                    }
+                    ReplayFixture.refreshVersion(candidate);
                     lines.set(line, record.toString());
                     asOf = record.get("asOfIndex").getAsInt();
                     break;

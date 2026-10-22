@@ -29,11 +29,13 @@ import com.google.gson.JsonParser;
  * against the file contract and not against test classes of another module.
  *
  * <p>
- * The bundle holds {@value #BARS} daily bars and two recorded streams: the
- * {@code all-rules} stream ({@link #RULES_KEY}) and the {@code topology-only}
- * stream ({@link #TOPOLOGY_KEY}). Confirmed pivots: LOW 5 (confirmed at 8),
- * HIGH 12 (15), LOW 20 (23), HIGH 30 (33), LOW 40 (43). Candidate A exists
- * from bar 23 and has revised rule evidence at bar 33; candidate B exists on
+ * The bundle holds {@value #BARS} daily bars and two recorded topology streams:
+ * {@code all-rules} ({@link #RULES_KEY}) and {@code topology-only}
+ * ({@link #TOPOLOGY_KEY}). Three prehistory pivots at bars 0, 1 and 2 precede
+ * LOW 5 (confirmed at 8), HIGH 12 (15), LOW 20 (23), HIGH 30 (33), LOW 40 (43).
+ * Each motive candidate has six strictly ordered, alternating pivots, all
+ * confirmed before it first appears. Candidate A exists from bar 23 and has
+ * revised rule evidence at bar 33; candidate B exists on
  * bars 33 to 40. Their keys and versions follow the research writer protocol.
  */
 final class ReplayFixture {
@@ -47,7 +49,8 @@ final class ReplayFixture {
     static final String COMPETING_KEY = "d1|competing|competing-3+3|3+3|fractal-w5|calibration|ambiguousRate|b20";
     static final Instant START = Instant.parse("2020-01-01T00:00:00Z");
 
-    private static final int[][] PIVOTS = { { 5, 0, 8 }, { 12, 1, 15 }, { 20, 0, 23 }, { 30, 1, 33 }, { 40, 0, 43 } };
+    private static final int[][] PIVOTS = { { 0, 1, 0 }, { 1, 0, 1 }, { 2, 1, 2 }, { 5, 0, 8 },
+            { 12, 1, 15 }, { 20, 0, 23 }, { 30, 1, 33 }, { 40, 0, 43 } };
     static final String CANDIDATE_A = candidate(0, false, true).get("candidateKey").getAsString();
     static final String CANDIDATE_B = candidate(1, false, true).get("candidateKey").getAsString();
     static final String A_VERSION_1 = candidate(0, false, true).get("version").getAsString();
@@ -309,7 +312,7 @@ final class ReplayFixture {
         record.add("candidates", candidates);
         record.addProperty("status",
                 candidates.size() >= 2 ? "AMBIGUOUS" : candidates.size() == 1 ? "COMPLETE" : "NO_MATCH");
-        record.addProperty("direction", candidates.isEmpty() ? "" : "BULLISH");
+        record.add("direction", candidates.isEmpty() ? JsonNull.INSTANCE : new JsonPrimitive("BULLISH"));
         final JsonArray labels = new JsonArray();
         if (candidates.size() >= 2) {
             labels.add("ambiguous");
@@ -327,7 +330,7 @@ final class ReplayFixture {
     static JsonObject competingRecord(final int asOf) {
         int confirmed = 0;
         for (final int[] pivot : PIVOTS) {
-            if (pivot[2] <= asOf) {
+            if (pivot[0] >= 5 && pivot[2] <= asOf) {
                 confirmed++;
             }
         }
@@ -381,7 +384,7 @@ final class ReplayFixture {
         final JsonObject candidate = new JsonObject();
         candidate.addProperty("direction", "BULLISH");
         final JsonArray placement = new JsonArray();
-        for (int i = skip; i < skip + 3; i++) {
+        for (int i = skip; i < skip + 6; i++) {
             placement.add(point(PIVOTS[i]));
         }
         candidate.add("placement", placement);
@@ -399,26 +402,40 @@ final class ReplayFixture {
             rule.add("observations", observations);
             rule.addProperty("explanation", "wave 2 may not retrace the whole of wave 1 (" + (skip == 0 ? "A" : "B") + ")");
             ruleArray.add(rule);
+            final JsonObject second = new JsonObject();
+            second.addProperty("id", "wave3-not-shortest");
+            second.addProperty("state", "PENDING");
+            second.add("score", JsonNull.INSTANCE);
+            second.add("observations", new JsonArray());
+            second.addProperty("explanation", "wave 3 needs later-leg evidence");
+            ruleArray.add(second);
         }
         candidate.add("rules", ruleArray);
-        final StringBuilder identity = new StringBuilder("MOTIVE_5|BULLISH");
-        for (final var point : placement) {
-            final JsonObject pivot = point.getAsJsonObject();
-            identity.append('|')
-                    .append(pivot.get("index").getAsInt())
-                    .append(':')
-                    .append(pivot.get("type").getAsString())
-                    .append(':')
-                    .append(pivot.get("price").getAsString());
-        }
-        candidate.addProperty("candidateKey", digest(identity.toString()));
-        refreshVersion(candidate);
+        refreshIdentity(candidate, "MOTIVE_5");
         return candidate;
     }
 
     static void refreshVersion(final JsonObject candidate) {
         candidate.addProperty("version", candidate.get("candidateKey").getAsString() + "@"
                 + digest(candidate.getAsJsonArray("rules").toString()));
+    }
+
+    static void refreshIdentity(final JsonObject record) {
+        for (final var element : record.getAsJsonArray("candidates")) {
+            refreshIdentity(element.getAsJsonObject(), record.get("grammar").getAsString());
+        }
+    }
+
+    private static void refreshIdentity(final JsonObject candidate, final String grammar) {
+        final StringBuilder identity = new StringBuilder(grammar).append('|')
+                .append(candidate.get("direction").getAsString());
+        for (final var point : candidate.getAsJsonArray("placement")) {
+            final JsonObject pivot = point.getAsJsonObject();
+            identity.append('|').append(pivot.get("index").getAsInt()).append(':')
+                    .append(pivot.get("type").getAsString()).append(':').append(pivot.get("price").getAsString());
+        }
+        candidate.addProperty("candidateKey", digest(identity.toString()));
+        refreshVersion(candidate);
     }
 
     private static String digest(final String value) {

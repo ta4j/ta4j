@@ -297,6 +297,10 @@ final class ReplayTraceIndex {
         if (direction == null || !direction.isJsonNull() && textOrNull(record, "direction") == null) {
             throw corrupt(display, line, where + "direction is missing or not a string or null");
         }
+        if ("topology".equals(kind) && (!direction.isJsonNull() && !isWaveDirection(direction.getAsString())
+                || direction.isJsonNull() && "FORMING".equals(text(record, "status")))) {
+            throw corrupt(display, line, where + "direction must be a wave direction, and must not be null for FORMING");
+        }
         requireTexts(display, line, record, "activeRules", where);
         final JsonElement bar = record.get("bar");
         if (bar != null) {
@@ -313,10 +317,21 @@ final class ReplayTraceIndex {
         }
         final JsonArray pivots = requireArray(display, line, record, "pivots", where);
         for (int i = 0; i < pivots.size(); i++) {
-            final JsonObject pivot = requirePlacement(display, line, pivots.get(i), where + "pivots[" + i + "]");
-            requireInteger(display, line, pivot, "confirmationIndex", where + "pivots[" + i + "].");
+            final String at = where + "pivots[" + i + "]";
+            final JsonObject pivot = requirePlacement(display, line, pivots.get(i), at);
+            final int confirmation = requireInteger(display, line, pivot, "confirmationIndex", at + ".");
+            if (confirmation < pivot.get("index").getAsInt()) {
+                throw corrupt(display, line, at + ".confirmationIndex must not precede index");
+            }
         }
         final JsonArray candidates = requireArray(display, line, record, "candidates", where);
+        if ("topology".equals(kind) && (candidates.size() > 64
+                || "COMPLETE".equals(text(record, "status")) && candidates.size() != 1
+                || "AMBIGUOUS".equals(text(record, "status")) && candidates.size() < 2)) {
+            throw corrupt(display, line, where
+                    + "candidates exceed the bound of 64 or do not match status (COMPLETE: 1, AMBIGUOUS: 2-64)");
+        }
+        int requiredPivots = 0;
         for (int i = 0; i < candidates.size(); i++) {
             final String at = where + "candidates[" + i + "]";
             final JsonObject candidate = requireObject(display, line, candidates.get(i), at);
@@ -363,18 +378,87 @@ final class ReplayTraceIndex {
             if (!(key + "@" + sha256(rules.toString()).substring(0, 32)).equals(text(candidate, "version"))) {
                 throw corrupt(display, line, at + ".version does not match the recorded rule evidence");
             }
+            final JsonArray activeRules = record.getAsJsonArray("activeRules");
+            if (rules.size() != activeRules.size()) {
+                throw corrupt(display, line, at + ".rules must match activeRules in size and order");
+            }
+            for (int r = 0; r < rules.size(); r++) {
+                final JsonObject rule = rules.get(r).getAsJsonObject();
+                final String ruleAt = at + ".rules[" + r + "]";
+                if (!rule.get("id").equals(activeRules.get(r))) {
+                    throw corrupt(display, line, ruleAt + ".id does not match activeRules[" + r + "]");
+                }
+                final JsonElement score = rule.get("score");
+                if (!score.isJsonNull()) {
+                    try {
+                        final BigDecimal value = score.getAsBigDecimal();
+                        if (!"PASS".equals(text(rule, "state")) || value.signum() < 0
+                                || value.compareTo(BigDecimal.ONE) > 0) {
+                            throw corrupt(display, line, ruleAt
+                                    + ".score must be null unless PASS and otherwise within [0, 1]");
+                        }
+                    } catch (final NumberFormatException | ArithmeticException e) {
+                        throw corrupt(display, line, ruleAt + ".score is not a supported finite number");
+                    }
+                }
+            }
+            if (!isWaveDirection(text(candidate, "direction"))) {
+                throw corrupt(display, line, at + ".direction is not a wave direction");
+            }
+            if (requiredPivots == 0) {
+                requiredPivots = requireGrammar(display, line, record, where);
+            }
+            if (placement.size() != requiredPivots) {
+                throw corrupt(display, line, at + ".placement requires " + requiredPivots + " pivots");
+            }
+            for (int p = 1; p < placement.size(); p++) {
+                final JsonObject previous = placement.get(p - 1).getAsJsonObject();
+                final JsonObject current = placement.get(p).getAsJsonObject();
+                if (current.get("index").getAsInt() <= previous.get("index").getAsInt()
+                        || text(current, "type").equals(text(previous, "type"))) {
+                    throw corrupt(display, line, at + ".placement must have strictly ordered, alternating pivots");
+                }
+            }
+        }
+        if ("topology".equals(kind) && requiredPivots == 0) {
+            requireGrammar(display, line, record, where);
         }
         if ("alternative".equals(kind)) {
             requireTexts(display, line, record, "labels", where);
         }
     }
 
+    private static boolean isWaveDirection(final String direction) {
+        return "BULLISH".equals(direction) || "BEARISH".equals(direction);
+    }
+
+    private static int requireGrammar(final String display, final long line, final JsonObject record,
+            final String where) {
+        return switch (text(record, "grammar")) {
+        case "MOTIVE_5" -> 6;
+        case "CORRECTIVE_3" -> 4;
+        case "CYCLE_5_3" -> 9;
+        default -> throw corrupt(display, line, where + "grammar is not a topology grammar");
+        };
+    }
+
     private static JsonObject requirePlacement(final String display, final long line, final JsonElement element,
             final String at) {
         final JsonObject placement = requireObject(display, line, element, at);
-        requireInteger(display, line, placement, "index", at + ".");
+        final int index = requireInteger(display, line, placement, "index", at + ".");
         requireText(display, line, placement, "price", at + ".");
         requireText(display, line, placement, "type", at + ".");
+        if (index < 0) {
+            throw corrupt(display, line, at + ".index must be nonnegative");
+        }
+        if (!"HIGH".equals(text(placement, "type")) && !"LOW".equals(text(placement, "type"))) {
+            throw corrupt(display, line, at + ".type must be HIGH or LOW");
+        }
+        try {
+            new BigDecimal(text(placement, "price"));
+        } catch (final NumberFormatException e) {
+            throw corrupt(display, line, at + ".price must be a supported finite number");
+        }
         return placement;
     }
 
@@ -413,14 +497,14 @@ final class ReplayTraceIndex {
         }
     }
 
-    private static void requireInteger(final String display, final long line, final JsonObject owner,
+    private static int requireInteger(final String display, final long line, final JsonObject owner,
             final String field, final String where) {
         final JsonElement value = owner.get(field);
         if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
             throw corrupt(display, line, where + field + " is missing or not an integer");
         }
         try {
-            value.getAsBigDecimal().intValueExact();
+            return value.getAsBigDecimal().intValueExact();
         } catch (ArithmeticException | NumberFormatException e) {
             throw corrupt(display, line, where + field + " is not an exact 32-bit integer");
         }
