@@ -79,10 +79,11 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
 
     @Override
     protected MACDVMomentumState calculate(int index) {
+        Num value = macdVIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return MACDVMomentumState.UNDEFINED;
         }
-        return momentumProfile.classify(macdVIndicator.getValue(index));
+        return momentumProfile.classify(value);
     }
 
     @Override

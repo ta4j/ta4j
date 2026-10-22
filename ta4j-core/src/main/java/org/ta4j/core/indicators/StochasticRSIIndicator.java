@@ -54,14 +54,19 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
      * @param barCount     the time frame
      */
     public StochasticRSIIndicator(RSIIndicator rsiIndicator, int barCount) {
-        super(rsiIndicator);
+        this(rsiIndicator, barCount, new StochasticIndicator(rsiIndicator, barCount));
+    }
+
+    private StochasticRSIIndicator(RSIIndicator rsiIndicator, int barCount, StochasticIndicator stochasticIndicator) {
+        super(rsiIndicator, stochasticIndicator);
         this.indicator = rsiIndicator;
         this.barCount = barCount;
-        this.stochasticIndicator = new StochasticIndicator(rsiIndicator, barCount);
+        this.stochasticIndicator = stochasticIndicator;
     }
 
     @Override
     protected Num calculate(int index) {
+        indicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
