@@ -11,8 +11,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.analysis.frequency.SampleSummary;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -180,6 +182,12 @@ class ForecastTest {
                 .build();
 
         assertThat(forecast.mean()).isEqualByComparingTo(largeFiniteValue);
+        Forecast empirical = Forecast.ofSamples(0, 1, List.of(largeFiniteValue, largeFiniteValue),
+                List.of(0.0, 0.5, 1.0));
+        assertThat(empirical.isStable()).isTrue();
+        assertThat(empirical.mean()).isEqualByComparingTo(largeFiniteValue);
+        assertThat(empirical.standardDeviation().isZero()).isTrue();
+        assertThat(empirical.quantile(0.5)).isEqualByComparingTo(largeFiniteValue);
     }
 
     @Test
@@ -236,5 +244,59 @@ class ForecastTest {
                 () -> Forecast.ofSamples(0, 1, List.of(NUM_FACTORY.one()), List.of(-0.1)));
         Forecast forecast = Forecast.ofSamples(0, 1, List.of(NUM_FACTORY.one()), List.of(0.5));
         assertThrows(IllegalArgumentException.class, () -> forecast.quantile(1.1));
+    }
+
+    @Test
+    void sampleMomentsMatchNumSummaryAndPreserveFactoryOwnership() {
+        for (NumFactory factory : List.of(NUM_FACTORY, DecimalNumFactory.getInstance(40))) {
+            List<Num> samples = List.of(factory.numOf(-4), factory.numOf(-1), factory.zero(), factory.two(),
+                    factory.numOf(8));
+            SampleSummary reference = SampleSummary.fromValues(samples.stream(), factory);
+            Forecast forecast = Forecast.ofSamples(3, 2, samples, List.of(0.0, 0.25, 0.5, 0.75, 1.0));
+
+            assertThat(forecast.isStable()).isTrue();
+            assertThat(forecast.sampleCount()).isEqualTo(samples.size());
+            assertThat(forecast.mean()).isEqualByComparingTo(reference.mean());
+            assertThat(forecast.standardDeviation())
+                    .isEqualByComparingTo(reference.m2().dividedBy(factory.numOf(samples.size())).sqrt());
+            assertThat(forecast.mean()).isInstanceOf(factory.zero().getClass());
+            assertThat(forecast.standardDeviation()).isInstanceOf(factory.zero().getClass());
+            assertThat(forecast.quantile(0.0)).isEqualByComparingTo(factory.numOf(-4));
+            assertThat(forecast.quantile(0.25)).isEqualByComparingTo(factory.numOf(-1));
+            assertThat(forecast.median()).isEqualByComparingTo(factory.zero());
+            assertThat(forecast.quantile(0.5)).isEqualByComparingTo(factory.zero());
+            assertThat(forecast.quantile(0.75)).isEqualByComparingTo(factory.two());
+            assertThat(forecast.quantile(1.0)).isEqualByComparingTo(factory.numOf(8));
+            if (forecast.mean() instanceof DecimalNum decimalMean) {
+                assertThat(decimalMean.getMathContext().getPrecision()).isEqualTo(40);
+                assertThat(((DecimalNum) forecast.standardDeviation()).getMathContext())
+                        .isEqualTo(decimalMean.getMathContext());
+            }
+        }
+    }
+
+    @Test
+    void nonfiniteDoubleSamplesDoNotContaminateFiniteMoments() {
+        Forecast forecast = Forecast.ofSamples(1, 1,
+                List.of(DoubleNum.valueOf(Double.NaN), DoubleNum.valueOf(Double.POSITIVE_INFINITY),
+                        DoubleNum.valueOf(Double.NEGATIVE_INFINITY), NUM_FACTORY.numOf(-1), NUM_FACTORY.one()),
+                List.of(0.0, 0.5, 1.0));
+
+        assertThat(forecast.isStable()).isTrue();
+        assertThat(forecast.sampleCount()).isEqualTo(2);
+        assertThat(forecast.mean().isZero()).isTrue();
+        assertThat(forecast.standardDeviation()).isEqualByComparingTo(NUM_FACTORY.one());
+        assertThat(forecast.quantile(0.0)).isEqualByComparingTo(NUM_FACTORY.numOf(-1));
+        assertThat(forecast.quantile(0.5).isZero()).isTrue();
+        assertThat(forecast.quantile(1.0)).isEqualByComparingTo(NUM_FACTORY.one());
+    }
+
+    @Test
+    void overflowingDoubleMomentsRemainUnavailable() {
+        Forecast forecast = Forecast.ofSamples(1, 1,
+                List.of(NUM_FACTORY.numOf(Double.MAX_VALUE), NUM_FACTORY.numOf(-Double.MAX_VALUE)));
+
+        assertThat(forecast.isStable()).isFalse();
+        assertThat(forecast.support()).isEqualTo(ForecastSupport.unavailable());
     }
 }
