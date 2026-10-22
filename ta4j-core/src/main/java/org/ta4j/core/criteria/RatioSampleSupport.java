@@ -41,34 +41,37 @@ final class RatioSampleSupport {
 
     private static Stream<Sample> timeBasedSamples(BarSeries series, SamplingFrequency samplingFrequency,
             ZoneId groupingZoneId, ExcessReturns excessReturns) {
-        int beginIndex = series.getBeginIndex();
+        int beginIndex = excessReturns.getBeginIndex();
         int startIndex = beginIndex + 1;
-        int endIndex = series.getEndIndex();
+        int endIndex = excessReturns.getEndIndex();
         SamplingFrequencyIndexes samplingFrequencyIndexes = new SamplingFrequencyIndexes(samplingFrequency,
                 groupingZoneId);
-        return samplingFrequencyIndexes.sample(series, beginIndex, startIndex, endIndex)
+        return samplingFrequencyIndexes.sample(excessReturns::getCapturedEndTime, beginIndex, startIndex, endIndex)
                 .map(indexPair -> toSample(series, indexPair, excessReturns));
     }
 
     private static Stream<Sample> tradeSamples(BarSeries series, TradingRecord tradingRecord,
             ExcessReturns excessReturns, OpenPositionHandling openPositionHandling) {
-        int finalIndex = series.getEndIndex();
-        return tradePairs(tradingRecord, finalIndex, openPositionHandling)
+        int beginIndex = excessReturns.getBeginIndex();
+        int finalIndex = excessReturns.getEndIndex();
+        return tradePairs(tradingRecord, Math.max(0, beginIndex), finalIndex, openPositionHandling)
                 .map(indexPair -> toSample(series, indexPair, excessReturns));
     }
 
-    private static Stream<IndexPair> tradePairs(TradingRecord tradingRecord, int finalIndex,
+    private static Stream<IndexPair> tradePairs(TradingRecord tradingRecord, int beginIndex, int finalIndex,
             OpenPositionHandling openPositionHandling) {
         Stream<IndexPair> closedPairs = tradingRecord.getPositions()
                 .stream()
-                .map(position -> toTradePair(position, finalIndex))
+                .filter(position -> openPositionHandling != OpenPositionHandling.IGNORE || position != null
+                        && position.getExit() != null && position.getExit().getIndex() <= finalIndex)
+                .map(position -> toTradePair(position, beginIndex, finalIndex))
                 .filter(Objects::nonNull);
         if (openPositionHandling == OpenPositionHandling.IGNORE) {
             return closedPairs;
         }
         Stream<Position> openPositions = openPositions(tradingRecord).stream();
         return Stream.concat(closedPairs,
-                openPositions.map(position -> toTradePair(position, finalIndex)).filter(Objects::nonNull));
+                openPositions.map(position -> toTradePair(position, beginIndex, finalIndex)).filter(Objects::nonNull));
     }
 
     private static List<Position> openPositions(TradingRecord tradingRecord) {
@@ -83,7 +86,12 @@ final class RatioSampleSupport {
         return List.of();
     }
 
-    private static IndexPair toTradePair(Position position, int finalIndex) {
+    /**
+     * Returns the trade's sampling interval clipped to the retained window
+     * {@code [beginIndex, finalIndex]}, or {@code null} when no retained interval
+     * remains (for example, a trade that closed before a moving series' begin).
+     */
+    private static IndexPair toTradePair(Position position, int beginIndex, int finalIndex) {
         if (position == null) {
             return null;
         }
@@ -91,13 +99,19 @@ final class RatioSampleSupport {
         if (entry == null || entry.getIndex() > finalIndex) {
             return null;
         }
-        int entryIndex = entry.getIndex();
+        int entryIndex = Math.max(entry.getIndex(), beginIndex);
         int currentIndex = finalIndex;
         Trade exit = position.getExit();
         if (exit != null) {
             currentIndex = Math.min(exit.getIndex(), finalIndex);
         }
         if (currentIndex < entryIndex) {
+            return null;
+        }
+        if (entry.getIndex() < beginIndex && currentIndex == entryIndex) {
+            // Entered before the retained window and exited on its first bar:
+            // nothing of the trade remains observable, unlike a genuine
+            // zero-duration trade entered on that bar.
             return null;
         }
         return new IndexPair(entryIndex, currentIndex);
@@ -107,6 +121,7 @@ final class RatioSampleSupport {
         int previousIndex = indexPair.previousIndex();
         int currentIndex = indexPair.currentIndex();
         return new Sample(excessReturns.excessReturn(previousIndex, currentIndex),
-                BarSeriesUtils.deltaYears(series, previousIndex, currentIndex));
+                BarSeriesUtils.deltaYears(excessReturns.getCapturedEndTime(previousIndex),
+                        excessReturns.getCapturedEndTime(currentIndex), series.numFactory()));
     }
 }

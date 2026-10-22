@@ -78,10 +78,11 @@ public interface TradingStatementExecutionResult<R> {
      */
     default List<Num> criterionValues(AnalysisCriterion criterion) {
         Objects.requireNonNull(criterion, "criterion");
+        BarSeries series = barSeries();
         List<Num> values = new ArrayList<>(tradingStatements().size());
         for (TradingStatement statement : tradingStatements()) {
             TradingRecord tradingRecord = statement.getTradingRecord();
-            Num value = tradingRecord == null ? NaN.NaN : criterion.calculate(barSeries(), tradingRecord);
+            Num value = tradingRecord == null ? NaN.NaN : criterion.calculate(series, tradingRecord);
             values.add(value);
         }
         return Collections.unmodifiableList(values);
@@ -97,10 +98,11 @@ public interface TradingStatementExecutionResult<R> {
     default Map<Integer, Num> criterionValuesByIndex(AnalysisCriterion criterion) {
         Objects.requireNonNull(criterion, "criterion");
         Map<Integer, Num> values = new LinkedHashMap<>();
+        BarSeries series = barSeries();
         List<TradingStatement> statements = tradingStatements();
         for (int index = 0; index < statements.size(); index++) {
             TradingRecord tradingRecord = statements.get(index).getTradingRecord();
-            Num value = tradingRecord == null ? NaN.NaN : criterion.calculate(barSeries(), tradingRecord);
+            Num value = tradingRecord == null ? NaN.NaN : criterion.calculate(series, tradingRecord);
             values.put(index, value);
         }
         return Collections.unmodifiableMap(values);
@@ -121,7 +123,8 @@ public interface TradingStatementExecutionResult<R> {
             return List.of();
         }
 
-        NumFactory numFactory = barSeries().numFactory();
+        BarSeries series = barSeries();
+        NumFactory numFactory = series.numFactory();
         List<WeightedCriterion> weightedCriteria = profile.criteria();
         int criterionCount = weightedCriteria.size();
         List<WeightedValue<AnalysisCriterion>> normalizedWeightedCriteria = normalizeCriteria(weightedCriteria,
@@ -138,7 +141,7 @@ public interface TradingStatementExecutionResult<R> {
             for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
                 AnalysisCriterion criterion = criteria[criterionIndex];
                 rawValuesByCriterion[criterionIndex][statementIndex] = tradingRecord == null ? NaN.NaN
-                        : criterion.calculate(barSeries(), tradingRecord);
+                        : criterion.calculate(series, tradingRecord);
             }
         }
 

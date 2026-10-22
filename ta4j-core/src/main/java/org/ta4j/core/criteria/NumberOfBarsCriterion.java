@@ -12,7 +12,9 @@ import org.ta4j.core.num.Num;
  * Number of bars criterion.
  *
  * <p>
- * Returns the total number of bars in all the positions.
+ * Returns the total number of bars in all the closed positions. For a trading
+ * record only positions closed by the record's logical end are counted; later
+ * exits are still open at that end.
  */
 public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
 
@@ -28,9 +30,10 @@ public class NumberOfBarsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        int endIndex = tradingRecord.getEndIndex(series);
         return tradingRecord.getPositions()
                 .stream()
-                .filter(Position::isClosed)
+                .filter(position -> position.isClosed() && position.getExit().getIndex() <= endIndex)
                 .map(t -> calculate(series, t))
                 .reduce(series.numFactory().zero(), Num::plus);
     }

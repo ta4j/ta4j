@@ -56,17 +56,16 @@ import org.ta4j.core.num.NumFactory;
  * to volatility changes at the cost of a noisier estimate.
  *
  * <p>
- * When the backing series prunes its retained head (for example through
- * {@link org.ta4j.core.BarSeries#setMaximumBarCount(int)}), cached values
- * computed against the discarded prefix are dropped, the control mean estimator
- * is rebuilt with the configured window so that its seed at the re-anchoring
- * index is the configured EWMA seed (the mean of the retained seed window), and
- * the recursion re-anchors with the first full seed window available at the
- * retained head; indices before that window, and any index still inside the
- * source's own warm-up, publish {@code NaN} so no future bar or source-unstable
- * bar leaks into a historical value. Reads bracket the removal count across the
- * cached read and repeat until it is stable, so a concurrently pruning series
- * can never publish a value computed against the discarded prefix.
+ * A live instance continues both moments across retained-head eviction from its
+ * cached predecessor, including a one-bar seed in a one-bar window read on each
+ * append. A fresh instance, or a chain whose predecessor was invalidated, seeds
+ * causally from the retained head and counts warm-up from that seed origin. A
+ * seed or recovery remains {@code NaN} until the complete seed window and its
+ * source warm-up are retained; cached unstable predecessors do not replace
+ * missing seed observations. Retained cached values describe the consumed
+ * history, not a newly constructed estimator over only the current window.
+ * Reads bracket the removal count and bar-history revision and retry when
+ * pruning or a terminal-bar edit races the calculation.
  *
  * <p>
  * Combined with {@link CusumIndicator} this provides the volatility leg of a
@@ -81,12 +80,11 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final int barCount;
     private final double decayFactor;
-    private volatile transient SharedMeanIndicator meanIndicator;
+    private final transient SharedMeanIndicator meanIndicator;
     private final transient Num decay;
     private final transient Num oneMinusDecay;
     private final transient BigDecimal exactOneMinusDecay;
-    private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
-    private volatile transient int reseedIndex = -1;
+    private transient int chainStartIndex;
 
     /**
      * Creates a close-price EWMA variance indicator.
@@ -141,7 +139,8 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             this.decay = factory.one().minus(this.oneMinusDecay);
             this.exactOneMinusDecay = ExactDecimalArithmetic.exactValueOf(this.oneMinusDecay);
         }
-        this.meanIndicator = new SharedMeanIndicator(indicator, barCount, decay, oneMinusDecay, exactOneMinusDecay);
+        this.meanIndicator = new SharedMeanIndicator(this, indicator, barCount, decay, oneMinusDecay,
+                exactOneMinusDecay);
     }
 
     private static Parameters validateParameters(Indicator<Num> indicator, int barCount, double decayFactor) {
@@ -172,89 +171,66 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      * <p>
      * Serializes the retained-head check with the complete recursive cache read so
      * the indicator monitor is always acquired before the cache write lock.
-     * Recursive reads safely reenter the monitor.
+     * Recursive reads safely reenter the monitor. The variance and mean legs are
+     * read again until neither a retained-head removal nor a bar-history revision
+     * (such as a terminal-bar edit) separates them, so one returned value always
+     * pairs a variance and mean computed from the same input.
      */
     @Override
     public synchronized Num getValue(int index) {
         BarSeries series = getBarSeries();
         while (true) {
             int removedBarsCount = series.getRemovedBarsCount();
-            if (removedBarsCount != observedRemovedBarsCount) {
-                resetForRetainedHead(removedBarsCount);
-            }
+            long barHistoryRevision = series.getBarHistoryRevision();
+            // Advance both moments before this bar can leave the source. Otherwise
+            // a variance-only reader leaves its mean one bar behind at capacity one.
             Num value = super.getValue(index);
-            // Validate against the locally captured snapshot, not the shared
-            // observed count: another reader may have re-anchored after this
-            // read, and the shared field would then match the series while
-            // this value still belongs to the discarded prefix.
-            if (series.getRemovedBarsCount() == removedBarsCount) {
+            meanIndicator.readValue(index);
+            if (series.getRemovedBarsCount() == removedBarsCount
+                    && series.getBarHistoryRevision() == barHistoryRevision) {
                 return value;
             }
-            // A prune raced the cached read, so the value may still be
-            // computed against the discarded prefix: reset and read again
-            // until a full read completes against a stable removal count. The
-            // cached read is cheap once re-anchored, so this settles as soon
-            // as the series stops pruning concurrently.
-        }
-    }
-
-    private synchronized void resetForRetainedHead(int removedBarsCount) {
-        if (removedBarsCount != observedRemovedBarsCount && !isCacheWriteLockedByCurrentThread()) {
-            // Invalidate first, publish last: a concurrent reader that
-            // observes the new count must never see caches still computed
-            // from the discarded prefix. When the cache write lock is held by
-            // this thread the call is recursive from an in-flight calculate(),
-            // so defer to the top-level read: resetting here would let the
-            // in-flight computation repopulate the cache with a mixed-head
-            // result after this reset, and the retry loop would then reuse it.
-            this.meanIndicator = new SharedMeanIndicator(indicator, barCount, decay, oneMinusDecay, exactOneMinusDecay);
-            reseedIndex = (int) Math.min((long) getBarSeries().getBeginIndex() + barCount - 1L, Integer.MAX_VALUE);
-            invalidateCache();
-            observedRemovedBarsCount = removedBarsCount;
         }
     }
 
     @Override
     protected Num calculate(int index) {
-        int beginIndex = getBarSeries().getBeginIndex();
-        if (index == 0 && beginIndex > 0) {
-            // Removed-index reads map to the synthetic zero; anchor at the
-            // retained head like CusumIndicator so the warm-up guard below
-            // treats it as the first retained bar instead of the pruned 0.
-            index = beginIndex;
+        while (true) {
+            int beginIndex = getBarSeries().getBeginIndex();
+            Num value = calculateRetained(index, beginIndex);
+            if (getBarSeries().getBeginIndex() == beginIndex) {
+                return value;
+            }
         }
-        int unstableBars = getCountOfUnstableBars();
-        if (index == reseedIndex && index - beginIndex >= unstableBars) {
-            // The full seed window [index - barCount + 1, index] now lies
-            // within the retained bars and the source has completed its own
-            // warm-up: re-anchor with the window's population variance
-            // instead of seeding from a window that reaches into future or
-            // source-unstable bars. If the source is still warming up at
-            // reseedIndex, the warm-up guard below keeps the value NaN and
-            // the first source-stable index re-seeds through the
-            // non-finite-previous path.
-            Num seedVariance = rollingWindowVariance(index);
-            return Num.isFinite(seedVariance) ? seedVariance : NaN.NaN;
-        }
-        if (index - beginIndex < unstableBars) {
+    }
+
+    private Num calculateRetained(int index, int beginIndex) {
+        if (beginIndex < 0) {
             return NaN.NaN;
         }
-        if (index == beginIndex) {
-            Num current = indicator.getValue(index);
-            if (!Num.isFinite(current)) {
-                return NaN.NaN;
-            }
-            // Only reachable when barCount == 1 (any larger window still has
-            // unstable bars at beginIndex), so the single-bar window scores
-            // zero variance around the bar itself.
-            return rollingWindowVariance(index);
+        if (index < beginIndex) {
+            return getValue(beginIndex);
+        }
+        Num previousVariance = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
+        boolean seed = previousVariance == null;
+        if (seed) {
+            chainStartIndex = index;
+            previousVariance = NaN.NaN;
+        }
+        if (index < (long) chainStartIndex + getCountOfUnstableBars()) {
+            return NaN.NaN;
         }
         Num current = indicator.getValue(index);
         if (!Num.isFinite(current)) {
             return NaN.NaN;
         }
-        Num previousVariance = getValue(index - 1);
-        Num previousMean = meanIndicator.getValue(index - 1);
+        if (seed) {
+            return rollingWindowVariance(index);
+        }
+        Num previousMean = meanIndicator.previousValue(index, beginIndex);
+        if (previousMean == null) {
+            previousMean = NaN.NaN;
+        }
         if (!Num.isFinite(previousVariance)) {
             if (!Num.isFinite(previousMean)) {
                 // Both legs of the recursion collapsed: re-anchor on the
@@ -305,6 +281,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private Num windowVarianceAround(int index, Num center) {
+        if ((long) index - getBarSeries().getBeginIndex() + 1 < (long) barCount + indicator.getCountOfUnstableBars()) {
+            return NaN.NaN;
+        }
         int windowBegin = Math.max(index - barCount + 1, getBarSeries().getBeginIndex());
         NumFactory factory = getBarSeries().numFactory();
         Num barCountNum = factory.numOf(barCount);
@@ -380,6 +359,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      */
     private static Num windowMean(Indicator<Num> source, int windowBarCount, int index) {
         BarSeries series = source.getBarSeries();
+        if ((long) index - series.getBeginIndex() + 1 < (long) windowBarCount + source.getCountOfUnstableBars()) {
+            return NaN.NaN;
+        }
         int windowBegin = Math.max(index - windowBarCount + 1, series.getBeginIndex());
         NumFactory factory = series.numFactory();
         int windowLength = index - windowBegin + 1;
@@ -435,11 +417,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      * <p>
      * The estimator is the same recursion {@link #getValue(int)} deviates from, so
      * composing the mean and the variance from this single estimator keeps both
-     * moments consistent. The accessor observes prune events on the backing series
-     * and re-anchors the estimator before returning it, so a consumer that reads
-     * the mean ahead of {@link #getValue(int)} still pairs it with the variance of
-     * the retained head; consumers must re-read the estimator for each use rather
-     * than cache the reference.
+     * moments consistent. The reference remains stable across head eviction and may
+     * be retained by callers. Reading either moment advances both recursions before
+     * the consumed source history can be evicted.
      *
      * <p>
      * The accessor is public rather than package-private because the forecast state
@@ -451,24 +431,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      * @since 0.24.2
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "the mean estimator is the shared recursion this "
-            + "variance deviates from; exposing the instance is the accessor's contract and it is only replaced "
-            + "in place on prune re-anchoring, never mutated after construction")
+            + "variance deviates from; the stable shared estimator is the accessor's contract")
     public Indicator<Num> getMeanIndicator() {
-        BarSeries series = getBarSeries();
-        while (true) {
-            int removedBarsCount = series.getRemovedBarsCount();
-            if (removedBarsCount != observedRemovedBarsCount) {
-                resetForRetainedHead(removedBarsCount);
-            }
-            Indicator<Num> current = meanIndicator;
-            // Validate against the locally captured snapshot, not the shared
-            // field: another reader may have re-anchored the estimator after
-            // this read, and a value anchored to the discarded prefix must
-            // never be handed out.
-            if (series.getRemovedBarsCount() == removedBarsCount) {
-                return current;
-            }
-        }
+        return meanIndicator;
     }
 
     /**
@@ -485,15 +450,18 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      */
     private static final class SharedMeanIndicator extends RecursiveCachedIndicator<Num> {
 
+        private final EwmaVarianceIndicator owner;
         private final Indicator<Num> indicator;
         private final int barCount;
         private final Num decay;
         private final Num oneMinusDecay;
         private final BigDecimal exactOneMinusDecay;
+        private transient int chainStartIndex;
 
-        private SharedMeanIndicator(Indicator<Num> indicator, int barCount, Num decay, Num oneMinusDecay,
-                BigDecimal exactOneMinusDecay) {
+        private SharedMeanIndicator(EwmaVarianceIndicator owner, Indicator<Num> indicator, int barCount, Num decay,
+                Num oneMinusDecay, BigDecimal exactOneMinusDecay) {
             super(indicator);
+            this.owner = owner;
             this.indicator = indicator;
             this.barCount = barCount;
             this.decay = decay;
@@ -502,29 +470,63 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         @Override
-        protected Num calculate(int index) {
-            int beginIndex = getBarSeries().getBeginIndex();
-            if (index == 0 && beginIndex > 0) {
-                // Removed-index reads anchor at the retained head, mirroring
-                // the parent recursion: after pruning, the mean read at
-                // index 0 belongs to the first retained bar, not the
-                // discarded one.
-                index = beginIndex;
+        public Num getValue(int index) {
+            // Use the same owner-first lock order as a variance read. Internal
+            // recursion reads the mean directly, without reentering the owner.
+            synchronized (owner) {
+                owner.getValue(index);
+                return readValue(index);
             }
-            if (index - beginIndex < getCountOfUnstableBars()) {
+        }
+
+        private synchronized Num readValue(int index) {
+            while (true) {
+                int beginIndex = getBarSeries().getBeginIndex();
+                Num value = super.getValue(index);
+                if (getBarSeries().getBeginIndex() == beginIndex) {
+                    return value;
+                }
+            }
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            while (true) {
+                int beginIndex = getBarSeries().getBeginIndex();
+                Num value = calculateRetained(index, beginIndex);
+                if (getBarSeries().getBeginIndex() == beginIndex) {
+                    return value;
+                }
+            }
+        }
+
+        private Num previousValue(int index, int beginIndex) {
+            if (index == beginIndex) {
+                synchronizeCacheWithSeries(getBarSeries());
+                return getCachedValueOrNull(index - 1);
+            }
+            return readValue(index - 1);
+        }
+
+        private Num calculateRetained(int index, int beginIndex) {
+            if (beginIndex < 0) {
+                return NaN.NaN;
+            }
+            if (index < beginIndex) {
+                return readValue(beginIndex);
+            }
+            Num previousMean = previousValue(index, beginIndex);
+            if (previousMean == null) {
+                chainStartIndex = index;
+                previousMean = NaN.NaN;
+            }
+            if (index < (long) chainStartIndex + getCountOfUnstableBars()) {
                 return NaN.NaN;
             }
             Num current = indicator.getValue(index);
             if (!Num.isFinite(current)) {
                 return NaN.NaN;
             }
-            if (index == beginIndex) {
-                // Only reachable when barCount == 1 (any larger window still
-                // has unstable bars at beginIndex), so the single-bar window
-                // seeds the mean with the bar itself.
-                return windowMean(indicator, barCount, index);
-            }
-            Num previousMean = getValue(index - 1);
             if (!Num.isFinite(previousMean)) {
                 // Non-finite predecessor: re-seed from the window mean, the
                 // graceful recovery EWMAIndicator applies, so one bad bar

@@ -726,39 +726,44 @@ public final class StrategySerialization {
      * @return reconstructed strategy
      * @throws IllegalArgumentException if the descriptor type cannot be resolved
      * @throws IllegalStateException    if the resolved type has no suitable
-     *                                  constructor
+     *                                  constructor or an unavailable dependency
      */
     public static Strategy fromDescriptor(BarSeries series, ComponentDescriptor descriptor) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(descriptor, "descriptor");
 
         String descriptorType = descriptor.getType();
-        if (NamedStrategy.SERIALIZED_TYPE.equals(descriptorType)
-                || NamedStrategy.class.getName().equals(descriptorType)) {
-            return instantiateNamedStrategy(series, descriptor, null);
+        try {
+            if (NamedStrategy.SERIALIZED_TYPE.equals(descriptorType)
+                    || NamedStrategy.class.getName().equals(descriptorType)) {
+                return instantiateNamedStrategy(series, descriptor, null);
+            }
+
+            Class<? extends Strategy> strategyType = resolveStrategyClass(descriptorType);
+            if (NamedStrategy.class.isAssignableFrom(strategyType)) {
+                return instantiateNamedStrategy(series, descriptor, strategyType);
+            }
+
+            // Create a Strategy-level context that contains all Strategy components
+            // This allows rule deserialization to resolve Strategy-level indicators and
+            // rules
+            // For now, pass null as parent context - rule components contain all their
+            // dependencies
+            // and don't need Strategy-level resolution during constructor matching
+            Rule entryRule = instantiateRule(series, extractChild(descriptor, ENTRY_LABEL), null);
+            Rule exitRule = instantiateRule(series, extractChild(descriptor, EXIT_LABEL), null);
+
+            String name = descriptor.getLabel();
+            TradeType startingType = extractStartingType(descriptor.getParameters().get(STARTING_TYPE_KEY));
+            int unstableBars = extractUnstableBars(descriptor.getParameters().get(UNSTABLE_BARS_KEY));
+
+            Strategy strategy = instantiateStrategy(strategyType, name, entryRule, exitRule, unstableBars,
+                    startingType);
+            strategy.setUnstableBars(unstableBars);
+            return strategy;
+        } catch (LinkageError ex) {
+            throw new IllegalStateException("Failed to construct strategy: " + descriptorType, ex);
         }
-
-        Class<? extends Strategy> strategyType = resolveStrategyClass(descriptorType);
-        if (NamedStrategy.class.isAssignableFrom(strategyType)) {
-            return instantiateNamedStrategy(series, descriptor, strategyType);
-        }
-
-        // Create a Strategy-level context that contains all Strategy components
-        // This allows rule deserialization to resolve Strategy-level indicators and
-        // rules
-        // For now, pass null as parent context - rule components contain all their
-        // dependencies
-        // and don't need Strategy-level resolution during constructor matching
-        Rule entryRule = instantiateRule(series, extractChild(descriptor, ENTRY_LABEL), null);
-        Rule exitRule = instantiateRule(series, extractChild(descriptor, EXIT_LABEL), null);
-
-        String name = descriptor.getLabel();
-        TradeType startingType = extractStartingType(descriptor.getParameters().get(STARTING_TYPE_KEY));
-        int unstableBars = extractUnstableBars(descriptor.getParameters().get(UNSTABLE_BARS_KEY));
-
-        Strategy strategy = instantiateStrategy(strategyType, name, entryRule, exitRule, unstableBars, startingType);
-        strategy.setUnstableBars(unstableBars);
-        return strategy;
     }
 
     private static ComponentDescriptor applyLabel(ComponentDescriptor descriptor, String label) {
@@ -936,12 +941,7 @@ public final class StrategySerialization {
         if (type == null || type.isBlank()) {
             throw new IllegalArgumentException("Rule descriptor missing type: " + descriptor);
         }
-        Class<?> clazz = resolveRuleClass(type);
-        if (!Rule.class.isAssignableFrom(clazz)) {
-            throw new IllegalArgumentException("Descriptor type does not implement Rule: " + type);
-        }
-        @SuppressWarnings("unchecked")
-        Class<? extends Rule> ruleType = (Class<? extends Rule>) clazz;
+        Class<? extends Rule> ruleType = RuleSerialization.resolveRuleType(type);
 
         Optional<Rule> instance = invokeFactory(ruleType, series, descriptor);
         if (instance.isPresent()) {
@@ -1055,43 +1055,21 @@ public final class StrategySerialization {
         return Optional.empty();
     }
 
-    @SuppressWarnings("unchecked")
-    private static Class<? extends Rule> resolveRuleClass(String type) {
-        try {
-            return (Class<? extends Rule>) Class.forName(type);
-        } catch (ClassNotFoundException ex) {
-            // try ta4j core rules package
-        }
-        try {
-            return (Class<? extends Rule>) Class.forName("org.ta4j.core.rules." + type);
-        } catch (ClassNotFoundException ex) {
-            throw new IllegalArgumentException("Unknown rule type: " + type, ex);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
+    /**
+     * Resolves a descriptor strategy type without initializing non-strategy
+     * classes. A missing class and a class that does not implement {@link Strategy}
+     * produce the same failure so descriptor input cannot probe the classpath.
+     */
     private static Class<? extends Strategy> resolveStrategyClass(String type) {
         if (type == null || type.isBlank()) {
             return BaseStrategy.class;
         }
-        try {
-            Class<?> clazz = Class.forName(type);
-            if (Strategy.class.isAssignableFrom(clazz)) {
-                return (Class<? extends Strategy>) clazz;
-            }
-            throw new IllegalArgumentException("Descriptor type does not implement Strategy: " + type);
-        } catch (ClassNotFoundException ex) {
-            // ignore and try package-local lookup
+        Class<? extends Strategy> strategyType = ComponentDescriptor.resolveSubtype(type, Strategy.class,
+                STRATEGY_PACKAGE);
+        if (strategyType == null) {
+            throw new IllegalArgumentException("Unknown strategy type: " + type);
         }
-        try {
-            Class<?> clazz = Class.forName(STRATEGY_PACKAGE + '.' + type);
-            if (Strategy.class.isAssignableFrom(clazz)) {
-                return (Class<? extends Strategy>) clazz;
-            }
-            throw new IllegalArgumentException("Descriptor type does not implement Strategy: " + type);
-        } catch (ClassNotFoundException ex) {
-            throw new IllegalArgumentException("Unknown strategy type: " + type, ex);
-        }
+        return strategyType;
     }
 
     /**

@@ -5,15 +5,15 @@ package org.ta4j.core.indicators.numeric;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -187,11 +187,11 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
         // Index 0: 10 / 2 = 5 (normal division)
         assertNumEquals(5, result.getValue(0));
         // Index 1: 20 / 0 = NaN (division by zero)
-        assertTrue("Expected NaN at index 1 (division by zero)", result.getValue(1).isNaN());
+        assertTrue(result.getValue(1).isNaN(), "Expected NaN at index 1 (division by zero)");
         // Index 2: 30 / 5 = 6 (normal division)
         assertNumEquals(6, result.getValue(2));
         // Index 3: 40 / 0 = NaN (division by zero)
-        assertTrue("Expected NaN at index 3 (division by zero)", result.getValue(3).isNaN());
+        assertTrue(result.getValue(3).isNaN(), "Expected NaN at index 3 (division by zero)");
         // Index 4: 50 / 10 = 5 (normal division)
         assertNumEquals(5, result.getValue(4));
     }
@@ -204,11 +204,11 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
         var result = BinaryOperationIndicator.quotient(indicator, 0);
 
         // All indexes should be NaN when dividing by zero
-        assertTrue("Expected NaN at index 0 (division by zero)", result.getValue(0).isNaN());
-        assertTrue("Expected NaN at index 1 (division by zero)", result.getValue(1).isNaN());
-        assertTrue("Expected NaN at index 2 (division by zero)", result.getValue(2).isNaN());
-        assertTrue("Expected NaN at index 3 (division by zero)", result.getValue(3).isNaN());
-        assertTrue("Expected NaN at index 4 (division by zero)", result.getValue(4).isNaN());
+        assertTrue(result.getValue(0).isNaN(), "Expected NaN at index 0 (division by zero)");
+        assertTrue(result.getValue(1).isNaN(), "Expected NaN at index 1 (division by zero)");
+        assertTrue(result.getValue(2).isNaN(), "Expected NaN at index 2 (division by zero)");
+        assertTrue(result.getValue(3).isNaN(), "Expected NaN at index 3 (division by zero)");
+        assertTrue(result.getValue(4).isNaN(), "Expected NaN at index 4 (division by zero)");
     }
 
     @Test

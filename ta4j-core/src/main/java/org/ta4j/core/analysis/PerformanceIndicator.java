@@ -30,6 +30,53 @@ public interface PerformanceIndicator extends Indicator<Num> {
     EquityCurveMode getEquityCurveMode();
 
     /**
+     * Returns the first absolute index of the analysis window this curve describes.
+     * Curves that capture their window when they materialize return that captured
+     * index, independent of later changes to the series; the default is the series'
+     * current begin index.
+     *
+     * @return the first index of the analysis window
+     * @since 0.25.1
+     */
+    default int getBeginIndex() {
+        return getBarSeries().getBeginIndex();
+    }
+
+    /**
+     * Returns the last absolute index of the analysis window this curve describes:
+     * the trading record's logical end or requested final index. No position is
+     * priced after it; one still open there is marked at that bar's close (or
+     * ignored, per the open-position handling) rather than at a later exit. Values
+     * after it only carry the final value forward. An empty window ends below
+     * {@link #getBeginIndex()}. The default is the series' current end index.
+     *
+     * @return the last index of the analysis window
+     * @since 0.25.1
+     */
+    default int getEndIndex() {
+        return getBarSeries().getEndIndex();
+    }
+
+    /**
+     * Returns the curve's value entering its window, that is, just before the first
+     * slot at {@link #getBeginIndex()}. It is the curve's neutral value unless the
+     * window carries realized results of positions closed before it (history pruned
+     * from a rolling series), which it then includes. Slots at or after the begin
+     * index, including the first, hold results realized inside the window, so a
+     * window return or drawdown is measured from this value rather than from the
+     * first slot.
+     * <p>
+     * The default is zero, the neutral value of an additive curve; curves with
+     * another neutral value override it.
+     *
+     * @return the value entering the window
+     * @since 0.25.1
+     */
+    default Num getBaselineValue() {
+        return getBarSeries().numFactory().zero();
+    }
+
+    /**
      * Calculates indicator values for a single position.
      *
      * @param position   the position
@@ -125,7 +172,7 @@ public interface PerformanceIndicator extends Indicator<Num> {
         if (periods == 0) {
             return numFactory.zero();
         }
-        Num holdingCost = position.getHoldingCost(endIndex);
+        Num holdingCost = AnalysisPositionSupport.holdingCostThrough(position, endIndex);
         return holdingCost.dividedBy(numFactory.numOf(periods));
     }
 

@@ -19,6 +19,9 @@ RETRYABLE_PREFLIGHT_EXIT_CODE=75
 TMP_HELPER_PATHS=()
 cleanup_release_helper_tmps() {
   local path
+  if (( ${#TMP_HELPER_PATHS[@]} == 0 )); then
+    return 0
+  fi
   for path in "${TMP_HELPER_PATHS[@]}"; do
     [[ -n "$path" && -e "$path" ]] && rm -rf "$path"
   done

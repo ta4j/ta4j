@@ -3,9 +3,9 @@
  */
 package org.ta4j.core.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.reflect.Proxy;
 import java.time.Duration;
@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -606,6 +606,15 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(numFactory.numOf(1d), BarSeriesUtils.deltaYears(barSeries, 0, 2));
         assertEquals(zero, BarSeriesUtils.deltaYears(barSeries, 2, 1));
         assertEquals(zero, BarSeriesUtils.deltaYears(barSeries, 1, 1));
+    }
+
+    @Test
+    public void deltaYearsBetweenCapturedEndTimes() {
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        Instant oneYearLater = start.plusSeconds((long) TimeConstants.SECONDS_PER_YEAR);
+
+        assertEquals(numFactory.one(), BarSeriesUtils.deltaYears(start, oneYearLater, numFactory));
+        assertEquals(numFactory.zero(), BarSeriesUtils.deltaYears(oneYearLater, start, numFactory));
     }
 
     @Test

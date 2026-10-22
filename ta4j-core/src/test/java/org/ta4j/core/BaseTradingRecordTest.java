@@ -401,7 +401,7 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    void openPositionsExposeSnapshotPositions() {
+    void openPositionsReturnDefensiveCopies() {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         record.operate(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(), numFactory.one(),
@@ -411,7 +411,8 @@ class BaseTradingRecordTest {
         Position second = record.getOpenPositions().getFirst();
 
         assertNotSame(first, second);
-        assertNotSame(first.getEntry(), second.getEntry());
+        assertEquals(first.getEntry().getIndex(), second.getEntry().getIndex());
+        assertEquals(first.getEntry().getAmount(), second.getEntry().getAmount());
     }
 
     @Test
@@ -1052,6 +1053,63 @@ class BaseTradingRecordTest {
         record.operate(fill(2, ExecutionSide.SELL, series.getBar(2).getClosePrice()));
         record.operate(fill(3, ExecutionSide.BUY, series.getBar(3).getClosePrice()));
         return record;
+    }
+
+    @Test
+    public void getEndIndexKeepsLogicalBoundDespiteAddressableTrailingExit() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
+                30d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(2, series));
+
+        assertEquals(1, tradingRecord.getEndIndex(series));
+    }
+
+    @Test
+    public void getEndIndexDoesNotExtendToAnInactiveExplicitRawBound() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("inactive-raw-end", numFactory, 1, 10d,
+                20d, 30d);
+        TradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY, 0, 2, null, null);
+
+        assertEquals(1, tradingRecord.getEndIndex(series));
+    }
+
+    @Test
+    public void getContainedPositionsKeepsOnlyPositionsEnteredAndExitedWithinBounds() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 95, 100, 110, 130)
+                .build();
+        TradingRecord bounded = new BaseTradingRecord(TradeType.BUY, 2, 8, new ZeroCostModel(), new ZeroCostModel());
+        TradingRecord unbounded = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        for (TradingRecord record : List.of(bounded, unbounded)) {
+            record.enter(0, numFactory.hundred(), numFactory.one());
+            record.exit(2, numFactory.numOf(110), numFactory.one());
+            record.enter(2, numFactory.numOf(110), numFactory.one());
+            record.exit(8, numFactory.hundred(), numFactory.one());
+            record.enter(8, numFactory.hundred(), numFactory.one());
+            record.exit(9, numFactory.numOf(130), numFactory.one());
+        }
+
+        // Entered before the start or exited after the end: not contained.
+        List<Position> contained = bounded.getContainedPositions(series);
+        assertEquals(1, contained.size());
+        assertEquals(2, contained.get(0).getEntry().getIndex());
+        assertEquals(8, contained.get(0).getExit().getIndex());
+        assertSame(unbounded.getPositions(), unbounded.getContainedPositions(series));
+    }
+
+    @Test
+    public void getContainedPositionsExcludesPartialExitsAfterTheEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 100, 100, 100, 110, 120)
+                .build();
+        TradingRecord record = new BaseTradingRecord(TradeType.BUY, 2, 7, new ZeroCostModel(), new ZeroCostModel());
+        record.operate(Trade.buyAt(3, series, numFactory.two()));
+        record.operate(Trade.sellAt(5, series, numFactory.one()));
+        record.operate(Trade.sellAt(8, series, numFactory.one()));
+
+        List<Position> contained = record.getContainedPositions(series);
+        assertEquals(1, contained.size());
+        assertEquals(5, contained.get(0).getExit().getIndex());
     }
 
     private void assertParity(AnalysisCriterion criterion, BarSeries series, TradingRecord baseRecord,

@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -146,6 +146,16 @@ public class NumericIndicatorTest extends AbstractIndicatorTest<NumericIndicator
         final NumericIndicator dynamicOp = numericIndicator.squared();
         assertNumEquals(1, dynamicOp.getValue(0));
         assertNumEquals(81, dynamicOp.getValue(8));
+    }
+
+    @Test
+    public void pow() {
+        final NumericIndicator numericIndicator = NumericIndicator.of(cp1);
+        assertNumEquals(2, numericIndicator.pow(0.5).getValue(3));
+        assertNumEquals(3, numericIndicator.pow(0.5).getValue(8));
+        assertNumEquals(8, numericIndicator.pow(1.5).getValue(3));
+        assertNumEquals(81, numericIndicator.pow(2).getValue(8));
+        assertNumEquals(1, numericIndicator.pow(0).getValue(8));
     }
 
     @Test

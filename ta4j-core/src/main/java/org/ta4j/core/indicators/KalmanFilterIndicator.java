@@ -16,6 +16,11 @@ import org.ta4j.core.num.Num;
  * This indicator is particularly useful for reducing noise and improving the
  * signal-to-noise ratio of an indicator, which can be beneficial for various
  * trading strategies and analysis.
+ * <p>
+ * The filter initializes at the first index with a finite measurement and
+ * usable process and measurement noise. Earlier unavailable inputs do not
+ * contribute a zero-valued observation. After initialization, unavailable
+ * inputs preserve the last usable state for later recovery.
  *
  * @since 0.17
  */
@@ -124,7 +129,8 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
 
     private KalmanState initialState(Num measurement, boolean validMeasurement) {
         Num estimate = validMeasurement ? measurement : getBarSeries().numFactory().zero();
-        return new KalmanState(estimate, getBarSeries().numFactory().one(), true, validMeasurement);
+        // A placeholder is not an initialized estimate; seed on the first usable bar.
+        return new KalmanState(estimate, getBarSeries().numFactory().one(), validMeasurement, validMeasurement);
     }
 
     private KalmanState correct(KalmanState previous, Num measurement, Num processNoise, Num measurementNoise) {

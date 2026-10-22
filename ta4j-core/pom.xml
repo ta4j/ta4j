@@ -4,12 +4,17 @@
     <parent>
         <groupId>org.ta4j</groupId>
         <artifactId>ta4j-parent</artifactId>
-        <version>0.24.2-SNAPSHOT</version>
+        <version>0.27.1-SNAPSHOT</version>
     </parent>
     <artifactId>ta4j-core</artifactId>
 
     <name>Ta4j Core</name>
     <description>ta4j is a Java library providing a simple API for technical analysis.</description>
+
+    <properties>
+        <!-- Coverage ratchet: current floor; raise as coverage improves, never lower. -->
+        <ta4j.jacoco.branch.minimum>0.75</ta4j.jacoco.branch.minimum>
+    </properties>
 
     <dependencies>
 
@@ -34,11 +39,6 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.vintage</groupId>
-            <artifactId>junit-vintage-engine</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

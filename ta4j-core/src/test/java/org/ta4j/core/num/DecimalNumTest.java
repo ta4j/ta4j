@@ -3,23 +3,27 @@
  */
 package org.ta4j.core.num;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Timeout;
+import java.util.concurrent.TimeUnit;
 
 public class DecimalNumTest {
 
@@ -74,11 +78,60 @@ public class DecimalNumTest {
     private Indicator<Num> doubleIndicator;
     private Indicator<Num> lowPrecisionIndicator;
 
-    @Test(expected = ArithmeticException.class)
+    @Test
+    public void testPowNaNExponentReturnsNaN() {
+        final Num x = DecimalNum.valueOf(2);
+        assertTrue(x.pow(NaN.NaN).isNaN());
+    }
+
+    @Test
+    public void testPowNegativeBaseFractionalExponentReturnsNaN() {
+        final Num x = DecimalNum.valueOf(-4);
+        final Num n = DecimalNum.valueOf(0.5);
+        assertTrue(x.pow(n).isNaN());
+    }
+
+    @Test
+    public void testPowZeroBaseNegativeExponentReturnsNaN() {
+        final Num zero = DecimalNum.valueOf(0);
+        final Num n = DecimalNum.valueOf(-0.5);
+        assertTrue(zero.pow(n).isNaN());
+    }
+
+    @Test
+    public void testPowPrimitiveNaNOrInfiniteExponentReturnsNaN() {
+        final Num x = DecimalNum.valueOf(2);
+        assertTrue(x.pow(DoubleNum.valueOf(Double.NaN)).isNaN());
+        assertTrue(x.pow(DoubleNum.valueOf(Double.POSITIVE_INFINITY)).isNaN());
+    }
+
+    @Test
+    public void testPowNegativeBaseNegativeFractionalExponentAtUnlimitedPrecisionReturnsNaN() {
+        final Num x = DecimalNum.valueOf(BigDecimal.valueOf(-4), MathContext.UNLIMITED);
+        final Num n = DecimalNum.valueOf(BigDecimal.valueOf(-2.5), MathContext.UNLIMITED);
+        assertTrue(x.pow(n).isNaN());
+    }
+
+    @Test
+    public void testPowNegativeWholeExponentAtUnlimitedPrecisionReturnsReciprocal() {
+        final Num two = DecimalNum.valueOf(BigDecimal.valueOf(2), MathContext.UNLIMITED);
+        final Num minusOne = DecimalNum.valueOf(BigDecimal.valueOf(-1), MathContext.UNLIMITED);
+        final Num minusTwo = DecimalNum.valueOf(BigDecimal.valueOf(-2), MathContext.UNLIMITED);
+
+        assertEquals(0, new BigDecimal("0.5").compareTo(new BigDecimal(two.pow(minusOne).toString())));
+        assertEquals(0, new BigDecimal("0.25").compareTo(new BigDecimal(two.pow(minusTwo).toString())));
+        // 1/3 does not terminate; the reciprocal is rounded instead of throwing
+        final Num three = DecimalNum.valueOf(BigDecimal.valueOf(3), MathContext.UNLIMITED);
+        assertTrue(!three.pow(minusOne).isNaN());
+    }
+
+    @Test
     public void testPowOverflowExponent() {
-        final Num x = DecimalNum.valueOf("2");
-        final Num n = DecimalNum.valueOf(SUPER_PRECISION_LARGE_STRING);
-        assertNumEquals("1", x.pow(n));
+        assertThrows(ArithmeticException.class, () -> {
+            final Num x = DecimalNum.valueOf("2");
+            final Num n = DecimalNum.valueOf(SUPER_PRECISION_LARGE_STRING);
+            assertNumEquals("1", x.pow(n));
+        });
     }
 
     @Test
@@ -91,6 +144,34 @@ public class DecimalNumTest {
                 result);
         assertEquals(120, ((BigDecimal) result.getDelegate()).precision());
         assertEquals(120, ((DecimalNum) result).getMathContext().getPrecision());
+    }
+
+    @Test
+    @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS)
+    public void testPowLargeFractionalExponentStaysWithinPrecision() {
+        // Annualizing a short span raises a return to about 1/years; the whole part of
+        // that exponent must be computed at the working precision, not exactly.
+        final Num x = precision32Func.numOf("1.01");
+        final Num result = x.pow(precision32Func.numOf("262800.5"));
+        final BigDecimal power = (BigDecimal) result.getDelegate();
+        assertEquals(32, power.precision());
+        // log10(1.01^262800.5) = 1135.6..., so the leading digit sits at 10^1135.
+        assertEquals(1135, power.precision() - power.scale() - 1);
+    }
+
+    @Test
+    public void testPowNegativeFractionalExponent() {
+        final Num x = precision32Func.numOf("4");
+        assertNumEquals(precision32Func.numOf("0.03125"), x.pow(precision32Func.numOf("-2.5")));
+    }
+
+    @Test
+    public void testPowWholeNumExponentKeepsUnlimitedPrecisionExact() {
+        final NumFactory unlimited = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
+        final BigDecimal base = new BigDecimal("1.23456789012345678901");
+        final Num powered = unlimited.numOf(base).pow(unlimited.numOf(3));
+
+        assertEquals(0, base.pow(3).compareTo((BigDecimal) powered.getDelegate()));
     }
 
     @Test
@@ -334,14 +415,18 @@ public class DecimalNumTest {
         }
     }
 
-    @Test(expected = NumberFormatException.class)
+    @Test
     public void testValueOfForFloatNaNShouldThrowNumberFormatException() {
-        DecimalNum.valueOf(Float.NaN);
+        assertThrows(NumberFormatException.class, () -> {
+            DecimalNum.valueOf(Float.NaN);
+        });
     }
 
-    @Test(expected = NumberFormatException.class)
+    @Test
     public void testValueOfForDoubleNaNShouldThrowNumberFormatException() {
-        DecimalNum.valueOf(Double.NaN);
+        assertThrows(NumberFormatException.class, () -> {
+            DecimalNum.valueOf(Double.NaN);
+        });
     }
 
     @Test
@@ -423,6 +508,27 @@ public class DecimalNumTest {
         final Num result = small.exp();
         // e^0.1 ≈ 1.1051709180756477
         assertNumEquals("1.1051709180756477", result);
+    }
+
+    @Test
+    public void testSqrtSubnormalAndExactContexts() {
+        // Subnormal number 4E-324 with RoundingMode.UNNECESSARY
+        MathContext mcUnnecessary = new MathContext(16, java.math.RoundingMode.UNNECESSARY);
+        Num subnormalNum = DecimalNum.valueOf("4E-324", mcUnnecessary);
+        assertNumEquals(DecimalNum.valueOf("2E-162", mcUnnecessary), subnormalNum.sqrt());
+
+        // Subnormal number 4E-324 with MathContext.UNLIMITED
+        Num subnormalUnlimited = DecimalNum.valueOf("4E-324", MathContext.UNLIMITED);
+        assertNumEquals(DecimalNum.valueOf("2E-162", MathContext.UNLIMITED), subnormalUnlimited.sqrt());
+
+        // Non-exact square root with MathContext.UNLIMITED falls back to default
+        // precision
+        Num twoUnlimited = DecimalNum.valueOf("2", MathContext.UNLIMITED);
+        assertNumEquals(DecimalNum.valueOf("1.414213562373095"), twoUnlimited.sqrt());
+
+        // Exact square root with MathContext.UNLIMITED
+        Num fourUnlimited = DecimalNum.valueOf("4", MathContext.UNLIMITED);
+        assertNumEquals(DecimalNum.valueOf("2", MathContext.UNLIMITED), fourUnlimited.sqrt());
     }
 
     @Test

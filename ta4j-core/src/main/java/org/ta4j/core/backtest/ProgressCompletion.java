@@ -64,6 +64,8 @@ public final class ProgressCompletion {
      */
     public static final int DEFAULT_LOG_INTERVAL = 100;
 
+    private static final StackWalker CALLER_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+
     private ProgressCompletion() {
         // Utility class - prevent instantiation
     }
@@ -378,38 +380,19 @@ public final class ProgressCompletion {
     }
 
     /**
-     * Detects the calling class by analyzing the stack trace. This method skips
-     * internal frames (ProgressCompletion, Thread, etc.) to find the actual caller.
+     * Detects the calling class from the live stack. Frames are walked with their
+     * class references retained, so the caller is returned directly instead of
+     * being re-resolved by name (which could initialize classes or miss callers
+     * loaded by another class loader). Reflection frames are hidden by default.
      *
-     * @return the calling class, or ProgressCompletion.class as a fallback
+     * @return the first class outside ProgressCompletion, or
+     *         ProgressCompletion.class as a fallback
      */
     private static Class<?> detectCallerClass() {
-        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-        String thisClassName = ProgressCompletion.class.getName();
-
-        // Start from index 3 to skip:
-        // 0: getStackTrace
-        // 1: detectCallerClass
-        // 2: logging()/logging(int)/loggingWithMemory()/loggingWithMemory(int)
-        for (int i = 3; i < stack.length; i++) {
-            String className = stack[i].getClassName();
-
-            // Skip internal frames
-            if (className.equals(thisClassName) || className.equals(Thread.class.getName())
-                    || className.startsWith("java.lang.reflect.") || className.startsWith("sun.reflect.")
-                    || className.startsWith("jdk.internal.reflect.")) {
-                continue;
-            }
-
-            try {
-                return Class.forName(className);
-            } catch (ClassNotFoundException e) {
-                // Continue searching if class can't be loaded
-            }
-        }
-
-        // Fallback to ProgressCompletion if we can't detect the caller
-        return ProgressCompletion.class;
+        return CALLER_WALKER.walk(frames -> frames.<Class<?>>map(StackWalker.StackFrame::getDeclaringClass)
+                .filter(type -> type != ProgressCompletion.class)
+                .findFirst()
+                .orElse(ProgressCompletion.class));
     }
 
     /**

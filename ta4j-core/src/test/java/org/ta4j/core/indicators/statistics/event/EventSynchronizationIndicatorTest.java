@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.indicators.statistics.event;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.DoubleStream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
@@ -633,14 +633,14 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
             indicator.getValue(i);
         }
         // Rolling evaluation evicts everything below the last window.
-        assertTrue("predictedEvents.size=" + indicator.predictedEvents.size, indicator.predictedEvents.size <= 10);
-        assertTrue("referenceEvents.size=" + indicator.referenceEvents.size, indicator.referenceEvents.size <= 10);
+        assertTrue(indicator.predictedEvents.size <= 10, "predictedEvents.size=" + indicator.predictedEvents.size);
+        assertTrue(indicator.referenceEvents.size <= 10, "referenceEvents.size=" + indicator.referenceEvents.size);
         assertNumEquals(1.0, indicator.getValue(barCount - 1));
         // A backward evaluation below the eviction frontier resets the caches
         // and rescans from scratch; results stay correct and the bound holds.
         assertNumEquals(1.0, indicator.getResult(barCount - 21).f1Score());
-        assertTrue("predictedEvents.size=" + indicator.predictedEvents.size, indicator.predictedEvents.size <= 10);
-        assertTrue("referenceEvents.size=" + indicator.referenceEvents.size, indicator.referenceEvents.size <= 10);
+        assertTrue(indicator.predictedEvents.size <= 10, "predictedEvents.size=" + indicator.predictedEvents.size);
+        assertTrue(indicator.referenceEvents.size <= 10, "referenceEvents.size=" + indicator.referenceEvents.size);
     }
 
     @Test
@@ -664,8 +664,8 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         };
         EventSynchronizationIndicator indicator = indicator(everyBar, everyBar, 10, 0, 0);
         assertNumEquals(1.0, indicator.getResult(barCount - 1).f1Score());
-        assertTrue("predictedEvents.size=" + indicator.predictedEvents.size, indicator.predictedEvents.size <= 10);
-        assertTrue("referenceEvents.size=" + indicator.referenceEvents.size, indicator.referenceEvents.size <= 10);
+        assertTrue(indicator.predictedEvents.size <= 10, "predictedEvents.size=" + indicator.predictedEvents.size);
+        assertTrue(indicator.referenceEvents.size <= 10, "referenceEvents.size=" + indicator.referenceEvents.size);
     }
 
     @Test
@@ -732,8 +732,8 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertEquals(16, backing.length);
         for (int i = 3; i < 40; i++) {
             indicator.getValue(i);
-            assertSame("minimal cache must not be reallocated on rolling evictions", backing,
-                    indicator.predictedEvents.events);
+            assertSame(backing, indicator.predictedEvents.events,
+                    "minimal cache must not be reallocated on rolling evictions");
             assertEquals(0, indicator.predictedEvents.size);
         }
     }

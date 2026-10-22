@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
 
+import org.ta4j.core.indicators.forecast.MonteCarloKernel;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.ShockModel;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.VolatilityUpdateMode;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
@@ -115,6 +116,18 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
             }
         }
         return cumulativeReturn;
+    }
+
+    /**
+     * Describes the shock and volatility configuration.
+     *
+     * @return the configured shock model, update mode, and decay factor
+     * @since 0.26.1
+     */
+    @Override
+    public String toString() {
+        return "ShockPathMonteCarloMethod[shockModel=" + shockModel + ", volatilityUpdateMode=" + volatilityUpdateMode
+                + ", volatilityDecayFactor=" + volatilityDecayFactor + "]";
     }
 
     private record ProjectionState(Num mean, Num drift, Num variance, Num volatility) {
@@ -231,8 +244,7 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
             if (!Num.isFinite(standardDeviation)) {
                 return numFactory.zero();
             }
-            double multiplier = 1.06d * Math.pow(count, -0.2d);
-            return standardDeviation.multipliedBy(numFactory.numOf(multiplier));
+            return standardDeviation.multipliedBy(numFactory.numOf(MonteCarloKernel.smoothingBandwidthFactor(count)));
         }
     }
 }

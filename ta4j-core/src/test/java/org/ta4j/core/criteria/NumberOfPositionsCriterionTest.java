@@ -3,14 +3,24 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import java.time.Instant;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Test;
+import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.BaseTrade;
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.ExecutionMatchPolicy;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -172,4 +182,133 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
         assertFalse(criterion.betterThan(numOf(3), numOf(6)));
         assertTrue(criterion.betterThan(numOf(7), numOf(4)));
     }
+
+    @Test
+    public void countsLotsActiveAtLogicalEndInsteadOfLaterRecordState() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("position-count-window", numFactory, 5,
+                100d, 110d, 110d, 110d, 110d, 120d, 120d, 120d, 130d, 130d, 130d, 130d);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(1, Instant.EPOCH.plusSeconds(1), numFactory.numOf(110), numFactory.one(),
+                numFactory.zero(), ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(7, Instant.EPOCH.plusSeconds(7), numFactory.numOf(120), numFactory.one(),
+                numFactory.zero(), ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(10, Instant.EPOCH.plusSeconds(10), numFactory.numOf(130), numFactory.one(),
+                numFactory.zero(), ExecutionSide.SELL, null, null));
+        record.operate(new BaseTrade(11, Instant.EPOCH.plusSeconds(11), numFactory.numOf(130), numFactory.one(),
+                numFactory.zero(), ExecutionSide.SELL, null, null));
+
+        AnalysisCriterion closedCriterion = new NumberOfPositionsCriterion(
+                NumberOfPositionsCriterion.PositionStatusFilter.CLOSED);
+        AnalysisCriterion openCriterion = new NumberOfPositionsCriterion(
+                NumberOfPositionsCriterion.PositionStatusFilter.OPEN);
+        AnalysisCriterion allCriterion = new NumberOfPositionsCriterion(
+                NumberOfPositionsCriterion.PositionStatusFilter.ALL);
+
+        assertNumEquals(0, closedCriterion.calculate(series, record));
+        assertNumEquals(2, openCriterion.calculate(series, record));
+        assertNumEquals(2, allCriterion.calculate(series, record));
+        AnalysisWindow visibleWindow = AnalysisWindow.lookbackBars(6);
+        assertNumEquals(0, closedCriterion.calculate(series, record, visibleWindow));
+        assertNumEquals(2, openCriterion.calculate(series, record, visibleWindow));
+        assertNumEquals(2, allCriterion.calculate(series, record, visibleWindow));
+    }
+
+    @Test
+    public void countsHistoricalClosedLotsAsOpenAtLogicalEnd() {
+        BarSeries series = multiLotSeries();
+        BaseTradingRecord record = multiLotRecord();
+        AnalysisCriterion openCriterion = new NumberOfPositionsCriterion(
+                NumberOfPositionsCriterion.PositionStatusFilter.OPEN);
+
+        assertNumEquals(2, openCriterion.calculate(series, record));
+    }
+
+    @Test
+    public void countsHistoricalClosedLotsAsOpenInLookbackWindow() {
+        BarSeries series = multiLotSeries();
+        BaseTradingRecord record = multiLotRecord();
+        AnalysisCriterion openCriterion = new NumberOfPositionsCriterion(
+                NumberOfPositionsCriterion.PositionStatusFilter.OPEN);
+        AnalysisWindow visibleWindow = AnalysisWindow.lookbackBars(6);
+
+        assertNumEquals(2, openCriterion.calculate(series, record, visibleWindow));
+    }
+
+    @Test
+    public void excludesHistoricalLotsFromClosedCountInLookbackWindow() {
+        BarSeries series = multiLotSeries();
+        BaseTradingRecord record = multiLotRecord();
+        AnalysisCriterion closedCriterion = new NumberOfPositionsCriterion(
+                NumberOfPositionsCriterion.PositionStatusFilter.CLOSED);
+        AnalysisWindow visibleWindow = AnalysisWindow.lookbackBars(6);
+
+        assertNumEquals(0, closedCriterion.calculate(series, record, visibleWindow));
+    }
+
+    @Test
+    public void classifiesPositionByLogicalEnd() {
+        BarSeries series = multiLotSeries();
+        Position position = multiLotRecord().getPositions().getFirst();
+        AnalysisCriterion closedCriterion = new NumberOfPositionsCriterion(
+                NumberOfPositionsCriterion.PositionStatusFilter.CLOSED);
+        AnalysisCriterion openCriterion = new NumberOfPositionsCriterion(
+                NumberOfPositionsCriterion.PositionStatusFilter.OPEN);
+        AnalysisCriterion allCriterion = new NumberOfPositionsCriterion(
+                NumberOfPositionsCriterion.PositionStatusFilter.ALL);
+
+        assertNumEquals(0, closedCriterion.calculate(series, position));
+        assertNumEquals(1, openCriterion.calculate(series, position));
+        assertNumEquals(1, allCriterion.calculate(series, position));
+    }
+
+    private BarSeries multiLotSeries() {
+        return ConstrainedSeriesSupport.trailingConstrainedSeries("position-count-multi-lot", numFactory, 5, 100d, 110d,
+                110d, 110d, 110d, 120d, 120d, 120d, 130d, 130d, 130d, 130d);
+    }
+
+    private BaseTradingRecord multiLotRecord() {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(1, Instant.EPOCH.plusSeconds(1), numFactory.numOf(110), numFactory.one(),
+                numFactory.zero(), ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(7, Instant.EPOCH.plusSeconds(7), numFactory.numOf(120), numFactory.one(),
+                numFactory.zero(), ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(10, Instant.EPOCH.plusSeconds(10), numFactory.numOf(130), numFactory.one(),
+                numFactory.zero(), ExecutionSide.SELL, null, null));
+        record.operate(new BaseTrade(11, Instant.EPOCH.plusSeconds(11), numFactory.numOf(130), numFactory.one(),
+                numFactory.zero(), ExecutionSide.SELL, null, null));
+        return record;
+    }
+
+    @Test
+    public void directClosedCountExcludesEntriesBeforeRecordStart() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 105, 100, 110, 130)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 2, 8, new ZeroCostModel(),
+                new ZeroCostModel());
+        record.operate(Trade.buyAt(0, series, numFactory.one()));
+        record.operate(Trade.sellAt(2, series, numFactory.one()));
+        record.operate(Trade.buyAt(3, series, numFactory.one()));
+        record.operate(Trade.sellAt(4, series, numFactory.one()));
+        record.operate(Trade.buyAt(5, series, numFactory.one()));
+        record.operate(Trade.sellAt(6, series, numFactory.one()));
+        record.operate(Trade.buyAt(7, series, numFactory.one()));
+        record.operate(Trade.sellAt(9, series, numFactory.one()));
+        NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion(
+                NumberOfPositionsCriterion.PositionStatusFilter.CLOSED);
+        assertNumEquals(2, criterion.calculate(series, record));
+        assertNumEquals(4, criterion.calculate(series, new BaseTradingRecord(record.getPositions())));
+        AnalysisWindow window = AnalysisWindow.barRange(2, 8);
+        AnalysisContext context = AnalysisContext.defaults();
+        assertNumEquals(3, criterion.calculate(series, record, window, context));
+        assertNumEquals(2, criterion.calculate(series, record, window,
+                context.withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED)));
+    }
+
 }

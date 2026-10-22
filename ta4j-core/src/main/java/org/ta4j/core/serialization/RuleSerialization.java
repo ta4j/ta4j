@@ -32,11 +32,10 @@ import java.util.*;
  */
 public final class RuleSerialization {
 
-    private static final String CORE_PACKAGE = "org.ta4j.core";
     private static final String RULE_PACKAGE = "org.ta4j.core.rules";
-    private static final String INDICATOR_PACKAGE = "org.ta4j.core.indicators";
-    private static final String NUM_PACKAGE = "org.ta4j.core.num";
-    private static final String JAVA_LANG_PACKAGE = "java.lang";
+    /** Packages whose types are written and reported by simple name. */
+    private static final Set<String> SIMPLE_NAME_PACKAGES = Set.of("org.ta4j.core", RULE_PACKAGE,
+            "org.ta4j.core.indicators", "org.ta4j.core.num", "java.lang");
     private static final String RULE_ARRAY_PREFIX = "__ruleArray_";
 
     private RuleSerialization() {
@@ -71,16 +70,7 @@ public final class RuleSerialization {
         if (clazz.isPrimitive() || clazz.isArray() && clazz.getComponentType().isPrimitive()) {
             return clazz.getName();
         }
-        String packageName = clazz.getPackageName();
-        if (packageName == null) {
-            return clazz.getName();
-        }
-        if (packageName.equals(CORE_PACKAGE) || packageName.equals(RULE_PACKAGE)
-                || packageName.equals(INDICATOR_PACKAGE) || packageName.equals(NUM_PACKAGE)
-                || packageName.equals(JAVA_LANG_PACKAGE)) {
-            return clazz.getSimpleName();
-        }
-        return clazz.getName();
+        return SIMPLE_NAME_PACKAGES.contains(clazz.getPackageName()) ? clazz.getSimpleName() : clazz.getName();
     }
 
     /**
@@ -238,10 +228,16 @@ public final class RuleSerialization {
      *                   factories
      * @param descriptor descriptor describing the rule
      * @return reconstructed rule
-     * @throws RuleSerializationException if the rule type does not support
-     *                                    deserialization (e.g., no matching
-     *                                    constructor can be found)
-     * @throws NullPointerException       if series or descriptor is null
+     * @throws RuleSerializationException      if the rule type does not support
+     *                                         deserialization (e.g., no matching
+     *                                         constructor can be found)
+     * @throws IllegalStateException           if construction fails, including an
+     *                                         unavailable dependency of the
+     *                                         resolved type or of a nested rule
+     * @throws IndicatorSerializationException if a nested indicator cannot be
+     *                                         reconstructed because one of its
+     *                                         dependencies is unavailable
+     * @throws NullPointerException            if series or descriptor is null
      */
     public static Rule fromDescriptor(BarSeries series, ComponentDescriptor descriptor) {
         return fromDescriptor(series, descriptor, null);
@@ -256,10 +252,16 @@ public final class RuleSerialization {
      * @param descriptor    descriptor describing the rule
      * @param parentContext optional parent context for resolving shared components
      * @return reconstructed rule
-     * @throws RuleSerializationException if the rule type does not support
-     *                                    deserialization (e.g., no matching
-     *                                    constructor can be found)
-     * @throws NullPointerException       if series or descriptor is null
+     * @throws RuleSerializationException      if the rule type does not support
+     *                                         deserialization (e.g., no matching
+     *                                         constructor can be found)
+     * @throws IllegalStateException           if construction fails, including an
+     *                                         unavailable dependency of the
+     *                                         resolved type or of a nested rule
+     * @throws IndicatorSerializationException if a nested indicator cannot be
+     *                                         reconstructed because one of its
+     *                                         dependencies is unavailable
+     * @throws NullPointerException            if series or descriptor is null
      */
     public static Rule fromDescriptor(BarSeries series, ComponentDescriptor descriptor,
             ReconstructionContext parentContext) {
@@ -271,28 +273,13 @@ public final class RuleSerialization {
             throw new IllegalArgumentException("Rule descriptor missing type: " + descriptor);
         }
 
-        Class<?> clazz;
-        try {
-            clazz = Class.forName(type);
-        } catch (ClassNotFoundException ex) {
-            try {
-                clazz = Class.forName("org.ta4j.core.rules." + type);
-            } catch (ClassNotFoundException inner) {
-                throw new IllegalArgumentException("Unknown rule type: " + type, inner);
-            }
-        }
-        if (!Rule.class.isAssignableFrom(clazz)) {
-            throw new IllegalArgumentException("Descriptor type does not implement Rule: " + type);
-        }
-
-        @SuppressWarnings("unchecked")
-        Class<? extends Rule> ruleType = (Class<? extends Rule>) clazz;
-
-        // Infer constructor signature from children and parameters
-        ReconstructionContext context = new ReconstructionContext(series, descriptor, parentContext);
-        DeserializationMatch match = inferConstructor(ruleType, descriptor, context);
+        Class<? extends Rule> ruleType = resolveRuleType(type);
 
         try {
+            // Infer constructor signature from children and parameters.
+            ReconstructionContext context = new ReconstructionContext(series, descriptor, parentContext);
+            DeserializationMatch match = inferConstructor(ruleType, descriptor, context);
+
             try {
                 match.constructor.setAccessible(true);
             } catch (SecurityException ex) {
@@ -325,9 +312,27 @@ public final class RuleSerialization {
             }
 
             return rule;
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | LinkageError ex) {
             throw new IllegalStateException("Failed to construct rule: " + ruleType.getName(), ex);
         }
+    }
+
+    /**
+     * Resolves a descriptor rule type without initializing non-rule classes. A
+     * missing class and a class that does not implement {@link Rule} produce the
+     * same failure so descriptor input cannot probe the classpath.
+     *
+     * @param type fully qualified name or simple name in
+     *             {@code org.ta4j.core.rules}
+     * @return resolved rule type
+     * @throws IllegalArgumentException if no matching {@link Rule} type exists
+     */
+    static Class<? extends Rule> resolveRuleType(String type) {
+        Class<? extends Rule> ruleType = ComponentDescriptor.resolveSubtype(type, Rule.class, RULE_PACKAGE);
+        if (ruleType == null) {
+            throw new IllegalArgumentException("Unknown rule type: " + type);
+        }
+        return ruleType;
     }
 
     private static final class DeserializationMatch {
@@ -582,13 +587,8 @@ public final class RuleSerialization {
         if (paramType.isArray()) {
             return simplifyParameterType(paramType.getComponentType()) + "[]";
         }
-        String packageName = paramType.getPackageName();
-        if (packageName != null && (packageName.equals(CORE_PACKAGE) || packageName.equals(RULE_PACKAGE)
-                || packageName.equals(INDICATOR_PACKAGE) || packageName.equals(NUM_PACKAGE)
-                || packageName.equals(JAVA_LANG_PACKAGE))) {
-            return paramType.getSimpleName();
-        }
-        return paramType.getName();
+        return SIMPLE_NAME_PACKAGES.contains(paramType.getPackageName()) ? paramType.getSimpleName()
+                : paramType.getName();
     }
 
     private static DeserializationMatch tryMatchConstructor(Constructor<?> constructor, Class<?>[] paramTypes,
@@ -695,8 +695,7 @@ public final class RuleSerialization {
             if (!matched) {
                 // Try exact parameter name match first
                 if (parameters.containsKey(paramName)) {
-                    Object paramValue = resolveParameter(parameters.get(paramName), paramType, paramName, parameters,
-                            context);
+                    Object paramValue = resolveParameter(parameters.get(paramName), paramType, paramName, context);
                     if (paramValue != null) {
                         arguments[i] = paramValue;
                         argumentTypes[i] = paramType;
@@ -709,8 +708,7 @@ public final class RuleSerialization {
                         if (paramsUsed.contains(entry.getKey())) {
                             continue;
                         }
-                        Object paramValue = resolveParameter(entry.getValue(), paramType, entry.getKey(), parameters,
-                                context);
+                        Object paramValue = resolveParameter(entry.getValue(), paramType, entry.getKey(), context);
                         if (paramValue != null) {
                             arguments[i] = paramValue;
                             argumentTypes[i] = paramType;
@@ -861,6 +859,22 @@ public final class RuleSerialization {
         return false;
     }
 
+    /**
+     * Tells whether a failure stems from a dependency of the component being
+     * reconstructed that cannot be linked. Unlike a constructor mismatch, no other
+     * constructor can recover from it, and swallowing it would replace the cause
+     * with a misleading "no compatible constructor" error.
+     */
+    private static boolean isLinkageFailure(Throwable failure) {
+        Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Throwable cause = failure; cause != null && visited.add(cause); cause = cause.getCause()) {
+            if (cause instanceof LinkageError) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static Object resolveComponent(ComponentDescriptor component, Class<?> paramType,
             ReconstructionContext context) {
         try {
@@ -883,20 +897,19 @@ public final class RuleSerialization {
                 // Pass the current context as parent so nested components can resolve:
                 // 1. Components from the current rule's context (for nested rules/indicators)
                 // 2. Strategy-level components via the parent chain
-                try {
-                    return RuleSerialization.fromDescriptor(context.series, component, context);
-                } catch (Exception e) {
-                    return null; // Can't resolve, try next match
-                }
+                return RuleSerialization.fromDescriptor(context.series, component, context);
             }
         } catch (Exception e) {
+            if (isLinkageFailure(e)) {
+                throw e;
+            }
             return null; // Can't resolve, try next match
         }
         return null;
     }
 
     private static Object resolveParameter(Object value, Class<?> paramType, String paramName,
-            Map<String, Object> allParams, ReconstructionContext context) {
+            ReconstructionContext context) {
         if (value == null) {
             return null;
         }
@@ -928,12 +941,11 @@ public final class RuleSerialization {
                 return context.resolveString(paramName);
             }
 
-            // Handle Enum
+            // Handle Enum. The declared constructor type is authoritative; serialized
+            // __enumType_* metadata is never resolved, so descriptor input cannot load
+            // classes here.
             if (paramType.isEnum()) {
-                String enumTypeKey = "__enumType_" + paramName;
-                String enumTypeName = allParams.containsKey(enumTypeKey) ? String.valueOf(allParams.get(enumTypeKey))
-                        : paramType.getName();
-                return context.resolveEnum(paramName, enumTypeName);
+                return context.resolveEnum(paramName, paramType);
             }
 
             // Handle arrays
@@ -944,11 +956,7 @@ public final class RuleSerialization {
                 } else if (Number.class.isAssignableFrom(componentType) || componentType.isPrimitive()) {
                     return context.resolveNumberArray(paramName, paramType);
                 } else if (componentType.isEnum()) {
-                    String enumTypeKey = "__enumType_" + paramName;
-                    String enumTypeName = allParams.containsKey(enumTypeKey)
-                            ? String.valueOf(allParams.get(enumTypeKey))
-                            : componentType.getName();
-                    return context.resolveEnumArray(paramName, enumTypeName);
+                    return context.resolveEnumArray(paramName, componentType);
                 } else if (componentType.equals(ChainLink.class)) {
                     return deserializeChainLinks(value, context);
                 }
@@ -959,6 +967,9 @@ public final class RuleSerialization {
             }
             return null; // Can't resolve, try next match
         } catch (Exception e) {
+            if (isLinkageFailure(e)) {
+                throw e;
+            }
             return null; // Can't resolve, try next match
         }
 
@@ -1151,70 +1162,28 @@ public final class RuleSerialization {
             return (Boolean) convertBoolean(value);
         }
 
-        private Object resolveEnum(String name, String enumClassName) {
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        private Object resolveEnum(String name, Class<?> enumType) {
             Object raw = descriptor.getParameters().get(name);
             if (raw == null) {
                 throw new IllegalArgumentException("Missing enum parameter: " + name);
             }
-            try {
-                @SuppressWarnings({ "unchecked", "rawtypes" })
-                Class<? extends Enum> enumType = (Class<? extends Enum>) resolveClass(enumClassName);
-                String label = String.valueOf(raw);
-                return Enum.valueOf(enumType, label);
-            } catch (IllegalStateException ex) {
-                throw new IllegalStateException("Unable to resolve enum type: " + enumClassName, ex);
-            }
+            return Enum.valueOf((Class) enumType, String.valueOf(raw));
         }
 
-        private Object resolveEnumArray(String name, String enumClassName) {
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        private Object resolveEnumArray(String name, Class<?> enumType) {
             Object raw = descriptor.getParameters().get(name);
             if (!(raw instanceof List<?> list)) {
                 throw new IllegalArgumentException("Missing enum array parameter: " + name);
             }
-            try {
-                @SuppressWarnings({ "unchecked", "rawtypes" })
-                Class<? extends Enum> enumType = (Class<? extends Enum>) resolveClass(enumClassName);
-                Object array = Array.newInstance(enumType, list.size());
-                for (int i = 0; i < list.size(); i++) {
-                    Object element = list.get(i);
-                    Object value = element == null ? null : Enum.valueOf(enumType, String.valueOf(element));
-                    Array.set(array, i, value);
-                }
-                return array;
-            } catch (IllegalStateException ex) {
-                throw new IllegalStateException("Unable to resolve enum type: " + enumClassName, ex);
+            Object array = Array.newInstance(enumType, list.size());
+            for (int i = 0; i < list.size(); i++) {
+                Object element = list.get(i);
+                Object value = element == null ? null : Enum.valueOf((Class) enumType, String.valueOf(element));
+                Array.set(array, i, value);
             }
-        }
-
-        private Class<?> resolveClass(String typeName) {
-            return switch (typeName) {
-            case "boolean" -> boolean.class;
-            case "byte" -> byte.class;
-            case "short" -> short.class;
-            case "int" -> int.class;
-            case "long" -> long.class;
-            case "float" -> float.class;
-            case "double" -> double.class;
-            case "char" -> char.class;
-            default -> {
-                try {
-                    // Try as-is first (for fully qualified names or already resolved simple names)
-                    yield Class.forName(typeName);
-                } catch (ClassNotFoundException ex) {
-                    // Try common packages for simple names
-                    String[] packages = { CORE_PACKAGE, RULE_PACKAGE, INDICATOR_PACKAGE, NUM_PACKAGE,
-                            JAVA_LANG_PACKAGE };
-                    for (String pkg : packages) {
-                        try {
-                            yield Class.forName(pkg + "." + typeName);
-                        } catch (ClassNotFoundException ignored) {
-                            // Continue to next package
-                        }
-                    }
-                    throw new IllegalStateException("Unable to resolve argument type: " + typeName, ex);
-                }
-            }
-            };
+            return array;
         }
     }
 
@@ -1859,9 +1828,10 @@ public final class RuleSerialization {
 
         // Preserve __customName if it exists in the original descriptor
         // (it was set by describe() when the rule had a custom name)
-        if (descriptor.getParameters().containsKey("__customName")) {
+        Object customName = descriptor.getParameters().get("__customName");
+        if (customName != null) {
             Map<String, Object> params = new LinkedHashMap<>(result.getParameters());
-            params.put("__customName", descriptor.getParameters().get("__customName"));
+            params.put("__customName", customName);
             builder.withParameters(params);
             result = builder.build();
         }

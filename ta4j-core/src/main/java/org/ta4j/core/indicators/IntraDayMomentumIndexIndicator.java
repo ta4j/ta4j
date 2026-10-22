@@ -7,7 +7,8 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.candles.RealBodyIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.OpenPriceIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
 import org.ta4j.core.num.Num;
@@ -37,7 +38,8 @@ public class IntraDayMomentumIndexIndicator extends CachedIndicator<Num> {
         super(series);
 
         // Calculate the real body of the bars (close - open)
-        final var realBody = new RealBodyIndicator(series);
+        final BinaryOperationIndicator realBody = BinaryOperationIndicator.difference(new ClosePriceIndicator(series),
+                new OpenPriceIndicator(series));
 
         // Transform the real body into close-open and open-close differences
         final var closeOpenDiff = BinaryOperationIndicator.max(realBody, 0);

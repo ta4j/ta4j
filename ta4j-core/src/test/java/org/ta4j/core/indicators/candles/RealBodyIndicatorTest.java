@@ -5,14 +5,16 @@ package org.ta4j.core.indicators.candles;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+// This owner intentionally verifies the deprecated compatibility indicator.
+@SuppressWarnings("deprecation")
 public class RealBodyIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private BarSeries series;
@@ -21,7 +23,7 @@ public class RealBodyIndicatorTest extends AbstractIndicatorTest<BarSeries, Num>
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(10).closePrice(18).highPrice(20).lowPrice(10).add();

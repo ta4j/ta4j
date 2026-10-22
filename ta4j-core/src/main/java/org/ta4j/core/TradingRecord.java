@@ -6,6 +6,8 @@ package org.ta4j.core;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -232,6 +234,47 @@ public interface TradingRecord extends Serializable {
     }
 
     /**
+     * Returns the closed positions contained in this record's logical range:
+     * entered at or after {@link #getStartIndex(BarSeries)} and exited at or before
+     * {@link #getEndIndex(BarSeries)}.
+     *
+     * <p>
+     * A position entered before the logical start is outside the analyzed range. A
+     * position exiting after the logical end was still open at that end and is not
+     * returned. Records without an explicit start or end index return
+     * {@link #getPositions()} unchanged. The returned list is the
+     * {@link #getPositions()} list itself when every position is contained.
+     * </p>
+     *
+     * @param series the bar series used to resolve the logical range, not null
+     * @return the contained closed positions, in recording order
+     * @since 0.26.1
+     */
+    default List<Position> getContainedPositions(BarSeries series) {
+        Objects.requireNonNull(series, "series");
+        List<Position> positions = getPositions();
+        if (getStartIndex() == null && getEndIndex() == null) {
+            return positions;
+        }
+        int startIndex = getStartIndex(series);
+        int endIndex = getEndIndex(series);
+        List<Position> contained = null;
+        for (int i = 0; i < positions.size(); i++) {
+            Position position = positions.get(i);
+            boolean isContained = position != null && position.isClosed()
+                    && position.getEntry().getIndex() >= startIndex && position.getExit().getIndex() <= endIndex;
+            if (contained != null) {
+                if (isContained) {
+                    contained.add(position);
+                }
+            } else if (!isContained) {
+                contained = new ArrayList<>(positions.subList(0, i));
+            }
+        }
+        return contained == null ? positions : Collections.unmodifiableList(contained);
+    }
+
+    /**
      * Returns the canonical current-position view for this record.
      *
      * <p>
@@ -377,9 +420,11 @@ public interface TradingRecord extends Serializable {
      * @param series the bar series, not null
      * @return the {@link #getEndIndex()} if not null and less than
      *         {@link BarSeries#getEndIndex()}, otherwise
-     *         {@link BarSeries#getEndIndex()}
+     *         {@link BarSeries#getEndIndex()}. This is a logical execution bound;
+     *         retained raw bars beyond it do not extend the benchmark window.
      */
     default int getEndIndex(BarSeries series) {
-        return getEndIndex() == null ? series.getEndIndex() : Math.min(getEndIndex(), series.getEndIndex());
+        Integer endIndex = getEndIndex();
+        return endIndex == null ? series.getEndIndex() : Math.min(endIndex, series.getEndIndex());
     }
 }

@@ -9,12 +9,22 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
@@ -276,6 +286,118 @@ class AdaptiveZigZagSwingDetectorTest {
         assertThat(actual).isEqualTo(expected);
     }
 
+    @Test
+    void rebuildsAfterRetainedValueMutationWithoutRevisionOrIdentityChange() {
+        assertRetainedMutationIsRebuilt(false);
+    }
+
+    @Test
+    void rebuildsAfterRetainedValueMutationFollowedByAppend() {
+        assertRetainedMutationIsRebuilt(true);
+    }
+
+    @Test
+    void revalidatesRetainedValuesAfterUnlockedEvaluation() {
+        UntrackedBarSeries series = new UntrackedBarSeries();
+        for (Bar bar : buildVolatileRangeSeries().getBarData()) {
+            series.addBar(bar);
+        }
+        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.0, 20.0, 1);
+        AdaptiveZigZagSwingDetector warmed = new AdaptiveZigZagSwingDetector(config);
+        warmed.detect(series, 0, ElliottDegree.PRIMARY);
+        SwingDetectorResult before = new AdaptiveZigZagSwingDetector(config).detect(series, series.getEndIndex(),
+                ElliottDegree.PRIMARY);
+        Bar interior = series.getBar(2);
+        series.mutateOnUnlockedRead(4, () -> interior.addPrice(series.numFactory().numOf(170)));
+
+        SwingDetectorResult result = warmed.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+        SwingDetectorResult fresh = new AdaptiveZigZagSwingDetector(config).detect(series, series.getEndIndex(),
+                ElliottDegree.PRIMARY);
+
+        assertThat(series.mutationTriggered).isTrue();
+        assertThat(fresh).isNotEqualTo(before);
+        assertThat(result).isEqualTo(fresh);
+    }
+
+    @Test
+    void contendedDetectionDoesNotWaitOnOwnerWhileHoldingSeriesReadLock() throws Exception {
+        BarSeries source = buildVolatileRangeSeries();
+        CountDownLatch paused = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicReference<Thread> detectionThread = new AtomicReference<>();
+        ReentrantReadWriteLock seriesLock = new ReentrantReadWriteLock();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, seriesLock, index -> {
+            if (index == 3 && Thread.currentThread() == detectionThread.get() && paused.getCount() > 0) {
+                paused.countDown();
+                try {
+                    assertThat(release.await(5, TimeUnit.SECONDS)).isTrue();
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError(exception);
+                }
+            }
+        });
+        series.setMaximumBarCount(Integer.MAX_VALUE);
+        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.0, 20.0, 1);
+        AdaptiveZigZagSwingDetector detector = new AdaptiveZigZagSwingDetector(config);
+        detector.detect(series, 0, ElliottDegree.PRIMARY);
+        SwingDetectorResult expected = new AdaptiveZigZagSwingDetector(config).detect(source, source.getEndIndex(),
+                ElliottDegree.PRIMARY);
+        ExecutorService threads = Executors.newFixedThreadPool(2, runnable -> {
+            Thread thread = new Thread(runnable, "adaptive-detector-lock-order");
+            thread.setDaemon(true);
+            return thread;
+        });
+        try {
+            Future<SwingDetectorResult> detection = threads.submit(() -> {
+                detectionThread.set(Thread.currentThread());
+                return detector.detect(series, source.getEndIndex(), ElliottDegree.PRIMARY);
+            });
+            assertThat(paused.await(5, TimeUnit.SECONDS)).isTrue();
+            // A writer progresses while the detector evaluates its graph unlocked.
+            threads.submit(() -> appendBar(series, 151.0)).get(2, TimeUnit.SECONDS);
+            // A caller holding the series lock must not wait on the busy detector.
+            Future<SwingDetectorResult> nested = threads.submit(() -> series
+                    .withReadLock(() -> detector.detect(series, source.getEndIndex(), ElliottDegree.PRIMARY)));
+            assertThat(nested.get(2, TimeUnit.SECONDS)).isEqualTo(expected);
+            release.countDown();
+            assertThat(detection.get(5, TimeUnit.SECONDS)).isEqualTo(expected);
+            assertThat(seriesLock.getReadLockCount()).isZero();
+        } finally {
+            release.countDown();
+            threads.shutdownNow();
+        }
+    }
+
+    private void assertRetainedMutationIsRebuilt(final boolean append) {
+        UntrackedBarSeries series = new UntrackedBarSeries();
+        for (Bar bar : buildVolatileRangeSeries().getBarData()) {
+            series.addBar(bar);
+        }
+        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.0, 20.0, 1);
+        AdaptiveZigZagSwingDetector warmed = new AdaptiveZigZagSwingDetector(config);
+        SwingDetectorResult before = warmed.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+        Bar interior = series.getBar(2);
+        Bar terminal = series.getLastBar();
+        int begin = series.getBeginIndex();
+        int end = series.getEndIndex();
+
+        interior.addPrice(series.numFactory().numOf(170));
+
+        assertThat(series.getBar(2)).isSameAs(interior);
+        assertThat(series.getLastBar()).isSameAs(terminal);
+        assertThat(series.getBeginIndex()).isEqualTo(begin);
+        assertThat(series.getEndIndex()).isEqualTo(end);
+        assertThat(series.getBarHistoryRevision()).isEqualTo(-1L);
+        if (append) {
+            appendBar(series, 151.0);
+        }
+        SwingDetectorResult fresh = new AdaptiveZigZagSwingDetector(config).detect(series, series.getEndIndex(),
+                ElliottDegree.PRIMARY);
+        assertThat(fresh).isNotEqualTo(before);
+        assertThat(warmed.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY)).isEqualTo(fresh);
+    }
+
     private List<ElliottSwing> baselineZigZagSwings(BarSeries series, int endIndex) {
         ClosePriceIndicator price = new ClosePriceIndicator(series);
         ATRIndicator atr = new ATRIndicator(series, 1);
@@ -380,6 +502,47 @@ class AdaptiveZigZagSwingDetectorTest {
 
     private static final class UntrackedBarSeries extends BaseBarSeries {
 
+        private int readScopeDepth;
+        private int triggerIndex = -1;
+        private Runnable mutation;
+        private boolean mutationTriggered;
+
+        private void mutateOnUnlockedRead(final int index, final Runnable action) {
+            triggerIndex = index;
+            mutation = action;
+        }
+
+        @Override
+        public Bar getBar(final int index) {
+            if (index == triggerIndex && mutation != null && readScopeDepth == 0) {
+                Runnable action = mutation;
+                mutation = null;
+                mutationTriggered = true;
+                action.run();
+            }
+            return super.getBar(index);
+        }
+
+        @Override
+        public void withReadLock(final Runnable action) {
+            readScopeDepth++;
+            try {
+                action.run();
+            } finally {
+                readScopeDepth--;
+            }
+        }
+
+        @Override
+        public <T> T withReadLock(final Supplier<T> action) {
+            readScopeDepth++;
+            try {
+                return action.get();
+            } finally {
+                readScopeDepth--;
+            }
+        }
+
         private final List<Bar> exposedBars = new ArrayList<>();
 
         private UntrackedBarSeries() {
@@ -392,8 +555,13 @@ class AdaptiveZigZagSwingDetectorTest {
         }
 
         @Override
-        public long getBarHistoryRevision() {
+        public synchronized long getBarHistoryRevision() {
             return -1L;
+        }
+
+        @Override
+        public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+            return new BarSeriesChangeSnapshot(-1L, -1, getRemovedBarsCount() - 1, getMaximumBarCount(), getEndIndex());
         }
 
         @Override

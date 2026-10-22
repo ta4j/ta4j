@@ -13,12 +13,17 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -48,6 +53,28 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
                                 "low": [99.0, 100.0, 101.0],
                                 "close": [104.0, 105.0, 106.0],
                                 "volume": [1000000, 1100000, 1200000]
+                            }]
+                        }
+                    }]
+                }
+            }
+            """;
+
+    private static final String ADJUSTED_JSON_RESPONSE = """
+            {
+                "chart": {
+                    "result": [{
+                        "timestamp": [1609459200, 1609545600],
+                        "indicators": {
+                            "quote": [{
+                                "open": [100.0, 200.0],
+                                "high": [110.0, 220.0],
+                                "low": [90.0, 180.0],
+                                "close": [105.0, 210.0],
+                                "volume": [1000, 2000]
+                            }],
+                            "adjclose": [{
+                                "adjclose": [52.5, 210.0]
                             }]
                         }
                     }]
@@ -89,7 +116,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
             try {
                 // Delete all files in the directory first
                 if (Files.isDirectory(dirPath)) {
-                    try (var stream = Files.list(dirPath)) {
+                    try (Stream<Path> stream = Files.list(dirPath)) {
                         stream.forEach(path -> {
                             try {
                                 if (Files.isDirectory(path)) {
@@ -166,6 +193,31 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         assertEquals(3, series.getBarCount(), "Should have 3 bars");
         assertEquals("AAPL", series.getName(), "Series name should match ticker");
         assertTrue(series.getBar(0).getClosePrice().doubleValue() > 0, "Close price should be positive");
+    }
+
+    @Test
+    public void loadsAdjustedPricesWithoutChangingRawPriceBehavior() throws IOException, InterruptedException {
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(ADJUSTED_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+        YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-02T00:00:00Z");
+
+        BarSeries adjusted = dataSource.loadAdjustedSeriesInstance("AAPL",
+                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries raw = dataSource.loadSeriesInstance("AAPL",
+                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+
+        assertEquals(50.0, adjusted.getBar(0).getOpenPrice().doubleValue(), 0.000001);
+        assertEquals(55.0, adjusted.getBar(0).getHighPrice().doubleValue(), 0.000001);
+        assertEquals(45.0, adjusted.getBar(0).getLowPrice().doubleValue(), 0.000001);
+        assertEquals(52.5, adjusted.getBar(0).getClosePrice().doubleValue(), 0.000001);
+        assertEquals(1000.0, adjusted.getBar(0).getVolume().doubleValue(), 0.000001);
+        assertEquals(100.0, raw.getBar(0).getOpenPrice().doubleValue(), 0.000001);
+        assertEquals(105.0, raw.getBar(0).getClosePrice().doubleValue(), 0.000001);
     }
 
     @Test
@@ -878,7 +930,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         // Locate the written cache file for the dashed ticker
         Path cacheDir = Paths.get(AbstractHttpBarSeriesDataSource.DEFAULT_RESPONSE_CACHE_DIR);
         List<Path> cacheFiles;
-        try (var stream = Files.list(cacheDir)) {
+        try (Stream<Path> stream = Files.list(cacheDir)) {
             cacheFiles = stream
                     .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-"))
                     .toList();
@@ -1443,7 +1495,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
 
     @Test
     public void testDeleteCacheFilesWithNonExistentDirectory() throws IOException {
-        String cacheDir = "temp/non-existent-cache-dir";
+        String cacheDir = "temp/yahoo-non-existent-cache-dir";
         Path cacheDirPath = Paths.get(cacheDir);
         try {
             YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(cacheDir);
@@ -1453,5 +1505,229 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
             // Clean up: delete the directory if it was created by the constructor
             deleteDirectory(cacheDirPath);
         }
+    }
+
+    @Test
+    public void testPathTraversalInNotesIsSanitized() throws Exception {
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        String customCacheDir = "temp/yahoo-path-traversal-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2023-01-01T00:00:00Z");
+            Instant end = Instant.parse("2023-01-10T00:00:00Z");
+
+            // Pass notes with path traversal characters
+            BarSeries series = dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end,
+                    "../../path_traversal_note");
+
+            assertNotNull(series, "Series should load successfully");
+            // Verify that cached file resides strictly inside customCachePath
+            try (Stream<Path> files = Files.list(customCachePath)) {
+                List<Path> cachedFiles = files.toList();
+                assertFalse(cachedFiles.isEmpty(), "Cache file should be created");
+                for (Path file : cachedFiles) {
+                    assertTrue(file.normalize().toAbsolutePath().startsWith(customCachePath),
+                            "Cache file path must remain strictly inside cache directory");
+                    assertFalse(file.getFileName().toString().contains(".."),
+                            "Cache file name must not contain path traversal sequence '..'");
+                    assertTrue(file.getFileName().toString().endsWith("_%2E%2E%2F%2E%2E%2Fpath_traversal_note.json"),
+                            "Notes must be percent-encoded into the cache file name");
+                }
+            }
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    @Test
+    public void testDistinctNotesNeverShareCacheFile() throws Exception {
+        HttpClientWrapper mockClient = mockClientReturning(VALID_JSON_RESPONSE);
+        String customCacheDir = "temp/yahoo-distinct-notes-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        // A character-replacing sanitizer would map several of these onto one file
+        // name (e.g. "run/a" and "run a"); the case variants would also share one
+        // file on case-insensitive file systems
+        List<String> notes = List.of("run_a", "run/a", "run?a", "run\\a", "run a", "run.a", "run%2Fa", "Run_a", "run_A",
+                "run_\u00e4", "run_\u00e5");
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2023-01-01T00:00:00Z");
+            Instant end = Instant.parse("2023-01-10T00:00:00Z");
+
+            for (String note : notes) {
+                assertNotNull(
+                        dataSource.loadSeriesInstance("AAPL",
+                                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, note),
+                        "Series should load for notes '" + note + "'");
+            }
+            // Every note missed the cache: none was served from another note's file
+            verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+            try (Stream<Path> files = Files.list(customCachePath)) {
+                List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
+                assertEquals(notes.size(), fileNames.size(), "Each distinct note must get its own cache file");
+                assertEquals(notes.size(),
+                        fileNames.stream().map(name -> name.toLowerCase(Locale.ROOT)).distinct().count(),
+                        "Cache file names must differ even when compared case-insensitively");
+            }
+
+            // Repeating a request reads its own cache file instead of fetching again
+            for (String note : notes) {
+                assertNotNull(
+                        dataSource.loadSeriesInstance("AAPL",
+                                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, note),
+                        "Series should load from cache for notes '" + note + "'");
+            }
+            verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    @Test
+    public void testNotesArePercentEncodedIntoCacheFileName() throws Exception {
+        HttpClientWrapper mockClient = mockClientReturning(VALID_JSON_RESPONSE);
+        String customCacheDir = "temp/yahoo-encoded-notes-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2023-01-01T00:00:00Z");
+            Instant end = Instant.parse("2023-01-10T00:00:00Z");
+
+            assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, "Run 1/\u00e4.json%"));
+
+            try (Stream<Path> files = Files.list(customCachePath)) {
+                List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
+                assertEquals(1, fileNames.size(), "A single cache file should be created");
+                assertTrue(fileNames.get(0).endsWith("_%52un%201%2F%C3%A4%2Ejson%25.json"),
+                        "Only lowercase letters, digits, '-' and '_' stay readable: " + fileNames.get(0));
+            }
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    @Test
+    public void testBlankNotesAddNoSuffixToCacheFileName() throws Exception {
+        HttpClientWrapper mockClient = mockClientReturning(VALID_JSON_RESPONSE);
+        String customCacheDir = "temp/yahoo-blank-notes-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2023-01-01T00:00:00Z");
+            Instant end = Instant.parse("2023-01-10T00:00:00Z");
+
+            assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, null));
+            assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, "   "));
+
+            verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+            try (Stream<Path> files = Files.list(customCachePath)) {
+                List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
+                assertEquals(1, fileNames.size(), "Null and blank notes must share the notes-free cache file");
+                assertTrue(fileNames.get(0).matches("YahooFinance-AAPL-PT24H-\\d+-\\d+\\.json"),
+                        "Notes-free cache file must have no notes suffix: " + fileNames.get(0));
+            }
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    @Test
+    public void testSurroundingWhitespaceInNotesIsIgnored() throws Exception {
+        HttpClientWrapper mockClient = mockClientReturning(VALID_JSON_RESPONSE);
+        String customCacheDir = "temp/yahoo-trimmed-notes-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2023-01-01T00:00:00Z");
+            Instant end = Instant.parse("2023-01-10T00:00:00Z");
+
+            assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, "  run  "));
+            assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, "run"));
+
+            verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+            try (Stream<Path> files = Files.list(customCachePath)) {
+                List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
+                assertEquals(1, fileNames.size(), "Padded and trimmed notes must share one cache file");
+                assertTrue(fileNames.get(0).endsWith("_run.json"), "Unexpected cache file " + fileNames.get(0));
+            }
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    @Test
+    public void testLongNotesKeepCacheFileNamesBoundedAndDistinct() throws Exception {
+        HttpClientWrapper mockClient = mockClientReturning(VALID_JSON_RESPONSE);
+        Path customCachePath = Files.createTempDirectory("yahoo-long-cache-notes-");
+        Instant start = Instant.parse("2023-01-01T00:00:00Z");
+        Instant end = Instant.parse("2023-01-10T00:00:00Z");
+        int notesBudget = 255
+                - (getCachePrefix() + "AAPL-PT24H-" + start.getEpochSecond() + "-" + end.getEpochSecond() + "_.json")
+                        .length();
+        String boundaryNote = "a".repeat(notesBudget);
+        String uppercaseNote = "A".repeat(69);
+        String digest = HexFormat.of()
+                .withUpperCase()
+                .formatHex(MessageDigest.getInstance("SHA-256").digest(uppercaseNote.getBytes(StandardCharsets.UTF_8)));
+        List<String> notes = List.of(boundaryNote, boundaryNote + "a", uppercaseNote, "\u00e4".repeat(100),
+                "A".repeat(4096), "A".repeat(4095) + "B", "../\u00e4/".repeat(100),
+                "%sha256-" + digest.toLowerCase(Locale.ROOT));
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCachePath.toString());
+            for (int pass = 0; pass < 2; pass++) {
+                for (String note : notes) {
+                    assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                            YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, note));
+                }
+            }
+            verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+            try (Stream<Path> files = Files.list(customCachePath)) {
+                List<Path> cacheFiles = files.toList();
+                List<String> fileNames = cacheFiles.stream().map(file -> file.getFileName().toString()).toList();
+                assertEquals(notes.size(), fileNames.size(), "Every note must have a reusable cache file");
+                assertEquals(notes.size(),
+                        fileNames.stream().map(name -> name.toLowerCase(Locale.ROOT)).distinct().count(),
+                        "Digest keys and literal digest-shaped notes must remain distinct");
+                assertTrue(fileNames.stream().anyMatch(name -> name.endsWith("_" + boundaryNote + ".json")),
+                        "A note that exactly fits the filename budget must keep its readable encoding");
+                assertTrue(fileNames.stream().anyMatch(name -> name.endsWith("_%sha256-" + digest + ".json")),
+                        "The full note must determine the SHA-256 key");
+                for (Path file : cacheFiles) {
+                    assertEquals(customCachePath, file.getParent());
+                    assertTrue(file.getFileName().toString().getBytes(StandardCharsets.UTF_8).length <= 255,
+                            "Cache file must fit the filesystem component limit: " + file);
+                    assertNotNull(dataSource.loadSeries(file.toString()), "Digest-key filenames must remain loadable");
+                }
+            }
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    private static HttpClientWrapper mockClientReturning(String body) throws IOException, InterruptedException {
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(body);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+        return mockClient;
     }
 }

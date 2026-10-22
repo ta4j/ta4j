@@ -24,6 +24,10 @@ import org.ta4j.core.num.NumFactory;
  * noise is diagonal in position and velocity, and measurement noise applies to
  * the observed position. Invalid source or noise values make only that index
  * unavailable; the last usable state remains available for later recovery.
+ * Before the first usable observation, the state remains uninitialized. The
+ * first usable observation seeds position at the measurement and velocity at
+ * zero, using the normal initial covariance update even after an unavailable
+ * prefix.
  *
  * <p>
  * State is cached per index, so late, reverse, and random historical reads do
@@ -203,8 +207,9 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
                     return initialState(measurement, processNoise, measurementNoise);
                 }
                 NumFactory numFactory = getBarSeries().numFactory();
+                // No observation has initialized this placeholder yet.
                 return new State(numFactory.zero(), numFactory.zero(), numFactory.one(), numFactory.zero(),
-                        numFactory.one(), processNoise, measurementNoise, 0, true, false);
+                        numFactory.one(), processNoise, measurementNoise, 0, false, false);
             }
 
             State previous = super.getValue(index - 1);

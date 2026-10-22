@@ -12,7 +12,9 @@ import org.ta4j.core.num.Num;
  * Position duration criterion.
  *
  * <p>
- * Returns the summary statistic of position durations.
+ * Returns the summary statistic of position durations. For a trading record
+ * only positions closed by the record's logical end are included; later exits
+ * are still open at that end.
  *
  * @since 0.22.2
  */
@@ -54,9 +56,10 @@ public class PositionDurationCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        int endIndex = tradingRecord.getEndIndex(series);
         var durations = tradingRecord.getPositions()
                 .stream()
-                .filter(Position::isClosed)
+                .filter(position -> position.isClosed() && position.getExit().getIndex() <= endIndex)
                 .map(position -> calculate(series, position))
                 .toArray(Num[]::new);
         return statistics.calculate(series.numFactory(), durations);

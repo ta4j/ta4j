@@ -132,7 +132,7 @@ public record WeightedValue<T>(T value, Num weight) {
 
     private static void validateWeight(Num weight) {
         Objects.requireNonNull(weight, "weight");
-        if (Num.isNaNOrNull(weight) || Double.isNaN(weight.doubleValue()) || Double.isInfinite(weight.doubleValue())) {
+        if (!Num.isFinite(weight)) {
             throw new IllegalArgumentException("weight must be finite");
         }
     }

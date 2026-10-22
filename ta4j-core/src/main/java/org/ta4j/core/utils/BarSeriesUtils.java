@@ -234,10 +234,22 @@ public final class BarSeriesUtils {
      * @since 0.22.2
      */
     public static Num deltaYears(BarSeries series, int previousIndex, int currentIndex) {
-        var endPrev = series.getBar(previousIndex).getEndTime();
-        var endNow = series.getBar(currentIndex).getEndTime();
-        var seconds = Math.max(0, Duration.between(endPrev, endNow).getSeconds());
-        var numFactory = series.numFactory();
+        return deltaYears(series.getBar(previousIndex).getEndTime(), series.getBar(currentIndex).getEndTime(),
+                series.numFactory());
+    }
+
+    /**
+     * Computes the elapsed time between two bar end times in years, for callers
+     * that captured the times instead of reading them from a live series.
+     *
+     * @param previousEndTime the earlier bar end time
+     * @param currentEndTime  the later bar end time
+     * @param numFactory      the factory for the result
+     * @return the elapsed time in years, clamped to zero for non-positive deltas
+     * @since 0.25.1
+     */
+    public static Num deltaYears(Instant previousEndTime, Instant currentEndTime, NumFactory numFactory) {
+        long seconds = Duration.between(previousEndTime, currentEndTime).getSeconds();
         return seconds <= 0 ? numFactory.zero()
                 : numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
     }

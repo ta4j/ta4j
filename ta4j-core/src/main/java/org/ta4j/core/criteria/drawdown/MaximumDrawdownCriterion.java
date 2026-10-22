@@ -6,6 +6,7 @@ package org.ta4j.core.criteria.drawdown;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -83,11 +84,10 @@ public class MaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriteri
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (position == null || position.getEntry() == null || position.getExit() == null) {
+        if (position == null || position.getEntry() == null || position.isOpened()) {
             return series.numFactory().zero();
         }
-        CashFlow cashFlow = new CashFlow(series, position, equityCurveMode);
-        return Drawdown.amount(series, null, cashFlow);
+        return calculate(series, new BaseTradingRecord(position));
     }
 
     @Override

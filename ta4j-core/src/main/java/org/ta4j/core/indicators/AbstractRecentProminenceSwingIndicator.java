@@ -29,7 +29,7 @@ abstract class AbstractRecentProminenceSwingIndicator extends AbstractRecentSwin
     protected AbstractRecentProminenceSwingIndicator(final Indicator<Num> priceIndicator,
             final Indicator<Num> minimumProminence, final ProminenceSwingConfig config,
             final FractalDetectionHelper.Direction direction) {
-        super(requirePrice(priceIndicator), unstableBars(priceIndicator, minimumProminence, config));
+        super(requirePrice(priceIndicator), unstableBars(priceIndicator, minimumProminence, config), minimumProminence);
         this.priceIndicator = priceIndicator;
         this.minimumProminence = Objects.requireNonNull(minimumProminence, "minimumProminence");
         IndicatorUtils.requireSameSeries(priceIndicator, minimumProminence);

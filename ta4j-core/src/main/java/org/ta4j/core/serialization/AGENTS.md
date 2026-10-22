@@ -32,6 +32,7 @@ Apply this guide when changing component descriptor schemas, JSON serialization,
 - Prefer `transient` on derived indicator caches instead of adding fields to ignore lists.
 - Avoid modifying `IGNORED_CHILD_INDICATORS` / `IGNORED_CHILD_FIELDS` unless there is no structural alternative.
 - If an ignore-list entry is unavoidable, document it explicitly with a `TODO` describing how to remove it.
+- Descriptor `type` strings are untrusted: resolve them only through `ComponentDescriptor.resolveSubtype` (never single-argument `Class.forName`), and report a missing class and a wrong-kind class with the same message.
 - Keep legacy input support (`children`, `baseIndicators`) unless intentionally introducing a breaking change.
 
 ## Refactoring checklist

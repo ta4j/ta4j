@@ -4,12 +4,12 @@
 package org.ta4j.core.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.google.gson.JsonParseException;
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
@@ -412,5 +412,21 @@ public class ComponentSerializationTest {
         assertThat(parsed.getType()).isEqualTo("SMAIndicator");
         assertThat(parsed.getLabel()).isNull();
         assertThat(parsed.getComponents()).hasSize(1);
+    }
+
+    @Test
+    public void typeClassResolvesSimpleNamesInStandardPackagesOnly() {
+        assertThat(ComponentDescriptor.typeOnly("BaseStrategy").getTypeClass())
+                .isEqualTo(org.ta4j.core.BaseStrategy.class);
+        assertThat(ComponentDescriptor.typeOnly("AndRule").getTypeClass()).isEqualTo(org.ta4j.core.rules.AndRule.class);
+        assertThat(ComponentDescriptor.typeOnly(String.class.getName()).getTypeClass()).isEqualTo(String.class);
+        assertThat(ComponentDescriptor.typeOnly("NoSuchComponent").getTypeClass()).isNull();
+    }
+
+    @Test
+    public void resolveSubtypeHandlesUnresolvableClassesAndLinkageErrorsGracefully() {
+        assertThat(ComponentDescriptor.resolveSubtype("NonExistentClass", Object.class)).isNull();
+        assertThat(ComponentDescriptor.resolveSubtype("org.ta4j.core.serialization.MissingClass", Object.class))
+                .isNull();
     }
 }

@@ -3,13 +3,13 @@
  */
 package org.ta4j.core.analysis.cost;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.num.DoubleNum;
@@ -19,7 +19,7 @@ public class LinearBorrowingCostModelTest {
 
     private CostModel borrowingModel;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         borrowingModel = new LinearBorrowingCostModel(0.01);
     }
@@ -79,6 +79,14 @@ public class LinearBorrowingCostModelTest {
 
         assertNumEquals(costsFromModel, costsFromPosition);
         assertNumEquals(costsFromModel, DoubleNum.valueOf(4));
+    }
+
+    @Test
+    public void entryValueAndIndexDistanceIgnoreChangedExitMark() {
+        Position position = new Position(Trade.sellAt(10, DoubleNum.valueOf(100), DoubleNum.valueOf(2)),
+                Trade.buyAt(14, DoubleNum.valueOf(250), DoubleNum.valueOf(2)), new ZeroCostModel(), borrowingModel);
+        assertNumEquals(8, position.getHoldingCost(14));
+        assertNumEquals(8, position.getHoldingCost());
     }
 
     @Test

@@ -4,7 +4,7 @@
 package org.ta4j.core.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -12,8 +12,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -63,6 +64,80 @@ import org.ta4j.core.rules.XorRule;
  * </ul>
  */
 public class RuleSerializationTest {
+
+    @Test
+    public void fromDescriptorWrapsMissingConstructorDependency() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeRule"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class);
+        }
+    }
+
+    @Test
+    public void fromDescriptorKeepsMissingDependencyCauseOfNestedRule() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeNestedRule"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class)
+                    .hasMessageContaining(MissingDependencyFixture.BrokenRule.class.getName());
+        }
+    }
+
+    @Test
+    public void fromDescriptorKeepsMissingDependencyCauseOfTwiceNestedRule() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeTwiceNestedRule"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class)
+                    .hasMessageContaining(MissingDependencyFixture.BrokenRule.class.getName());
+        }
+    }
+
+    @Test
+    public void fromDescriptorKeepsMissingDependencyCauseOfChainLinkRule() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeChainLinkRule"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class)
+                    .hasMessageContaining(MissingDependencyFixture.BrokenRule.class.getName());
+        }
+    }
+
+    @Test
+    public void fromDescriptorKeepsMissingDependencyCauseOfNestedIndicator() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            RuntimeException exception = assertThrows(RuntimeException.class,
+                    () -> fixture.invoke("deserializeNestedIndicatorRule"));
+            assertThat(exception.getClass().getName()).isEqualTo(IndicatorSerializationException.class.getName());
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class);
+        }
+    }
+
+    @Test
+    public void fromDescriptorStillReportsConstructorMismatchOfNestedRule() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("NotRule")
+                .addComponent(ComponentDescriptor.typeOnly("OverIndicatorRule"))
+                .build();
+
+        RuleSerializationException exception = assertThrows(RuleSerializationException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessageContaining("No compatible constructor").hasNoCause();
+    }
+
+    @Test
+    public void fromDescriptorStillRebuildsNestedRule() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        ComponentDescriptor descriptor = RuleSerialization.describe(new NotRule(BooleanRule.TRUE));
+
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(restored).isInstanceOf(NotRule.class);
+        assertThat(restored.isSatisfied(0)).isFalse();
+    }
 
     // ==================== Nested Components Tests ====================
 
@@ -823,6 +898,36 @@ public class RuleSerializationTest {
     }
 
     @Test
+    public void fromDescriptorRejectsNonRuleTypeLikeMissingTypeWithoutInitializingIt() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String probeType = StaticInitializerProbe.class.getName();
+
+        IllegalArgumentException nonRule = assertThrows(IllegalArgumentException.class,
+                () -> RuleSerialization.fromDescriptor(series, ComponentDescriptor.typeOnly(probeType)));
+        IllegalArgumentException missing = assertThrows(IllegalArgumentException.class, () -> RuleSerialization
+                .fromDescriptor(series, ComponentDescriptor.typeOnly("com.example.MissingRule")));
+
+        assertThat(nonRule).hasMessage("Unknown rule type: " + probeType).hasNoCause();
+        assertThat(missing).hasMessage("Unknown rule type: com.example.MissingRule").hasNoCause();
+        assertThat(STATIC_INITIALIZER_PROBE_RUNS).hasValue(0);
+    }
+
+    @Test
+    public void fromDescriptorDecodesEnumsFromDeclaredTypeWithoutLoadingEnumTypeMetadata() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("WaitForRule")
+                .withParameters(Map.of("tradeType", TradeType.SELL.name(), "numberOfBars", 1, "__enumType_tradeType",
+                        StaticInitializerProbe.class.getName()))
+                .build();
+
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(RuleSerialization.describe(restored).getParameters()).containsEntry("tradeType", "SELL");
+        assertThat(STATIC_INITIALIZER_PROBE_RUNS).hasValue(0);
+    }
+
+    @Test
     public void fromDescriptorRejectsFractionalIntegerParameter() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
         ComponentDescriptor descriptor = ComponentDescriptor.builder()
@@ -863,6 +968,19 @@ public class RuleSerializationTest {
         assertThat(descriptor.getComponents().get(0).getType()).isEqualTo("ClosePriceIndicator");
         assertThat(restored).isInstanceOf(OverloadedIndicatorRule.class);
         assertThat(((OverloadedIndicatorRule) restored).getConstructorUsed()).isEqualTo("generic");
+    }
+
+    private static final AtomicInteger STATIC_INITIALIZER_PROBE_RUNS = new AtomicInteger();
+
+    /** Not a rule or enum; descriptor resolution must never initialize it. */
+    private static final class StaticInitializerProbe {
+
+        static {
+            STATIC_INITIALIZER_PROBE_RUNS.incrementAndGet();
+        }
+
+        private StaticInitializerProbe() {
+        }
     }
 
     private static final class ConstructorPreferenceRule extends AbstractRule {

@@ -48,11 +48,15 @@ public class ATRIndicator extends CachedIndicator<Num> {
     }
 
     private ATRIndicator(Config config) {
-        super(config.trueRangeIndicator());
+        this(config, new MMAIndicator(config.trueRangeIndicator(), config.barCount()));
+    }
+
+    private ATRIndicator(Config config, MMAIndicator averageTrueRangeIndicator) {
+        super(averageTrueRangeIndicator);
         this.tr = config.trueRangeIndicator();
         this.trueRangeUnstableBars = config.trueRangeUnstableBars();
         this.barCount = config.barCount();
-        this.averageTrueRangeIndicator = new MMAIndicator(config.trueRangeIndicator(), config.barCount());
+        this.averageTrueRangeIndicator = averageTrueRangeIndicator;
     }
 
     private static Config validatedConfig(TRIndicator tr, int barCount) {
@@ -71,21 +75,6 @@ public class ATRIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return trueRangeUnstableBars + getBarCount();
-    }
-
-    /**
-     * The average true range re-anchors its whole chain on a head advance (see
-     * {@link AbstractEMAIndicator#getValue(int)}'s retained-head reset), so every
-     * cached value in this wrapper was derived from a recurrence that no longer
-     * exists. The re-anchored chain is recomputable from the retained window, but
-     * keeping any pre-advance value would combine the severed chain with the
-     * rebuilt one.
-     *
-     * @return {@code true}
-     */
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     /** @return a true range indicator for this indicator's bar series */

@@ -3,14 +3,12 @@
  */
 package org.ta4j.core.analysis;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * A {@link PerformanceIndicator} implementation that computes the cumulative
@@ -29,8 +27,10 @@ import org.ta4j.core.num.NumFactory;
 public final class CumulativePnL implements PerformanceIndicator {
 
     private final BarSeries barSeries;
-    private final List<Num> values;
     private final EquityCurveMode equityCurveMode;
+    /** The window captured when the curve was materialized. */
+    private final AnalysisPositionSupport.Window window;
+    private final OffsetNumBuffer values;
 
     /**
      * Constructor for a trading record with a specified final index.
@@ -44,12 +44,27 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this.barSeries = snapshotSeries(barSeries);
+        this(barSeries, tradingRecord, finalIndex, equityCurveMode, openPositionHandling, false, false);
+    }
+
+    private CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int requestedFinalIndex,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling, boolean useRecordEnd,
+            boolean useSeriesEnd) {
+        this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = this.barSeries.getEndIndex();
-        int size = Math.max(seriesEnd + 1, 0);
-        this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().zero()));
-        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
+        TradingRecord record = Objects.requireNonNull(tradingRecord);
+        OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
+        AnalysisPositionSupport.Curve curve = AnalysisPositionSupport.materialize(this, barSeries, record, 0,
+                requestedFinalIndex, useRecordEnd, useSeriesEnd, true, handling, (captured, positions, costs) -> {
+                    Num zero = this.barSeries.numFactory().zero();
+                    OffsetNumBuffer buffer = AnalysisPositionSupport.buffer(captured, zero, zero);
+                    for (Position position : positions) {
+                        calculatePosition(position, captured.finalIndex(), captured, buffer, costs.get(position));
+                    }
+                    return new AnalysisPositionSupport.Curve(captured, buffer);
+                });
+        this.window = curve.window();
+        this.values = curve.values();
     }
 
     /**
@@ -61,7 +76,8 @@ public final class CumulativePnL implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CumulativePnL(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
-        this(barSeries, new BaseTradingRecord(position), barSeries.getEndIndex(), equityCurveMode);
+        this(barSeries, new BaseTradingRecord(position), 0, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET, false,
+                true);
     }
 
     /**
@@ -97,8 +113,8 @@ public final class CumulativePnL implements PerformanceIndicator {
      * @since 0.19
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
-                OpenPositionHandling.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, 0, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET, true,
+                false);
     }
 
     /**
@@ -110,8 +126,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode,
-                OpenPositionHandling.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, 0, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET, true, false);
     }
 
     /**
@@ -125,7 +140,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode, openPositionHandling);
+        this(barSeries, tradingRecord, 0, equityCurveMode, openPositionHandling, true, false);
     }
 
     /**
@@ -149,8 +164,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
-                openPositionHandling);
+        this(barSeries, tradingRecord, 0, EquityCurveMode.MARK_TO_MARKET, openPositionHandling, true, false);
     }
 
     /**
@@ -158,62 +172,89 @@ public final class CumulativePnL implements PerformanceIndicator {
      *
      * @param position   the position
      * @param finalIndex the final index to calculate up to
+     * @throws IllegalStateException if a bar this curve was materialized from was
+     *                               evicted, replaced or updated since
      * @since 0.22.2
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
+        AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
+                finalIndex, window, true);
+        if (priced != null) {
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
+                    staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+        }
+    }
+
+    private void calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
+            OffsetNumBuffer buffer, Num holdingCost) {
         Trade entry = position.getEntry();
         if (entry == null) {
             return;
         }
-        int seriesEnd = barSeries.getEndIndex();
+        int lastCapturedIndex = captured.bufferEndIndex();
         int entryIndex = entry.getIndex();
-        if (entryIndex > finalIndex || entryIndex > seriesEnd) {
+        if (entryIndex > finalIndex || entryIndex > lastCapturedIndex) {
             return;
         }
-        int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
-        int seriesBegin = barSeries.getBeginIndex();
-        if (endIndex < seriesBegin) {
-            return;
-        }
-
-        NumFactory numFactory = barSeries.numFactory();
+        int endIndex = determineEndIndex(position, finalIndex, lastCapturedIndex);
+        int seriesBegin = captured.beginIndex();
         boolean isLong = entry.isBuy();
         Num netEntryPrice = entry.getNetPrice();
+        if (endIndex < seriesBegin) {
+            if (!captured.carriesBeforeWindow(position)) {
+                return;
+            }
+            Trade exit = position.getExit();
+            Num netExit = addCost(exit.getNetPrice(), holdingCost, isLong);
+            Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
+            buffer.addRange(seriesBegin, lastCapturedIndex, deltaExit);
+            buffer.addBaseline(deltaExit);
+            return;
+        }
 
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
-            Num averageCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
-            int start = Math.max(entryIndex + 1, seriesBegin + 1);
-            for (int i = start; i < endIndex; i++) {
-                Num close = barSeries.getBar(i).getClosePrice();
-                Num netIntermediate = addCost(close, averageCostPerPeriod, isLong);
-                Num delta = isLong ? netIntermediate.minus(netEntryPrice) : netEntryPrice.minus(netIntermediate);
-                addValue(i, delta);
-            }
-            Num exitRaw = resolveExitPrice(position, endIndex, barSeries);
-            Num netExit = addCost(exitRaw, averageCostPerPeriod, isLong);
-            Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
-            addToRange(endIndex, seriesEnd, deltaExit);
+            Num basis = AnalysisPositionSupport.valuationBasis(this, barSeries, position, holdingCost, endIndex,
+                    seriesBegin);
+            Num netExit = AnalysisPositionSupport.markToMarket(this, barSeries, position, holdingCost, endIndex,
+                    seriesBegin, endIndex - 1, (index, netPrice, previousPrice) -> buffer.add(index,
+                            isLong ? netPrice.minus(basis) : basis.minus(netPrice)))
+                    .netPrice();
+            Num deltaExit = isLong ? netExit.minus(basis) : basis.minus(netExit);
+            buffer.addRange(endIndex, captured.bufferEndIndex(), deltaExit);
             return;
         }
 
         Trade exit = position.getExit();
         if (exit != null && endIndex >= exit.getIndex()) {
-            Num holdingCost = position.getHoldingCost(endIndex);
             Num netExit = addCost(exit.getNetPrice(), holdingCost, isLong);
             Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
-            addToRange(exit.getIndex(), seriesEnd, deltaExit);
+            buffer.addRange(exit.getIndex(), captured.bufferEndIndex(), deltaExit);
         }
     }
 
     /**
      * {@inheritDoc}
+     * <p>
+     * Returns the cumulative PnL at the given absolute bar index. Indices outside
+     * the window materialized by the underlying series resolve to the neutral value
+     * zero.
      *
      * @since 0.19
      */
     @Override
     public Num getValue(int index) {
         return values.get(index);
+    }
+
+    /**
+     * @return values over the captured materialized window, independent of later
+     *         changes to the borrowed series bounds
+     * @since 0.25.1
+     */
+    @Override
+    public Stream<Num> stream() {
+        return values.stream();
     }
 
     /**
@@ -232,18 +273,50 @@ public final class CumulativePnL implements PerformanceIndicator {
      * @since 0.19
      */
     @Override
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract.")
     public BarSeries getBarSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
     }
 
     /**
-     * Returns the number of bars in the underlying series.
+     * {@inheritDoc}
      *
-     * @return the bar count
+     * @since 0.25.1
+     */
+    @Override
+    public int getBeginIndex() {
+        return window.beginIndex();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.25.1
+     */
+    @Override
+    public int getEndIndex() {
+        return window.endIndex();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.25.1
+     */
+    @Override
+    public Num getBaselineValue() {
+        return values.baseline();
+    }
+
+    /**
+     * Returns the number of values captured in the materialized window, unaffected
+     * by later changes to the borrowed series.
+     *
+     * @return the materialized value count
      * @since 0.19
      */
     public int getSize() {
-        return barSeries.getBarCount();
+        return values.size();
     }
 
     /**
@@ -253,36 +326,6 @@ public final class CumulativePnL implements PerformanceIndicator {
     @Override
     public EquityCurveMode getEquityCurveMode() {
         return equityCurveMode;
-    }
-
-    private void addValue(int index, Num delta) {
-        if (index < 0 || index >= values.size()) {
-            return;
-        }
-        values.set(index, values.get(index).plus(delta));
-    }
-
-    private void addToRange(int startIndex, int endIndex, Num delta) {
-        if (values.isEmpty()) {
-            return;
-        }
-        int start = Math.max(0, startIndex);
-        int end = Math.min(endIndex, values.size() - 1);
-        if (start > end) {
-            return;
-        }
-        for (int i = start; i <= end; i++) {
-            values.set(i, values.get(i).plus(delta));
-        }
-    }
-
-    private static BarSeries snapshotSeries(final BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries);
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
     }
 
 }

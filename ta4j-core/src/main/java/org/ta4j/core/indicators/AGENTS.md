@@ -29,7 +29,10 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 - Keep logical source indicators serializable; mark derived/cached helper fields (`EMA` stacks, internal arithmetic helpers) as `transient` when they are reconstruction artifacts.
 - Thread-safety and `transient` are orthogonal: only reconstruction-only runtime helpers should be `transient`.
 - When composing indicators, avoid keeping fields that are only constructor-local intermediates and are not reused outside construction.
-- Avoid look-ahead bias: result at index `i` may only depend on data from `getBeginIndex()` through `i`.
+- Avoid look-ahead bias: result at index `i` may never depend on data after `i`. Inputs read at
+  calculation time must come from `getBeginIndex()` through `i`; indicators with unbounded
+  historical dependencies (`hasRecursiveDependencies()`) may additionally carry state they
+  computed from bars a bounded series has since removed.
 
 ## Numerical safety
 
@@ -73,20 +76,38 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   `Integer.MAX_VALUE` for such indicators: discarding the whole cache on
   head advance would restore an O(`maximumBarCount`) rebuild after every
   append to a full bounded series.
-- Conditionally recursive indicators (recursion only along special
-  stretches, e.g. flat windows or equal-basis Klinger trend stretches)
+- Unbounded-history indicators continue their recurrence across head
+  advances: retained cached values are full-history values and the next
+  appended bar extends the chain from its cached predecessor, so a moving
+  series matches an unbounded one at a per-bar cost independent of
+  `maximumBarCount` (#1666). Numeric floors raised by sources (for example
+  `TRIndicator` evicting its first retained entry) do not propagate into
+  them, because the chain already consumed those values while their inputs
+  existed; only a source that explicitly overrides
+  `requiresFullCacheInvalidationAfterHeadAdvance()` breaks the chain. Do not
+  add full-reset overrides to smoothing leaves (`AbstractEMAIndicator`,
+  `ATRIndicator`, `SMMAIndicator`, `WildersMAIndicator`) or to consumers of
+  them. A recursion re-seeds at the retained head only when no cached
+  predecessor exists, and `AbstractEMAIndicator` counts warm-up from that seed.
+  `CachedIndicator` keeps a recursive indicator's former terminal value when a
+  bar is appended, and applies the same rule to dependency-series head
+  advances.
+- A conditional recursion is not itself a reason to reset. Klinger trend
+  direction carries the previous direction along equal-basis stretches; its
+  trend, cumulative measurement, volume force, both ordinary EMAs and outer
+  oscillator continue together. Prime the dependency chain during warm-up
+  before its primitive inputs can leave short windows.
+- Indicators whose contract deliberately reanchors to the retained window
   override `requiresFullCacheInvalidationAfterHeadAdvance()` to return
-  `true`: every value is recomputable from the retained window, so the
-  whole cache is discarded on head advance instead of preserving stale
-  pre-advance results. `StochasticIndicator` follows this policy and
-  extends `RecursiveCachedIndicator` so the inherited prefill rebuilds
-  long flat stretches iteratively after the eviction.
-- Head-advance invalidation must cover every downstream component of a
-  rebaselining chain, not only the recursive core. The Klinger volume
-  oscillator applies `Integer.MAX_VALUE` eviction to the trend direction,
-  cumulative measurement, volume force, both EMAs, and the outer
-  oscillator, because each downstream cache mixes fresh and stale inputs
-  once the cumulative measurement rebaselines.
+  `true`. `StochasticIndicator` follows this policy and extends
+  `RecursiveCachedIndicator` so inherited prefill rebuilds long flat
+  stretches iteratively after eviction. The private stochastic stages in
+  `SchaffTrendCycleIndicator` instead continue their flat-range carry with
+  the MACD and smoothing chain; standalone stochastic semantics are unchanged.
+- An explicit reanchoring source invalidates every downstream component,
+  including otherwise continuing Klinger chains. Keep all actual inputs
+  registered so a reset on either high or low propagates through daily
+  measurement, trend, cumulative measurement and both EMAs.
 - `RecursiveCachedIndicator` opts in by default because its subclasses
   compute each value from its predecessors; recursive subclasses over a
   fixed trailing window, such as `VolumeIndicator` and

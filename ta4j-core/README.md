@@ -24,6 +24,30 @@
 - For live execution, call `shouldEnter(index, tradingRecord)` / `shouldExit(index, tradingRecord)` and keep `tradingRecord` synchronized with broker-confirmed fills.
 - Add an integration guard (for example, one entry per bar index) to avoid duplicate orders when a live candle keeps the same rule state across multiple updates.
 
+## Backtesting a live series
+
+- `BarSeriesManager` and `BacktestExecutor` run on the series you pass, keeping its begin index; they never copy it.
+- A run never trades or prices positions after its window. A signal on the last bar that needs a later bar to fill (for example next-open execution at the end of a walk-forward fold) does not fill, and a position still open at the window end is marked at the last window close or ignored, per the criterion's open-position handling. Walk-forward folds instead always end flat: a position open at a fold's last bar is exited at its close and pays the transaction cost, so fold records can be chained. To end other runs flat the same way, wrap the execution model: `new ExitOnRunEndModel(new TradeOnNextOpenModel())`.
+- A position entered before the analysed window (for example on a rolling series that evicted its entry) is valued at the window's first close by mark-to-market curves, so the window's results cover only what happened inside it.
+- A backtest captures the series window when it starts and runs every strategy over exactly that window. It holds no series lock while strategies run, so a live `ConcurrentBarSeries` keeps accepting writes, and bars appended meanwhile are ignored.
+- `BacktestExecutor` and walk-forward runs throw `IllegalStateException` if bars inside the window are replaced, updated in place (including a forming last bar), or evicted by retention before they finish, rather than return results computed from mixed bar revisions. A rolling series with a maximum bar count evicts on every append.
+- Strategies should decide from values at the evaluated index. Whole-series properties such as `getBarCount()` or `Indicator.isStable()` depend on bars after that index and see bars appended during a backtest.
+- For live data, pause writes during the backtest, or build the strategies on a stable copy, for example `series.getSubSeries(series.getBeginIndex(), series.getEndIndex())`, which also leaves out the forming bar.
+- `BarSeries.withReadLock(...)` is for short, bar-only reads. Do not evaluate indicators or strategies inside it: indicator caches take their own locks and then read bars, so that order can deadlock with other readers once a writer is waiting.
+
+## Schaff Trend Cycle on a moving series
+
+Create `SchaffTrendCycleIndicator` once and read it after each appended bar.
+With enough retained bars for the cycle and warm-up, its MACD, stochastic carry
+and smoothing chain continue across head advances: live and retained values
+match an identically fed unbounded instance. At fixed periods, steady append/read
+work does not grow with `maximumBarCount`.
+
+A fresh instance on an already-pruned series seeds from the available history;
+it cannot recover evicted observations. A source that explicitly resets after a
+head advance also resets the composition. Standalone `StochasticIndicator`
+keeps its existing retained-window reset behavior.
+
 ## Trace rule decisions
 
 - To answer "why did this fire?" or "why did this not fire?", enable SLF4J `TRACE` on the relevant `Rule` or `Strategy` logger and run the normal `isSatisfied(...)`, `shouldEnter(...)`, or `shouldExit(...)` call.
@@ -133,3 +157,27 @@ event-synchronization (F1) workflow with a one-line grid/GA/PSO switch.
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html
 - Live trading: https://ta4j.github.io/ta4j-wiki/Live-trading.html
 - Risk/criteria: https://ta4j.github.io/ta4j-wiki/Analysis-Criteria-and-Risk-Metrics.html
+
+## Borrowing costs and valuation
+
+`LinearBorrowingCostModel(feePerPeriod)` charges entry trade value times index
+distance times `feePerPeriod`. A period is one index step, not a calendar day.
+The rate is supplied in those units: timestamps, later marks, weekends and
+holidays do not change the arithmetic. The default applies only to short
+positions; `LONG_ONLY` and `BOTH` are opt-in alternatives. An open position needs
+an observation index. The price/amount overload returns zero because it cannot
+determine the holding duration.
+
+For example, borrowing two assets at an entry price of 100 for four index steps
+at 1% per step costs 8, even if the exit price is 250. A Friday-to-Monday hold
+spanning one index step costs 2 with those same inputs; it does not automatically
+charge for three calendar days. A daily or annual rate must not be substituted
+without choosing the intended time and mark convention. Exchange/instrument
+calendar, mark and rate inputs belong to an explicitly selected holding-cost
+model through the existing `CostModel` seam, rather than a silent change to the
+legacy formula.
+
+Fair-value/NAV marks remain the default and intentionally exclude hypothetical
+exit costs. Accrued borrowing and realized transaction fees are distinct from a
+liquidation estimate. This documentation introduces no liquidation output,
+estimated-exit-fee deduction or default migration.

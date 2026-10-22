@@ -27,8 +27,12 @@ public class SMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public SMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.previousSum = new RunningTotalIndicator(indicator, barCount);
+        this(indicator, barCount, new RunningTotalIndicator(indicator, barCount));
+    }
+
+    private SMAIndicator(Indicator<Num> indicator, int barCount, RunningTotalIndicator previousSum) {
+        super(previousSum);
+        this.previousSum = previousSum;
         this.indicator = indicator;
         this.barCount = barCount;
     }

@@ -5,15 +5,15 @@ package org.ta4j.core.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
@@ -45,12 +45,21 @@ import org.ta4j.core.strategy.named.NamedStrategyFixture;
 
 public class StrategySerializationTest {
 
+    @Test
+    public void fromDescriptorWrapsMissingFactoryMethodDependency() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeStrategy"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class);
+        }
+    }
+
     /**
      * Cleans up static registrations made by test fixtures to prevent interference
      * between test runs, especially when tests execute in parallel or the test
      * suite runs multiple times in the same JVM.
      */
-    @After
+    @AfterEach
     public void tearDown() {
         // Unregister test-specific named strategies that use static initializers
         NamedStrategy.unregisterImplementation(ToggleNamedStrategy.class);
@@ -1255,13 +1264,15 @@ public class StrategySerializationTest {
     }
 
     @Test
-    public void fromDescriptorFailsLoudForTypeThatIsNotAStrategy() {
-        // A resolvable class that does not implement Strategy must fail loudly
-        // instead of silently falling back to BaseStrategy.
+    public void fromDescriptorRejectsNonStrategyTypeLikeMissingTypeWithoutInitializingIt() {
+        // A resolvable class that does not implement Strategy must fail loudly, must
+        // not run its static initializer, and must be indistinguishable from a
+        // missing class so descriptor input cannot probe the classpath.
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        String probeType = StaticInitializerProbe.class.getName();
 
         ComponentDescriptor descriptor = ComponentDescriptor.builder()
-                .withType(String.class.getName())
+                .withType(probeType)
                 .withLabel("TestStrategy")
                 .withParameters(Map.of("unstableBars", 1))
                 .addComponent(ComponentDescriptor.builder()
@@ -1278,7 +1289,37 @@ public class StrategySerializationTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> StrategySerialization.fromDescriptor(series, descriptor));
-        assertThat(exception.getMessage()).contains("Descriptor type does not implement Strategy: java.lang.String");
+        assertThat(exception).hasMessage("Unknown strategy type: " + probeType).hasNoCause();
+        assertThat(STATIC_INITIALIZER_PROBE_RUNS).hasValue(0);
+    }
+
+    @Test
+    public void fromDescriptorRejectsNonRuleEntryTypeLikeMissingTypeWithoutInitializingIt() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        String probeType = StaticInitializerProbe.class.getName();
+
+        IllegalArgumentException nonRule = assertThrows(IllegalArgumentException.class,
+                () -> StrategySerialization.fromDescriptor(series, strategyWithEntryRuleType(probeType)));
+        IllegalArgumentException missing = assertThrows(IllegalArgumentException.class,
+                () -> StrategySerialization.fromDescriptor(series, strategyWithEntryRuleType("com.example.Missing")));
+
+        assertThat(nonRule).hasMessage("Unknown rule type: " + probeType).hasNoCause();
+        assertThat(missing).hasMessage("Unknown rule type: com.example.Missing").hasNoCause();
+        assertThat(STATIC_INITIALIZER_PROBE_RUNS).hasValue(0);
+    }
+
+    private static ComponentDescriptor strategyWithEntryRuleType(String entryRuleType) {
+        return ComponentDescriptor.builder()
+                .withType(BaseStrategy.class.getName())
+                .withLabel("TestStrategy")
+                .withParameters(Map.of("unstableBars", 1))
+                .addComponent(ComponentDescriptor.builder().withType(entryRuleType).withLabel("entry").build())
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("exit")
+                        .withParameters(Map.of("satisfied", false))
+                        .build())
+                .build();
     }
 
     @Test
@@ -1343,6 +1384,23 @@ public class StrategySerializationTest {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> Strategy.fromJson(series, json));
         assertThat(exception.getMessage()).contains("No suitable constructor found for strategy type");
+    }
+
+    private static final AtomicInteger STATIC_INITIALIZER_PROBE_RUNS = new AtomicInteger();
+
+    /**
+     * Neither a strategy nor a rule; descriptor resolution must never initialize
+     * it. The type name deliberately omits "Rule" so rule descriptors reach the
+     * strategy-side rule resolver.
+     */
+    private static final class StaticInitializerProbe {
+
+        static {
+            STATIC_INITIALIZER_PROBE_RUNS.incrementAndGet();
+        }
+
+        private StaticInitializerProbe() {
+        }
     }
 
     private static final class NoSuitableConstructorStrategy extends BaseStrategy {

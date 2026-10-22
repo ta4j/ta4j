@@ -101,11 +101,13 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
         if (series.isEmpty()) {
             return numFactory.zero();
         }
-        var totalDuration = totalTradingDuration(series);
+        int beginIndex = series.getBeginIndex();
+        int endIndex = series.getEndIndex();
+        var totalDuration = durationBetween(series, beginIndex, endIndex);
         if (totalDuration == 0) {
             return numFactory.zero();
         }
-        var positionDuration = positionDuration(series, position);
+        var positionDuration = positionDuration(series, position, beginIndex, endIndex);
         // Calculate the ratio as a rate of return (0-based)
         var ratio = numFactory.numOf(positionDuration).dividedBy(numFactory.numOf(totalDuration));
         // Convert the ratio to the configured representation
@@ -113,12 +115,15 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Calculates how long the strategy stays invested across all positions in the
-     * trading record.
+     * Calculates how long the strategy stays invested across all closed positions
+     * in the trading record, relative to the record's logical window: the record's
+     * explicit start and end clamped to the series. A position closing after the
+     * window's end is still open there and is not counted; time before the window
+     * start is not counted.
      *
      * @param series        the bar series providing the trading period
      * @param tradingRecord the trading record containing the positions to evaluate
-     * @return the percentage of the series duration covered by the record's
+     * @return the percentage of the logical window covered by the record's
      *         positions in the configured return representation format
      */
     @Override
@@ -127,11 +132,20 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
         if (series.isEmpty()) {
             return numFactory.zero();
         }
-        var totalDuration = totalTradingDuration(series);
-        if (totalDuration == 0 || tradingRecord.getPositionCount() == 0) {
+        int beginIndex = tradingRecord.getStartIndex(series);
+        int endIndex = tradingRecord.getEndIndex(series);
+        if (endIndex < beginIndex || tradingRecord.getPositionCount() == 0) {
             return numFactory.zero();
         }
-        var positionDuration = tradingRecord.getPositions().stream().mapToLong(p -> positionDuration(series, p)).sum();
+        var totalDuration = durationBetween(series, beginIndex, endIndex);
+        if (totalDuration == 0) {
+            return numFactory.zero();
+        }
+        var positionDuration = tradingRecord.getPositions()
+                .stream()
+                .filter(p -> p != null && p.isClosed() && p.getExit().getIndex() <= endIndex)
+                .mapToLong(p -> positionDuration(series, p, beginIndex, endIndex))
+                .sum();
         // Calculate the ratio as a rate of return (0-based)
         var ratio = numFactory.numOf(positionDuration).dividedBy(numFactory.numOf(totalDuration));
         // Convert the ratio to the configured representation
@@ -155,19 +169,23 @@ public class InPositionPercentageCriterion extends AbstractAnalysisCriterion {
         return criterionValue1.isLessThan(criterionValue2);
     }
 
-    private static long totalTradingDuration(BarSeries series) {
-        var start = series.getFirstBar().getBeginTime();
-        var end = series.getLastBar().getEndTime();
-        return ChronoUnit.NANOS.between(start, end);
+    private static long durationBetween(BarSeries series, int beginIndex, int endIndex) {
+        return ChronoUnit.NANOS.between(series.getBar(beginIndex).getBeginTime(), series.getBar(endIndex).getEndTime());
     }
 
-    private static long positionDuration(BarSeries series, Position position) {
+    /**
+     * Returns the time the position covers within {@code [beginIndex, endIndex]};
+     * an open position is covered through {@code endIndex}.
+     */
+    private static long positionDuration(BarSeries series, Position position, int beginIndex, int endIndex) {
         if (position == null || position.isNew() || position.getEntry() == null) {
             return 0L;
         }
-        var entryStart = series.getBar(position.getEntry().getIndex()).getBeginTime();
-        var exitIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
-        var exitEnd = series.getBar(exitIndex).getEndTime();
-        return ChronoUnit.NANOS.between(entryStart, exitEnd);
+        int entryIndex = Math.max(position.getEntry().getIndex(), beginIndex);
+        int exitIndex = position.isClosed() ? Math.min(position.getExit().getIndex(), endIndex) : endIndex;
+        if (exitIndex < entryIndex) {
+            return 0L;
+        }
+        return durationBetween(series, entryIndex, exitIndex);
     }
 }
