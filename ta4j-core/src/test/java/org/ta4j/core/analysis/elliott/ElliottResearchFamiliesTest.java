@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -222,6 +224,76 @@ class ElliottResearchFamiliesTest {
 
         Files.writeString(file, "", StandardCharsets.UTF_8);
         assertTrue(rejection().contains("missing header"));
+    }
+
+    @Test
+    public void observationIndicesCannotWrapIntoEarlierEvidence() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        final JsonObject frame = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        frame.addProperty("asOfIndex", 4294967296L);
+        lines.set(1, frame.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        final String message = rejection();
+        assertTrue(message.contains(file.toString()) && message.contains("line 2")
+                && message.contains("asOfIndex"), message);
+    }
+
+    @Test
+    public void storedVerdictAndCoverageIntegersCannotWrap() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        for (int line = 1; line < lines.size() - 1; line++) {
+            final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            for (final JsonElement event : frame.getAsJsonArray("events")) {
+                final JsonObject verdict = event.getAsJsonObject().getAsJsonObject("verdict");
+                for (final JsonElement leg : verdict.getAsJsonArray("legs")) {
+                    for (final JsonElement element : leg.getAsJsonObject().getAsJsonArray("edges")) {
+                        final JsonObject edge = element.getAsJsonObject();
+                        if (edge.getAsJsonArray("childPivots").isEmpty()) {
+                            continue;
+                        }
+                        for (final JsonObject owner : List.of(frame.getAsJsonArray("coverage").get(0).getAsJsonObject(),
+                                verdict.getAsJsonArray("parentPivots").get(0).getAsJsonObject(), edge,
+                                edge.getAsJsonArray("childPivots").get(0).getAsJsonObject())) {
+                            for (final Map.Entry<String, JsonElement> entry : owner.entrySet()) {
+                                final JsonElement original = entry.getValue();
+                                if (!original.isJsonPrimitive() || !original.getAsJsonPrimitive().isNumber()) {
+                                    continue;
+                                }
+                                owner.addProperty(entry.getKey(), 4294967296L);
+                                lines.set(line, frame.toString());
+                                Files.write(file, lines, StandardCharsets.UTF_8);
+                                final String message = rejection();
+                                assertTrue(message.contains("line " + (line + 1)) && message.contains(entry.getKey()),
+                                        message);
+                                owner.add(entry.getKey(), original);
+                            }
+                        }
+                        for (final String field : List.of("availableAt", "compositionCount")) {
+                            final JsonElement original = verdict.get(field);
+                            verdict.add(field, JsonParser.parseString("18446744073709551616"));
+                            lines.set(line, frame.toString());
+                            Files.write(file, lines, StandardCharsets.UTF_8);
+                            final String message = rejection();
+                            assertTrue(message.contains("line " + (line + 1)) && message.contains(field), message);
+                            verdict.add(field, original);
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+        fail("fixture must contain a child pivot sequence");
+    }
+
+    @Test
+    public void headerCompositionCapsCannotWrap() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        final JsonObject header = JsonParser.parseString(lines.get(0)).getAsJsonObject();
+        header.addProperty("maxCompositions", 4294967296L);
+        lines.set(0, header.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        final String message = rejection();
+        assertTrue(message.contains("line 1") && message.contains("maxCompositions"), message);
     }
 
     @Test

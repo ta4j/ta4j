@@ -322,7 +322,9 @@ rows, and verdict counts must not be ranked across profiles or read as efficacy.
 Artifacts: `families/<dataset>.jsonl` and a "Corrective families (experimental)"
 section in `summary.md`. Inspect with
 `ElliottResearch families <runDir> <dataset> [--as-of IDX] [--limit N] [--verdict KEY]`
-(exit 2 when the file is missing, incomplete or from another run). Runs without
+(exit 2 when the file is missing, incomplete, corrupt or from another run). The same
+exact integer and footer checks as relations apply to verdicts and their child edges,
+including availability bars and composition counts. Runs without
 `families` write no `families/` directory, and every other artifact is
 byte-identical apart from the recipe fingerprint that covers the declared
 profiles.

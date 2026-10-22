@@ -317,7 +317,14 @@ final class ElliottResearchFamilies {
      *                                  unsupported or a line is corrupt
      */
     static ElliottResearchRelations.Meta read(final Path path, final Consumer<JsonObject> sink) throws IOException {
-        return ElliottResearchRelations.read(path, SCHEMA, ElliottResearchFamilies::requireFrame, sink);
+        final ElliottResearchRelations.Meta meta = ElliottResearchRelations.read(path, SCHEMA,
+                ElliottResearchFamilies::requireFrame, sink);
+        try {
+            ElliottResearchRelations.requireInt(meta.header(), "maxCompositions");
+        } catch (final IllegalArgumentException e) {
+            throw ElliottResearchRelations.corrupt(path, 1, "malformed header: " + e.getMessage());
+        }
+        return meta;
     }
 
     private static void requireFrame(final Path path, final long line, final JsonObject frame) {
@@ -327,9 +334,10 @@ final class ElliottResearchFamilies {
             }
         }
         try {
-            frame.get("asOfIndex").getAsInt();
+            ElliottResearchRelations.requireInt(frame, "asOfIndex");
             for (final JsonElement group : frame.getAsJsonArray("coverage")) {
                 group.getAsJsonObject().get("group").getAsString();
+                ElliottResearchRelations.requireCoverage(group.getAsJsonObject());
                 group.getAsJsonObject().get("truncated").getAsBoolean();
                 group.getAsJsonObject().get("incomplete").getAsBoolean();
             }
@@ -339,18 +347,23 @@ final class ElliottResearchFamilies {
                 verdict.get("key").getAsString();
                 verdict.get("profile").getAsString();
                 verdict.get("status").getAsString();
+                ElliottResearchRelations.requireInt(verdict, "availableAt");
+                ElliottResearchRelations.requireLong(verdict, "compositionCount");
+                for (final JsonElement pivot : verdict.getAsJsonArray("parentPivots")) {
+                    ElliottResearchRelations.requirePivot(pivot.getAsJsonObject());
+                }
                 object.get("lifecycle").getAsString();
                 object.get("reason").getAsString();
                 for (final JsonElement leg : verdict.getAsJsonArray("legs")) {
                     for (final JsonElement edge : leg.getAsJsonObject().getAsJsonArray("edges")) {
                         final JsonObject edgeObject = edge.getAsJsonObject();
-                        edgeObject.get("childPivotCount").getAsInt();
+                        ElliottResearchRelations.requireInt(edgeObject, "childPivotCount");
+                        ElliottResearchRelations.requireInt(edgeObject, "availableAt");
                         for (final JsonElement pivot : edgeObject.getAsJsonArray("childPivots")) {
                             final JsonObject pivotObject = pivot.getAsJsonObject();
-                            pivotObject.get("index").getAsInt();
+                            ElliottResearchRelations.requirePivot(pivotObject);
                             pivotObject.get("type").getAsString();
                             pivotObject.get("price").getAsString();
-                            pivotObject.get("confirmationIndex").getAsInt();
                         }
                     }
                 }
