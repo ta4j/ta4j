@@ -170,7 +170,8 @@ class ElliottResearchTest {
                 .get("fingerprint")
                 .getAsString();
         assertTrue(result.err().contains("--expect-fingerprint " + fingerprint), result.err());
-        assertTrue(result.err().contains("--expect-revision " + readJson(copy.resolve("run.json")).get("revision").getAsString()),
+        assertTrue(result.err()
+                .contains("--expect-revision " + readJson(copy.resolve("run.json")).get("revision").getAsString()),
                 result.err());
         final Path stale = work.resolve("stale-smoke");
         final Result mismatch = launch("run", "smoke", "--expect-fingerprint", "0" + fingerprint, "--out",
@@ -184,8 +185,8 @@ class ElliottResearchTest {
     public void recaptureRejectsAnotherRevisionBeforeReadingInputsOrCreatingArtifacts() {
         final Path out = work.resolve("wrong-revision");
         final Result result = launch("run", "explore", "--expect-revision", "not-the-current-revision", "--source",
-                work.resolve("missing-candles.json").toString(), "--recipe", work.resolve("missing-recipe.json").toString(),
-                "--out", out.toString());
+                work.resolve("missing-candles.json").toString(), "--recipe",
+                work.resolve("missing-recipe.json").toString(), "--out", out.toString());
         assertEquals(1, result.code());
         assertTrue(result.err().contains("check out the recorded revision in a separate worktree"), result.err());
         assertFalse(Files.exists(out));
@@ -225,7 +226,8 @@ class ElliottResearchTest {
         Files.writeString(recipe, toyRecipe("overwrite"));
         final String recordedRun = Files.readString(smokeRun.resolve("run.json"));
         int caseIndex = 0;
-        for (final String artifact : List.of("traces/input.json", "reports/input.json", "summary.md", "relations/input.json")) {
+        for (final String artifact : List.of("traces/input.json", "reports/input.json", "summary.md",
+                "relations/input.json")) {
             for (final boolean recipeInput : List.of(false, true)) {
                 for (final boolean symlink : List.of(false, true)) {
                     final Path out = work.resolve("overwrite-managed-" + caseIndex++);
