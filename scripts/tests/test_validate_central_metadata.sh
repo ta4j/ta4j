@@ -42,7 +42,7 @@ expect_file_contains() {
 create_fixture() {
   local include_developers="$1"
 
-  mkdir -p ta4j-core ta4j-examples ta4j-cli ta4j-acceleration scripts bin
+  mkdir -p ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples scripts bin
   cp "$SCRIPT" scripts/validate-central-metadata.sh
   chmod +x scripts/validate-central-metadata.sh
   write_fake_maven
@@ -84,14 +84,15 @@ EOF
   cat >> pom.xml <<'EOF'
   <modules>
     <module>ta4j-core</module>
+    <module>ta4j-data</module>
+    <module>ta4j-charting</module>
+    <module>ta4j-catalog</module>
     <module>ta4j-examples</module>
-    <module>ta4j-cli</module>
-    <module>ta4j-acceleration</module>
   </modules>
 </project>
 EOF
 
-  for module in ta4j-core ta4j-examples ta4j-cli ta4j-acceleration; do
+  for module in ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples; do
     cat > "${module}/pom.xml" <<EOF
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -191,8 +192,8 @@ EOF
 assert_maven_evaluation_contract() {
   local invocation_count
   invocation_count="$(wc -l < "$FAKE_MAVEN_INVOCATIONS" | tr -d '[:space:]')"
-  if [[ "$invocation_count" != "40" ]]; then
-    fail "validator should evaluate 8 required fields across 5 modules, got ${invocation_count}"
+  if [[ "$invocation_count" != "48" ]]; then
+    fail "validator should evaluate 8 required fields across parent and 5 library modules, got ${invocation_count}"
   fi
 
   expect_file_contains "$FAKE_MAVEN_INVOCATIONS" "-q -N help:evaluate -Dexpression=project.name -DforceStdout" \
@@ -201,10 +202,14 @@ assert_maven_evaluation_contract() {
     "core metadata should be evaluated through Maven effective model"
   expect_file_contains "$FAKE_MAVEN_INVOCATIONS" "-q -pl ta4j-examples help:evaluate -Dexpression=project.scm.url -DforceStdout" \
     "examples metadata should be evaluated through Maven effective model"
-  expect_file_contains "$FAKE_MAVEN_INVOCATIONS" "-q -pl ta4j-cli help:evaluate -Dexpression=project.scm.url -DforceStdout" \
-    "cli metadata should be evaluated through Maven effective model"
-  expect_file_contains "$FAKE_MAVEN_INVOCATIONS" "-q -pl ta4j-acceleration help:evaluate -Dexpression=project.scm.url -DforceStdout" \
-    "acceleration metadata should be evaluated through Maven effective model"
+  local module
+  for module in ta4j-data ta4j-charting ta4j-catalog; do
+    expect_file_contains "$FAKE_MAVEN_INVOCATIONS" "-q -pl $module help:evaluate -Dexpression=project.scm.url -DforceStdout" \
+      "$module metadata should be evaluated through Maven effective model"
+  done
+  if grep -Eq 'ta4j-cli|ta4j-acceleration' "$FAKE_MAVEN_INVOCATIONS"; then
+    fail "foundation metadata validation must not evaluate application/native modules"
+  fi
 }
 
 run_test() {
@@ -228,7 +233,8 @@ test_passes_with_complete_metadata() {
 
   local out
   out="$(scripts/validate-central-metadata.sh)"
-  expect_contains "$out" "validation passed" "validator should pass for complete metadata"
+  expect_contains "$out" "validation passed for ta4j-parent, ta4j-core, ta4j-data, ta4j-charting, ta4j-catalog, ta4j-examples." \
+    "validator should name exactly the published foundation modules"
   assert_maven_evaluation_contract
 
   finish_test
@@ -245,9 +251,15 @@ test_fails_when_developers_missing() {
     fail "validator should fail when developers metadata is missing"
   fi
 
-  expect_file_contains "$out_file" "developers[0].id" "should mention missing developer id"
-  expect_file_contains "$out_file" "developers[0].name" "should mention missing developer name"
-  expect_file_contains "$out_file" "validation failed" "should print summary failure"
+  local module
+  for module in "ta4j-parent (root)" ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples; do
+    expect_file_contains "$out_file" "$module: missing required 'developers[0].id'" \
+      "should mention the missing developer id for $module"
+    expect_file_contains "$out_file" "$module: missing required 'developers[0].name'" \
+      "should mention the missing developer name for $module"
+  done
+  expect_file_contains "$out_file" "validation failed with 12 issue(s)." \
+    "should report missing developer metadata across the parent and all five libraries"
   assert_maven_evaluation_contract
 
   finish_test

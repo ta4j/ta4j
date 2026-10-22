@@ -122,15 +122,19 @@ Run another example by overriding the configured main class:
 ./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest
 ```
 
-### Run it from the command line
+### Reuse data, charts, and named catalogs
 
-[`ta4j-cli`](ta4j-cli/README.md) runs backtests, walk-forwards, parameter sweeps, indicator and rule tests, and forecasts against a local CSV or JSON file, with JSON output for automation:
+Reusable components are published alongside `ta4j-core`, without a dependency on the executable examples:
 
-```bash
-./mvnw -pl ta4j-cli -am package
-java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar strategy backtest \
-  --data-file ta4j-examples/src/main/resources/AAPL-PT1D-20130102_20131231.csv --strategy 'SMA(7,21)'
-```
+| Artifact | Ownership |
+| --- | --- |
+| `org.ta4j:ta4j-data` | CSV/JSON and HTTP bar-series sources, including bundled market data |
+| `org.ta4j:ta4j-charting` | Chart builders, workflows, display, and storage |
+| `org.ta4j:ta4j-catalog` | Named calendar strategies and reusable named rules |
+
+Use the same version as `ta4j-core`. Existing `ta4jexamples.datasources`, `ta4jexamples.charting`, and catalog class names are unchanged; downstream applications should depend on these artifacts instead of `ta4j-examples`.
+
+The command-line application has independent build, versioning, and release ownership in [`ta4j/ta4j-cli`](https://github.com/ta4j/ta4j-cli). It is not a module of this reactor; its README documents the compatible ta4j version and packaged backtest, walk-forward, sweep, and forecast commands.
 
 ### Use the core API
 
@@ -174,11 +178,11 @@ A typical ta4j application follows one path:
 
 ### Sourcing market data
 
-`ta4j-core` works with any OHLCV source. The `ta4j-examples` module includes a shared `BarSeriesDataSource` model and ready-to-run loaders for:
+`ta4j-core` works with any OHLCV source. The `ta4j-data` artifact supplies a shared `BarSeriesDataSource` model and ready-to-run loaders for:
 
-- [Yahoo Finance](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceHttpBarSeriesDataSource.java) for stocks, ETFs, and crypto
-- [Coinbase](ta4j-examples/src/main/java/ta4jexamples/datasources/CoinbaseHttpBarSeriesDataSource.java) for cryptocurrency pairs
-- [CSV](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvFileBarSeriesDataSource.java), [JSON](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonFileBarSeriesDataSource.java), and trade-level [Bitstamp CSV](ta4j-examples/src/main/java/ta4jexamples/datasources/BitStampCsvTradesFileBarSeriesDataSource.java)
+- [Yahoo Finance](ta4j-data/src/main/java/ta4jexamples/datasources/YahooFinanceHttpBarSeriesDataSource.java) for stocks, ETFs, and crypto
+- [Coinbase](ta4j-data/src/main/java/ta4jexamples/datasources/CoinbaseHttpBarSeriesDataSource.java) for cryptocurrency pairs
+- [CSV](ta4j-data/src/main/java/ta4jexamples/datasources/CsvFileBarSeriesDataSource.java), [JSON](ta4j-data/src/main/java/ta4jexamples/datasources/JsonFileBarSeriesDataSource.java), and trade-level [Bitstamp CSV](ta4j-data/src/main/java/ta4jexamples/datasources/BitStampCsvTradesFileBarSeriesDataSource.java)
 
 For production systems, adapt your broker, exchange, database, REST API, or WebSocket feed into bars and keep normalization, gap handling, and corporate-action adjustments explicit.
 
@@ -415,8 +419,6 @@ ta4j lets you choose `DecimalNum` for precision-first workflows or `DoubleNum` f
 
 Measure changes on your own workload rather than relying on generic claims. Use the [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java), the [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html), and [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for repeatable comparisons.
 
-Monte Carlo price forecasts can optionally run on a GPU through the separate `ta4j-acceleration` artifact; it is off unless enabled with `-Dta4j.acceleration.enabled=auto` and always falls back to the scalar result.
-
 ## Real-world examples
 
 The `ta4j-examples` module is organized as progressive learning tracks:
@@ -474,8 +476,8 @@ The repository requires Java 25+ and includes Maven Wrapper scripts pinned to Ma
 
 - Standard wrapper: use `./mvnw ...` on macOS/Linux, `mvnw.cmd ...` on Windows, or system Maven 3.9+ intentionally.
 - Canonical quality gate: Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell; it uses native Maven and WSL preflight when available, with Git Bash as the fallback.
-- Maven-only repair and verification: `./mvnw -B clean license:format spotless:apply verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless`
-- Non-mutating Maven-only validation: `./mvnw -B clean license:check spotless:check verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless`
+- Maven-only repair and verification: `./mvnw -B clean license:format spotless:apply verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
+- Non-mutating Maven-only validation: `./mvnw -B clean license:check spotless:check verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
 - Focused formatting repair: `./mvnw -B license:format spotless:apply`
 - SpotBugs gate: `./mvnw -pl ta4j-core -am clean compile spotbugs:check`
 - JaCoCo gate: `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`

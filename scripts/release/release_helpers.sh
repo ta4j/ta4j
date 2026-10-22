@@ -1427,41 +1427,33 @@ command_artifact_manifest() {
   done
   [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Release artifact version must be major.minor.patch: $version"
 
-  local required_file optional_file expected_file existing_file present_file missing_file unexpected_file
-  required_file="$(new_tmp_file)"
-  optional_file="$(new_tmp_file)"
+  local expected_file existing_file present_file missing_file unexpected_file
   expected_file="$(new_tmp_file)"
   existing_file="$(new_tmp_file)"
   present_file="$(new_tmp_file)"
   missing_file="$(new_tmp_file)"
   unexpected_file="$(new_tmp_file)"
-  cat > "$required_file" <<EOF
+  cat > "$expected_file" <<EOF
 ta4j-core/target/ta4j-core-${version}.jar
 ta4j-core/target/ta4j-core-${version}-sources.jar
 ta4j-core/target/ta4j-core-${version}-javadoc.jar
 ta4j-core/target/ta4j-core-${version}-tests.jar
+ta4j-data/target/ta4j-data-${version}.jar
+ta4j-data/target/ta4j-data-${version}-sources.jar
+ta4j-data/target/ta4j-data-${version}-javadoc.jar
+ta4j-charting/target/ta4j-charting-${version}.jar
+ta4j-charting/target/ta4j-charting-${version}-sources.jar
+ta4j-charting/target/ta4j-charting-${version}-javadoc.jar
+ta4j-catalog/target/ta4j-catalog-${version}.jar
+ta4j-catalog/target/ta4j-catalog-${version}-sources.jar
+ta4j-catalog/target/ta4j-catalog-${version}-javadoc.jar
 ta4j-examples/target/ta4j-examples-${version}.jar
 ta4j-examples/target/ta4j-examples-${version}-sources.jar
 ta4j-examples/target/ta4j-examples-${version}-javadoc.jar
-ta4j-cli/target/ta4j-cli-${version}.jar
-ta4j-cli/target/ta4j-cli-${version}-jar-with-dependencies.jar
-ta4j-cli/target/ta4j-cli-${version}-sources.jar
-ta4j-cli/target/ta4j-cli-${version}-javadoc.jar
-ta4j-acceleration/target/ta4j-acceleration-${version}.jar
-ta4j-acceleration/target/ta4j-acceleration-${version}-sources.jar
-ta4j-acceleration/target/ta4j-acceleration-${version}-javadoc.jar
 EOF
-  cat > "$optional_file" <<EOF
-ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar
-ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-windows-x86_64.jar
-ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-linux-x86_64.jar
-ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-x86_64.jar
-ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-aarch64.jar
-EOF
-  cat "$required_file" "$optional_file" > "$expected_file"
   while IFS= read -r file; do
     [[ -e "$file" ]] || printf '%s\n' "$file"
-  done < "$required_file" | sort > "$missing_file"
+  done < "$expected_file" | sort > "$missing_file"
   find . -mindepth 3 -maxdepth 3 -path './*/target/*.jar' -type f | sed 's#^\./##' | sort > "$existing_file"
   grep -Fxf "$existing_file" "$expected_file" > "$present_file" || true
   grep -Fvx -f "$expected_file" "$existing_file" > "$unexpected_file" || true
@@ -1796,7 +1788,7 @@ xml_escape_text() {
 }
 
 write_snapshot_consumer_pom() {
-  local output="$1" repository_url="$2" parent_version="$3" core_version="$4" examples_version="$5" cli_version="$6" acceleration_version="$7"
+  local output="$1" repository_url="$2" parent_version="$3" core_version="$4" examples_version="$5" data_version="$6" charting_version="$7" catalog_version="$8"
   local repository_url_xml
   repository_url_xml="$(printf '%s' "$repository_url" | xml_escape_text)"
   cat > "$output" <<EOF
@@ -1817,8 +1809,9 @@ write_snapshot_consumer_pom() {
     <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-parent</artifactId><version>${parent_version}</version><type>pom</type></dependency>
     <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-core</artifactId><version>${core_version}</version></dependency>
     <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-examples</artifactId><version>${examples_version}</version></dependency>
-    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-cli</artifactId><version>${cli_version}</version></dependency>
-    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-acceleration</artifactId><version>${acceleration_version}</version></dependency>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-data</artifactId><version>${data_version}</version></dependency>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-charting</artifactId><version>${charting_version}</version></dependency>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-catalog</artifactId><version>${catalog_version}</version></dependency>
   </dependencies>
 </project>
 EOF
@@ -1865,12 +1858,14 @@ command_snapshot_consumption() {
 
   local publisher_core="$publisher_root/ta4j-core/target/ta4j-core-${version}.jar"
   local publisher_examples="$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar"
-  local publisher_cli="$publisher_root/ta4j-cli/target/ta4j-cli-${version}.jar"
-  local publisher_acceleration="$publisher_root/ta4j-acceleration/target/ta4j-acceleration-${version}.jar"
+  local publisher_data="$publisher_root/ta4j-data/target/ta4j-data-${version}.jar"
+  local publisher_charting="$publisher_root/ta4j-charting/target/ta4j-charting-${version}.jar"
+  local publisher_catalog="$publisher_root/ta4j-catalog/target/ta4j-catalog-${version}.jar"
   [[ -s "$publisher_core" ]] || die "Published core JAR is missing: $publisher_core"
   [[ -s "$publisher_examples" ]] || die "Published examples JAR is missing: $publisher_examples"
-  [[ -s "$publisher_cli" ]] || die "Published cli JAR is missing: $publisher_cli"
-  [[ -s "$publisher_acceleration" ]] || die "Published acceleration JAR is missing: $publisher_acceleration"
+  [[ -s "$publisher_data" ]] || die "Published data JAR is missing: $publisher_data"
+  [[ -s "$publisher_charting" ]] || die "Published charting JAR is missing: $publisher_charting"
+  [[ -s "$publisher_catalog" ]] || die "Published catalog JAR is missing: $publisher_catalog"
 
   local tmpdir consumer_pom local_repo raw_log redacted_log
   tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/snapshot-consumption.XXXXXX")"
@@ -1880,16 +1875,21 @@ command_snapshot_consumption() {
   redacted_log="$tmpdir/maven-redacted.log"
   mkdir -p "$local_repo" "$(dirname "$output")" "$(dirname "$log")"
 
-  local publisher_core_sha publisher_examples_sha publisher_cli_sha publisher_acceleration_sha resolved_core resolved_examples resolved_cli resolved_acceleration resolved_core_sha="" resolved_examples_sha="" resolved_cli_sha="" resolved_acceleration_sha=""
-  local parent_metadata="$tmpdir/ta4j-parent-metadata.xml" core_metadata="$tmpdir/ta4j-core-metadata.xml" examples_metadata="$tmpdir/ta4j-examples-metadata.xml" cli_metadata="$tmpdir/ta4j-cli-metadata.xml" acceleration_metadata="$tmpdir/ta4j-acceleration-metadata.xml"
-  local resolved_parent_version="" resolved_core_version="" resolved_examples_version="" resolved_cli_version="" resolved_acceleration_version="" metadata_error="" cache_buster=""
+  local publisher_core_sha publisher_examples_sha publisher_data_sha publisher_charting_sha publisher_catalog_sha
+  local resolved_core resolved_examples resolved_data resolved_charting resolved_catalog
+  local resolved_core_sha="" resolved_examples_sha="" resolved_data_sha="" resolved_charting_sha="" resolved_catalog_sha=""
+  local parent_metadata="$tmpdir/ta4j-parent-metadata.xml" core_metadata="$tmpdir/ta4j-core-metadata.xml" examples_metadata="$tmpdir/ta4j-examples-metadata.xml"
+  local data_metadata="$tmpdir/ta4j-data-metadata.xml" charting_metadata="$tmpdir/ta4j-charting-metadata.xml" catalog_metadata="$tmpdir/ta4j-catalog-metadata.xml"
+  local resolved_parent_version="" resolved_core_version="" resolved_examples_version=""
+  local resolved_data_version="" resolved_charting_version="" resolved_catalog_version="" metadata_error="" cache_buster=""
   local snapshot_prefix="" timestamped_suffix="" resolved_candidate=""
   local attempts=0 maven_consumable=false start_time elapsed_seconds=0 deadline_epoch=0 remaining_seconds=0 metadata_timeout=0 maven_timeout=0 sleep_seconds=0
   local deadline_exhausted=false maven_status=0 metadata_artifact=""
   publisher_core_sha="$(sha256_file "$publisher_core")"
   publisher_examples_sha="$(sha256_file "$publisher_examples")"
-  publisher_cli_sha="$(sha256_file "$publisher_cli")"
-  publisher_acceleration_sha="$(sha256_file "$publisher_acceleration")"
+  publisher_data_sha="$(sha256_file "$publisher_data")"
+  publisher_charting_sha="$(sha256_file "$publisher_charting")"
+  publisher_catalog_sha="$(sha256_file "$publisher_catalog")"
   start_time="$(date +%s)"
   deadline_epoch=$(( start_time + SNAPSHOT_CONSUMPTION_DEADLINE_SECONDS ))
   : > "$raw_log"
@@ -1904,14 +1904,16 @@ command_snapshot_consumption() {
     resolved_parent_version=""
     resolved_core_version=""
     resolved_examples_version=""
-    resolved_cli_version=""
-    resolved_acceleration_version=""
+    resolved_data_version=""
+    resolved_charting_version=""
+    resolved_catalog_version=""
     resolved_core_sha=""
     resolved_examples_sha=""
-    resolved_cli_sha=""
-    resolved_acceleration_sha=""
+    resolved_data_sha=""
+    resolved_charting_sha=""
+    resolved_catalog_sha=""
     rm -rf "$local_repo/org/ta4j"
-    rm -f "$parent_metadata" "$core_metadata" "$examples_metadata" "$cli_metadata" "$acceleration_metadata"
+    rm -f "$parent_metadata" "$core_metadata" "$examples_metadata" "$data_metadata" "$charting_metadata" "$catalog_metadata"
     printf 'attempt=%s/%s version=%s\n' "$attempts" "$max_attempts" "$version" >> "$raw_log"
     cache_buster="$(date +%s)-${attempts}"
     metadata_error=""
@@ -1920,7 +1922,7 @@ command_snapshot_consumption() {
       deadline_exhausted=true
       break
     fi
-    for metadata_artifact in ta4j-parent ta4j-core ta4j-examples ta4j-cli ta4j-acceleration; do
+    for metadata_artifact in ta4j-parent ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples; do
       remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
       if (( remaining_seconds <= 0 )); then
         deadline_exhausted=true
@@ -1940,18 +1942,20 @@ command_snapshot_consumption() {
       resolved_parent_version="$(resolved_snapshot_value "$parent_metadata" 2>> "$raw_log" || true)"
       resolved_core_version="$(resolved_snapshot_value "$core_metadata" 2>> "$raw_log" || true)"
       resolved_examples_version="$(resolved_snapshot_value "$examples_metadata" 2>> "$raw_log" || true)"
-      resolved_cli_version="$(resolved_snapshot_value "$cli_metadata" 2>> "$raw_log" || true)"
-      resolved_acceleration_version="$(resolved_snapshot_value "$acceleration_metadata" 2>> "$raw_log" || true)"
+      resolved_data_version="$(resolved_snapshot_value "$data_metadata" 2>> "$raw_log" || true)"
+      resolved_charting_version="$(resolved_snapshot_value "$charting_metadata" 2>> "$raw_log" || true)"
+      resolved_catalog_version="$(resolved_snapshot_value "$catalog_metadata" 2>> "$raw_log" || true)"
       snapshot_prefix="${version%-SNAPSHOT}-"
-      for resolved_candidate in "$resolved_parent_version" "$resolved_core_version" "$resolved_examples_version" "$resolved_cli_version" "$resolved_acceleration_version"; do
+      for resolved_candidate in "$resolved_parent_version" "$resolved_core_version" "$resolved_examples_version" "$resolved_data_version" "$resolved_charting_version" "$resolved_catalog_version"; do
         if [[ -n "$resolved_candidate" ]]; then
           if [[ "$resolved_candidate" != "$snapshot_prefix"* ]]; then
             printf 'resolved coordinate does not match requested snapshot base: %s\n' "$resolved_candidate" >> "$raw_log"
             resolved_parent_version=""
             resolved_core_version=""
             resolved_examples_version=""
-            resolved_cli_version=""
-            resolved_acceleration_version=""
+            resolved_data_version=""
+            resolved_charting_version=""
+            resolved_catalog_version=""
             break
           fi
           timestamped_suffix="${resolved_candidate#"$snapshot_prefix"}"
@@ -1960,22 +1964,24 @@ command_snapshot_consumption() {
             resolved_parent_version=""
             resolved_core_version=""
             resolved_examples_version=""
-            resolved_cli_version=""
-            resolved_acceleration_version=""
+            resolved_data_version=""
+            resolved_charting_version=""
+            resolved_catalog_version=""
             break
           fi
         fi
       done
-      if [[ -z "$resolved_parent_version" || -z "$resolved_core_version" || -z "$resolved_examples_version" || -z "$resolved_cli_version" || -z "$resolved_acceleration_version" ]]; then
-        printf 'resolved snapshot metadata is missing timestamped parent/core/examples/cli/acceleration coordinates\n' >> "$raw_log"
+      if [[ -z "$resolved_parent_version" || -z "$resolved_core_version" || -z "$resolved_examples_version" || -z "$resolved_data_version" || -z "$resolved_charting_version" || -z "$resolved_catalog_version" ]]; then
+        printf 'resolved snapshot metadata is missing timestamped parent/core/data/charting/catalog/examples coordinates\n' >> "$raw_log"
       else
-        write_snapshot_consumer_pom "$consumer_pom" "$repository_url" "$resolved_parent_version" "$resolved_core_version" "$resolved_examples_version" "$resolved_cli_version" "$resolved_acceleration_version"
+        write_snapshot_consumer_pom "$consumer_pom" "$repository_url" "$resolved_parent_version" "$resolved_core_version" "$resolved_examples_version" "$resolved_data_version" "$resolved_charting_version" "$resolved_catalog_version"
         resolved_core="$local_repo/org/ta4j/ta4j-core/${version}/ta4j-core-${resolved_core_version}.jar"
         resolved_examples="$local_repo/org/ta4j/ta4j-examples/${version}/ta4j-examples-${resolved_examples_version}.jar"
-        resolved_cli="$local_repo/org/ta4j/ta4j-cli/${version}/ta4j-cli-${resolved_cli_version}.jar"
-        resolved_acceleration="$local_repo/org/ta4j/ta4j-acceleration/${version}/ta4j-acceleration-${resolved_acceleration_version}.jar"
+        resolved_data="$local_repo/org/ta4j/ta4j-data/${version}/ta4j-data-${resolved_data_version}.jar"
+        resolved_charting="$local_repo/org/ta4j/ta4j-charting/${version}/ta4j-charting-${resolved_charting_version}.jar"
+        resolved_catalog="$local_repo/org/ta4j/ta4j-catalog/${version}/ta4j-catalog-${resolved_catalog_version}.jar"
       fi
-      if [[ -n "$resolved_core_version" && -n "$resolved_examples_version" && -n "$resolved_parent_version" && -n "$resolved_cli_version" && -n "$resolved_acceleration_version" ]]; then
+      if [[ -n "$resolved_core_version" && -n "$resolved_examples_version" && -n "$resolved_parent_version" && -n "$resolved_data_version" && -n "$resolved_charting_version" && -n "$resolved_catalog_version" ]]; then
         remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
         if (( remaining_seconds <= 0 )); then
           deadline_exhausted=true
@@ -1983,17 +1989,18 @@ command_snapshot_consumption() {
           maven_timeout="$remaining_seconds"
           if run_with_timeout "$maven_timeout" "$maven_command" -B -U -f "$consumer_pom" -Dmaven.repo.local="$local_repo" \
             "org.apache.maven.plugins:maven-dependency-plugin:${MAVEN_DEPENDENCY_PLUGIN_VERSION}:resolve" >> "$raw_log" 2>&1; then
-            if [[ -s "$resolved_core" && -s "$resolved_examples" && -s "$resolved_cli" && -s "$resolved_acceleration" ]]; then
+            if [[ -s "$resolved_core" && -s "$resolved_examples" && -s "$resolved_data" && -s "$resolved_charting" && -s "$resolved_catalog" ]]; then
               resolved_core_sha="$(sha256_file "$resolved_core")"
               resolved_examples_sha="$(sha256_file "$resolved_examples")"
-              resolved_cli_sha="$(sha256_file "$resolved_cli")"
-              resolved_acceleration_sha="$(sha256_file "$resolved_acceleration")"
-              if [[ "$resolved_core_sha" == "$publisher_core_sha" && "$resolved_examples_sha" == "$publisher_examples_sha" && "$resolved_cli_sha" == "$publisher_cli_sha" && "$resolved_acceleration_sha" == "$publisher_acceleration_sha" ]]; then
+              resolved_data_sha="$(sha256_file "$resolved_data")"
+              resolved_charting_sha="$(sha256_file "$resolved_charting")"
+              resolved_catalog_sha="$(sha256_file "$resolved_catalog")"
+              if [[ "$resolved_core_sha" == "$publisher_core_sha" && "$resolved_examples_sha" == "$publisher_examples_sha" && "$resolved_data_sha" == "$publisher_data_sha" && "$resolved_charting_sha" == "$publisher_charting_sha" && "$resolved_catalog_sha" == "$publisher_catalog_sha" ]]; then
                 maven_consumable=true
                 break
               else
-                printf 'checksum mismatch core=%s/%s examples=%s/%s cli=%s/%s acceleration=%s/%s\n' \
-                  "$resolved_core_sha" "$publisher_core_sha" "$resolved_examples_sha" "$publisher_examples_sha" "$resolved_cli_sha" "$publisher_cli_sha" "$resolved_acceleration_sha" "$publisher_acceleration_sha" >> "$raw_log"
+                printf 'checksum mismatch core=%s/%s examples=%s/%s data=%s/%s charting=%s/%s catalog=%s/%s\n' \
+                  "$resolved_core_sha" "$publisher_core_sha" "$resolved_examples_sha" "$publisher_examples_sha" "$resolved_data_sha" "$publisher_data_sha" "$resolved_charting_sha" "$publisher_charting_sha" "$resolved_catalog_sha" "$publisher_catalog_sha" >> "$raw_log"
               fi
             else
               printf 'resolved snapshot artifacts are missing from the isolated local repository\n' >> "$raw_log"
@@ -2030,37 +2037,54 @@ command_snapshot_consumption() {
     --arg resolvedParentVersion "$resolved_parent_version" \
     --arg resolvedCoreVersion "$resolved_core_version" \
     --arg resolvedExamplesVersion "$resolved_examples_version" \
-    --arg resolvedCliVersion "$resolved_cli_version" \
-    --arg resolvedAccelerationVersion "$resolved_acceleration_version" \
+    --arg resolvedDataVersion "$resolved_data_version" \
+    --arg resolvedChartingVersion "$resolved_charting_version" \
+    --arg resolvedCatalogVersion "$resolved_catalog_version" \
     --arg publisherCoreSha256 "$publisher_core_sha" \
     --arg resolvedCoreSha256 "$resolved_core_sha" \
     --arg publisherExamplesSha256 "$publisher_examples_sha" \
     --arg resolvedExamplesSha256 "$resolved_examples_sha" \
-    --arg publisherCliSha256 "$publisher_cli_sha" \
-    --arg resolvedCliSha256 "$resolved_cli_sha" \
-    --arg publisherAccelerationSha256 "$publisher_acceleration_sha" \
-    --arg resolvedAccelerationSha256 "$resolved_acceleration_sha" \
+    --arg publisherDataSha256 "$publisher_data_sha" \
+    --arg resolvedDataSha256 "$resolved_data_sha" \
+    --arg publisherChartingSha256 "$publisher_charting_sha" \
+    --arg resolvedChartingSha256 "$resolved_charting_sha" \
+    --arg publisherCatalogSha256 "$publisher_catalog_sha" \
+    --arg resolvedCatalogSha256 "$resolved_catalog_sha" \
     --arg metadataError "$metadata_error" \
     --argjson attempts "$attempts" \
     --argjson elapsedSeconds "$elapsed_seconds" \
     --argjson mavenConsumable "$maven_consumable" \
-    '{version: $version, repository: $repository, resolvedParentVersion: $resolvedParentVersion, resolvedCoreVersion: $resolvedCoreVersion, resolvedExamplesVersion: $resolvedExamplesVersion, resolvedCliVersion: $resolvedCliVersion, resolvedAccelerationVersion: $resolvedAccelerationVersion, publisherCoreSha256: $publisherCoreSha256, resolvedCoreSha256: $resolvedCoreSha256, publisherExamplesSha256: $publisherExamplesSha256, resolvedExamplesSha256: $resolvedExamplesSha256, publisherCliSha256: $publisherCliSha256, resolvedCliSha256: $resolvedCliSha256, publisherAccelerationSha256: $publisherAccelerationSha256, resolvedAccelerationSha256: $resolvedAccelerationSha256, metadataError: $metadataError, attempts: $attempts, elapsedSeconds: $elapsedSeconds, mavenConsumable: $mavenConsumable}' > "$output"
+    '{
+      version: $version, repository: $repository,
+      resolvedParentVersion: $resolvedParentVersion,
+      resolvedCoreVersion: $resolvedCoreVersion, resolvedExamplesVersion: $resolvedExamplesVersion,
+      resolvedDataVersion: $resolvedDataVersion, resolvedChartingVersion: $resolvedChartingVersion, resolvedCatalogVersion: $resolvedCatalogVersion,
+      publisherCoreSha256: $publisherCoreSha256, resolvedCoreSha256: $resolvedCoreSha256,
+      publisherExamplesSha256: $publisherExamplesSha256, resolvedExamplesSha256: $resolvedExamplesSha256,
+      publisherDataSha256: $publisherDataSha256, resolvedDataSha256: $resolvedDataSha256,
+      publisherChartingSha256: $publisherChartingSha256, resolvedChartingSha256: $resolvedChartingSha256,
+      publisherCatalogSha256: $publisherCatalogSha256, resolvedCatalogSha256: $resolvedCatalogSha256,
+      metadataError: $metadataError, attempts: $attempts, elapsedSeconds: $elapsedSeconds, mavenConsumable: $mavenConsumable
+    }' > "$output"
   append_output "maven_consumable" "$maven_consumable" "$github_output"
   append_output "resolved_parent_version" "$resolved_parent_version" "$github_output"
   append_output "resolved_core_version" "$resolved_core_version" "$github_output"
   append_output "resolved_examples_version" "$resolved_examples_version" "$github_output"
-  append_output "resolved_cli_version" "$resolved_cli_version" "$github_output"
-  append_output "resolved_acceleration_version" "$resolved_acceleration_version" "$github_output"
+  append_output "resolved_data_version" "$resolved_data_version" "$github_output"
+  append_output "resolved_charting_version" "$resolved_charting_version" "$github_output"
+  append_output "resolved_catalog_version" "$resolved_catalog_version" "$github_output"
   append_output "snapshot_consumption_attempts" "$attempts" "$github_output"
   append_output "snapshot_consumption_elapsed_seconds" "$elapsed_seconds" "$github_output"
   append_output "publisher_core_sha256" "$publisher_core_sha" "$github_output"
   append_output "resolved_core_sha256" "$resolved_core_sha" "$github_output"
   append_output "publisher_examples_sha256" "$publisher_examples_sha" "$github_output"
   append_output "resolved_examples_sha256" "$resolved_examples_sha" "$github_output"
-  append_output "publisher_cli_sha256" "$publisher_cli_sha" "$github_output"
-  append_output "resolved_cli_sha256" "$resolved_cli_sha" "$github_output"
-  append_output "publisher_acceleration_sha256" "$publisher_acceleration_sha" "$github_output"
-  append_output "resolved_acceleration_sha256" "$resolved_acceleration_sha" "$github_output"
+  append_output "publisher_data_sha256" "$publisher_data_sha" "$github_output"
+  append_output "resolved_data_sha256" "$resolved_data_sha" "$github_output"
+  append_output "publisher_charting_sha256" "$publisher_charting_sha" "$github_output"
+  append_output "resolved_charting_sha256" "$resolved_charting_sha" "$github_output"
+  append_output "publisher_catalog_sha256" "$publisher_catalog_sha" "$github_output"
+  append_output "resolved_catalog_sha256" "$resolved_catalog_sha" "$github_output"
   printf 'audit:snapshot_consumption version=%s consumable=%s resolved_core=%s attempts=%s elapsed_seconds=%s output=%s\n' \
     "$version" "$maven_consumable" "${resolved_core_version:-unknown}" "$attempts" "$elapsed_seconds" "$output"
   rm -rf "$tmpdir"

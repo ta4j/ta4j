@@ -55,9 +55,10 @@
 
     <modules>
         <module>ta4j-core</module>
+        <module>ta4j-data</module>
+        <module>ta4j-charting</module>
+        <module>ta4j-catalog</module>
         <module>ta4j-examples</module>
-        <module>ta4j-cli</module>
-        <module>ta4j-acceleration</module>
     </modules>
 
     <properties>
@@ -68,7 +69,7 @@
         <!-- Build -->
         <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
-        <ta4j.excludedTestTags>integration,analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless</ta4j.excludedTestTags>
+        <ta4j.excludedTestTags>integration,analysis-demo,benchmark,requires-display,requires-headless</ta4j.excludedTestTags>
         <java.awt.headless>true</java.awt.headless>
         <ta4j.chart.disableDisplay>true</ta4j.chart.disableDisplay>
         <!-- Bounded test JVM forks; each test class still runs sequentially inside one JVM.
@@ -88,7 +89,6 @@
         <log4j2.version>2.25.5</log4j2.version>
         <mockito.version>5.23.0</mockito.version>
         <opencsv.version>5.12.0</opencsv.version>
-        <picocli.version>4.7.7</picocli.version>
         <poi.version>5.5.1</poi.version>
         <slf4j.version>2.0.18</slf4j.version>
     </properties>
@@ -173,23 +173,18 @@
             </dependency>
             <dependency>
                 <groupId>org.ta4j</groupId>
-                <artifactId>ta4j-acceleration</artifactId>
+                <artifactId>ta4j-data</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.ta4j</groupId>
-                <artifactId>ta4j-examples</artifactId>
+                <artifactId>ta4j-charting</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>info.picocli</groupId>
-                <artifactId>picocli</artifactId>
-                <version>${picocli.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>info.picocli</groupId>
-                <artifactId>picocli-codegen</artifactId>
-                <version>${picocli.version}</version>
+                <groupId>org.ta4j</groupId>
+                <artifactId>ta4j-catalog</artifactId>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

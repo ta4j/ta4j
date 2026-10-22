@@ -743,83 +743,69 @@ test_artifact_manifest_validates_expected_release_jars() {
   echo "Running test_artifact_manifest_validates_expected_release_jars"
   run_test
 
-  version=1.2.3
+  local version=1.2.3 module classifier file
+  : > expected-artifacts.txt
+  for module in ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples; do
+    mkdir -p "$module/target"
+    for classifier in "" "-sources" "-javadoc"; do
+      file="$module/target/${module}-${version}${classifier}.jar"
+      : > "$file"
+      printf '%s\n' "$file" >> expected-artifacts.txt
+    done
+  done
+  file="ta4j-core/target/ta4j-core-${version}-tests.jar"
+  : > "$file"
+  printf '%s\n' "$file" >> expected-artifacts.txt
+  sort expected-artifacts.txt > expected-sorted.txt
+
+  # Only direct reactor target jars are release artifacts.
+  mkdir -p ta4j-acceleration/target/native/build ta4j-data/target/native/build
+  : > ta4j-acceleration/target/native/build/resources.jar
+  : > ta4j-data/target/native/build/resources.jar
+  bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --github-output outputs.txt --strict >manifest.log
+  expect_file_contains manifest.log "expected=16 missing=0 unexpected=0" \
+    "manifest should require exactly the foundation release jars"
+  expect_file_contains outputs.txt "missing_count=0" "manifest should report no missing artifacts"
+  expect_file_contains outputs.txt "unexpected_count=0" "manifest must ignore nested native build jars"
+  awk '
+    /^files<<EOF_files_/ { in_files=1; next }
+    in_files && /^EOF_files_/ { in_files=0; next }
+    in_files { print }
+  ' outputs.txt | sort > actual-artifacts.txt
+  if ! cmp -s expected-sorted.txt actual-artifacts.txt; then
+    fail "release output should contain exactly the five library modules and core tests jar"
+  fi
+  if grep -Eq 'ta4j-cli|ta4j-acceleration|resources.jar' artifact-manifest.txt outputs.txt; then
+    fail "foundation manifest must not publish application or native artifacts"
+  fi
+
+  while IFS= read -r file; do
+    rm "$file"
+    if bash "$SCRIPT" artifact-manifest --version "$version" --output missing-manifest.txt --strict >missing.log 2>&1; then
+      fail "strict artifact manifest should require $file"
+    fi
+    expect_file_contains missing.log "Missing release artifacts: $file" \
+      "missing artifact failure should identify the required jar"
+    : > "$file"
+  done < expected-artifacts.txt
+
   for file in \
-    "ta4j-core/target/ta4j-core-${version}.jar" \
-    "ta4j-core/target/ta4j-core-${version}-sources.jar" \
-    "ta4j-core/target/ta4j-core-${version}-javadoc.jar" \
-    "ta4j-core/target/ta4j-core-${version}-tests.jar" \
-    "ta4j-examples/target/ta4j-examples-${version}.jar" \
-    "ta4j-examples/target/ta4j-examples-${version}-sources.jar" \
-    "ta4j-examples/target/ta4j-examples-${version}-javadoc.jar" \
+    "ta4j-core/target/unexpected.jar" \
+    "ta4j-data/target/ta4j-data-${version}-tests.jar" \
+    "ta4j-charting/target/ta4j-charting-${version}-tests.jar" \
+    "ta4j-catalog/target/ta4j-catalog-${version}-tests.jar" \
     "ta4j-cli/target/ta4j-cli-${version}.jar" \
-    "ta4j-cli/target/ta4j-cli-${version}-jar-with-dependencies.jar" \
-    "ta4j-cli/target/ta4j-cli-${version}-sources.jar" \
-    "ta4j-cli/target/ta4j-cli-${version}-javadoc.jar" \
     "ta4j-acceleration/target/ta4j-acceleration-${version}.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-sources.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-javadoc.jar"; do
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar"; do
     mkdir -p "$(dirname "$file")"
     : > "$file"
+    if bash "$SCRIPT" artifact-manifest --version "$version" --output unexpected-manifest.txt --strict >unexpected.log 2>&1; then
+      fail "strict artifact manifest should reject $file"
+    fi
+    expect_file_contains unexpected.log "Unexpected target jars: $file" \
+      "strict failure should name the unexpected reactor target jar"
+    rm "$file"
   done
-
-  # Native classifiers are produced only by their platform-specific profiles,
-  # so their absence must not fail an ordinary default release build.
-  bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --github-output outputs.txt --strict >/dev/null
-  expect_file_contains artifact-manifest.txt "Missing release artifacts:" "manifest should include missing section"
-  expect_file_contains artifact-manifest.txt "- (none)" "manifest should report no missing artifacts"
-  if ! awk -v path="ta4j-core/target/ta4j-core-${version}.jar" '
-    /^files<<EOF_files_/ { in_files=1; next }
-    in_files && /^EOF_files_/ { in_files=0; next }
-    in_files && index($0, path) { found=1 }
-    END { if (found) exit 0; exit 1 }
-  ' outputs.txt; then
-    fail "release output should include present required artifacts"
-  fi
-  if awk -v path="ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar" '
-    /^files<<EOF_files_/ { in_files=1; next }
-    in_files && /^EOF_files_/ { in_files=0; next }
-    in_files && index($0, path) { found=1 }
-    END { if (found) exit 0; exit 1 }
-  ' outputs.txt; then
-    fail "release output must not include an absent optional classifier"
-  fi
-
-  for file in \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-windows-x86_64.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-linux-x86_64.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-x86_64.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-aarch64.jar"; do
-    mkdir -p "$(dirname "$file")"
-    : > "$file"
-  done
-  # Native profiles leave an intermediate resource jar under target/native; it is not a release artifact.
-  mkdir -p ta4j-acceleration/target/native
-  : > ta4j-acceleration/target/native/metal-macos-aarch64-resources.jar
-  bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --github-output native-outputs.txt --strict
-  for file in \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-windows-x86_64.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-linux-x86_64.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-x86_64.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-aarch64.jar"; do
-    expect_file_contains artifact-manifest.txt "$file" "manifest should inventory the known native classifier"
-  done
-  if ! awk -v path="ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar" '
-    /^files<<EOF_files_/ { in_files=1; next }
-    in_files && /^EOF_files_/ { in_files=0; next }
-    in_files && index($0, path) { found=1 }
-    END { if (found) exit 0; exit 1 }
-  ' native-outputs.txt; then
-    fail "release output should include a present optional classifier"
-  fi
-
-  : > "ta4j-core/target/unexpected.jar"
-  if bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict >manifest.log 2>&1; then
-    fail "strict artifact manifest should reject unexpected jars"
-  fi
-  expect_file_contains manifest.log "Unexpected target jars" "strict failure should name unexpected jars"
 
   finish_test
   pass "test_artifact_manifest_validates_expected_release_jars"

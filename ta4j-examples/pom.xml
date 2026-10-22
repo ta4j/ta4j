@@ -41,6 +41,18 @@
         </dependency>
         <dependency>
             <groupId>org.ta4j</groupId>
+            <artifactId>ta4j-data</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ta4j</groupId>
+            <artifactId>ta4j-charting</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ta4j</groupId>
+            <artifactId>ta4j-catalog</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.ta4j</groupId>
             <artifactId>ta4j-core</artifactId>
             <version>${project.version}</version>
             <classifier>tests</classifier>
@@ -50,11 +62,6 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-math3</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.opencsv</groupId>
-            <artifactId>opencsv</artifactId>
         </dependency>
 
         <dependency>
