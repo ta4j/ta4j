@@ -998,6 +998,7 @@ final class ElliottResearch {
         private final Map<String, ElliottResearchCalibration.Computation> calibrations = new LinkedHashMap<>();
         private String numFactory = "unknown";
         private String status = "running";
+        private JsonObject outcomeRecords;
 
         Run(final Path dir, final RunOptions options, final Setup setup, final Recipe recipe, final String revision,
                 final String worktree) {
@@ -1242,11 +1243,8 @@ final class ElliottResearch {
         void finish() throws IOException {
             final long complete = entries.values().stream().filter(entry -> "complete".equals(entry.status)).count();
             status = complete == entries.size() ? "complete" : complete == 0 ? "failed" : "partial";
-            ElliottResearchReport.writeCsv(dir.resolve(COMPARISONS_FILE), rows);
-            final JsonObject json = toJson();
-            ElliottResearchReport.writeCoverage(dir.resolve(COVERAGE_FILE), coverage(json));
-            Files.writeString(dir.resolve(RUN_FILE), GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
             final List<ElliottResearchOutcomes.Result> results = List.copyOf(outcomes.values());
+            ElliottResearchReport.writeCsv(dir.resolve(COMPARISONS_FILE), rows);
             ElliottResearchOutcomes.writeEvents(dir.resolve(ElliottResearchOutcomes.EVENTS_FILE), setup.fingerprint(),
                     setup.outcomes(), results);
             ElliottResearchOutcomes.writeOutcomes(dir.resolve(ElliottResearchOutcomes.OUTCOMES_FILE), results);
@@ -1262,7 +1260,15 @@ final class ElliottResearch {
                 ElliottResearchCalibration.writeReliability(dir.resolve(ElliottResearchCalibration.RELIABILITY_FILE),
                         computations);
             }
-            Files.writeString(dir.resolve(SUMMARY_FILE), renderSummary(dir, json, rows), StandardCharsets.UTF_8);
+            outcomeRecords = ElliottResearchOutcomes.recordCounts(results);
+            final JsonObject json = toJson();
+            ElliottResearchReport.writeCoverage(dir.resolve(COVERAGE_FILE), coverage(json));
+            // run.json declares the final status and the outcome record counts, so it is
+            // written after every artifact it vouches for: a run interrupted while
+            // publishing keeps the "running" status and no counts of its last checkpoint,
+            // which readers reject as incomplete.
+            Files.writeString(dir.resolve(RUN_FILE), GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
+            writeSummary(dir, renderSummary(dir, json, rows));
         }
 
         private void writeRunJson() throws IOException {
@@ -1331,6 +1337,9 @@ final class ElliottResearch {
             outcomeFiles.addProperty("events", ElliottResearchOutcomes.EVENTS_FILE);
             outcomeFiles.addProperty("outcomes", ElliottResearchOutcomes.OUTCOMES_FILE);
             outcomeFiles.addProperty("summary", ElliottResearchOutcomes.SUMMARY_FILE);
+            if (outcomeRecords != null) {
+                outcomeFiles.add("records", outcomeRecords);
+            }
             json.add("outcomes", outcomeFiles);
             if (setup.calibration() != null) {
                 final JsonObject calibrationFiles = new JsonObject();
@@ -1434,7 +1443,7 @@ final class ElliottResearch {
         if (!Files.isDirectory(dir)) {
             throw new IllegalArgumentException("not a run directory: " + dir);
         }
-        final Path file = dir.resolve(RUN_FILE);
+        final Path file = resolveInside(dir, RUN_FILE);
         if (!Files.isRegularFile(file)) {
             throw new IllegalArgumentException("not a run directory: " + file + " is missing");
         }
@@ -1449,6 +1458,33 @@ final class ElliottResearch {
         } catch (final JsonParseException | IllegalStateException | NullPointerException | ClassCastException e) {
             throw new IllegalArgumentException(file + " is not a valid run file: " + e.getMessage());
         }
+    }
+
+    /**
+     * Resolves an artifact name recorded in a run directory. A run directory can
+     * come from someone else, so absolute names, traversal and links that leave it
+     * are refused instead of read.
+     */
+    private static Path resolveInside(final Path dir, final String relative) throws IOException {
+        final Path base = dir.toAbsolutePath().normalize();
+        final Path resolved = base.resolve(relative).normalize();
+        final boolean inside = !Path.of(relative).isAbsolute() && resolved.startsWith(base)
+                && (!Files.exists(resolved) || resolved.toRealPath().startsWith(base.toRealPath()));
+        if (!inside) {
+            throw new IllegalArgumentException("'" + relative + "' lies outside the run directory " + dir);
+        }
+        return resolved;
+    }
+
+    /**
+     * Replaces {@code summary.md} without writing through what it was: an existing
+     * symlink or hard link would otherwise redirect the regenerated Markdown to its
+     * target.
+     */
+    private static void writeSummary(final Path dir, final String markdown) throws IOException {
+        final Path file = dir.resolve(SUMMARY_FILE);
+        Files.deleteIfExists(file);
+        Files.writeString(file, markdown, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
     }
 
     private static List<CoverageRow> coverage(final JsonObject run) {
@@ -1471,7 +1507,7 @@ final class ElliottResearch {
         return element == null || element.isJsonNull() ? "" : element.getAsString();
     }
 
-    private static String renderSummary(final Path dir, final JsonObject run, final List<Row> rows) {
+    private static String renderSummary(final Path dir, final JsonObject run, final List<Row> rows) throws IOException {
         final JsonObject trace = run.getAsJsonObject("trace");
         final String mode = trace.get("mode").getAsString();
         final StringBuilder markdown = new StringBuilder(ElliottResearchReport.summaryMarkdown(
@@ -1501,11 +1537,7 @@ final class ElliottResearch {
         if (run.has("outcomes")) {
             // A run that declares outcome artifacts is incomplete without them; only a
             // run written before outcomes existed legitimately has none.
-            final Path outcomesSummary = dir.resolve(ElliottResearchOutcomes.SUMMARY_FILE);
-            if (!Files.isRegularFile(outcomesSummary)) {
-                throw new Diagnostic(ElliottResearchOutcomes.SUMMARY_FILE + " is declared by " + RUN_FILE
-                        + " but missing in " + dir + "; the run is incomplete, rerun the recipe");
-            }
+            final Path outcomesSummary = verifiedOutcomes(dir, run.get("outcomes"));
             markdown.append('\n').append(ElliottResearchOutcomes.summaryMarkdown(outcomesSummary));
             markdown.append("\nEvent lifecycles are in `")
                     .append(ElliottResearchOutcomes.EVENTS_FILE)
@@ -1514,14 +1546,9 @@ final class ElliottResearch {
                     .append("`.\n");
         }
         if (run.has("calibration")) {
-            final Path calibrationSummary = dir.resolve(ElliottResearchCalibration.SUMMARY_FILE);
-            final Path calibrationReliability = dir.resolve(ElliottResearchCalibration.RELIABILITY_FILE);
-            for (final Path file : List.of(calibrationSummary, calibrationReliability)) {
-                if (!Files.isRegularFile(file)) {
-                    throw new Diagnostic(file.getFileName() + " is declared by " + RUN_FILE + " but missing in " + dir
-                            + "; the run is incomplete, rerun the recipe");
-                }
-            }
+            final Path calibrationSummary = runArtifact(dir, ElliottResearchCalibration.SUMMARY_FILE, "calibration");
+            final Path calibrationReliability = runArtifact(dir, ElliottResearchCalibration.RELIABILITY_FILE,
+                    "calibration");
             markdown.append('\n')
                     .append(ElliottResearchCalibration.summaryMarkdown(calibrationSummary, calibrationReliability));
         }
@@ -1530,10 +1557,50 @@ final class ElliottResearch {
     }
 
     /**
+     * Resolves the outcome artifacts a run declares and checks them against the
+     * record counts {@code run.json} carries. Those counts are written after the
+     * artifacts, so a run interrupted while publishing has none, and artifacts
+     * truncated afterwards no longer match: both are incomplete, never summarized.
+     *
+     * @return the verified {@code outcomes-summary.csv}
+     */
+    private static Path verifiedOutcomes(final Path dir, final JsonElement declared) throws IOException {
+        final Path events = runArtifact(dir, ElliottResearchOutcomes.EVENTS_FILE, "outcome");
+        final Path outcomes = runArtifact(dir, ElliottResearchOutcomes.OUTCOMES_FILE, "outcome");
+        final Path summary = runArtifact(dir, ElliottResearchOutcomes.SUMMARY_FILE, "outcome");
+        final JsonElement records = declared.isJsonObject() ? declared.getAsJsonObject().get("records") : null;
+        if (records == null || !records.isJsonObject()) {
+            throw new Diagnostic(RUN_FILE + " declares the outcome artifacts without their record counts in " + dir
+                    + "; the run did not finish publishing, rerun the recipe");
+        }
+        try {
+            ElliottResearchOutcomes.verifyArtifacts(events, outcomes, summary, records.getAsJsonObject());
+        } catch (final IllegalArgumentException incomplete) {
+            throw new Diagnostic(incomplete.getMessage() + "; the run is incomplete, rerun the recipe");
+        }
+        return summary;
+    }
+
+    private static Path runArtifact(final Path dir, final String name, final String kind) throws IOException {
+        final Path file;
+        try {
+            file = resolveInside(dir, name);
+        } catch (final IllegalArgumentException outside) {
+            throw new Diagnostic(
+                    kind + " artifact " + outside.getMessage() + "; refusing to read it, rerun the recipe");
+        }
+        if (!Files.isRegularFile(file)) {
+            throw new Diagnostic(name + " is declared by " + RUN_FILE + " but missing in " + dir
+                    + "; the run is incomplete, rerun the recipe");
+        }
+        return file;
+    }
+
+    /**
      * Datasets whose real trace is listed in the run, present, complete and matches
      * {@link #expectedTraceHeader} for a real capture; only their rows may claim
-     * captured evidence. A deleted, truncated, corrupt, null-member or foreign
-     * trace is treated as not captured.
+     * captured evidence. A deleted, truncated, corrupt, null-member, foreign or
+     * out-of-directory trace is treated as not captured.
      */
     private static Set<String> verifiedRealTraces(final Path dir, final JsonObject run) {
         final Set<String> traced = new HashSet<>();
@@ -1541,19 +1608,22 @@ final class ElliottResearch {
             final JsonObject dataset = element.getAsJsonObject();
             final String id = dataset.get("id").getAsString();
             final String name = realTraceName(id);
-            final Path file = dir.resolve(name);
-            if (!dataset.getAsJsonArray("traces").contains(new JsonPrimitive(name)) || !Files.isRegularFile(file)) {
+            if (!dataset.getAsJsonArray("traces").contains(new JsonPrimitive(name))) {
                 continue;
             }
             final JsonObject expected = expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_REAL, -1, -1);
             try {
+                final Path file = resolveInside(dir, name);
+                if (!Files.isRegularFile(file)) {
+                    continue;
+                }
                 final ElliottResearchTrace.TraceFile parsed = ElliottResearchTrace.read(file, record -> false);
                 if (parsed.complete() && headerMismatch(parsed.header(), expected) == null) {
                     traced.add(id);
                 }
             } catch (final IOException | IllegalArgumentException unreadable) {
-                // An unreadable or corrupt trace is not evidence; the summary offers a
-                // recapture.
+                // An unreadable, corrupt or out-of-directory trace is not evidence; the
+                // summary offers a recapture.
             }
         }
         return traced;
@@ -1661,13 +1731,13 @@ final class ElliottResearch {
         }
         final Path dir = Path.of(args.get(0)).toAbsolutePath().normalize();
         final JsonObject run = loadRun(dir);
-        final Path comparisons = dir.resolve(COMPARISONS_FILE);
+        final Path comparisons = resolveInside(dir, COMPARISONS_FILE);
         if (!Files.isRegularFile(comparisons)) {
             throw new Diagnostic(COMPARISONS_FILE + " is missing in " + dir + " (run status "
                     + run.get("status").getAsString() + "); the run did not finish, rerun the recipe");
         }
         final List<Row> rows = ElliottResearchReport.readCsv(comparisons);
-        Files.writeString(dir.resolve(SUMMARY_FILE), renderSummary(dir, run, rows), StandardCharsets.UTF_8);
+        writeSummary(dir, renderSummary(dir, run, rows));
         out.println("Summary: " + dir.resolve(SUMMARY_FILE));
         return 0;
     }
@@ -1737,7 +1807,7 @@ final class ElliottResearch {
             throw new Diagnostic("dataset '" + key.dataset() + "' is " + dataset.get("status").getAsString() + ": "
                     + dataset.get("message").getAsString() + " (rerun the recipe to recompute it)");
         }
-        final Path comparisons = dir.resolve(COMPARISONS_FILE);
+        final Path comparisons = resolveInside(dir, COMPARISONS_FILE);
         if (!Files.isRegularFile(comparisons)) {
             throw new Diagnostic(COMPARISONS_FILE + " is missing in " + dir + "; rerun the recipe");
         }
@@ -1825,15 +1895,9 @@ final class ElliottResearch {
 
         private void printCalibration(final PrintStream out, final Integer asOf, final String candidate)
                 throws IOException {
-            final Path predictions = dir.resolve(ElliottResearchCalibration.PREDICTIONS_FILE);
-            final Path reliability = dir.resolve(ElliottResearchCalibration.RELIABILITY_FILE);
-            final Path tables = dir.resolve(ElliottResearchCalibration.TABLES_FILE);
-            for (final Path file : List.of(predictions, reliability, tables)) {
-                if (!Files.isRegularFile(file)) {
-                    throw new Diagnostic(file.getFileName() + " is declared by " + RUN_FILE + " but missing in " + dir
-                            + "; the run is incomplete, rerun the recipe");
-                }
-            }
+            final Path predictions = runArtifact(dir, ElliottResearchCalibration.PREDICTIONS_FILE, "calibration");
+            final Path reliability = runArtifact(dir, ElliottResearchCalibration.RELIABILITY_FILE, "calibration");
+            final Path tables = runArtifact(dir, ElliottResearchCalibration.TABLES_FILE, "calibration");
             final String mismatch = ElliottResearchCalibration.scopeMismatch(tables, row.dataset(), row.section(),
                     row.grammar(), row.detector());
             if (mismatch != null) {
@@ -2138,7 +2202,13 @@ final class ElliottResearch {
             if (relative == null) {
                 return null;
             }
-            final Path file = dir.resolve(relative);
+            final Path file;
+            try {
+                file = resolveInside(dir, relative);
+            } catch (final IllegalArgumentException outside) {
+                throw new Diagnostic(label + " trace " + outside.getMessage()
+                        + "; refusing to read it. Recapture with:\n  " + recapture);
+            }
             if (!Files.isRegularFile(file)) {
                 return null;
             }

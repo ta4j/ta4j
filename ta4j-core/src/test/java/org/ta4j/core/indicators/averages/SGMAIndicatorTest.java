@@ -4,10 +4,10 @@
 package org.ta4j.core.indicators.averages;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.ta4j.core.TestUtils.*;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.CsvTestUtils;
 import org.ta4j.core.Indicator;
@@ -46,26 +46,30 @@ public class SGMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         }
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void evenBarCountThrowsException() {
-        MockIndicator mock = CsvTestUtils.getCsvFile(SGMAIndicatorTest.class, "SGMA.csv", numFactory);
+        assertThrows(IllegalArgumentException.class, () -> {
+            MockIndicator mock = CsvTestUtils.getCsvFile(SGMAIndicatorTest.class, "SGMA.csv", numFactory);
 
-        BarSeries barSeries = mock.getBarSeries();
+            BarSeries barSeries = mock.getBarSeries();
 
-        new SGMAIndicator(new ClosePriceIndicator(barSeries), 10, 2);
+            new SGMAIndicator(new ClosePriceIndicator(barSeries), 10, 2);
 
-        fail("Should have thrown an exception");
+            fail("Should have thrown an exception");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void barCountShouldBeGreaterThanPolynomialOrderThrowsException() {
-        MockIndicator mock = CsvTestUtils.getCsvFile(SGMAIndicatorTest.class, "SGMA.csv", numFactory);
+        assertThrows(IllegalArgumentException.class, () -> {
+            MockIndicator mock = CsvTestUtils.getCsvFile(SGMAIndicatorTest.class, "SGMA.csv", numFactory);
 
-        BarSeries barSeries = mock.getBarSeries();
+            BarSeries barSeries = mock.getBarSeries();
 
-        new SGMAIndicator(new ClosePriceIndicator(barSeries), 3, 5);
+            new SGMAIndicator(new ClosePriceIndicator(barSeries), 3, 5);
 
-        fail("Should have thrown an exception");
+            fail("Should have thrown an exception");
+        });
     }
 
     @Test

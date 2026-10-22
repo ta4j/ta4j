@@ -3,9 +3,9 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.Arrays;
@@ -18,9 +18,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -40,7 +40,7 @@ public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(typicalPrices).build();
     }
@@ -71,8 +71,8 @@ public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         Stream<Num> stream = closePriceMockIndicator.stream();
         List<Num> collectedValues = stream.collect(Collectors.toList());
 
-        Assert.assertNotNull(stream);
-        Assert.assertNotNull(collectedValues);
+        Assertions.assertNotNull(stream);
+        Assertions.assertNotNull(collectedValues);
         assertEquals(30, collectedValues.size());
         for (int i = 0; i < data.getBarCount(); i++) {
             assertNumEquals(typicalPrices[i], collectedValues.get(i));
@@ -167,7 +167,7 @@ public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 if (writeLockAcquired) {
                     seriesLock.writeLock().unlock();
                 }
-                assertFalse("indicator read scope must hold the delegate lock", writeLockAcquired);
+                assertFalse(writeLockAcquired, "indicator read scope must hold the delegate lock");
                 assertEquals(before, indicatorSeries.getBarSeriesChangeSnapshot(-1L));
                 assertNumEquals(numFactory.numOf(42), indicatorSeries.getBar(0).getClosePrice());
                 return indicatorSeries.getBarCount();
@@ -183,7 +183,7 @@ public class IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 if (writeLockAcquired) {
                     seriesLock.writeLock().unlock();
                 }
-                assertFalse("indicator runnable scope must hold the delegate lock", writeLockAcquired);
+                assertFalse(writeLockAcquired, "indicator runnable scope must hold the delegate lock");
             });
         } finally {
             executorService.shutdownNow();

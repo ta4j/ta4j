@@ -3,8 +3,8 @@
  */
 package ta4jexamples.research;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 
@@ -17,15 +17,15 @@ public class NamedPatternContextExampleTest {
         Rule priorDowntrend = NamedPatternContextExample.priorDowntrend(series);
         int index = series.getEndIndex();
 
-        Assert.assertTrue(pattern.isSatisfied(index));
-        Assert.assertTrue(priorDowntrend.isSatisfied(index));
-        Assert.assertTrue(pattern.and(priorDowntrend).isSatisfied(index));
+        Assertions.assertTrue(pattern.isSatisfied(index));
+        Assertions.assertTrue(priorDowntrend.isSatisfied(index));
+        Assertions.assertTrue(pattern.and(priorDowntrend).isSatisfied(index));
     }
 
     @Test
     public void combinedWarmUpBoundaryMatchesTheDocumentedIndex() {
         BarSeries series = NamedPatternContextExample.buildSeries();
 
-        Assert.assertEquals(21, NamedPatternContextExample.firstReliableIndex(series));
+        Assertions.assertEquals(21, NamedPatternContextExample.firstReliableIndex(series));
     }
 }

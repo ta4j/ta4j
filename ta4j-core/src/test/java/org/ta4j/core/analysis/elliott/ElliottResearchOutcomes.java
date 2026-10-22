@@ -3,9 +3,13 @@
  */
 package org.ta4j.core.analysis.elliott;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +34,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 
 /**
@@ -1101,6 +1107,149 @@ final class ElliottResearchOutcomes {
             }
         }
         ElliottResearchReport.writeTable(path, SUMMARY_HEADER, table);
+    }
+
+    /**
+     * Row counts of the artifacts {@link #writeEvents}, {@link #writeOutcomes}, and
+     * {@link #writeSummary} publish for {@code results}. A run declares them only
+     * after those artifacts are written, so {@link #verifyArtifacts} can tell a
+     * complete run from an interrupted or truncated one.
+     *
+     * @param results per-dataset results in dataset order
+     * @return {@code events}, {@code outcomes}, and {@code summary} row counts
+     */
+    static JsonObject recordCounts(final List<Result> results) {
+        long events = 0;
+        long outcomes = 0;
+        long summary = 0;
+        for (final Result result : results) {
+            events += result.events().size();
+            for (final Evaluated evaluated : result.events()) {
+                outcomes += evaluated.labels().size();
+            }
+            summary += result.summary().size();
+        }
+        final JsonObject counts = new JsonObject();
+        counts.addProperty("events", events);
+        counts.addProperty("outcomes", outcomes);
+        counts.addProperty("summary", summary);
+        return counts;
+    }
+
+    /**
+     * Checks the published artifacts against the counts the run declared for them.
+     * A header-only file, a prefix of whole rows, or a cut through the last row no
+     * longer matches, so a reader never summarizes partial evidence.
+     *
+     * @param events   {@code events.jsonl}
+     * @param outcomes {@code outcomes.csv}
+     * @param summary  {@code outcomes-summary.csv}
+     * @param declared counts from {@link #recordCounts}
+     * @throws IllegalArgumentException naming the first artifact that disagrees
+     */
+    static void verifyArtifacts(final Path events, final Path outcomes, final Path summary, final JsonObject declared) {
+        verifyEvents(events, declaredCount(declared, "events"));
+        verifyRows(outcomes, OUTCOMES_HEADER, declaredCount(declared, "outcomes"));
+        verifyRows(summary, SUMMARY_HEADER, declaredCount(declared, "summary"));
+    }
+
+    private static long declaredCount(final JsonObject declared, final String name) {
+        final JsonElement count = declared.get(name);
+        if (count == null || !count.isJsonPrimitive() || !count.getAsJsonPrimitive().isNumber()) {
+            throw new IllegalArgumentException("the run declares no " + name + " record count");
+        }
+        return count.getAsLong();
+    }
+
+    private static void verifyEvents(final Path path, final long declared) {
+        String first = null;
+        String last = null;
+        long lines = 0;
+        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+                first = lines == 0 ? line : first;
+                last = line;
+                lines++;
+            }
+        } catch (final IOException e) {
+            throw new UncheckedIOException("Unable to read " + path, e);
+        }
+        if (lines == 0 || !SCHEMA.equals(headerSchema(first))) {
+            throw new IllegalArgumentException(path + " has no " + SCHEMA + " header");
+        }
+        final long footer = lines < 2 ? -1L : footerRecords(last);
+        if (footer < 0) {
+            throw new IllegalArgumentException(path + " has no completion footer");
+        }
+        final long events = lines - 2;
+        if (footer != events || events != declared) {
+            throw new IllegalArgumentException(path + " holds " + events + " events, its footer counts " + footer
+                    + " and the run recorded " + declared);
+        }
+    }
+
+    private static String headerSchema(final String line) {
+        try {
+            final JsonElement schema = JsonParser.parseString(line).getAsJsonObject().get("schema");
+            return schema != null && schema.isJsonPrimitive() ? schema.getAsString() : null;
+        } catch (final JsonParseException | IllegalStateException e) {
+            return null;
+        }
+    }
+
+    /**
+     * The record count of a {@code {"complete":true,"records":N}} line, else -1.
+     */
+    private static long footerRecords(final String line) {
+        try {
+            final JsonObject footer = JsonParser.parseString(line).getAsJsonObject();
+            final JsonElement complete = footer.get("complete");
+            final JsonElement records = footer.get("records");
+            final boolean finished = complete != null && complete.isJsonPrimitive()
+                    && complete.getAsJsonPrimitive().isBoolean() && complete.getAsBoolean();
+            return finished && records != null && records.isJsonPrimitive() && records.getAsJsonPrimitive().isNumber()
+                    ? records.getAsLong()
+                    : -1L;
+        } catch (final JsonParseException | IllegalStateException e) {
+            return -1L;
+        }
+    }
+
+    private static void verifyRows(final Path path, final List<String> header, final long declared) {
+        final List<List<String>> table = ElliottResearchReport.parseCsv(path);
+        if (table.isEmpty() || !table.get(0).equals(header)) {
+            throw new IllegalArgumentException(path + ":1: unexpected header, expected " + header);
+        }
+        final long rows = table.size() - 1L;
+        if (rows != declared) {
+            throw new IllegalArgumentException(path + " holds " + rows + " rows but the run recorded " + declared);
+        }
+        for (int row = 1; row < table.size(); row++) {
+            if (table.get(row).size() != header.size()) {
+                throw new IllegalArgumentException(
+                        path + " row " + row + " has " + table.get(row).size() + " cells, expected " + header.size());
+            }
+        }
+        if (!endsWithLineBreak(path)) {
+            throw new IllegalArgumentException(path + " ends inside its last row");
+        }
+    }
+
+    /** Whether the file ends with the CRLF every written row is terminated by. */
+    private static boolean endsWithLineBreak(final Path path) {
+        try (SeekableByteChannel channel = Files.newByteChannel(path)) {
+            final ByteBuffer tail = ByteBuffer.allocate(2);
+            if (channel.size() < tail.capacity()) {
+                return false;
+            }
+            channel.position(channel.size() - tail.capacity());
+            while (tail.hasRemaining() && channel.read(tail) >= 0) {
+                // read until the two trailing bytes are in
+            }
+            return !tail.hasRemaining() && tail.get(0) == '\r' && tail.get(1) == '\n';
+        } catch (final IOException e) {
+            throw new UncheckedIOException("Unable to read " + path, e);
+        }
     }
 
     /**

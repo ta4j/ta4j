@@ -240,7 +240,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
         List<List<Num>> blocks = new ArrayList<>();
         CashFlow cashFlow = new CashFlow(series, record, equityCurveMode, openPositionHandling);
         Num one = series.numFactory().one();
-        for (Position position : record.getPositions()) {
+        for (Position position : record.getContainedPositions(series)) {
             if (!position.isClosed()) {
                 continue;
             }

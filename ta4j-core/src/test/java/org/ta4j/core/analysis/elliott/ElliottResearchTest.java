@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,6 +20,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import com.google.gson.JsonArray;
@@ -176,6 +178,104 @@ class ElliottResearchTest {
 
         assertEquals(2, result.code());
         assertTrue(result.err().contains("outcomes-summary.csv is declared by run.json but missing"), result.err());
+        assertFalse(Files.exists(copy.resolve("summary.md")), "an incomplete run must not get a summary");
+    }
+
+    @Test
+    void runJsonDeclaresTheRecordCountsOfTheOutcomeArtifactsItVouchesFor() throws Exception {
+        final JsonObject records = readJson(smokeRun.resolve("run.json")).getAsJsonObject("outcomes")
+                .getAsJsonObject("records");
+
+        assertTrue(records.get("events").getAsLong() > 0, "the smoke run must exercise the counts");
+        assertEquals(Files.readAllLines(smokeRun.resolve("events.jsonl")).size() - 2L,
+                records.get("events").getAsLong());
+        assertEquals(csvRows("outcomes.csv"), records.get("outcomes").getAsLong());
+        assertEquals(csvRows("outcomes-summary.csv"), records.get("summary").getAsLong());
+    }
+
+    @Test
+    void summarizeRejectsAnEventsFileThatHoldsOnlyItsHeader() throws Exception {
+        final Result result = summarizeAfterEditing("events-header-only", "events.jsonl",
+                text -> text.substring(0, text.indexOf('\n') + 1));
+
+        assertIncomplete(result, "events.jsonl has no completion footer");
+    }
+
+    @Test
+    void summarizeRejectsAnEventsFileWithoutItsFooter() throws Exception {
+        final Result result = summarizeAfterEditing("events-no-footer", "events.jsonl",
+                text -> text.substring(0, text.lastIndexOf('\n', text.length() - 2) + 1));
+
+        assertIncomplete(result, "events.jsonl has no completion footer");
+    }
+
+    @Test
+    void summarizeRejectsAnEventsFileThatLostARowBeforeItsFooter() throws Exception {
+        final Result result = summarizeAfterEditing("events-lost-row", "events.jsonl", text -> {
+            final int first = text.indexOf('\n') + 1;
+            return text.substring(0, first) + text.substring(text.indexOf('\n', first) + 1);
+        });
+
+        assertIncomplete(result, "its footer counts");
+    }
+
+    @Test
+    void summarizeRejectsAnOutcomesFileCutInsideItsLastRow() throws Exception {
+        final Result result = summarizeAfterEditing("outcomes-cut", "outcomes.csv",
+                text -> text.substring(0, text.lastIndexOf("\r\n", text.length() - 3) + 2 + 10));
+
+        assertIncomplete(result, "cells, expected 22");
+    }
+
+    @Test
+    void summarizeRejectsAnOutcomesFileThatLostItsLastRow() throws Exception {
+        final Result result = summarizeAfterEditing("outcomes-prefix", "outcomes.csv",
+                text -> text.substring(0, text.lastIndexOf("\r\n", text.length() - 3) + 2));
+
+        assertIncomplete(result, "outcomes.csv holds ");
+        assertTrue(result.err().contains(" rows but the run recorded "), result.err());
+    }
+
+    @Test
+    void summarizeRejectsAHeaderOnlyOutcomesSummary() throws Exception {
+        final Result result = summarizeAfterEditing("summary-header-only", "outcomes-summary.csv",
+                text -> text.substring(0, text.indexOf("\r\n") + 2));
+
+        assertIncomplete(result, "outcomes-summary.csv holds 0 rows but the run recorded ");
+    }
+
+    @Test
+    void summarizeRejectsARunThatNeverDeclaredItsOutcomeRecordCounts() throws Exception {
+        // A run interrupted while publishing keeps the checkpoint run.json: status
+        // "running" and no record counts, beside artifacts that may look complete.
+        final Path copy = work.resolve("no-records");
+        copyTree(smokeRun, copy);
+        Files.delete(copy.resolve("summary.md"));
+        final JsonObject run = readJson(copy.resolve("run.json"));
+        run.addProperty("status", "running");
+        run.getAsJsonObject("outcomes").remove("records");
+        Files.writeString(copy.resolve("run.json"), run.toString());
+
+        final Result result = launch("summarize", copy.toString());
+
+        assertEquals(2, result.code(), result.err());
+        assertTrue(result.err().contains("without their record counts"), result.err());
+        assertFalse(Files.exists(copy.resolve("summary.md")), "an incomplete run must not get a summary");
+    }
+
+    @Test
+    void summarizeRefusesAnOutcomeArtifactThatLinksOutsideTheRunDirectory() throws Exception {
+        final Path copy = work.resolve("linked-outcomes");
+        copyTree(smokeRun, copy);
+        Files.delete(copy.resolve("summary.md"));
+        final Path outside = work.resolve("outside-events.jsonl");
+        Files.move(copy.resolve("events.jsonl"), outside);
+        symlinkOrSkip(copy.resolve("events.jsonl"), outside);
+
+        final Result result = launch("summarize", copy.toString());
+
+        assertEquals(2, result.code(), result.err());
+        assertTrue(result.err().contains("refusing to read it"), result.err());
         assertFalse(Files.exists(copy.resolve("summary.md")), "an incomplete run must not get a summary");
     }
 
@@ -655,6 +755,69 @@ class ElliottResearchTest {
     }
 
     @Test
+    void inspectRefusesTraceReferencesThatLeaveTheRunDirectory() throws Exception {
+        // Regression: a trace reference in run.json was resolved against the run
+        // directory without containment, so a received run could make inspect read
+        // whatever file the reference pointed at.
+        final Path outside = work.resolve("outside-real.jsonl");
+        Files.copy(smokeRun.resolve("traces/smoke-real.jsonl"), outside, StandardCopyOption.REPLACE_EXISTING);
+        final List<String> references = List.of("../outside-real.jsonl", outside.toString());
+        for (int index = 0; index < references.size(); index++) {
+            final Path copy = work.resolve("escaping-reference-" + index);
+            copyTree(smokeRun, copy);
+            final JsonObject run = readJson(copy.resolve("run.json"));
+            final JsonArray traces = new JsonArray();
+            traces.add(references.get(index));
+            run.getAsJsonArray("datasets").get(0).getAsJsonObject().add("traces", traces);
+            Files.writeString(copy.resolve("run.json"), run.toString(), StandardCharsets.UTF_8);
+
+            final Result result = launch("inspect", copy.toString(), OCCUPANCY_KEY);
+            assertEquals(2, result.code(), references.get(index));
+            assertTrue(result.err().contains("lies outside the run directory"), result.err());
+        }
+    }
+
+    @Test
+    void traceLinkedFromOutsideTheRunDirectoryIsNotEvidence() throws Exception {
+        // Regression: a trace that was a link to a file elsewhere was read as the
+        // run's own evidence by both summarize and inspect.
+        final Path outside = work.resolve("linked-target-real.jsonl");
+        Files.copy(smokeRun.resolve("traces/smoke-real.jsonl"), outside, StandardCopyOption.REPLACE_EXISTING);
+        final Path copy = work.resolve("linked-trace");
+        copyTree(smokeRun, copy);
+        final Path trace = copy.resolve("traces/smoke-real.jsonl");
+        Files.delete(trace);
+        symlinkOrSkip(trace, outside);
+
+        final Result summarize = launch("summarize", copy.toString());
+        assertEquals(0, summarize.code(), summarize.err());
+        assertTrue(Files.readString(copy.resolve("summary.md")).contains("Evidence not captured for smoke."));
+
+        final Result inspect = launch("inspect", copy.toString(), OCCUPANCY_KEY);
+        assertEquals(2, inspect.code());
+        assertTrue(inspect.err().contains("lies outside the run directory"), inspect.err());
+    }
+
+    @Test
+    void summarizeReplacesALinkedSummaryInsteadOfWritingThroughIt() throws Exception {
+        // Regression: summarize wrote summary.md through an existing link, so a
+        // received run could make it overwrite any file the link pointed at.
+        final Path copy = work.resolve("linked-summary");
+        copyTree(smokeRun, copy);
+        final Path victim = work.resolve("victim.txt");
+        Files.writeString(victim, "keep", StandardCharsets.UTF_8);
+        final Path summary = copy.resolve("summary.md");
+        Files.delete(summary);
+        symlinkOrSkip(summary, victim);
+
+        final Result result = launch("summarize", copy.toString());
+        assertEquals(0, result.code(), result.err());
+        assertEquals("keep", Files.readString(victim, StandardCharsets.UTF_8));
+        assertFalse(Files.isSymbolicLink(summary));
+        assertTrue(Files.readString(summary, StandardCharsets.UTF_8).contains("Elliott research run: smoke"));
+    }
+
+    @Test
     void exploreRecipeRejectsWindowsReservedDatasetIdBeforeRunning() throws Exception {
         final Path candles = work.resolve("reserved-candles.json");
         writeCandles(candles, LocalDate.of(2020, 1, 1), 300, date -> true);
@@ -949,6 +1112,19 @@ class ElliottResearchTest {
     }
 
     @Test
+    void calibrationArtifactLinkedFromOutsideTheRunDirectoryIsNotRead() throws Exception {
+        final Path run = runCalibrated("linked-calibration", "{\"horizon\":5,\"minGroups\":1}");
+        final Path outside = work.resolve("outside-calibration-summary.csv");
+        Files.move(run.resolve(ElliottResearchCalibration.SUMMARY_FILE), outside);
+        symlinkOrSkip(run.resolve(ElliottResearchCalibration.SUMMARY_FILE), outside);
+        Files.delete(run.resolve("summary.md"));
+        final Result linked = launch("summarize", run.toString());
+        assertEquals(2, linked.code());
+        assertTrue(linked.err().contains("calibration artifact"), linked.err());
+        assertFalse(Files.exists(run.resolve("summary.md")), "a refused artifact must not produce a summary");
+    }
+
+    @Test
     void calibrationRecipeErrorsFailBeforeCreatingArtifacts() throws Exception {
         final Path candles = work.resolve("bad-cal-candles.json");
         writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
@@ -1116,5 +1292,35 @@ class ElliottResearchTest {
         } catch (final IOException e) {
             throw new java.io.UncheckedIOException(e);
         }
+    }
+
+    private static void symlinkOrSkip(final Path link, final Path target) {
+        try {
+            Files.createSymbolicLink(link, target);
+        } catch (final UnsupportedOperationException | IOException unsupported) {
+            assumeTrue(false, "symbolic links are unavailable: " + unsupported);
+        }
+    }
+
+    private Result summarizeAfterEditing(final String name, final String artifact, final UnaryOperator<String> edit)
+            throws IOException {
+        final Path copy = work.resolve(name);
+        copyTree(smokeRun, copy);
+        Files.delete(copy.resolve("summary.md"));
+        Files.writeString(copy.resolve(artifact), edit.apply(Files.readString(copy.resolve(artifact))),
+                StandardCharsets.UTF_8);
+        final Result result = launch("summarize", copy.toString());
+        assertFalse(Files.exists(copy.resolve("summary.md")), "an incomplete run must not get a summary");
+        return result;
+    }
+
+    private static void assertIncomplete(final Result result, final String reason) {
+        assertEquals(2, result.code(), result.err());
+        assertTrue(result.err().contains(reason), result.err());
+        assertTrue(result.err().contains("the run is incomplete, rerun the recipe"), result.err());
+    }
+
+    private static long csvRows(final String name) {
+        return ElliottResearchReport.parseCsv(smokeRun.resolve(name)).size() - 1L;
     }
 }

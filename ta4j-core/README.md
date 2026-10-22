@@ -35,6 +35,19 @@
 - For live data, pause writes during the backtest, or build the strategies on a stable copy, for example `series.getSubSeries(series.getBeginIndex(), series.getEndIndex())`, which also leaves out the forming bar.
 - `BarSeries.withReadLock(...)` is for short, bar-only reads. Do not evaluate indicators or strategies inside it: indicator caches take their own locks and then read bars, so that order can deadlock with other readers once a writer is waiting.
 
+## Schaff Trend Cycle on a moving series
+
+Create `SchaffTrendCycleIndicator` once and read it after each appended bar.
+With enough retained bars for the cycle and warm-up, its MACD, stochastic carry
+and smoothing chain continue across head advances: live and retained values
+match an identically fed unbounded instance. At fixed periods, steady append/read
+work does not grow with `maximumBarCount`.
+
+A fresh instance on an already-pruned series seeds from the available history;
+it cannot recover evicted observations. A source that explicitly resets after a
+head advance also resets the composition. Standalone `StochasticIndicator`
+keeps its existing retained-window reset behavior.
+
 ## Trace rule decisions
 
 - To answer "why did this fire?" or "why did this not fire?", enable SLF4J `TRACE` on the relevant `Rule` or `Strategy` logger and run the normal `isSatisfied(...)`, `shouldEnter(...)`, or `shouldExit(...)` call.
@@ -187,7 +200,13 @@ so a recapture against a changed configuration or edited candles fails instead o
 tracing different data. A run that declares `calibration` but captured no trace is
 the exception: `inspect` prints the row's calibration estimates with a "real trace
 not captured" note and exits with status 0. Coverage marks a partition `partial`
-when it has no bars or a gap longer than seven bar periods.
+when it has no bars or a gap longer than seven bar periods. `summarize` and `inspect`
+read only files that resolve inside the run directory: a trace name that is absolute
+or climbs out with `..`, or a run file or trace that is a link leaving the directory,
+is refused (`inspect` exits with status 2; `summarize` reports such a trace as not
+captured), and `summary.md` is replaced rather than written through, so a link planted
+at that name never redirects the write. A run directory received from someone else is
+still an untrusted local artifact; read it with the care you give any downloaded file.
 
 Every run also records causal forward-outcome evidence for enrolled `MOTIVE_5`
 events (events enroll once per placement, when it first becomes visible to the

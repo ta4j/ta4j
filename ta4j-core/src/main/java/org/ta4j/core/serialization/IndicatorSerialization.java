@@ -231,7 +231,7 @@ public final class IndicatorSerialization {
         }
         try {
             return instantiate(series, descriptor);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | LinkageError e) {
             if (e instanceof IndicatorSerializationException) {
                 throw e;
             }
@@ -645,9 +645,13 @@ public final class IndicatorSerialization {
             return value.toString();
         }
         if (targetType.isEnum()) {
-            @SuppressWarnings({ "unchecked", "rawtypes" })
-            Class<? extends Enum> enumClass = (Class<? extends Enum>) targetType;
-            return Enum.valueOf(enumClass, value.toString());
+            String name = value.toString();
+            for (Object constant : targetType.getEnumConstants()) {
+                if (((Enum<?>) constant).name().equals(name)) {
+                    return constant;
+                }
+            }
+            throw new IllegalArgumentException("No enum constant " + targetType.getCanonicalName() + "." + name);
         }
         if (Num.class.isAssignableFrom(targetType)) {
             BigDecimal decimal = JsonNumberConversions.parseFiniteJsonNumber(value.toString(), "numeric parameter");
@@ -1025,7 +1029,7 @@ public final class IndicatorSerialization {
                 list.add(type);
                 return list;
             });
-        } catch (ClassNotFoundException ignored) {
+        } catch (ClassNotFoundException | LinkageError ignored) {
             // Ignore classes that cannot be loaded
         }
     }

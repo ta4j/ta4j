@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
@@ -22,14 +22,14 @@ public class RiskRewardRatioRuleTest {
     private BarSeries series;
     private TraceTestLogger traceTestLogger;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().build();
         traceTestLogger = new TraceTestLogger();
         traceTestLogger.open();
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         traceTestLogger.close();
     }
@@ -66,13 +66,13 @@ public class RiskRewardRatioRuleTest {
         assertTrue(rule.isSatisfiedWithTraceMode(0, Rule.TraceMode.VERBOSE));
 
         String logContent = traceTestLogger.getLogOutput();
-        assertTrue("Trace should include the current price", logContent.contains("currentPrice=150"));
-        assertTrue("Trace should include the stop price", logContent.contains("stopPrice=120"));
-        assertTrue("Trace should include the target price", logContent.contains("targetPrice=240"));
-        assertTrue("Trace should include the computed risk", logContent.contains("risk=30"));
-        assertTrue("Trace should include the computed reward", logContent.contains("reward=90"));
-        assertTrue("Trace should include the risk/reward ratio", logContent.contains("riskReward=3"));
-        assertTrue("Trace should explain the risk/reward result", logContent.contains("reason=riskRewardMet"));
+        assertTrue(logContent.contains("currentPrice=150"), "Trace should include the current price");
+        assertTrue(logContent.contains("stopPrice=120"), "Trace should include the stop price");
+        assertTrue(logContent.contains("targetPrice=240"), "Trace should include the target price");
+        assertTrue(logContent.contains("risk=30"), "Trace should include the computed risk");
+        assertTrue(logContent.contains("reward=90"), "Trace should include the computed reward");
+        assertTrue(logContent.contains("riskReward=3"), "Trace should include the risk/reward ratio");
+        assertTrue(logContent.contains("reason=riskRewardMet"), "Trace should explain the risk/reward result");
     }
 
     @Test

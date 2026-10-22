@@ -356,7 +356,7 @@ public interface AnalysisCriterion {
         CostModel transactionCostModel = Objects.requireNonNullElseGet(source.getTransactionCostModel(),
                 ZeroCostModel::new);
         CostModel holdingCostModel = Objects.requireNonNullElseGet(source.getHoldingCostModel(), ZeroCostModel::new);
-        BaseTradingRecord projectedRecord = new BaseTradingRecord(source.getStartingType(), start, end,
+        BaseTradingRecord projectedRecord = new WindowProjectedTradingRecord(source.getStartingType(), start, end,
                 transactionCostModel, holdingCostModel);
         if (!hasBars) {
             return projectedRecord;
