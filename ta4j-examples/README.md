@@ -186,6 +186,8 @@ selected-member coordinates, and retained price-bar row counts must be exact
 conversion, never wrapped into another bar or member. Unknown topology statuses,
 alternative outcomes and nested rule-evidence states are rejected at the trace
 line that contains them instead of being presented as recorded evidence.
+Malformed run metadata is also reported as an artifact diagnostic with the field
+to repair and regeneration guidance, rather than escaping as a Java stack trace.
 
 Reproducible smoke walkthrough (synthetic data, no network):
 

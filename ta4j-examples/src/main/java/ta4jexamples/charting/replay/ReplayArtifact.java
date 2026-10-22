@@ -116,11 +116,17 @@ final class ReplayArtifact {
                     "missing comparisons.csv in " + dir + "; comparison keys cannot be resolved. " + REGENERATE);
         }
         final ReplayArtifact artifact = new ReplayArtifact(dir, run, readComparisons(csv, run));
-        final JsonArray array = run.getAsJsonArray("datasets");
-        if (array == null) {
+        artifact.fingerprint();
+        final JsonElement datasets = run.get("datasets");
+        if (datasets == null || !datasets.isJsonArray()) {
             throw new ReplayArtifactException("run.json in " + dir + " has no datasets array. " + REGENERATE);
         }
+        final JsonArray array = datasets.getAsJsonArray();
         for (final JsonElement element : array) {
+            if (!element.isJsonObject()) {
+                throw new ReplayArtifactException(
+                        "run.json in " + dir + " lists a dataset that is not an object. " + REGENERATE);
+            }
             final Dataset dataset = artifact.parseDataset(element.getAsJsonObject());
             artifact.datasets.put(dataset.id(), dataset);
         }
@@ -129,21 +135,28 @@ final class ReplayArtifact {
 
     private Dataset parseDataset(final JsonObject object) {
         final List<String> traces = new ArrayList<>();
-        if (object.has("traces") && object.get("traces").isJsonArray()) {
-            object.getAsJsonArray("traces").forEach(trace -> traces.add(trace.getAsString()));
+        final JsonElement recordedTraces = object.get("traces");
+        if (recordedTraces != null && !recordedTraces.isJsonNull()) {
+            if (!recordedTraces.isJsonArray()) {
+                throw new ReplayArtifactException("artifact field traces must be an array of strings. " + REGENERATE);
+            }
+            for (final JsonElement trace : recordedTraces.getAsJsonArray()) {
+                if (!trace.isJsonPrimitive() || !trace.getAsJsonPrimitive().isString()) {
+                    throw new ReplayArtifactException(
+                            "artifact field traces must contain only strings. " + REGENERATE);
+                }
+                traces.add(trace.getAsString());
+            }
         }
-        final JsonObject coverage = object.has("coverage") ? object.getAsJsonObject("coverage") : new JsonObject();
-        final JsonObject bars = object.has("priceBars") && object.get("priceBars").isJsonObject()
-                ? object.getAsJsonObject("priceBars")
-                : null;
-        final JsonObject source = object.has("source") && object.get("source").isJsonObject()
-                ? object.getAsJsonObject("source")
-                : new JsonObject();
+        final JsonObject coverage = objectOrNull(object, "coverage");
+        final JsonObject bars = objectOrNull(object, "priceBars");
+        final JsonObject source = objectOrNull(object, "source");
         return new Dataset(text(object, "id"), text(object, "asset"), text(coverage, "status"),
                 text(coverage, "message"), List.copyOf(traces), bars == null ? null : text(bars, "path"),
                 bars == null ? null : text(bars, "sha256"),
                 bars == null || !bars.has("rows") ? -1 : integer(bars, "rows"),
-                source.has("sha256") && !source.get("sha256").isJsonNull() ? text(source, "sha256") : null);
+                source == null || !source.has("sha256") || source.get("sha256").isJsonNull() ? null
+                        : text(source, "sha256"));
     }
 
     Path directory() {
@@ -151,7 +164,12 @@ final class ReplayArtifact {
     }
 
     String fingerprint() {
-        return run.getAsJsonObject("identity").get("fingerprint").getAsString();
+        final String fingerprint = text(objectOrNull(run, "identity"), "fingerprint");
+        if (fingerprint.isEmpty()) {
+            throw new ReplayArtifactException(
+                    "run.json in " + directory + " has no identity.fingerprint. " + REGENERATE);
+        }
+        return fingerprint;
     }
 
     String revision() {
@@ -276,7 +294,7 @@ final class ReplayArtifact {
         }
         final JsonElement recordedSource = header.get("sourceSha256");
         final String source = recordedSource == null || recordedSource.isJsonNull() ? null
-                : recordedSource.getAsString();
+                : text(header, "sourceSha256");
         if (!Objects.equals(dataset.sourceSha256(), source)) {
             return "sourceSha256";
         }
@@ -295,9 +313,9 @@ final class ReplayArtifact {
      *         none
      */
     private int runTraceCoordinate(final String name) {
-        final JsonElement trace = run.get("trace");
-        final JsonElement value = trace != null && trace.isJsonObject() ? trace.getAsJsonObject().get(name) : null;
-        return value == null || value.isJsonNull() ? -1 : integer(trace.getAsJsonObject(), name);
+        final JsonObject trace = objectOrNull(run, "trace");
+        final JsonElement value = trace == null ? null : trace.get(name);
+        return value == null || value.isJsonNull() ? -1 : integer(trace, name);
     }
 
     private static int integer(final JsonObject object, final String name) {
@@ -552,8 +570,25 @@ final class ReplayArtifact {
         }
     }
 
+    private static JsonObject objectOrNull(final JsonObject owner, final String name) {
+        final JsonElement value = owner.get(name);
+        if (value == null || value.isJsonNull()) {
+            return null;
+        }
+        if (!value.isJsonObject()) {
+            throw new ReplayArtifactException("artifact field " + name + " must be an object. " + REGENERATE);
+        }
+        return value.getAsJsonObject();
+    }
+
     private static String text(final JsonObject object, final String name) {
-        final JsonElement value = object.get(name);
-        return value == null || value.isJsonNull() ? "" : value.getAsString();
+        final JsonElement value = object == null ? null : object.get(name);
+        if (value == null || value.isJsonNull()) {
+            return "";
+        }
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+            throw new ReplayArtifactException("artifact field " + name + " must be a string. " + REGENERATE);
+        }
+        return value.getAsString();
     }
 }

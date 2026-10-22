@@ -453,7 +453,11 @@ class ReplayArtifactTest {
                 final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
                 final var candidates = record.getAsJsonArray("candidates");
                 if (!candidates.isEmpty() && !candidates.get(0).getAsJsonObject().getAsJsonArray("rules").isEmpty()) {
-                    candidates.get(0).getAsJsonObject().getAsJsonArray("rules").get(0).getAsJsonObject()
+                    candidates.get(0)
+                            .getAsJsonObject()
+                            .getAsJsonArray("rules")
+                            .get(0)
+                            .getAsJsonObject()
                             .addProperty("state", state);
                     lines.set(line, record.toString());
                     asOf = record.get("asOfIndex").getAsInt();
@@ -491,8 +495,12 @@ class ReplayArtifactTest {
                     owner = record.getAsJsonArray("pivots").get(0).getAsJsonObject();
                     name = field.substring("pivot.".length());
                 } else if (field.equals("candidate.placement.index")) {
-                    owner = record.getAsJsonArray("candidates").get(0).getAsJsonObject()
-                            .getAsJsonArray("placements").get(0).getAsJsonObject();
+                    owner = record.getAsJsonArray("candidates")
+                            .get(0)
+                            .getAsJsonObject()
+                            .getAsJsonArray("placement")
+                            .get(0)
+                            .getAsJsonObject();
                     name = "index";
                 } else {
                     owner = record;
@@ -503,8 +511,9 @@ class ReplayArtifactTest {
                 Files.write(trace, lines, StandardCharsets.UTF_8);
 
                 final String message = failureOf(run, ReplayFixture.RULES_KEY);
-                assertTrue(message.contains(name) && message.contains("32-bit")
-                        && message.contains("line " + (line + 1)), field + "=" + value + ": " + message);
+                assertTrue(
+                        message.contains(name) && message.contains("32-bit") && message.contains("line " + (line + 1)),
+                        field + "=" + value + ": " + message);
             }
         }
     }
@@ -532,12 +541,13 @@ class ReplayArtifactTest {
                 });
                 final Path metadata = selected.resolve("run.json");
                 final JsonObject runJson = JsonParser.parseString(Files.readString(metadata)).getAsJsonObject();
-                runJson.getAsJsonObject("trace").add(field, JsonParser.parseString(value));
+                final String selectedField = "nullBlockLength".equals(field) ? "block" : "member";
+                runJson.getAsJsonObject("trace").add(selectedField, JsonParser.parseString(value));
                 Files.writeString(metadata, runJson.toString(), StandardCharsets.UTF_8);
                 final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
                         () -> ReplaySession.open(ReplayArtifact.open(selected), ReplayFixture.RULES_KEY,
                                 ReplayArtifact.TRACE_MODE_NULL_MEMBER, 120, 8));
-                assertTrue(e.getMessage().contains(field) && e.getMessage().contains("32-bit"),
+                assertTrue(e.getMessage().contains(selectedField) && e.getMessage().contains("32-bit"),
                         value + ": " + e.getMessage());
             }
         }
@@ -551,7 +561,10 @@ class ReplayArtifactTest {
             final Path run = ReplayFixture.write(temp.resolve("rows-integer-" + fixture++));
             final Path metadata = run.resolve("run.json");
             final JsonObject runJson = JsonParser.parseString(Files.readString(metadata)).getAsJsonObject();
-            runJson.getAsJsonArray("datasets").get(0).getAsJsonObject().getAsJsonObject("priceBars")
+            runJson.getAsJsonArray("datasets")
+                    .get(0)
+                    .getAsJsonObject()
+                    .getAsJsonObject("priceBars")
                     .add("rows", JsonParser.parseString(value));
             Files.writeString(metadata, runJson.toString(), StandardCharsets.UTF_8);
 
@@ -560,5 +573,100 @@ class ReplayArtifactTest {
             assertTrue(e.getMessage().contains("rows") && e.getMessage().contains("32-bit"),
                     value + ": " + e.getMessage());
         }
+    }
+
+    @Test
+    public void malformedRunMetadataHasArtifactDiagnosticsInsteadOfUncheckedFailures() throws IOException {
+        for (final String field : List.of("artifactSchemaVersion", "status", "revision", "datasets", "dataset-entry",
+                "traces", "trace-entry", "coverage", "priceBars", "source", "id", "asset", "identity", "fingerprint",
+                "missing-identity", "missing-fingerprint", "empty-fingerprint", "number-fingerprint", "rows")) {
+            final Path run = ReplayFixture.write(temp.resolve("malformed-" + field));
+            final Path metadata = run.resolve("run.json");
+            final JsonObject json = JsonParser.parseString(Files.readString(metadata)).getAsJsonObject();
+            final JsonObject dataset = json.getAsJsonArray("datasets").get(0).getAsJsonObject();
+            final String expectedField;
+            switch (field) {
+            case "artifactSchemaVersion", "status", "revision", "datasets" -> {
+                json.add(field, new JsonObject());
+                expectedField = field;
+            }
+            case "dataset-entry" -> {
+                json.getAsJsonArray("datasets").set(0, JsonParser.parseString("7"));
+                expectedField = "dataset";
+            }
+            case "trace-entry" -> {
+                dataset.getAsJsonArray("traces").set(0, new JsonObject());
+                expectedField = "traces";
+            }
+            case "coverage", "priceBars", "source" -> {
+                dataset.add(field, JsonParser.parseString("[]"));
+                expectedField = field;
+            }
+            case "identity" -> {
+                json.add(field, JsonParser.parseString("[]"));
+                expectedField = field;
+            }
+            case "fingerprint" -> {
+                json.getAsJsonObject("identity").add(field, new JsonObject());
+                expectedField = field;
+            }
+            case "missing-identity" -> {
+                json.remove("identity");
+                expectedField = "identity.fingerprint";
+            }
+            case "missing-fingerprint" -> {
+                json.getAsJsonObject("identity").remove("fingerprint");
+                expectedField = "identity.fingerprint";
+            }
+            case "empty-fingerprint" -> {
+                json.getAsJsonObject("identity").addProperty("fingerprint", "");
+                expectedField = "identity.fingerprint";
+            }
+            case "number-fingerprint" -> {
+                json.getAsJsonObject("identity").addProperty("fingerprint", 7);
+                expectedField = "fingerprint";
+            }
+            case "rows" -> {
+                dataset.getAsJsonObject("priceBars").addProperty("rows", "not-a-number");
+                expectedField = field;
+            }
+            default -> {
+                dataset.add(field, new JsonObject());
+                expectedField = field;
+            }
+            }
+            Files.writeString(metadata, json.toString(), StandardCharsets.UTF_8);
+
+            final String message = failureOf(run, ReplayFixture.RULES_KEY);
+            assertTrue(message.contains(expectedField), field + ": " + message);
+            assertTrue(message.contains("Regenerate"), field + ": " + message);
+        }
+    }
+
+    @Test
+    public void malformedTraceIdentityContainersAndSourceDigestsHaveArtifactDiagnostics() throws IOException {
+        final Path selected = ReplayFixture.write(temp.resolve("bad-trace-config"), options -> {
+            options.nullTrace = true;
+            return options;
+        });
+        final Path metadata = selected.resolve("run.json");
+        final JsonObject json = JsonParser.parseString(Files.readString(metadata)).getAsJsonObject();
+        json.add("trace", JsonParser.parseString("[]"));
+        Files.writeString(metadata, json.toString(), StandardCharsets.UTF_8);
+        final ReplayArtifactException invalidConfig = assertThrows(ReplayArtifactException.class,
+                () -> ReplaySession.open(ReplayArtifact.open(selected), ReplayFixture.RULES_KEY,
+                        ReplayArtifact.TRACE_MODE_NULL_MEMBER, 120, 8));
+        assertTrue(invalidConfig.getMessage().contains("trace"), invalidConfig.getMessage());
+
+        final Path real = ReplayFixture.write(temp.resolve("bad-header-source"));
+        final Path trace = real.resolve("traces/d1-real.jsonl");
+        final List<String> lines = Files.readAllLines(trace);
+        final JsonObject header = JsonParser.parseString(lines.getFirst()).getAsJsonObject();
+        header.add("sourceSha256", new JsonObject());
+        lines.set(0, header.toString());
+        Files.write(trace, lines, StandardCharsets.UTF_8);
+
+        final String message = failureOf(real, ReplayFixture.RULES_KEY);
+        assertTrue(message.contains("sourceSha256") && message.contains("string"), message);
     }
 }
