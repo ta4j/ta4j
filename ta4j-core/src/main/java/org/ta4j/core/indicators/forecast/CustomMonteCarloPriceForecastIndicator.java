@@ -27,7 +27,7 @@ import org.ta4j.core.num.Num;
  * {@link MonteCarloPriceForecastIndicator.Builder#monteCarloMethod(MonteCarloMethod)}.
  * A custom method always runs on the CPU.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicator<Forecast>
         implements ForecastProjectionIndicator {
@@ -44,6 +44,11 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
                 builder.monteCarloMethod);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     protected Forecast calculate(int index) {
         Num price = priceIndicator.getValue(index);
@@ -58,7 +63,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
     /**
      * {@inheritDoc}
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     public Forecast getValue(int index) {
@@ -71,7 +76,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
     /**
      * {@inheritDoc}
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     public int getCountOfUnstableBars() {
@@ -86,7 +91,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
      * every cached forecast must be discarded and recomputed from the restarted
      * posterior.
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
@@ -96,7 +101,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
     /**
      * {@inheritDoc}
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     public int getHorizon() {
@@ -107,7 +112,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
      * Builder of a custom-method price forecast, obtained from
      * {@link MonteCarloPriceForecastIndicator.Builder#monteCarloMethod(MonteCarloMethod)}.
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static final class Builder {
 
@@ -132,7 +137,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
          *
          * @param value horizon in bars
          * @return this builder
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public Builder horizon(int value) {
             horizon = value;
@@ -144,7 +149,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
          *
          * @param value number of paths
          * @return this builder
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public Builder iterationCount(int value) {
             iterationCount = value;
@@ -156,7 +161,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
          *
          * @param value lookback in bars
          * @return this builder
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public Builder lookbackBarCount(int value) {
             lookbackBarCount = value;
@@ -168,7 +173,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
          *
          * @param value base seed
          * @return this builder
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public Builder seed(long value) {
             seed = value;
@@ -180,7 +185,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
          *
          * @param probabilities probabilities in {@code [0, 1]}
          * @return this builder
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public Builder quantiles(double... probabilities) {
             Objects.requireNonNull(probabilities, "probabilities must not be null");
@@ -200,7 +205,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
          * Builds the validated custom-method price projection.
          *
          * @return configured price projection
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public CustomMonteCarloPriceForecastIndicator build() {
             return new CustomMonteCarloPriceForecastIndicator(this);

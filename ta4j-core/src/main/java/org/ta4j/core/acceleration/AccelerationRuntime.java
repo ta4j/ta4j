@@ -80,7 +80,7 @@ import org.ta4j.core.Indicator;
  * scope accelerated and, if not, the typed reason.</li>
  * </ul>
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 public final class AccelerationRuntime {
 
@@ -89,12 +89,16 @@ public final class AccelerationRuntime {
      * {@code true} enables it, {@code off} or {@code false} disables it
      * (case-insensitive). The removed {@code cpu}, {@code metal}, {@code cuda},
      * {@code hybrid} and {@code required} modes, and any other value, are rejected.
+     *
+     * @since 0.27.1
      */
     public static final String PROPERTY = "ta4j.acceleration.enabled";
 
     /**
      * System property capping the per-request device memory estimate, in bytes,
      * before any provider is contacted. Defaults to 1 GiB.
+     *
+     * @since 0.27.1
      */
     public static final String MAX_DEVICE_BYTES_PROPERTY = "ta4j.acceleration.maxDeviceBytes";
 
@@ -135,7 +139,7 @@ public final class AccelerationRuntime {
      * @param from   inclusive run begin index
      * @param to     inclusive run end index
      * @return scope handle closing back to the enclosing scope
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static Scope open(BarSeries series, int from, int to) {
         Objects.requireNonNull(series, "series must not be null");
@@ -208,7 +212,7 @@ public final class AccelerationRuntime {
      *
      * @return current or last-closed diagnostic, or empty when no automatic scope
      *         was ever closed on this thread
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static Optional<Diagnostic> lastDiagnostic() {
         Context context = CURRENT.get();
@@ -287,7 +291,7 @@ public final class AccelerationRuntime {
      *
      * @param iterator provider discovery iterator, typically from ServiceLoader
      * @return immutable discovered providers, possibly empty
-     * @since 0.26.1
+     * @since 0.27.1
      */
     static List<Provider> loadProviders(Iterator<Provider> iterator) {
         List<Provider> loaded = new ArrayList<>();
@@ -320,7 +324,7 @@ public final class AccelerationRuntime {
     /**
      * Auto-closeable acceleration scope.
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @FunctionalInterface
     public interface Scope extends AutoCloseable {
@@ -328,7 +332,7 @@ public final class AccelerationRuntime {
         /**
          * Closes the scope and restores any enclosing execution scope.
          *
-         * @since 0.26.1
+         * @since 0.27.1
          */
         @Override
         void close();
@@ -336,10 +340,16 @@ public final class AccelerationRuntime {
 
     /**
      * Versioned accelerated operation. New operations are admitted by core only.
+     *
+     * @since 0.27.1
      */
     public enum Operation {
 
-        /** Monte Carlo shock-path kernel, contract version 1. */
+        /**
+         * Monte Carlo shock-path kernel, contract version 1.
+         *
+         * @since 0.27.1
+         */
         MONTE_CARLO_SHOCK_PATHS_V1(1);
 
         private final int version;
@@ -352,42 +362,76 @@ public final class AccelerationRuntime {
          * Returns the operation contract version.
          *
          * @return contract version
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public int version() {
             return version;
         }
     }
 
-    /** Primitive numeric encoding of kernel buffers. */
+    /**
+     * Primitive numeric encoding of kernel buffers.
+     *
+     * @since 0.27.1
+     */
     public enum NumericEncoding {
 
-        /** IEEE-754 binary64, matching {@code DoubleNum} scalar semantics. */
+        /**
+         * IEEE-754 binary64, matching {@code DoubleNum} scalar semantics.
+         *
+         * @since 0.27.1
+         */
         FLOAT64
     }
 
-    /** Determinism contract a kernel result must satisfy. */
+    /**
+     * Determinism contract a kernel result must satisfy.
+     *
+     * @since 0.27.1
+     */
     public enum Determinism {
 
         /**
          * Bitwise identical to the scalar oracle for the same request inputs.
+         *
+         * @since 0.27.1
          */
         BITWISE_IDENTICAL
     }
 
-    /** Effective execution backend. */
+    /**
+     * Effective execution backend.
+     *
+     * @since 0.27.1
+     */
     public enum Backend {
 
-        /** Canonical scalar CPU fallback. */
+        /**
+         * Canonical scalar CPU fallback.
+         *
+         * @since 0.27.1
+         */
         CPU,
 
-        /** Apple Metal. */
+        /**
+         * Apple Metal.
+         *
+         * @since 0.27.1
+         */
         METAL,
 
-        /** NVIDIA CUDA. */
+        /**
+         * NVIDIA CUDA.
+         *
+         * @since 0.27.1
+         */
         CUDA,
 
-        /** Khronos OpenCL. */
+        /**
+         * Khronos OpenCL.
+         *
+         * @since 0.27.1
+         */
         OPENCL
     }
 
@@ -397,11 +441,15 @@ public final class AccelerationRuntime {
      * @param code       stable code
      * @param providerId provider identifier, or {@code none}
      * @param detail     concise detail
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public record Diagnostic(DiagnosticCode code, String providerId, String detail) {
 
-        /** Validates a diagnostic. */
+        /**
+         * Validates a diagnostic.
+         *
+         * @since 0.27.1
+         */
         public Diagnostic {
             Objects.requireNonNull(code, "code must not be null");
             Objects.requireNonNull(providerId, "providerId must not be null");
@@ -409,31 +457,67 @@ public final class AccelerationRuntime {
         }
     }
 
-    /** Stable diagnostic and fallback codes. */
+    /**
+     * Stable diagnostic and fallback codes.
+     *
+     * @since 0.27.1
+     */
     public enum DiagnosticCode {
 
-        /** Provider execution completed. */
+        /**
+         * Provider execution completed.
+         *
+         * @since 0.27.1
+         */
         ACCELERATED,
 
-        /** No optional provider artifact was present. */
+        /**
+         * No optional provider artifact was present.
+         *
+         * @since 0.27.1
+         */
         NO_PROVIDER,
 
-        /** The workload can never be batched, or no kernel indicator was read. */
+        /**
+         * The workload can never be batched, or no kernel indicator was read.
+         *
+         * @since 0.27.1
+         */
         UNSUPPORTED,
 
-        /** A provider or device was unavailable. */
+        /**
+         * A provider or device was unavailable.
+         *
+         * @since 0.27.1
+         */
         PROVIDER_UNAVAILABLE,
 
-        /** CPU was predicted to be faster. */
+        /**
+         * CPU was predicted to be faster.
+         *
+         * @since 0.27.1
+         */
         CPU_FASTER,
 
-        /** The series changed during provider work. */
+        /**
+         * The series changed during provider work.
+         *
+         * @since 0.27.1
+         */
         STALE_SERIES,
 
-        /** Provider execution failed. */
+        /**
+         * Provider execution failed.
+         *
+         * @since 0.27.1
+         */
         PROVIDER_FAILURE,
 
-        /** Provider output did not cover the exact request. */
+        /**
+         * Provider output did not cover the exact request.
+         *
+         * @since 0.27.1
+         */
         INVALID_RESULT
     }
 
@@ -458,12 +542,16 @@ public final class AccelerationRuntime {
      * @param estimatedScalarNanos    scalar-baseline estimate for the crossover
      *                                comparison, non-positive when unknown
      * @param peakDeviceBytesEstimate declared peak device memory in bytes
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public record KernelRequest(Operation operation, int fromInclusive, int toInclusive, int outputsPerIndex,
             NumericEncoding numeric, Determinism determinism, long seed, double tolerance, double[] params,
             List<double[]> inputs, long estimatedScalarNanos, long peakDeviceBytesEstimate) {
-        /** Validates and defensively copies a kernel request. */
+        /**
+         * Validates and defensively copies a kernel request.
+         *
+         * @since 0.27.1
+         */
         public KernelRequest {
             Objects.requireNonNull(operation, "operation must not be null");
             Objects.requireNonNull(numeric, "numeric must not be null");
@@ -485,6 +573,12 @@ public final class AccelerationRuntime {
             inputs = List.copyOf(copies);
         }
 
+        /**
+         * Returns defensive copies of the primitive input buffers.
+         *
+         * @return immutable list of copied buffers
+         * @since 0.27.1
+         */
         @Override
         public List<double[]> inputs() {
             List<double[]> copies = new ArrayList<>(inputs.size());
@@ -497,7 +591,7 @@ public final class AccelerationRuntime {
         /**
          * Returns the number of decision indexes in the batch.
          *
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public int size() {
             return Math.addExact(Math.subtractExact(toInclusive, fromInclusive), 1);
@@ -507,7 +601,7 @@ public final class AccelerationRuntime {
          * Returns the expected raw output length.
          *
          * @return {@code size() * outputsPerIndex}
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public int expectedOutputLength() {
             return Math.multiplyExact(size(), outputsPerIndex);
@@ -519,7 +613,7 @@ public final class AccelerationRuntime {
          * @param buffer   input buffer index
          * @param position element position within the buffer
          * @return input value
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public double input(int buffer, int position) {
             return inputs.get(buffer)[position];
@@ -530,7 +624,7 @@ public final class AccelerationRuntime {
          *
          * @param index parameter index
          * @return parameter value
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public double param(int index) {
             return params[index];
@@ -540,7 +634,7 @@ public final class AccelerationRuntime {
          * Returns a copy of the operation parameters.
          *
          * @return defensive copy, never the live buffer
-         * @since 0.26.1
+         * @since 0.27.1
          */
         @Override
         public double[] params() {
@@ -556,11 +650,15 @@ public final class AccelerationRuntime {
      *                          {@code request.size() * outputsPerIndex}
      * @param nativeInitialized whether native code was initialized
      * @param elapsedNanos      provider-measured kernel time
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public record KernelResult(double[] outputs, boolean nativeInitialized, long elapsedNanos) {
 
-        /** Validates and defensively copies a kernel result. */
+        /**
+         * Validates and defensively copies a kernel result.
+         *
+         * @since 0.27.1
+         */
         public KernelResult {
             Objects.requireNonNull(outputs, "outputs must not be null");
             outputs = outputs.clone();
@@ -573,7 +671,7 @@ public final class AccelerationRuntime {
          * Returns a copy of the raw kernel outputs.
          *
          * @return defensive copy, never the live buffer
-         * @since 0.26.1
+         * @since 0.27.1
          */
         @Override
         public double[] outputs() {
@@ -594,12 +692,16 @@ public final class AccelerationRuntime {
      * @param deterministic       whether the provider meets the request determinism
      *                            contract
      * @param diagnostic          explanation when unsupported
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public record Assessment(boolean supported, Backend backend, String deviceId, long predictedTotalNanos,
             long peakDeviceBytes, boolean deterministic, Diagnostic diagnostic) {
 
-        /** Validates an assessment. */
+        /**
+         * Validates an assessment.
+         *
+         * @since 0.27.1
+         */
         public Assessment {
             Objects.requireNonNull(backend, "backend must not be null");
             Objects.requireNonNull(deviceId, "deviceId must not be null");
@@ -609,7 +711,7 @@ public final class AccelerationRuntime {
         /**
          * Creates a supported assessment.
          *
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public static Assessment supported(Backend backend, String deviceId, long predictedTotalNanos,
                 long peakDeviceBytes, boolean deterministic) {
@@ -620,7 +722,7 @@ public final class AccelerationRuntime {
         /**
          * Creates an unsupported assessment.
          *
-         * @since 0.26.1
+         * @since 0.27.1
          */
         public static Assessment unsupported(Backend backend, String deviceId, DiagnosticCode code, String providerId,
                 String detail) {
@@ -637,7 +739,7 @@ public final class AccelerationRuntime {
      * Provider constructors must not probe devices or load native libraries, and
      * {@link #assess(KernelRequest)} must not initialize native code.
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public interface Provider {
 
@@ -645,7 +747,7 @@ public final class AccelerationRuntime {
          * Returns the stable provider identifier, defaulting to the class name.
          *
          * @return provider id
-         * @since 0.26.1
+         * @since 0.27.1
          */
         default String providerId() {
             return getClass().getName();
@@ -656,7 +758,7 @@ public final class AccelerationRuntime {
          *
          * @param request immutable kernel request
          * @return cost assessment
-         * @since 0.26.1
+         * @since 0.27.1
          */
         Assessment assess(KernelRequest request);
 
@@ -665,7 +767,7 @@ public final class AccelerationRuntime {
          *
          * @param request immutable kernel request
          * @return raw kernel output
-         * @since 0.26.1
+         * @since 0.27.1
          */
         KernelResult execute(KernelRequest request);
     }
@@ -1043,6 +1145,11 @@ public final class AccelerationRuntime {
                     + request.operation().version();
         }
 
+        /**
+         * Closes this scope and records its final diagnostic.
+         *
+         * @since 0.27.1
+         */
         @Override
         public void close() {
             if (CURRENT.get() == this) {

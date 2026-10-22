@@ -137,7 +137,7 @@ public final class MonteCarloPriceForecastIndicator extends KernelIndicator<Fore
      * Snapshots the spot price and the stable log-return moments of a decision
      * index, normalized to double precision.
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected boolean snapshot(int index, double[] rowInputs) {
@@ -173,7 +173,7 @@ public final class MonteCarloPriceForecastIndicator extends KernelIndicator<Fore
     /**
      * Returns the historical log return of a bar, normalized to double precision.
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected double windowValue(int barIndex) {
@@ -184,7 +184,7 @@ public final class MonteCarloPriceForecastIndicator extends KernelIndicator<Fore
      * Maps simulated cumulative log-returns to terminal prices and summarizes them;
      * any non-finite return or terminal price makes the forecast unstable.
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected Forecast decode(int index, double[] outputs) {
@@ -212,7 +212,7 @@ public final class MonteCarloPriceForecastIndicator extends KernelIndicator<Fore
     /**
      * Returns an unstable forecast.
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected Forecast unavailable(int index) {
