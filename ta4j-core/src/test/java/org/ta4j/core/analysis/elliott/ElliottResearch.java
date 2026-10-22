@@ -239,8 +239,9 @@ final class ElliottResearch {
                 "Exit codes: 0 ok; 1 usage error or run failure; 2 missing, truncated or corrupt trace, failed",
                 "dataset while inspecting, or an incomplete run (an outcome or calibration artifact that is missing,",
                 "does not hold the record count run.json declares for it, or has none: rerun the recipe). A run that",
-                "declares calibration but captured no trace still exits 0: inspect prints the calibration estimates",
-                "with a \"real trace not captured\" note.");
+                "declares calibration but captured no trace still exits 0 for the primary detector's H1 MOTIVE_5",
+                "scope: inspect prints its calibration estimates with a \"real trace not captured\" note.",
+                "Robustness-detector, H2 and competing-grammar rows still require a captured trace.");
     }
 
     /** Actionable inspection failure that maps to exit code 2. */

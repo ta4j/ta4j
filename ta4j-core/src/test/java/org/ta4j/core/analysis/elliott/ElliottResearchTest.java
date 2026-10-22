@@ -1210,11 +1210,17 @@ class ElliottResearchTest {
         assertTrue(lines.size() > 1, "the recipe must enroll scored alternatives");
         for (final String line : lines.subList(1, lines.size())) {
             final String[] cells = line.split(",", -1);
+            assertTrue(List.of("unsupported", "no-feature").contains(cells[header.indexOf("status")]), line);
             assertEquals("", cells[header.indexOf("probability")], line);
             assertFalse(cells[header.indexOf("reason")].isEmpty(), line);
         }
-        final String summary = Files.readString(run.resolve("summary.md"));
-        assertTrue(summary.contains("unavailable"), summary);
+        final List<List<String>> summary = ElliottResearchReport
+                .parseCsv(run.resolve(ElliottResearchCalibration.SUMMARY_FILE));
+        final int estimatorStatus = summary.getFirst().indexOf("estimatorStatus");
+        assertTrue(summary.size() > 1, "the recipe must report calibration metrics");
+        for (final List<String> row : summary.subList(1, summary.size())) {
+            assertEquals("unavailable", row.get(estimatorStatus), row.toString());
+        }
     }
 
     @Test
