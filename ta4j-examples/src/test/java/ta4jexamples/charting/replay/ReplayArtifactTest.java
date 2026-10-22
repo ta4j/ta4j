@@ -443,6 +443,62 @@ class ReplayArtifactTest {
     }
 
     @Test
+    public void candidateIdentityMustMatchTheRecordedPlacementAndRuleEvidence() throws IOException {
+        for (final String field : List.of("candidateKey", "version", "grammar", "direction", "placement.index",
+                "placement.type", "placement.price", "placement.order", "rules.id", "rules.state", "rules.score",
+                "rules.explanation", "rules.observations", "rules.order")) {
+            final Path run = ReplayFixture.write(temp.resolve("candidate-identity-" + field));
+            final Path trace = run.resolve("traces/d1-real.jsonl");
+            final List<String> lines = Files.readAllLines(trace);
+            int line = 1;
+            JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            while (record.getAsJsonArray("candidates").isEmpty()) {
+                record = JsonParser.parseString(lines.get(++line)).getAsJsonObject();
+            }
+            final JsonObject candidate = record.getAsJsonArray("candidates").get(0).getAsJsonObject();
+            final var placement = candidate.getAsJsonArray("placement");
+            final JsonObject point = placement.get(0).getAsJsonObject();
+            final var rules = candidate.getAsJsonArray("rules");
+            final JsonObject rule = rules.get(0).getAsJsonObject();
+            final JsonObject secondRule = rule.deepCopy();
+            secondRule.addProperty("id", "wave3-not-shortest");
+            rules.add(secondRule);
+            ReplayFixture.refreshVersion(candidate);
+            switch (field) {
+            case "candidateKey" -> candidate.addProperty("candidateKey", "0".repeat(32));
+            case "version" -> candidate.addProperty("version", "0".repeat(65));
+            case "grammar" -> record.addProperty("grammar", "CORRECTIVE_3");
+            case "direction" -> candidate.addProperty("direction", "BEARISH");
+            case "placement.index" -> point.addProperty("index", 6);
+            case "placement.type" -> point.addProperty("type", "HIGH");
+            case "placement.price" -> point.addProperty("price", point.get("price").getAsString() + ".0");
+            case "placement.order" -> {
+                final var first = placement.get(0);
+                placement.set(0, placement.get(1));
+                placement.set(1, first);
+            }
+            case "rules.id" -> rule.addProperty("id", "wave4-overlap");
+            case "rules.state" -> rule.addProperty("state", "FAIL");
+            case "rules.score" -> rule.addProperty("score", 0.5);
+            case "rules.explanation" -> rule.addProperty("explanation", "forged explanation");
+            case "rules.observations" -> rule.getAsJsonArray("observations").add("forged observation");
+            case "rules.order" -> {
+                rules.set(0, secondRule);
+                rules.set(1, rule);
+            }
+            default -> throw new AssertionError(field);
+            }
+            lines.set(line, record.toString());
+            Files.write(trace, lines, StandardCharsets.UTF_8);
+
+            final String expected = "version".equals(field) || field.startsWith("rules.") ? ".version" : ".candidateKey";
+            final String message = failureOf(run, ReplayFixture.RULES_KEY);
+            assertTrue(message.contains("candidates[0]" + expected) && message.contains("line " + (line + 1))
+                    && message.contains("traces/d1-real.jsonl"), field + ": " + message);
+        }
+    }
+
+    @Test
     public void allRecordedRuleStatesRemainReplayable() throws IOException {
         for (final String state : List.of("PASS", "FAIL", "PENDING", "UNAVAILABLE", "NOT_APPLICABLE")) {
             final Path run = ReplayFixture.write(temp.resolve("valid-state-" + state));
@@ -459,6 +515,7 @@ class ReplayArtifactTest {
                             .get(0)
                             .getAsJsonObject()
                             .addProperty("state", state);
+                    ReplayFixture.refreshVersion(candidates.get(0).getAsJsonObject());
                     lines.set(line, record.toString());
                     asOf = record.get("asOfIndex").getAsInt();
                     break;

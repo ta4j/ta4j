@@ -121,7 +121,7 @@ class ElliottReplayInspectorTest {
         assertEquals(0, result.status(), result.err());
         assertTrue(result.out().contains("as-of:     bar 23"));
         assertTrue(result.out().contains("candidates at bar 23 (1 retained, 1 drawn, cap 8)"));
-        assertTrue(result.out().contains("history of c-A up to bar 23 (1 change(s)):"));
+        assertTrue(result.out().contains("history of " + ReplayFixture.CANDIDATE_A + " up to bar 23 (1 change(s)):"));
         assertTrue(result.out().contains("as-of:     bar 24"));
         assertTrue(Files.isRegularFile(out.resolve("frame-24.json")));
         assertFalse(Files.exists(out.resolve("frame-23.json")));
@@ -131,7 +131,7 @@ class ElliottReplayInspectorTest {
     void interactiveModeReadsCommandsAndReportsErrorsWithoutEnding() {
         final Path run = ReplayFixture.write(temp.resolve("run"));
 
-        final Result result = run("seek 36\nselect 9\nbogus\nhistory\nselect c-B\nclear\nquit\nseek 50\n",
+        final Result result = run("seek 36\nselect 9\nbogus\nhistory\nselect " + ReplayFixture.CANDIDATE_B + "\nclear\nquit\nseek 50\n",
                 run.toString(), "--key", ReplayFixture.RULES_KEY, "--interactive", "--out",
                 temp.resolve("unused").toString());
 

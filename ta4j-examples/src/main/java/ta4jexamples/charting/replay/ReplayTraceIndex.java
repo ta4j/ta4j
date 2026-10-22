@@ -342,6 +342,24 @@ final class ReplayTraceIndex {
                 }
                 requireTexts(display, line, rule, "observations", ruleAt + ".");
             }
+            final StringBuilder identity = new StringBuilder(text(record, "grammar")).append('|')
+                    .append(text(candidate, "direction"));
+            for (final JsonElement point : placement) {
+                final JsonObject pivot = point.getAsJsonObject();
+                identity.append('|')
+                        .append(pivot.get("index").getAsInt())
+                        .append(':')
+                        .append(text(pivot, "type"))
+                        .append(':')
+                        .append(text(pivot, "price"));
+            }
+            final String key = sha256(identity.toString()).substring(0, 32);
+            if (!key.equals(text(candidate, "candidateKey"))) {
+                throw corrupt(display, line, at + ".candidateKey does not match the recorded candidate");
+            }
+            if (!(key + "@" + sha256(rules.toString()).substring(0, 32)).equals(text(candidate, "version"))) {
+                throw corrupt(display, line, at + ".version does not match the recorded rule evidence");
+            }
         }
         if ("alternative".equals(kind)) {
             requireTexts(display, line, record, "labels", where);

@@ -8,9 +8,12 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.function.UnaryOperator;
 
@@ -29,9 +32,9 @@ import com.google.gson.JsonParser;
  * The bundle holds {@value #BARS} daily bars and two recorded streams: the
  * {@code all-rules} stream ({@link #RULES_KEY}) and the {@code topology-only}
  * stream ({@link #TOPOLOGY_KEY}). Confirmed pivots: LOW 5 (confirmed at 8),
- * HIGH 12 (15), LOW 20 (23), HIGH 30 (33), LOW 40 (43). Candidate {@code c-A}
- * exists from bar 23 and is revised at bar 33 ({@code v1} to {@code v2});
- * candidate {@code c-B} exists on bars 33 to 40.
+ * HIGH 12 (15), LOW 20 (23), HIGH 30 (33), LOW 40 (43). Candidate A exists
+ * from bar 23 and has revised rule evidence at bar 33; candidate B exists on
+ * bars 33 to 40. Their keys and versions follow the research writer protocol.
  */
 final class ReplayFixture {
 
@@ -45,6 +48,11 @@ final class ReplayFixture {
     static final Instant START = Instant.parse("2020-01-01T00:00:00Z");
 
     private static final int[][] PIVOTS = { { 5, 0, 8 }, { 12, 1, 15 }, { 20, 0, 23 }, { 30, 1, 33 }, { 40, 0, 43 } };
+    static final String CANDIDATE_A = candidate(0, false, true).get("candidateKey").getAsString();
+    static final String CANDIDATE_B = candidate(1, false, true).get("candidateKey").getAsString();
+    static final String A_VERSION_1 = candidate(0, false, true).get("version").getAsString();
+    static final String A_VERSION_2 = candidate(0, true, true).get("version").getAsString();
+    static final String B_VERSION_1 = candidate(1, false, true).get("version").getAsString();
     /** Price offset of recorded null-member bars versus the real bars. */
     static final int NULL_BAR_OFFSET = 1000;
     private static final String HEADER = "key,dataset,asset,section,mode,grammar,activeRules,detector,policy,partition,metric,nullBlockLength,observed";
@@ -293,10 +301,10 @@ final class ReplayFixture {
         record.add("pivots", pivots);
         final JsonArray candidates = new JsonArray();
         if (asOf >= 23) {
-            candidates.add(candidate("c-A", asOf >= 33 ? "v2" : "v1", confirmed, 0, rules));
+            candidates.add(candidate(0, asOf >= 33, rules));
         }
         if (asOf >= 33 && asOf <= 40) {
-            candidates.add(candidate("c-B", "v1", confirmed, 1, rules));
+            candidates.add(candidate(1, false, rules));
         }
         record.add("candidates", candidates);
         record.addProperty("status",
@@ -369,15 +377,12 @@ final class ReplayFixture {
         return record;
     }
 
-    private static JsonObject candidate(final String key, final String version, final List<int[]> confirmed,
-            final int skip, final boolean rules) {
+    private static JsonObject candidate(final int skip, final boolean revised, final boolean rules) {
         final JsonObject candidate = new JsonObject();
-        candidate.addProperty("candidateKey", key);
-        candidate.addProperty("version", version);
         candidate.addProperty("direction", "BULLISH");
         final JsonArray placement = new JsonArray();
-        for (int i = skip; i < confirmed.size(); i++) {
-            placement.add(point(confirmed.get(i)));
+        for (int i = skip; i < skip + 3; i++) {
+            placement.add(point(PIVOTS[i]));
         }
         candidate.add("placement", placement);
         final JsonArray ruleArray = new JsonArray();
@@ -388,12 +393,41 @@ final class ReplayFixture {
             rule.addProperty("score", 1);
             final JsonArray observations = new JsonArray();
             observations.add("wave 2 stayed above the origin");
+            if (revised) {
+                observations.add("wave 2 evidence confirmed at bar 33");
+            }
             rule.add("observations", observations);
-            rule.addProperty("explanation", "wave 2 may not retrace the whole of wave 1 (" + key + ")");
+            rule.addProperty("explanation", "wave 2 may not retrace the whole of wave 1 (" + (skip == 0 ? "A" : "B") + ")");
             ruleArray.add(rule);
         }
         candidate.add("rules", ruleArray);
+        final StringBuilder identity = new StringBuilder("MOTIVE_5|BULLISH");
+        for (final var point : placement) {
+            final JsonObject pivot = point.getAsJsonObject();
+            identity.append('|')
+                    .append(pivot.get("index").getAsInt())
+                    .append(':')
+                    .append(pivot.get("type").getAsString())
+                    .append(':')
+                    .append(pivot.get("price").getAsString());
+        }
+        candidate.addProperty("candidateKey", digest(identity.toString()));
+        refreshVersion(candidate);
         return candidate;
+    }
+
+    static void refreshVersion(final JsonObject candidate) {
+        candidate.addProperty("version", candidate.get("candidateKey").getAsString() + "@"
+                + digest(candidate.getAsJsonArray("rules").toString()));
+    }
+
+    private static String digest(final String value) {
+        try {
+            return HexFormat.of()
+                    .formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)), 0, 16);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is mandatory on every Java platform", e);
+        }
     }
 
     private static JsonObject point(final int[] pivot) {

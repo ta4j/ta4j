@@ -222,14 +222,16 @@ class ReplaySessionTest {
     void revisedCandidateKeepsEarlierVersionsReadable() {
         final ReplaySession session = open(ReplayFixture.write(temp.resolve("run")));
 
-        assertEquals("v1", session.seek(30).candidate("c-A").orElseThrow().version());
-        assertEquals("v2", session.seek(36).candidate("c-A").orElseThrow().version());
-        assertEquals("v1", session.seek(30).candidate("c-A").orElseThrow().version());
+        assertEquals(ReplayFixture.A_VERSION_1, session.seek(30).candidate(ReplayFixture.CANDIDATE_A).orElseThrow().version());
+        assertEquals(ReplayFixture.A_VERSION_2, session.seek(36).candidate(ReplayFixture.CANDIDATE_A).orElseThrow().version());
+        assertEquals(ReplayFixture.A_VERSION_1, session.seek(30).candidate(ReplayFixture.CANDIDATE_A).orElseThrow().version());
         session.seek(45);
-        final List<TimelineEntry> aTimeline = session.candidateTimeline("c-A");
-        assertEquals(List.of(new TimelineEntry(23, "v1", true), new TimelineEntry(33, "v2", true)), aTimeline);
-        final List<TimelineEntry> bTimeline = session.candidateTimeline("c-B");
-        assertEquals(List.of(new TimelineEntry(33, "v1", true), new TimelineEntry(41, "", false)), bTimeline);
+        final List<TimelineEntry> aTimeline = session.candidateTimeline(ReplayFixture.CANDIDATE_A);
+        assertEquals(List.of(new TimelineEntry(23, ReplayFixture.A_VERSION_1, true),
+                new TimelineEntry(33, ReplayFixture.A_VERSION_2, true)), aTimeline);
+        final List<TimelineEntry> bTimeline = session.candidateTimeline(ReplayFixture.CANDIDATE_B);
+        assertEquals(List.of(new TimelineEntry(33, ReplayFixture.B_VERSION_1, true),
+                new TimelineEntry(41, "", false)), bTimeline);
         assertTrue(session.candidateTimeline("missing").isEmpty());
     }
 
@@ -239,7 +241,7 @@ class ReplaySessionTest {
         final ReplaySession session = open(run);
         final Path trace = run.resolve("traces/d1-real.jsonl");
         final String original = java.nio.file.Files.readString(trace);
-        final String edited = original.replace("\"v2\"", "\"v9\"");
+        final String edited = original.replace(ReplayFixture.A_VERSION_2, "0".repeat(ReplayFixture.A_VERSION_2.length()));
         assertNotEquals(original, edited);
         assertEquals(original.length(), edited.length());
         java.nio.file.Files.writeString(trace, edited, java.nio.charset.StandardCharsets.UTF_8);
@@ -268,12 +270,13 @@ class ReplaySessionTest {
         final ReplaySession session = open(ReplayFixture.write(temp.resolve("run")));
         session.seek(36);
 
-        assertEquals("c-B", session.select("2").selectedCandidate());
-        assertTrue(session.frame().candidate("c-B").orElseThrow().selected());
-        assertEquals("c-B", session.seek(50).selectedCandidate(), "key is kept even when absent at the new cursor");
+        assertEquals(ReplayFixture.CANDIDATE_B, session.select("2").selectedCandidate());
+        assertTrue(session.frame().candidate(ReplayFixture.CANDIDATE_B).orElseThrow().selected());
+        assertEquals(ReplayFixture.CANDIDATE_B, session.seek(50).selectedCandidate(),
+                "key is kept even when absent at the new cursor");
         assertTrue(session.frame().candidates().stream().noneMatch(Candidate::selected));
-        assertEquals("c-B", session.seek(35).selectedCandidate());
-        assertTrue(session.frame().candidate("c-B").orElseThrow().selected());
+        assertEquals(ReplayFixture.CANDIDATE_B, session.seek(35).selectedCandidate());
+        assertTrue(session.frame().candidate(ReplayFixture.CANDIDATE_B).orElseThrow().selected());
         assertEquals("", session.clearSelection().selectedCandidate());
         assertThrows(ReplayArtifactException.class, () -> session.select("9"));
         assertThrows(ReplayArtifactException.class, () -> session.select("nope"));
@@ -294,7 +297,7 @@ class ReplaySessionTest {
         assertFalse(capped.candidates().get(1).overlayed());
         assertTrue(ReplayEvidenceText.render(capped).contains("NOT DRAWN: 1"));
 
-        final ReplayFrame selected = session.select("c-B");
+        final ReplayFrame selected = session.select(ReplayFixture.CANDIDATE_B);
         assertFalse(selected.candidates().get(0).overlayed());
         assertTrue(selected.candidates().get(1).overlayed());
         assertEquals(1,
@@ -346,7 +349,7 @@ class ReplaySessionTest {
         assertTrue(text.contains("wave2-origin"));
         assertTrue(text.contains("PASS"));
         assertTrue(text.contains("wave 2 stayed above the origin"));
-        assertTrue(text.contains("wave 2 may not retrace the whole of wave 1 (c-A)"));
+        assertTrue(text.contains("wave 2 may not retrace the whole of wave 1 (A)"));
     }
 
     @Test
@@ -434,11 +437,13 @@ class ReplaySessionTest {
         final ReplaySession session = open(ReplayFixture.write(temp.resolve("run")));
         session.seek(40);
 
-        assertEquals(List.of(new TimelineEntry(23, "v1", true), new TimelineEntry(33, "v2", true)),
-                session.candidateTimeline("c-A"));
+        assertEquals(List.of(new TimelineEntry(23, ReplayFixture.A_VERSION_1, true),
+                new TimelineEntry(33, ReplayFixture.A_VERSION_2, true)),
+                session.candidateTimeline(ReplayFixture.CANDIDATE_A));
         assertEquals(-1, session.timelineStartAsOf());
-        assertEquals(List.of(), session.candidateTimeline("c-A", 3));
+        assertEquals(List.of(), session.candidateTimeline(ReplayFixture.CANDIDATE_A, 3));
         assertEquals(38, session.timelineStartAsOf(3));
-        assertEquals(List.of(new TimelineEntry(33, "v2", true)), session.candidateTimeline("c-A", 8));
+        assertEquals(List.of(new TimelineEntry(33, ReplayFixture.A_VERSION_2, true)),
+                session.candidateTimeline(ReplayFixture.CANDIDATE_A, 8));
     }
 }
