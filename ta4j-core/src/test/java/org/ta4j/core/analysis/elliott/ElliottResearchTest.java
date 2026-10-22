@@ -676,6 +676,50 @@ class ElliottResearchTest {
     }
 
     @Test
+    public void runAndSummarizeRejectSymbolicLinksAtTheLockPath() throws Exception {
+        for (final String command : List.of("run", "overwrite", "summarize")) {
+            for (final boolean existing : List.of(false, true)) {
+                final String label = command + "-" + existing;
+                final Path dir = work.resolve("symlink-lock-" + label);
+                if ("run".equals(command)) {
+                    Files.createDirectories(dir);
+                } else {
+                    copyTree(smokeRun, dir);
+                }
+                final Path lock = dir.resolve(".run.lock");
+                Files.deleteIfExists(lock);
+                final Path target = work.resolve("outside-lock-" + label);
+                if (existing) {
+                    Files.writeString(target, "outside file must stay untouched");
+                }
+                Files.createSymbolicLink(lock, target);
+                final String metadata = "run".equals(command) ? null : Files.readString(dir.resolve("run.json"));
+                final String summary = "run".equals(command) ? null : Files.readString(dir.resolve("summary.md"));
+                final Result result = switch (command) {
+                case "summarize" -> launch("summarize", dir.toString());
+                case "overwrite" -> launch("run", "smoke", "--out", dir.toString(), "--overwrite");
+                default -> launch("run", "smoke", "--out", dir.toString());
+                };
+                assertEquals(1, result.code(), label + ": " + result.err());
+                assertTrue(Files.isSymbolicLink(lock), label);
+                assertEquals(target, Files.readSymbolicLink(lock), label);
+                if (existing) {
+                    assertEquals("outside file must stay untouched", Files.readString(target), label);
+                } else {
+                    assertFalse(Files.exists(target), label + " created the outside lock target");
+                }
+                if (metadata == null) {
+                    assertFalse(Files.exists(dir.resolve("run.json")), label);
+                    assertFalse(Files.exists(dir.resolve("summary.md")), label);
+                } else {
+                    assertEquals(metadata, Files.readString(dir.resolve("run.json")), label);
+                    assertEquals(summary, Files.readString(dir.resolve("summary.md")), label);
+                }
+            }
+        }
+    }
+
+    @Test
     public void summarizeRejectsNonRunPathsWithoutCreatingLockFiles() throws Exception {
         final Path missing = work.resolve("missing-summary-run");
         final Path other = Files.createDirectories(work.resolve("not-a-summary-run"));

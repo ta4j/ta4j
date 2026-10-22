@@ -200,6 +200,8 @@ metric and null block length), `coverage.csv`, `summary.md`, `traces/`
 a second run into the same directory is refused. `summarize` validates run metadata
 before creating a lock file, then holds the same lock while reading evidence and
 replacing artifacts, refusing while a run is writing.
+Run and summary locks refuse symbolic links at `.run.lock`, including dangling links,
+without creating or locking their targets outside the run directory.
 Completed metadata binds `comparisons.csv` with `comparisonsSha256`; `summarize` and
 `inspect` verify that digest before reading rows. Modified, mixed or older unbound
 bundles must be regenerated rather than paired with the recorded provenance.

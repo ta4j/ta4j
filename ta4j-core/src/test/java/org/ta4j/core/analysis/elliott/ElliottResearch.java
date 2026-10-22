@@ -14,6 +14,7 @@ import java.nio.channels.OverlappingFileLockException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
@@ -855,7 +856,7 @@ final class ElliottResearch {
     /** Holds the shared writer lock until the returned channel closes. */
     private static FileChannel lockRunDirectory(final Path dir) throws IOException {
         final FileChannel channel = FileChannel.open(dir.resolve(LOCK_FILE), StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE);
+                StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS);
         try {
             final FileLock lock;
             try {
