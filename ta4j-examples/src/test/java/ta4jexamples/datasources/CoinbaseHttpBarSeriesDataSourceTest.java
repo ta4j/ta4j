@@ -19,6 +19,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -1483,6 +1484,55 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         } finally {
             // Clean up: delete the directory if it was created by the constructor
             deleteDirectory(cacheDirPath);
+        }
+    }
+
+    @Test
+    public void testDistinctNotesNeverShareCacheFile() throws IOException, InterruptedException {
+        String customCacheDir = "temp/coinbase-distinct-notes-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        // A character-replacing sanitizer would map several of these onto one file
+        // name (e.g. "run/a" and "run a"); the case variants would also share one
+        // file on case-insensitive file systems
+        List<String> notes = List.of("run_a", "run/a", "run a", "run.a", "run%2Fa", "Run_a", "../run_a");
+        try {
+            CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2021-01-01T00:00:00Z");
+            Instant end = Instant.parse("2021-01-03T00:00:00Z");
+
+            for (String note : notes) {
+                assertNotNull(
+                        dataSource.loadSeriesInstance("BTC-USD",
+                                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end, note),
+                        "Series should load for notes '" + note + "'");
+            }
+            // Every note missed the cache: none was served from another note's file
+            verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+            try (var files = Files.list(customCachePath)) {
+                List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
+                assertEquals(notes.size(), fileNames.size(), "Each distinct note must get its own cache file");
+                assertEquals(notes.size(),
+                        fileNames.stream().map(name -> name.toLowerCase(Locale.ROOT)).distinct().count(),
+                        "Cache file names must differ even when compared case-insensitively");
+            }
+
+            // Repeating a request reads its own cache file instead of fetching again
+            for (String note : notes) {
+                assertNotNull(
+                        dataSource.loadSeriesInstance("BTC-USD",
+                                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end, note),
+                        "Series should load from cache for notes '" + note + "'");
+            }
+            verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+        } finally {
+            deleteDirectory(customCachePath);
         }
     }
 }

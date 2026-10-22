@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.HexFormat;
 import java.util.Locale;
 import java.util.stream.Stream;
 
@@ -61,6 +62,7 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
     public static final String DEFAULT_RESPONSE_CACHE_DIR = "temp/responses";
 
     private static final Logger LOG = LogManager.getLogger(AbstractHttpBarSeriesDataSource.class);
+    private static final HexFormat UPPERCASE_HEX = HexFormat.of().withUpperCase();
 
     protected final HttpClientWrapper httpClient;
     protected final boolean enableResponseCaching;
@@ -258,10 +260,12 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      * Cache filenames use the format
      * {@code {source}-{TICKER}-{INTERVAL}-{START}-{END}[_{NOTES}].json} where
      * {@code TICKER} is the uppercased symbol with any dashes encoded as
-     * {@code %2D} (see {@link #encodeTickerForCacheFilename(String)}) and
+     * {@code %2D} (see {@link #encodeTickerForCacheFilename(String)}),
      * {@code INTERVAL} is the ISO-8601 {@link Duration} string (e.g. {@code PT1H}
-     * for one hour). Both fields can therefore be read back losslessly by
-     * {@code loadSeries(String)} even for dashed symbols such as {@code BTC-USD}.
+     * for one hour) and {@code NOTES} is the percent-encoded {@code notes}
+     * parameter. The ticker and interval fields can therefore be read back
+     * losslessly by {@code loadSeries(String)} even for dashed symbols such as
+     * {@code BTC-USD}.
      * <p>
      * Cache files written before 0.24.2 stored the uppercased symbol with raw
      * dashes. Those files remain loadable for symbols without dashes (their
@@ -274,8 +278,17 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      * @param endDateTime   the end date/time (will be truncated)
      * @param interval      the interval duration (used for truncation and filename)
      * @param notes         optional notes section to append to filename (can be
-     *                      null or empty)
+     *                      null or empty). Surrounding whitespace is ignored and
+     *                      the rest is encoded byte by byte (UTF-8): lowercase
+     *                      ASCII letters, digits, {@code -} and {@code _} are kept
+     *                      and every other byte, including path separators,
+     *                      {@code .}, {@code %} and uppercase letters, becomes
+     *                      {@code %XX}. Notes that differ after trimming therefore
+     *                      map to different files, even on case-insensitive file
+     *                      systems, and can never point outside the cache directory
      * @return the cache file path
+     * @throws IllegalArgumentException if the resulting path would be outside the
+     *                                  cache directory
      */
     protected Path getCacheFilePath(String symbol, Instant startDateTime, Instant endDateTime, Duration interval,
             String notes) {
@@ -283,9 +296,8 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
         Instant truncatedEnd = truncateTimestampForCache(endDateTime, interval);
 
         String sourcePrefix = getSourceName().isEmpty() ? "" : getSourceName() + "-";
-        // Sanitize notes to prevent path traversal via user-supplied notes
-        String sanitizedNotes = notes == null ? "" : notes.trim().replaceAll("[^a-zA-Z0-9-]", "_");
-        String notesSuffix = !sanitizedNotes.isEmpty() ? "_" + sanitizedNotes : "";
+        String encodedNotes = notes == null ? "" : encodeNotesForCacheFilename(notes.trim());
+        String notesSuffix = !encodedNotes.isEmpty() ? "_" + encodedNotes : "";
         // Use Duration.toString() for standardized format (e.g., "PT24H" for 1 day,
         // "PT1H" for 1 hour)
         String durationString = interval.toString();
@@ -313,6 +325,35 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      */
     protected static String encodeTickerForCacheFilename(String symbol) {
         return symbol.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9-]", "_").replace("-", "%2D");
+    }
+
+    /**
+     * Percent-encodes notes for use as the single trailing cache filename field.
+     * Lowercase ASCII letters, digits, {@code -} and {@code _} are kept; every
+     * other UTF-8 byte (path separators, {@code .}, {@code %}, uppercase letters,
+     * whitespace and non-ASCII text) becomes {@code %XX} with uppercase hex digits.
+     * Because {@code %} itself is always encoded, the mapping is injective for
+     * well-formed text (an unpaired surrogate is not text and encodes like
+     * {@code ?}), and because no kept character is an uppercase letter it stays
+     * injective on case-insensitive file systems.
+     *
+     * @param notes the trimmed notes (never null)
+     * @return the filename-safe encoding of the notes
+     */
+    private static String encodeNotesForCacheFilename(String notes) {
+        byte[] bytes = notes.getBytes(StandardCharsets.UTF_8);
+        StringBuilder encoded = new StringBuilder(bytes.length);
+        for (byte value : bytes) {
+            if ((value >= 'a' && value <= 'z') || (value >= '0' && value <= '9') || value == '-' || value == '_') {
+                encoded.append((char) value);
+            } else {
+                int unsigned = Byte.toUnsignedInt(value);
+                encoded.append('%')
+                        .append(UPPERCASE_HEX.toHighHexDigit(unsigned))
+                        .append(UPPERCASE_HEX.toLowHexDigit(unsigned));
+            }
+        }
+        return encoded.toString();
     }
 
     /**

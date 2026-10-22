@@ -19,6 +19,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -1533,10 +1534,146 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
                             "Cache file path must remain strictly inside cache directory");
                     assertFalse(file.getFileName().toString().contains(".."),
                             "Cache file name must not contain path traversal sequence '..'");
+                    assertTrue(file.getFileName().toString().endsWith("_%2E%2E%2F%2E%2E%2Fpath_traversal_note.json"),
+                            "Notes must be percent-encoded into the cache file name");
                 }
             }
         } finally {
             deleteDirectory(customCachePath);
         }
+    }
+
+    @Test
+    public void testDistinctNotesNeverShareCacheFile() throws Exception {
+        HttpClientWrapper mockClient = mockClientReturning(VALID_JSON_RESPONSE);
+        String customCacheDir = "temp/yahoo-distinct-notes-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        // A character-replacing sanitizer would map several of these onto one file
+        // name (e.g. "run/a" and "run a"); the case variants would also share one
+        // file on case-insensitive file systems
+        List<String> notes = List.of("run_a", "run/a", "run?a", "run\\a", "run a", "run.a", "run%2Fa", "Run_a", "run_A",
+                "run_\u00e4", "run_\u00e5");
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2023-01-01T00:00:00Z");
+            Instant end = Instant.parse("2023-01-10T00:00:00Z");
+
+            for (String note : notes) {
+                assertNotNull(
+                        dataSource.loadSeriesInstance("AAPL",
+                                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, note),
+                        "Series should load for notes '" + note + "'");
+            }
+            // Every note missed the cache: none was served from another note's file
+            verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+            try (var files = Files.list(customCachePath)) {
+                List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
+                assertEquals(notes.size(), fileNames.size(), "Each distinct note must get its own cache file");
+                assertEquals(notes.size(),
+                        fileNames.stream().map(name -> name.toLowerCase(Locale.ROOT)).distinct().count(),
+                        "Cache file names must differ even when compared case-insensitively");
+            }
+
+            // Repeating a request reads its own cache file instead of fetching again
+            for (String note : notes) {
+                assertNotNull(
+                        dataSource.loadSeriesInstance("AAPL",
+                                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, note),
+                        "Series should load from cache for notes '" + note + "'");
+            }
+            verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    @Test
+    public void testNotesArePercentEncodedIntoCacheFileName() throws Exception {
+        HttpClientWrapper mockClient = mockClientReturning(VALID_JSON_RESPONSE);
+        String customCacheDir = "temp/yahoo-encoded-notes-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2023-01-01T00:00:00Z");
+            Instant end = Instant.parse("2023-01-10T00:00:00Z");
+
+            assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, "Run 1/\u00e4.json%"));
+
+            try (var files = Files.list(customCachePath)) {
+                List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
+                assertEquals(1, fileNames.size(), "A single cache file should be created");
+                assertTrue(fileNames.get(0).endsWith("_%52un%201%2F%C3%A4%2Ejson%25.json"),
+                        "Only lowercase letters, digits, '-' and '_' stay readable: " + fileNames.get(0));
+            }
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    @Test
+    public void testBlankNotesAddNoSuffixToCacheFileName() throws Exception {
+        HttpClientWrapper mockClient = mockClientReturning(VALID_JSON_RESPONSE);
+        String customCacheDir = "temp/yahoo-blank-notes-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2023-01-01T00:00:00Z");
+            Instant end = Instant.parse("2023-01-10T00:00:00Z");
+
+            assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, null));
+            assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, "   "));
+
+            verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+            try (var files = Files.list(customCachePath)) {
+                List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
+                assertEquals(1, fileNames.size(), "Null and blank notes must share the notes-free cache file");
+                assertTrue(fileNames.get(0).matches("YahooFinance-AAPL-PT24H-\\d+-\\d+\\.json"),
+                        "Notes-free cache file must have no notes suffix: " + fileNames.get(0));
+            }
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    @Test
+    public void testSurroundingWhitespaceInNotesIsIgnored() throws Exception {
+        HttpClientWrapper mockClient = mockClientReturning(VALID_JSON_RESPONSE);
+        String customCacheDir = "temp/yahoo-trimmed-notes-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        try {
+            YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2023-01-01T00:00:00Z");
+            Instant end = Instant.parse("2023-01-10T00:00:00Z");
+
+            assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, "  run  "));
+            assertNotNull(dataSource.loadSeriesInstance("AAPL",
+                    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end, "run"));
+
+            verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+            try (var files = Files.list(customCachePath)) {
+                List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
+                assertEquals(1, fileNames.size(), "Padded and trimmed notes must share one cache file");
+                assertTrue(fileNames.get(0).endsWith("_run.json"), "Unexpected cache file " + fileNames.get(0));
+            }
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    private static HttpClientWrapper mockClientReturning(String body) throws IOException, InterruptedException {
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(body);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+        return mockClient;
     }
 }
