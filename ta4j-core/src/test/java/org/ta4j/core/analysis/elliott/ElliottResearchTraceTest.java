@@ -352,6 +352,128 @@ class ElliottResearchTraceTest {
     }
 
     @Test
+    public void everyRecordIsBoundToHeaderCoordinatesBeforeRetention() throws Exception {
+        for (final boolean selectedNull : List.of(false, true)) {
+            final Path file = coordinateTrace("coordinates-" + selectedNull + ".jsonl", selectedNull);
+            final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            final ElliottResearchTrace.TraceFile valid = ElliottResearchTrace.read(file);
+            assertTrue(valid.complete());
+            assertEquals(lines.size() - 2, valid.recordCount());
+            final ElliottResearchTrace.TraceFile excluded = ElliottResearchTrace.read(file, record -> false);
+            assertTrue(excluded.complete());
+            assertEquals(valid.recordCount(), excluded.recordCount());
+            assertTrue(excluded.records().isEmpty());
+
+            for (int index = 1; index < lines.size() - 1; index++) {
+                final JsonObject original = JsonParser.parseString(lines.get(index)).getAsJsonObject();
+                for (final String field : List.of("dataset", "nullBlockLength", "nullMemberIndex")) {
+                    final JsonObject foreign = original.deepCopy();
+                    if ("dataset".equals(field)) {
+                        foreign.addProperty(field, "ETH");
+                    } else {
+                        foreign.addProperty(field, original.get(field).getAsLong() + 1);
+                    }
+                    final IllegalArgumentException error = assertMalformedAtLine(lines, foreign, index + 1, field);
+                    assertTrue(error.getMessage().contains(field + "=" + foreign.get(field)), error.getMessage());
+                    assertTrue(error.getMessage().contains("do not match header dataset=BTC, nullBlockLength="),
+                            error.getMessage());
+                    if (!"dataset".equals(field)) {
+                        // An out-of-range integer must not wrap back to the header's int.
+                        foreign.addProperty(field, original.get(field).getAsLong() + (1L << 32));
+                        final IllegalArgumentException overflow = assertMalformedAtLine(lines, foreign, index + 1,
+                                field);
+                        assertTrue(overflow.getMessage().contains(foreign.get(field).toString()),
+                                overflow.getMessage());
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void headerCoordinatesMustHaveTheWritersShapeAndMode() throws Exception {
+        for (final boolean selectedNull : List.of(false, true)) {
+            final Path file = coordinateTrace("header-" + selectedNull + ".jsonl", selectedNull);
+            final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            // Header validation also applies when there are no observations to retain.
+            final List<String> emptyLines = List.of(lines.get(0), "{\"complete\":true,\"records\":0}");
+            final JsonObject original = JsonParser.parseString(lines.get(0)).getAsJsonObject();
+            for (final String field : List.of("dataset", "traceMode", "nullBlockLength", "nullMemberIndex")) {
+                final JsonObject missing = original.deepCopy();
+                missing.remove(field);
+                assertMalformedAtLine(emptyLines, missing, 1, field);
+                final JsonObject nullValue = original.deepCopy();
+                nullValue.add(field, null);
+                assertMalformedAtLine(emptyLines, nullValue, 1, field);
+                final JsonObject wrongType = original.deepCopy();
+                wrongType.add(field, "dataset".equals(field) || "traceMode".equals(field) ? new JsonPrimitive(1)
+                        : new JsonPrimitive("1"));
+                assertMalformedAtLine(emptyLines, wrongType, 1, field);
+            }
+            for (final String field : List.of("nullBlockLength", "nullMemberIndex")) {
+                final JsonObject fractional = original.deepCopy();
+                fractional.addProperty(field, 1.5);
+                assertMalformedAtLine(emptyLines, fractional, 1, field);
+                final JsonObject overflow = original.deepCopy();
+                overflow.addProperty(field, original.get(field).getAsLong() + (1L << 32));
+                assertMalformedAtLine(emptyLines, overflow, 1, field);
+                for (final String number : List.of("1e2147483648", "100e2147483647")) {
+                    final JsonObject oversized = original.deepCopy();
+                    oversized.add(field, JsonParser.parseString(number));
+                    final IllegalArgumentException error = assertMalformedAtLine(emptyLines, oversized, 1, field);
+                    assertTrue(error.getMessage().contains(number), error.getMessage());
+                }
+                final JsonObject invalid = original.deepCopy();
+                invalid.addProperty(field, selectedNull && "nullMemberIndex".equals(field) ? -1 : 0);
+                assertMalformedAtLine(emptyLines, invalid, 1, field);
+            }
+            final JsonObject unsupportedMode = original.deepCopy();
+            unsupportedMode.addProperty("traceMode", "all-null");
+            assertMalformedAtLine(emptyLines, unsupportedMode, 1, "traceMode");
+            final JsonObject otherMode = original.deepCopy();
+            otherMode.addProperty("traceMode",
+                    selectedNull ? ElliottResearchTrace.MODE_REAL : ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER);
+            assertMalformedAtLine(emptyLines, otherMode, 1, "traceMode");
+        }
+    }
+
+    @Test
+    public void recordSectionMustAgreeWithTheHeaderTraceModeBeforeRetention() throws Exception {
+        for (final boolean selectedNull : List.of(false, true)) {
+            final Path file = coordinateTrace("section-" + selectedNull + ".jsonl", selectedNull);
+            final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            final JsonObject foreign = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+            foreign.addProperty("section", selectedNull ? "h1" : "null");
+            final IllegalArgumentException error = assertMalformedAtLine(lines, foreign, 2, "section");
+            assertTrue(error.getMessage().contains(foreign.get("section").toString()), error.getMessage());
+            assertTrue(error.getMessage()
+                    .contains("traceMode=" + (selectedNull ? ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER
+                            : ElliottResearchTrace.MODE_REAL)),
+                    error.getMessage());
+        }
+    }
+
+    private Path coordinateTrace(final String name, final boolean selectedNull) throws IOException {
+        final Path file = directory.resolve(name);
+        final int blockLength = selectedNull ? 2 : -1;
+        final int memberIndex = selectedNull ? 1 : -1;
+        final StudyObserver.Scope scope = new StudyObserver.Scope(selectedNull ? "null" : "h1",
+                selectedNull ? "MOTIVE_5" : "topology-only", "MOTIVE_5", List.of(), "d", blockLength, memberIndex);
+        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
+                selectedNull ? ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER : ElliottResearchTrace.MODE_REAL,
+                blockLength, memberIndex)) {
+            trace.topology(scope, "calibration", 0, Instant.parse("2018-01-01T00:00:00Z"), List.of(),
+                    TopologyAnalysis.insufficientHistory("single observation"), List.of());
+            if (!selectedNull) {
+                trace.alternative(StudyObserver.Scope.real("competing", "change-point", "CHANGE_POINT", List.of(), "d"),
+                        "calibration", 0, Instant.parse("2018-01-01T00:00:00Z"), List.of(), "insufficient-history",
+                        Set.of());
+            }
+        }
+        return file;
+    }
+
+    @Test
     void recordLinesMissingWrittenFieldsAreRejectedWithLocation() throws Exception {
         // Regression: any object with a "kind" member counted as an observation,
         // so a hand-edited line matched the footer count and fed inspection.
@@ -425,14 +547,24 @@ class ElliottResearchTraceTest {
 
     private void assertMalformedAtLine2(final List<String> lines, final JsonObject damaged, final String field)
             throws IOException {
-        final Path copy = directory.resolve("damaged-" + field + ".jsonl");
+        assertMalformedAtLine(lines, damaged, 2, field);
+    }
+
+    private IllegalArgumentException assertMalformedAtLine(final List<String> lines, final JsonObject damaged,
+            final int lineNumber, final String field) throws IOException {
+        final Path copy = directory.resolve("damaged-" + lineNumber + "-" + field + ".jsonl");
         final List<String> damagedLines = new ArrayList<>(lines);
-        damagedLines.set(1, damaged.toString());
+        damagedLines.set(lineNumber - 1, damaged.toString());
         Files.write(copy, damagedLines, StandardCharsets.UTF_8);
         final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> ElliottResearchTrace.read(copy), field);
-        assertTrue(error.getMessage().contains("line 2"), error.getMessage());
+        assertTrue(error.getMessage().contains(copy.toString()), error.getMessage());
+        assertTrue(error.getMessage().contains("line " + lineNumber), error.getMessage());
         assertTrue(error.getMessage().contains(field), error.getMessage());
+        final IllegalArgumentException filtered = assertThrows(IllegalArgumentException.class,
+                () -> ElliottResearchTrace.read(copy, record -> false), field);
+        assertEquals(error.getMessage(), filtered.getMessage());
+        return error;
     }
 
     private void traceEvaluation(final Path file, final BarSeries series, final int from, final int to)
