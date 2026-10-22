@@ -27,6 +27,9 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Predicate;
 
+import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
+import org.ta4j.core.num.DecimalNum;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -542,13 +545,25 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         if (direction == null || !direction.isJsonNull() && text(record, "direction") == null) {
             throw corrupt(path, lineNumber, where + "direction is missing or not a string or null");
         }
+        if ("topology".equals(kind) && (!direction.isJsonNull() && !"BULLISH".equals(direction.getAsString())
+                && !"BEARISH".equals(direction.getAsString()) || direction.isJsonNull() && "FORMING".equals(status))) {
+            throw corrupt(path, lineNumber,
+                    where + "direction must be BULLISH or BEARISH for FORMING, otherwise null or a wave direction");
+        }
         requireTexts(path, lineNumber, record, "activeRules", where);
         final JsonArray pivots = requireArray(path, lineNumber, record, "pivots", where);
         for (int i = 0; i < pivots.size(); i++) {
-            final JsonObject pivot = requirePlacement(path, lineNumber, pivots.get(i), where + "pivots[" + i + "]");
-            requireCoordinate(path, lineNumber, pivot, "confirmationIndex", where + "pivots[" + i + "].");
+            requirePlacement(path, lineNumber, pivots.get(i), where + "pivots[" + i + "]", true);
         }
         final JsonArray candidates = requireArray(path, lineNumber, record, "candidates", where);
+        if ("topology".equals(kind)) {
+            try {
+                TopologyAnalysis.validateCandidateCount(TopologyStatus.valueOf(status), candidates.size());
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber, where + "candidates: " + e.getMessage());
+            }
+        }
+        TopologyGrammar grammar = null;
         for (int i = 0; i < candidates.size(); i++) {
             final String at = where + "candidates[" + i + "]";
             final JsonObject candidate = requireObject(path, lineNumber, candidates.get(i), at);
@@ -556,8 +571,10 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                 requireText(path, lineNumber, candidate, field, at + ".");
             }
             final JsonArray placement = requireArray(path, lineNumber, candidate, "placement", at + ".");
+            final List<ConfirmedPivot> candidatePivots = new ArrayList<>(placement.size());
             for (int p = 0; p < placement.size(); p++) {
-                requirePlacement(path, lineNumber, placement.get(p), at + ".placement[" + p + "]");
+                candidatePivots
+                        .add(requirePlacement(path, lineNumber, placement.get(p), at + ".placement[" + p + "]", false));
             }
             final JsonArray rules = requireArray(path, lineNumber, candidate, "rules", at + ".");
             for (int r = 0; r < rules.size(); r++) {
@@ -588,19 +605,76 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             if (!(key + "@" + digest(rules.toString())).equals(candidate.get("version").getAsString())) {
                 throw corrupt(path, lineNumber, at + ".version does not match the candidate key and rule evidence");
             }
+            final JsonArray activeRules = record.getAsJsonArray("activeRules");
+            if (rules.size() != activeRules.size()) {
+                throw corrupt(path, lineNumber, at + ".rules must match activeRules in size and order");
+            }
+            for (int r = 0; r < rules.size(); r++) {
+                final JsonObject rule = rules.get(r).getAsJsonObject();
+                final String ruleAt = at + ".rules[" + r + "]";
+                if (!rule.get("id").equals(activeRules.get(r))) {
+                    throw corrupt(path, lineNumber, ruleAt + ".id does not match activeRules[" + r + "]");
+                }
+                final JsonElement score = rule.get("score");
+                if (!score.isJsonNull()) {
+                    try {
+                        final BigDecimal value = score.getAsBigDecimal();
+                        if (!"PASS".equals(rule.get("state").getAsString()) || value.signum() < 0
+                                || value.compareTo(BigDecimal.ONE) > 0) {
+                            throw corrupt(path, lineNumber,
+                                    ruleAt + ".score must be null unless PASS and otherwise within [0, 1]");
+                        }
+                    } catch (final NumberFormatException | ArithmeticException e) {
+                        throw corrupt(path, lineNumber, ruleAt + ".score is not a supported finite number");
+                    }
+                }
+            }
+            if (grammar == null) {
+                grammar = requireGrammar(path, lineNumber, record, where);
+            }
+            try {
+                WaveDirection.valueOf(candidate.get("direction").getAsString());
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber, at + ".direction is not a wave direction");
+            }
+            try {
+                TopologyCandidate.validatePivots(grammar, candidatePivots);
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber, at + ".placement: " + e.getMessage());
+            }
+        }
+        if ("topology".equals(kind) && grammar == null) {
+            requireGrammar(path, lineNumber, record, where);
         }
         if ("alternative".equals(kind)) {
             requireTexts(path, lineNumber, record, "labels", where);
         }
     }
 
-    private static JsonObject requirePlacement(final Path path, final long lineNumber, final JsonElement element,
-            final String at) {
+    private static TopologyGrammar requireGrammar(final Path path, final long lineNumber, final JsonObject record,
+            final String where) {
+        try {
+            return TopologyGrammar.valueOf(record.get("grammar").getAsString());
+        } catch (final IllegalArgumentException e) {
+            throw corrupt(path, lineNumber, where + "grammar is not a topology grammar");
+        }
+    }
+
+    private static ConfirmedPivot requirePlacement(final Path path, final long lineNumber, final JsonElement element,
+            final String at, final boolean confirmed) {
         final JsonObject placement = requireObject(path, lineNumber, element, at);
-        requireCoordinate(path, lineNumber, placement, "index", at + ".");
+        final int index = requireCoordinate(path, lineNumber, placement, "index", at + ".");
+        final int confirmation = confirmed
+                ? requireCoordinate(path, lineNumber, placement, "confirmationIndex", at + ".")
+                : index;
         requireText(path, lineNumber, placement, "price", at + ".");
         requireText(path, lineNumber, placement, "type", at + ".");
-        return placement;
+        try {
+            return new ConfirmedPivot(index, confirmation, DecimalNum.valueOf(placement.get("price").getAsString()),
+                    SwingPivotType.valueOf(placement.get("type").getAsString()));
+        } catch (final IllegalArgumentException e) {
+            throw corrupt(path, lineNumber, at + " is not a valid pivot: " + e.getMessage());
+        }
     }
 
     private static JsonObject requireObject(final Path path, final long lineNumber, final JsonElement element,

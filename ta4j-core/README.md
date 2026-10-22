@@ -215,9 +215,16 @@ are never pooled. `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements. Every observation must match its trace
 header's dataset and null-member coordinates and carry a status defined for its
 record kind; required scope labels and as-of timestamps must be nonblank.
-Nested rules must carry a known rule-evidence state. Candidate keys
-must match the recorded grammar, direction and full placement, and evidence
-versions must match the candidate key and serialized rules. Trace capture
+Topology status and candidate counts must satisfy the kernel's bounds (`COMPLETE`
+has exactly one candidate, `AMBIGUOUS` has 2-64), and `FORMING` requires a wave
+direction. Each candidate's rules must exactly match `activeRules` in order;
+scores are null except for `PASS`, whose recorded score, if present, is in `[0, 1]`.
+Pivots require nonnegative indices, finite prices and valid high/low types, with
+confirmation no earlier than the pivot. Candidate placement must have the
+grammar's required number of strictly ordered, alternating pivots and a valid
+direction. Candidate keys must match the recorded grammar, direction and full
+placement, and evidence versions must match the candidate key and serialized rules.
+All these checks precede scope filtering. Trace capture
 shares the immutable evidence consumed by report metrics rather than reevaluating
 the same candidates. All trace indices and coordinates must fit a signed 32-bit integer;
 the footer count must match exactly without numeric narrowing. When the trace is missing,

@@ -33,15 +33,7 @@ record TopologyAnalysis(TopologyStatus status, WaveDirection direction, List<Top
         Objects.requireNonNull(status, "status");
         candidates = candidates == null ? List.of() : List.copyOf(candidates);
         Objects.requireNonNull(explanation, "explanation");
-        if (candidates.size() > MAX_CANDIDATES) {
-            throw new IllegalArgumentException("candidate bound exceeded: " + candidates.size());
-        }
-        if (status == TopologyStatus.COMPLETE && candidates.size() != 1) {
-            throw new IllegalArgumentException("COMPLETE requires exactly one candidate");
-        }
-        if (status == TopologyStatus.AMBIGUOUS && candidates.size() < 2) {
-            throw new IllegalArgumentException("AMBIGUOUS requires at least two tied candidates");
-        }
+        validateCandidateCount(status, candidates.size());
         if (status == TopologyStatus.FORMING) {
             Objects.requireNonNull(direction, "FORMING direction");
             if (formingStartBarIndex < 0 || formingEndBarIndex < formingStartBarIndex) {
@@ -49,6 +41,18 @@ record TopologyAnalysis(TopologyStatus status, WaveDirection direction, List<Top
             }
         } else if (formingStartBarIndex != -1 || formingEndBarIndex != -1) {
             throw new IllegalArgumentException("only FORMING may carry a pivot range");
+        }
+    }
+
+    static void validateCandidateCount(final TopologyStatus status, final int count) {
+        if (count > MAX_CANDIDATES) {
+            throw new IllegalArgumentException("candidate bound exceeded: " + count);
+        }
+        if (status == TopologyStatus.COMPLETE && count != 1) {
+            throw new IllegalArgumentException("COMPLETE requires exactly one candidate");
+        }
+        if (status == TopologyStatus.AMBIGUOUS && count < 2) {
+            throw new IllegalArgumentException("AMBIGUOUS requires at least two tied candidates");
         }
     }
 

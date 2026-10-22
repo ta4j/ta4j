@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +29,7 @@ import java.util.Set;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
@@ -702,6 +704,198 @@ class ElliottResearchTraceTest {
             }
             assertMalformedAtLine2(lines, damaged, "candidates[0]."
                     + (field.startsWith("rules.") || "version".equals(field) ? "version" : "candidateKey"));
+        }
+    }
+
+    @Test
+    public void domainInvariantsAreCheckedBeforeRetentionWithSelfConsistentHashes() throws Exception {
+        final List<String> lines = Files.readAllLines(domainTrace("domain-invariants.jsonl"), StandardCharsets.UTF_8);
+        final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        for (final String mutation : List.of("complete-empty", "complete-multiple", "ambiguous-empty",
+                "ambiguous-single", "candidate-bound", "rules-omitted", "rules-duplicated", "rules-renamed",
+                "rules-reordered", "rules-extra", "forming-null-direction", "record-unknown-direction",
+                "candidate-unknown-direction", "unknown-grammar", "placement-count", "placement-index-order",
+                "placement-type-order", "placement-negative-index", "placement-invalid-type",
+                "placement-nonfinite-price", "pivot-negative-index", "pivot-confirmation-before-index",
+                "pivot-invalid-type", "pivot-nonfinite-price", "score-on-fail", "score-below-zero", "score-above-one",
+                "score-extreme", "score-epsilon-below-zero", "score-epsilon-above-one", "score-unsupported-exponent")) {
+            final JsonObject damaged = original.deepCopy();
+            final JsonArray candidates = damaged.getAsJsonArray("candidates");
+            final JsonObject candidate = candidates.get(0).getAsJsonObject();
+            final JsonArray placement = candidate.getAsJsonArray("placement");
+            final JsonObject point = placement.get(0).getAsJsonObject();
+            final JsonObject pivot = damaged.getAsJsonArray("pivots").get(0).getAsJsonObject();
+            final JsonArray rules = candidate.getAsJsonArray("rules");
+            final JsonObject rule = rules.get(0).getAsJsonObject();
+            final String field;
+            switch (mutation) {
+            case "complete-empty", "ambiguous-empty" -> {
+                damaged.addProperty("status", mutation.startsWith("ambiguous") ? "AMBIGUOUS" : "COMPLETE");
+                damaged.add("candidates", new JsonArray());
+                field = "candidates";
+            }
+            case "complete-multiple", "candidate-bound" -> {
+                damaged.addProperty("status", "candidate-bound".equals(mutation) ? "AMBIGUOUS" : "COMPLETE");
+                while (candidates.size() < ("candidate-bound".equals(mutation) ? 65 : 2)) {
+                    candidates.add(candidate.deepCopy());
+                }
+                field = "candidates";
+            }
+            case "ambiguous-single" -> {
+                damaged.addProperty("status", "AMBIGUOUS");
+                field = "candidates";
+            }
+            case "rules-omitted", "rules-extra", "rules-duplicated", "rules-renamed", "rules-reordered" -> {
+                switch (mutation) {
+                case "rules-omitted" -> rules.remove(0);
+                case "rules-extra" -> rules.add(rule.deepCopy());
+                case "rules-duplicated" -> rules.set(1, rule.deepCopy());
+                case "rules-renamed" -> rule.addProperty("id", "foreign-rule");
+                case "rules-reordered" -> {
+                    rules.set(0, rules.get(1));
+                    rules.set(1, rule);
+                }
+                default -> throw new AssertionError(mutation);
+                }
+                field = "rules";
+            }
+            case "forming-null-direction", "record-unknown-direction" -> {
+                if ("forming-null-direction".equals(mutation)) {
+                    damaged.addProperty("status", "FORMING");
+                    damaged.add("direction", JsonNull.INSTANCE);
+                } else {
+                    damaged.addProperty("direction", "FLAT");
+                }
+                field = "direction";
+            }
+            case "candidate-unknown-direction" -> {
+                candidate.addProperty("direction", "FLAT");
+                field = "direction";
+            }
+            case "unknown-grammar" -> {
+                damaged.addProperty("grammar", "FOREIGN");
+                field = "grammar";
+            }
+            case "placement-count", "placement-index-order", "placement-type-order", "placement-negative-index",
+                    "placement-invalid-type", "placement-nonfinite-price" -> {
+                switch (mutation) {
+                case "placement-count" -> placement.remove(placement.size() - 1);
+                case "placement-index-order" -> placement.get(1).getAsJsonObject().add("index", point.get("index"));
+                case "placement-type-order" -> placement.get(1).getAsJsonObject().add("type", point.get("type"));
+                case "placement-negative-index" -> point.addProperty("index", -1);
+                case "placement-invalid-type" -> point.addProperty("type", "MID");
+                case "placement-nonfinite-price" -> point.addProperty("price", "NaN");
+                default -> throw new AssertionError(mutation);
+                }
+                field = "placement";
+            }
+            case "pivot-negative-index", "pivot-confirmation-before-index", "pivot-invalid-type",
+                    "pivot-nonfinite-price" -> {
+                switch (mutation) {
+                case "pivot-negative-index" -> pivot.addProperty("index", -1);
+                case "pivot-confirmation-before-index" ->
+                    pivot.addProperty("confirmationIndex", pivot.get("index").getAsInt() - 1);
+                case "pivot-invalid-type" -> pivot.addProperty("type", "MID");
+                case "pivot-nonfinite-price" -> pivot.addProperty("price", "Infinity");
+                default -> throw new AssertionError(mutation);
+                }
+                field = "pivots[0]";
+            }
+            case "score-unsupported-exponent" -> {
+                rule.add("score", JsonParser.parseString("1e2147483648"));
+                field = ".score";
+            }
+            case "score-on-fail", "score-below-zero", "score-above-one", "score-extreme", "score-epsilon-below-zero",
+                    "score-epsilon-above-one" -> {
+                rule.addProperty("state", "score-on-fail".equals(mutation) ? "FAIL" : "PASS");
+                rule.addProperty("score", new BigDecimal(switch (mutation) {
+                case "score-on-fail" -> "0.5";
+                case "score-below-zero" -> "-0.5";
+                case "score-above-one" -> "1.5";
+                case "score-extreme" -> "1e1000";
+                case "score-epsilon-below-zero" -> "-1e-10";
+                case "score-epsilon-above-one" -> "1.0000000001";
+                default -> throw new AssertionError(mutation);
+                }));
+                field = ".score";
+            }
+            default -> throw new AssertionError(mutation);
+            }
+            refreshIdentity(damaged);
+            assertMalformedAtLine2(lines, damaged, field);
+        }
+    }
+
+    @Test
+    public void validDomainBoundariesKeepTheirRecordedValues() throws Exception {
+        final List<String> lines = Files.readAllLines(domainTrace("domain-boundaries.jsonl"), StandardCharsets.UTF_8);
+        final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        for (final TopologyGrammar grammar : TopologyGrammar.values()) {
+            for (final WaveDirection direction : WaveDirection.values()) {
+                for (final int count : List.of(1, 2, 64)) {
+                    final JsonObject record = original.deepCopy();
+                    record.addProperty("grammar", grammar.name());
+                    record.addProperty("direction", direction.name());
+                    record.addProperty("status", count == 1 ? "COMPLETE" : "AMBIGUOUS");
+                    final JsonObject candidate = firstCandidate(record);
+                    candidate.addProperty("direction", direction.name());
+                    final JsonArray placement = candidate.getAsJsonArray("placement");
+                    while (placement.size() > grammar.requiredPivots()) {
+                        placement.remove(placement.size() - 1);
+                    }
+                    placement.get(0).getAsJsonObject().addProperty("price", "1e400");
+                    candidate.getAsJsonArray("rules").get(0).getAsJsonObject().addProperty("score", 0);
+                    candidate.getAsJsonArray("rules").get(1).getAsJsonObject().addProperty("score", 1);
+                    final JsonArray candidates = record.getAsJsonArray("candidates");
+                    while (candidates.size() < count) {
+                        candidates.add(candidate.deepCopy());
+                    }
+                    refreshIdentity(record);
+                    final List<String> changed = new ArrayList<>(lines);
+                    changed.set(1, record.toString());
+                    final Path copy = directory.resolve("valid-" + grammar + "-" + direction + "-" + count + ".jsonl");
+                    Files.write(copy, changed, StandardCharsets.UTF_8);
+                    assertEquals(record, ElliottResearchTrace.read(copy).records().get(0));
+                    assertTrue(ElliottResearchTrace.read(copy, ignored -> false).records().isEmpty());
+                }
+            }
+        }
+    }
+
+    private Path domainTrace(final String name) throws IOException {
+        final Path file = directory.resolve(name);
+        final TopologyCandidate candidate = new TopologyCandidate(TopologyGrammar.CYCLE_5_3, WaveDirection.BULLISH,
+                alternating(10, 20, 14, 26, 18, 32, 24, 30, 20));
+        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
+                ElliottResearchTrace.MODE_REAL, -1, -1)) {
+            trace.topology(StudyObserver.Scope.real("h2", "all-rules", "CYCLE_5_3", List.of("first", "second"), "d"),
+                    "calibration", 8, Instant.parse("2018-01-09T00:00:00Z"), candidate.pivots(),
+                    new TopologyAnalysis(TopologyStatus.COMPLETE, WaveDirection.BULLISH, List.of(candidate), "complete",
+                            -1, -1),
+                    List.of(List.of(RuleEvidence.scored("first", 0.5, List.of(), ""),
+                            RuleEvidence.pass("second", List.of(), ""))));
+        }
+        return file;
+    }
+
+    private static void refreshIdentity(final JsonObject record) throws NoSuchAlgorithmException {
+        for (final JsonElement element : record.getAsJsonArray("candidates")) {
+            final JsonObject candidate = element.getAsJsonObject();
+            final StringBuilder identity = new StringBuilder(record.get("grammar").getAsString()).append('|')
+                    .append(candidate.get("direction").getAsString());
+            for (final JsonElement point : candidate.getAsJsonArray("placement")) {
+                final JsonObject pivot = point.getAsJsonObject();
+                identity.append('|')
+                        .append(pivot.get("index").getAsInt())
+                        .append(':')
+                        .append(pivot.get("type").getAsString())
+                        .append(':')
+                        .append(pivot.get("price").getAsString());
+            }
+            final byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(identity.toString().getBytes(StandardCharsets.UTF_8));
+            candidate.addProperty("candidateKey", HexFormat.of().formatHex(digest, 0, 16));
+            refreshVersion(candidate);
         }
     }
 
