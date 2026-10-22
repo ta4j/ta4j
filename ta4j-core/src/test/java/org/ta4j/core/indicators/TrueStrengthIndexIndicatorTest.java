@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -24,6 +26,29 @@ public class TrueStrengthIndexIndicatorTest extends AbstractIndicatorTest<Indica
 
     public TrueStrengthIndexIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void primesBothSmoothingStagesOnBothBranchesDuringWarmUp() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(4);
+        TrueStrengthIndexIndicator indicator = new TrueStrengthIndexIndicator(new ClosePriceIndicator(moving), 14, 3);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index <= 24; index++) {
+                moving.barBuilder().closePrice(100 + index).add();
+                Num actual = indicator.getValue(index);
+                if (index < 17) {
+                    assertThat(actual.isNaN()).isTrue();
+                } else {
+                    // Positive unit changes equal their absolute values through both EMAs.
+                    TestUtils.assertNumEquals(100, actual);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

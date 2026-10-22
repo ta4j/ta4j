@@ -15,6 +15,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
@@ -56,6 +57,28 @@ public class ForceIndexIndicatorTest extends AbstractIndicatorTest<BarSeries, Nu
 
     public ForceIndexIndicatorTest(final NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void primesForceSmoothingBeforeItsWarmUpReturn() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(4);
+        ForceIndexIndicator indicator = new ForceIndexIndicator(moving, 14);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index <= 21; index++) {
+                moving.barBuilder().closePrice(100 + index).volume(10).add();
+                Num actual = indicator.getValue(index);
+                if (index < 15) {
+                    assertThat(actual.isNaN()).isTrue();
+                } else {
+                    assertNumEquals(10, actual);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

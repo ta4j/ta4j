@@ -480,10 +480,11 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public MACDVMomentumState getMomentumState(int index, MACDVMomentumProfile momentumProfile) {
+        Num value = getValue(index);
         if (index < getCountOfUnstableBars()) {
             return MACDVMomentumState.UNDEFINED;
         }
-        return MACDVMomentumState.fromMacdV(getValue(index), momentumProfile);
+        return MACDVMomentumState.fromMacdV(value, momentumProfile);
     }
 
     /**
@@ -584,11 +585,16 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        ensureSubIndicatorsInitialized();
+        shortAtrIndicator.getValue(index);
+        if (longAtrIndicator != shortAtrIndicator) {
+            longAtrIndicator.getValue(index);
+        }
+        Num shortValue = shortTermVwema.getValue(index);
+        Num longValue = longTermVwema.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-        Num shortValue = getShortTermVwema().getValue(index);
-        Num longValue = getLongTermVwema().getValue(index);
         if (Num.isNaNOrNull(shortValue) || Num.isNaNOrNull(longValue)) {
             return NaN.NaN;
         }
@@ -597,6 +603,17 @@ public class MACDVIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
         return macdValue;
+    }
+
+    /**
+     * Retains the historical state consumed by the EMA-weighted branches.
+     *
+     * @return {@code true}
+     * @since 0.27.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     /**
