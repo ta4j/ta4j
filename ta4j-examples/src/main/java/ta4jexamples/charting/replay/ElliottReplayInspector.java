@@ -16,7 +16,6 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import org.jfree.chart.JFreeChart;
 
@@ -50,7 +49,7 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
  * {@code history [key]}, {@code show}, {@code export}, {@code help},
  * {@code quit}.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 public final class ElliottReplayInspector {
 
@@ -252,37 +251,44 @@ public final class ElliottReplayInspector {
      * Writes the JSON, text and image of the current frame to the output directory.
      */
     private void export() {
-        rejectRunDirectory();
+        final Path directory = resolveOutputDirectory();
         final String stem = "frame-" + current.cursor();
-        rejectLinkedDestinations(stem);
+        final Path json = directory.resolve(stem + ".json");
+        final Path text = directory.resolve(stem + ".txt");
+        final Path image = directory.resolve(stem + ".jpg");
+        rejectLinkedDestinations(json, text, image);
         try {
-            Files.createDirectories(outDirectory);
-            writeFresh(outDirectory.resolve(stem + ".json"), current.toSemanticJson());
-            writeFresh(outDirectory.resolve(stem + ".txt"), ReplayEvidenceText.render(current));
+            Files.createDirectories(directory);
+            writeFresh(json, current.toSemanticJson());
+            writeFresh(text, ReplayEvidenceText.render(current));
             final ReplayChartModel model = ReplayChartModel.of(current, session.bars());
-            final ChartWorkflow workflow = new ChartWorkflow(outDirectory.toString());
+            final ChartWorkflow workflow = new ChartWorkflow();
             final JFreeChart chart = ReplayFrameRenderer.chart(workflow, model);
-            Files.deleteIfExists(outDirectory.resolve(stem + ".jpg"));
-            final Optional<Path> image = ReplayFrameRenderer.save(chart, model, outDirectory, stem);
-            out.println("exported " + outDirectory.resolve(stem + ".json") + ", " + stem + ".txt, "
-                    + image.map(path -> path.getFileName().toString()).orElse("(image not written)"));
+            writeFresh(image, ReplayFrameRenderer.jpeg(chart));
+            out.println("exported " + json + ", " + text.getFileName() + ", " + image.getFileName());
             if (display) {
                 workflow.displayChart(chart, model.title());
             }
         } catch (IOException e) {
-            throw new ReplayArtifactException("cannot write to " + outDirectory + ": " + e.getMessage(), e);
+            throw new ReplayArtifactException("cannot write to " + directory + ": " + e.getMessage(), e);
         }
     }
 
-    /** Refuses an output directory that is, or lies inside, the replayed run. */
-    private void rejectRunDirectory() {
+    /**
+     * Resolves {@code --out} to the directory the frame files really land in,
+     * following every symbolic link and {@code ..} the way the file system does,
+     * and refuses one that is, or lies inside, the replayed run. The returned path
+     * is the one written to, so the check covers exactly the files created.
+     */
+    private Path resolveOutputDirectory() {
         try {
             final Path run = session.artifact().directory().toRealPath();
-            final Path target = realPathThroughExistingAncestor(outDirectory.toAbsolutePath().normalize());
+            final Path target = realPathThroughExistingAncestor(outDirectory.toAbsolutePath());
             if (target.startsWith(run)) {
                 throw new ReplayArtifactException("--out " + outDirectory + " is the replayed run directory " + run
                         + " or lies inside it; choose another output directory so the evidence bundle stays unchanged");
             }
+            return target;
         } catch (IOException e) {
             throw new ReplayArtifactException("cannot resolve --out " + outDirectory + ": " + e.getMessage(), e);
         }
@@ -293,9 +299,8 @@ public final class ElliottReplayInspector {
      * file: writing would replace whatever it points at, which can be a file of the
      * replayed run.
      */
-    private void rejectLinkedDestinations(final String stem) {
-        for (final String extension : List.of(".json", ".txt", ".jpg")) {
-            final Path destination = outDirectory.resolve(stem + extension);
+    private static void rejectLinkedDestinations(final Path... destinations) {
+        for (final Path destination : destinations) {
             if (Files.isSymbolicLink(destination)) {
                 throw new ReplayArtifactException("export destination " + destination
                         + " is a symbolic link; replay never writes through links, so remove it or choose another --out directory");
@@ -307,14 +312,27 @@ public final class ElliottReplayInspector {
      * Writes {@code content} to a destination created anew. An existing file is
      * removed first so that a hard link standing at the destination, which shares
      * its content with a file of the replayed run, is replaced instead of being
-     * truncated in place.
+     * truncated in place. Creation is exclusive, so a symbolic link planted after
+     * the removal fails the export instead of being written through.
      */
-    private static void writeFresh(final Path destination, final String content) throws IOException {
+    static void writeFresh(final Path destination, final String content) throws IOException {
         Files.deleteIfExists(destination);
         Files.writeString(destination, content, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW,
                 StandardOpenOption.WRITE);
     }
 
+    /** Binary counterpart of {@link #writeFresh(Path, String)}. */
+    static void writeFresh(final Path destination, final byte[] content) throws IOException {
+        Files.deleteIfExists(destination);
+        Files.write(destination, content, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+    }
+
+    /**
+     * Returns {@code path} with every symbolic link of its longest existing prefix
+     * resolved, followed by the components that do not exist yet. {@code path} must
+     * not be normalized beforehand: a {@code ..} after a symbolic link steps out of
+     * the link's target, not out of the directory holding the link.
+     */
     private static Path realPathThroughExistingAncestor(final Path path) throws IOException {
         Path existing = path;
         while (existing != null && !Files.exists(existing)) {

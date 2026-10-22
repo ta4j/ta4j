@@ -285,21 +285,21 @@ class ElliottReplayInspectorTest {
         final Path run = ReplayFixture.write(temp.resolve("run"));
         final Path out = Files.createDirectories(temp.resolve("out"));
         final java.util.Map<String, String> before = snapshot(run);
-        final Path frame = out.resolve("frame-36.json");
-        try {
-            Files.createSymbolicLink(frame, run.resolve("run.json"));
-        } catch (IOException | UnsupportedOperationException e) {
-            Assumptions.abort("this environment cannot create symbolic links: " + e);
+
+        for (final String extension : List.of(".json", ".txt", ".jpg")) {
+            final Path frame = symbolicLink(out.resolve("frame-36" + extension), run.resolve("run.json"));
+
+            final Result result = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
+                    out.toString());
+
+            assertEquals(2, result.status(), extension + ": " + result.out());
+            assertTrue(result.err().contains("symbolic link"), result.err());
+            assertEquals(before, snapshot(run));
+            try (java.util.stream.Stream<Path> written = Files.list(out)) {
+                assertEquals(List.of(frame), written.toList(), "nothing but the link may exist after " + extension);
+            }
+            Files.delete(frame);
         }
-
-        final Result result = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
-                out.toString());
-
-        assertEquals(2, result.status(), result.out());
-        assertTrue(result.err().contains("symbolic link"), result.err());
-        assertEquals(before, snapshot(run));
-        assertFalse(Files.exists(out.resolve("frame-36.txt")));
-        assertFalse(Files.exists(out.resolve("frame-36.jpg")));
     }
 
     @Test
@@ -325,5 +325,68 @@ class ElliottReplayInspectorTest {
         assertFalse(Files.isSameFile(out.resolve("frame-36.txt"), run.resolve("comparisons.csv")));
         assertFalse(Files.isSameFile(out.resolve("frame-36.jpg"), run.resolve("bars").resolve("d1.csv")));
         assertNotNull(ImageIO.read(out.resolve("frame-36.jpg").toFile()));
+    }
+
+    @Test
+    void exportResolvesSymbolicLinksBeforeRefusingAnOutputInsideTheRun() throws IOException {
+        final Path run = ReplayFixture.write(temp.resolve("run"));
+        final Path link = symbolicLink(temp.resolve("link"), run.resolve("bars"));
+        final java.util.Map<String, String> before = snapshot(run);
+
+        // "link/../exports" is temp/exports lexically but run/exports on disk
+        for (final Path out : List.of(link, link.resolve("..").resolve("exports"))) {
+            final Result result = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
+                    out.toString());
+
+            assertEquals(2, result.status(), out.toString());
+            assertTrue(result.err().contains("replayed run directory"), result.err());
+            assertEquals(before, snapshot(run));
+        }
+        assertFalse(Files.exists(temp.resolve("exports")));
+    }
+
+    @Test
+    void exportWritesWhereTheFileSystemResolvesALinkedOutputDirectory() throws IOException {
+        final Path run = ReplayFixture.write(temp.resolve("run"));
+        final Path elsewhere = Files.createDirectories(temp.resolve("elsewhere"));
+        final Path sub = Files.createDirectories(elsewhere.resolve("sub"));
+        final Path link = symbolicLink(temp.resolve("link"), sub);
+
+        final Result direct = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
+                link.toString());
+        final Result sibling = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
+                link.resolve("..").resolve("exports").toString());
+
+        assertEquals(0, direct.status(), direct.err());
+        assertEquals(0, sibling.status(), sibling.err());
+        final Path exports = elsewhere.resolve("exports");
+        for (final Path directory : List.of(sub, exports)) {
+            assertTrue(Files.isRegularFile(directory.resolve("frame-36.json")), directory.toString());
+            assertTrue(Files.isRegularFile(directory.resolve("frame-36.txt")), directory.toString());
+            assertNotNull(ImageIO.read(directory.resolve("frame-36.jpg").toFile()), directory.toString());
+        }
+        assertFalse(Files.exists(temp.resolve("exports")), "'..' leaves the link target, not the link's directory");
+        assertTrue(sibling.out().contains(exports.toRealPath().resolve("frame-36.json").toString()), sibling.out());
+    }
+
+    @Test
+    void writeFreshReplacesALinkInsteadOfWritingThroughIt() throws IOException {
+        final Path victim = Files.writeString(temp.resolve("victim.txt"), "evidence");
+        final Path destination = symbolicLink(temp.resolve("frame-1.jpg"), victim);
+        final byte[] image = { 1, 2, 3 };
+
+        ElliottReplayInspector.writeFresh(destination, image);
+
+        assertEquals("evidence", Files.readString(victim));
+        assertFalse(Files.isSymbolicLink(destination));
+        assertArrayEquals(image, Files.readAllBytes(destination));
+    }
+
+    private static Path symbolicLink(final Path link, final Path target) throws IOException {
+        try {
+            return Files.createSymbolicLink(link, target);
+        } catch (IOException | UnsupportedOperationException e) {
+            return Assumptions.abort("this environment cannot create symbolic links: " + e);
+        }
     }
 }

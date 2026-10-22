@@ -3,9 +3,10 @@
  */
 package ta4jexamples.charting.replay;
 
-import java.nio.file.Path;
-import java.util.Optional;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
+import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
@@ -18,7 +19,8 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
  * Draws a {@link ReplayChartModel} through the existing {@link ChartWorkflow}
- * so the replay looks and exports like every other ta4j example chart.
+ * so the replay looks like every other ta4j example chart, and encodes its
+ * export image with the JPEG writer the workflow's chart storage uses.
  */
 final class ReplayFrameRenderer {
 
@@ -70,17 +72,17 @@ final class ReplayFrameRenderer {
     }
 
     /**
-     * Writes the chart image to {@code directory}.
+     * Encodes the chart as the export JPEG. The caller writes the bytes, so the
+     * export creates its destination exclusively instead of handing a path to a
+     * chart storage that would open, and follow, whatever stands there.
      *
-     * @param chart     the chart
-     * @param model     the model the chart was built from
-     * @param directory target directory
-     * @param filename  file name without extension
-     * @return the written file
+     * @param chart the chart
+     * @return the JPEG bytes
+     * @throws IOException if the chart cannot be encoded
      */
-    static Optional<Path> save(final JFreeChart chart, final ReplayChartModel model, final Path directory,
-            final String filename) {
-        return new ChartWorkflow(directory.toString()).saveChartImage(chart, model.series(), filename, EXPORT_WIDTH,
-                EXPORT_HEIGHT);
+    static byte[] jpeg(final JFreeChart chart) throws IOException {
+        final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        ChartUtils.writeChartAsJPEG(bytes, chart, EXPORT_WIDTH, EXPORT_HEIGHT);
+        return bytes.toByteArray();
     }
 }

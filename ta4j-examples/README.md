@@ -203,9 +203,11 @@ to the latest record at or before it, `select <candidate key|#>` follows one
 candidate across bars, `history` lists its recorded version changes (when the
 stream is longer than the 5,000-record lookback it says where the scanned history
 starts instead of inventing a change), and `export` writes
-`frame-<bar>.json`, `frame-<bar>.txt` and `frame-<bar>.jpg`. `--out` must not be
-the run directory or inside it, and none of the three frame files may be a
-symbolic link; the replay refuses before writing anything.
+`frame-<bar>.json`, `frame-<bar>.txt` and `frame-<bar>.jpg`. `--out` is resolved
+through symbolic links and `..` the way the file system does, and must not be
+the run directory or inside it. A frame file that is a symbolic link is refused,
+and an existing file or hard link is replaced, never overwritten in place; the
+replay refuses before writing anything.
 `--interactive` starts a prompt (`help` lists the commands); `--display` opens the
 chart in a window.
 
