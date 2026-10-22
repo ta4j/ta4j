@@ -5,8 +5,8 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -22,7 +22,7 @@ public class UlcerIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         ibmData = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(194.75, 195.00, 195.10, 194.46, 190.60, 188.86, 185.47, 184.46, 182.31, 185.22, 184.00,

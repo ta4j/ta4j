@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.indicators.bollinger;
 
-import static org.junit.Assert.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -25,7 +25,7 @@ public class BollingerBandWidthIndicatorTest extends AbstractIndicatorTest<Indic
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 12, 15, 14, 17, 20, 21, 20, 20, 19, 20, 17, 12, 12, 9, 8, 9, 10, 9, 10)

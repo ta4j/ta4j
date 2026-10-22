@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntFunction;
@@ -19,7 +19,7 @@ import org.ta4j.core.analysis.CumulativePnL;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.PerformanceIndicator;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BaseTradingRecord;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade.TradeType;
@@ -251,14 +251,14 @@ public class DrawdownTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<
                                     actualCurves[curveIndex], relative);
                             Num expectedAmount = Drawdown.amount(fixture.equivalentSeries(),
                                     fixture.equivalentRecord(mode), expectedCurves[curveIndex], relative);
-                            assertEquals(scenario + "/amount", expectedAmount.doubleValue(), actualAmount.doubleValue(),
-                                    1e-10);
+                            assertEquals(expectedAmount.doubleValue(), actualAmount.doubleValue(), 1e-10,
+                                    scenario + "/amount");
                             Num actualLength = Drawdown.length(fixture.series(), fixture.tradingRecord(),
                                     actualCurves[curveIndex], relative);
                             Num expectedLength = Drawdown.length(fixture.equivalentSeries(),
                                     fixture.equivalentRecord(mode), expectedCurves[curveIndex], relative);
-                            assertEquals(scenario + "/length", expectedLength.doubleValue(), actualLength.doubleValue(),
-                                    1e-10);
+                            assertEquals(expectedLength.doubleValue(), actualLength.doubleValue(), 1e-10,
+                                    scenario + "/length");
                         }
                     }
                 }

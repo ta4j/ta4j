@@ -24,9 +24,11 @@ import org.ta4j.core.num.NumFactory;
  * </p>
  *
  * <p>
- * When a trading record does not expose execution fees, this criterion falls
- * back to the transaction cost model (matching {@link CommissionsCriterion}
- * semantics).
+ * When a trading record does not expose execution fees, or declares an explicit
+ * start or end index, this criterion falls back to the transaction cost model
+ * (matching {@link CommissionsCriterion} semantics) over the positions in the
+ * record's logical range, because recorded totals are not attributable to a
+ * sub-range.
  * </p>
  *
  * @since 0.22.2
@@ -51,21 +53,29 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory factory = series.numFactory();
-        Num recordedFees = tradingRecord.getRecordedTotalFees();
-        if (recordedFees != null) {
-            return toSeriesNum(factory, recordedFees);
+        boolean bounded = tradingRecord.getStartIndex() != null || tradingRecord.getEndIndex() != null;
+        if (!bounded) {
+            Num recordedFees = tradingRecord.getRecordedTotalFees();
+            if (recordedFees != null) {
+                return toSeriesNum(factory, recordedFees);
+            }
         }
-        Num closedFees = tradingRecord.getPositions()
+        Num fees = tradingRecord.getContainedPositions(series)
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
                 .reduce(factory.zero(), Num::plus);
 
-        Position current = tradingRecord.getCurrentPosition();
-        if (current.isOpened()) {
-            return closedFees.plus(calculate(series, current));
+        if (!bounded) {
+            Position current = tradingRecord.getCurrentPosition();
+            return current.isOpened() ? fees.plus(calculate(series, current)) : fees;
         }
-        return closedFees;
+        int endIndex = tradingRecord.getEndIndex(series);
+        for (Position openPosition : positionsOpenAtEnd(series, tradingRecord)) {
+            Num cost = openPosition.getEntry().getCostModel().calculate(openPosition, endIndex);
+            fees = fees.plus(toSeriesNum(factory, cost));
+        }
+        return fees;
     }
 
     @Override

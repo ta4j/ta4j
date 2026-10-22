@@ -3,14 +3,14 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static junit.framework.TestCase.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.time.Duration;
 import java.time.Instant;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -26,7 +26,7 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 3, 4, 3, 2)
@@ -58,6 +58,41 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void highestValueIndicatorWhenBarCountIsGreaterThanIndex() {
         var highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 500);
         assertNumEquals("6.0", highestValue.getValue(12));
+    }
+
+    @Test
+    public void outOfOrderEvaluation() {
+        HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(data), 5);
+        // Evaluating out-of-order directly at index 10
+        assertNumEquals("6.0", highestValue.getValue(10));
+        assertNumEquals("5.0", highestValue.getValue(6));
+    }
+
+    @Test
+    public void slidingWindowEdgeCases() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 12, 8, 6, 4, 20).build();
+        HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 3);
+
+        assertNumEquals("5.0", highestValue.getValue(0));
+        assertNumEquals("12.0", highestValue.getValue(1));
+        // index 2: [5, 12, 8] -> max = 12
+        assertNumEquals("12.0", highestValue.getValue(2));
+        // index 3: [12, 8, 6] -> max = 12 (dropped element index 0 was 5 < prevMax 12)
+        assertNumEquals("12.0", highestValue.getValue(3));
+        // index 4: [8, 6, 4] -> max = 8 (dropped element index 1 was 12 == prevMax 12,
+        // recalculates)
+        assertNumEquals("8.0", highestValue.getValue(4));
+        // index 5: [6, 4, 20] -> max = 20 (current 20 > prevMax 8)
+        assertNumEquals("20.0", highestValue.getValue(5));
+    }
+
+    @Test
+    public void withRemovedBars() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 5, 8, 12, 15).build();
+        series.setMaximumBarCount(4);
+
+        HighestValueIndicator highestValue = new HighestValueIndicator(new ClosePriceIndicator(series), 3);
+        assertNumEquals("15.0", highestValue.getValue(series.getEndIndex()));
     }
 
     @Test

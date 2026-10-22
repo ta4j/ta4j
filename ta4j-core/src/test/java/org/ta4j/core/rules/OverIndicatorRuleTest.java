@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
@@ -23,7 +23,7 @@ public class OverIndicatorRuleTest {
     private BarSeries series;
     private TraceTestLogger traceTestLogger;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new BaseBarSeriesBuilder().build();
         Indicator<Num> indicator = new FixedNumIndicator(series, 20, 15, 10, 5, 0, -5, -10, 100);
@@ -32,7 +32,7 @@ public class OverIndicatorRuleTest {
         traceTestLogger.open();
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         traceTestLogger.close();
     }
@@ -54,10 +54,10 @@ public class OverIndicatorRuleTest {
         assertTrue(rule.isSatisfiedWithTraceMode(2, Rule.TraceMode.VERBOSE));
 
         String logContent = traceTestLogger.getLogOutput();
-        assertTrue("Trace should include the evaluated indicator value", logContent.contains("firstValue=10"));
-        assertTrue("Trace should include the threshold value", logContent.contains("secondValue=5"));
-        assertTrue("Trace should include the comparison operator", logContent.contains("operator=>"));
-        assertTrue("Trace should explain the comparison result", logContent.contains("reason=firstAboveSecond"));
+        assertTrue(logContent.contains("firstValue=10"), "Trace should include the evaluated indicator value");
+        assertTrue(logContent.contains("secondValue=5"), "Trace should include the threshold value");
+        assertTrue(logContent.contains("operator=>"), "Trace should include the comparison operator");
+        assertTrue(logContent.contains("reason=firstAboveSecond"), "Trace should explain the comparison result");
     }
 
     @Test

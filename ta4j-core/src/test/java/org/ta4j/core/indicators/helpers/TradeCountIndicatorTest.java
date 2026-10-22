@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -23,7 +23,7 @@ public class TradeCountIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         tradeIndicator = new TradeCountIndicator(barSeries);
