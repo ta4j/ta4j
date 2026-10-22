@@ -284,8 +284,7 @@ final class ReplayTraceIndex {
                 "status")) {
             requireText(display, line, record, field, where);
         }
-        if (!("topology".equals(kind) ? TOPOLOGY_STATUSES : ALTERNATIVE_STATUSES)
-                .contains(text(record, "status"))) {
+        if (!("topology".equals(kind) ? TOPOLOGY_STATUSES : ALTERNATIVE_STATUSES).contains(text(record, "status"))) {
             throw corrupt(display, line, where + "status " + record.get("status") + " is not a " + kind + " status");
         }
         for (final String field : List.of("nullBlockLength", "nullMemberIndex", "asOfIndex")) {
@@ -333,7 +332,8 @@ final class ReplayTraceIndex {
                     requireText(display, line, rule, field, ruleAt + ".");
                 }
                 if (!EVIDENCE_STATES.contains(text(rule, "state"))) {
-                    throw corrupt(display, line, ruleAt + ".state " + rule.get("state") + " is not a recorded rule state");
+                    throw corrupt(display, line,
+                            ruleAt + ".state " + rule.get("state") + " is not a recorded rule state");
                 }
                 final JsonElement score = rule.get("score");
                 if (score == null
