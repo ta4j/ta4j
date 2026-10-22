@@ -1428,14 +1428,13 @@ class CliSupportTest {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         Rule scanner = new OverIndicatorRule(new HighestValueIndicator(close, 2_000), close);
         Strategy strategy = Strategy.fromJson(series,
-                new BaseStrategy(new ChainRule(scanner, new ChainLink(scanner, 50_000)),
-                        BooleanRule.FALSE).toJson());
+                new BaseStrategy(new ChainRule(scanner, new ChainLink(scanner, 50_000)), BooleanRule.FALSE).toJson());
 
         assertThatThrownBy(() -> CliSupport.requireBoundedStrategyBatch(List.of(strategy), 10))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("including rolling-window scans");
-        Strategy small = new BaseStrategy(
-                new ChainRule(BooleanRule.TRUE, new ChainLink(BooleanRule.FALSE, 2)), BooleanRule.FALSE);
+        Strategy small = new BaseStrategy(new ChainRule(BooleanRule.TRUE, new ChainLink(BooleanRule.FALSE, 2)),
+                BooleanRule.FALSE);
         CliSupport.requireBoundedStrategyBatch(List.of(small), 10);
     }
 
@@ -1456,8 +1455,7 @@ class CliSupportTest {
     @ValueSource(booleans = { true, false })
     public void strategyBatchChargesThresholdCompositeFanout(boolean conjunction) {
         BarSeries series = syntheticSeries(10);
-        Rule rule = conjunction
-                ? new AndWithThresholdRule(BooleanRule.FALSE, BooleanRule.FALSE, 50_000)
+        Rule rule = conjunction ? new AndWithThresholdRule(BooleanRule.FALSE, BooleanRule.FALSE, 50_000)
                 : new OrWithThresholdRule(BooleanRule.FALSE, BooleanRule.FALSE, 50_000);
         Strategy strategy = Strategy.fromJson(series, new BaseStrategy(rule, BooleanRule.FALSE).toJson());
 
@@ -1470,14 +1468,13 @@ class CliSupportTest {
     @Test
     public void walkForwardChargesChainFanoutAcrossFoldPrefixes() {
         BarSeries series = syntheticSeries(1_000);
-        Strategy strategy = new BaseStrategy(
-                new ChainRule(BooleanRule.TRUE, new ChainLink(BooleanRule.FALSE, 25_000)), BooleanRule.FALSE);
-        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, "100", "100", "100", "0", "0", "0",
-                null, null, null);
+        Strategy strategy = new BaseStrategy(new ChainRule(BooleanRule.TRUE, new ChainLink(BooleanRule.FALSE, 25_000)),
+                BooleanRule.FALSE);
+        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, "100", "100", "100", "0", "0", "0", null,
+                null, null);
 
         CliSupport.requireBoundedStrategyBatch(List.of(strategy), series.getBarCount());
-        assertThatThrownBy(
-                () -> CliSupport.requireBoundedWalkForward(List.of(strategy), List.of(), series, config))
+        assertThatThrownBy(() -> CliSupport.requireBoundedWalkForward(List.of(strategy), List.of(), series, config))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("repeated rule evaluations");
     }
@@ -1488,8 +1485,8 @@ class CliSupportTest {
         BarSeries series = syntheticSeries(10);
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         Rule scanner = new OverIndicatorRule(new HighestValueIndicator(close, 2_000), close);
-        Strategy strategy = new BaseStrategy(
-                new ChainRule(BooleanRule.TRUE, new ChainLink(scanner, threshold)), BooleanRule.FALSE);
+        Strategy strategy = new BaseStrategy(new ChainRule(BooleanRule.TRUE, new ChainLink(scanner, threshold)),
+                BooleanRule.FALSE);
 
         assertThat(CliSupport.strategyWindowWork(strategy)).isEqualTo(threshold < 0 ? 0L : 2_001L);
     }

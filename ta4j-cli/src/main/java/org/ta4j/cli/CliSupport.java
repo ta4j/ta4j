@@ -633,12 +633,11 @@ final class CliSupport {
      * {@link #MAX_BATCH_STRATEGY_WORK} before execution starts. Each strategy costs
      * one evaluation per bar in {@code barEvaluations} plus repeated child-rule
      * evaluations and rolling-window reads over {@code scanBarEvaluations}, so a
-     * serialized strategy cannot hide a large scan behind a single rule. Scan
-     * bars exceed evaluated bars for walk-forwards: recursive indicators prefill
-     * every preceding index when a fold starts mid-series, so a scanner feeding
-     * one is re-read across each fold's whole prefix. The product is computed
-     * exactly so a wide batch over a long series can never overflow into an
-     * accepted estimate.
+     * serialized strategy cannot hide a large scan behind a single rule. Scan bars
+     * exceed evaluated bars for walk-forwards: recursive indicators prefill every
+     * preceding index when a fold starts mid-series, so a scanner feeding one is
+     * re-read across each fold's whole prefix. The product is computed exactly so a
+     * wide batch over a long series can never overflow into an accepted estimate.
      */
     static void requireBoundedStrategyBatch(List<Strategy> strategies, long barEvaluations, long scanBarEvaluations) {
         IdentityHashMap<Strategy, Long> scanWorkByStrategy = new IdentityHashMap<>();
@@ -767,10 +766,10 @@ final class CliSupport {
 
     /**
      * Sums additional per-bar work reachable from a strategy's entry and exit
-     * rules. Rules expose no dependency API, so their instance fields are walked
-     * as in serialization; indicators follow {@link Indicator#getDependencies()}.
-     * Shared indicators are counted once within an evaluation subtree. Chain
-     * links and threshold rules charge their repeated child calls and conservatively
+     * rules. Rules expose no dependency API, so their instance fields are walked as
+     * in serialization; indicators follow {@link Indicator#getDependencies()}.
+     * Shared indicators are counted once within an evaluation subtree. Chain links
+     * and threshold rules charge their repeated child calls and conservatively
      * multiply the complete child subtree, independently of earlier cached reads.
      */
     static long strategyWindowWork(Strategy strategy) {
@@ -799,7 +798,8 @@ final class CliSupport {
                 return 0L;
             }
             Set<Indicator<?>> childIndicators = chainLink || thresholdRule
-                    ? Collections.newSetFromMap(new IdentityHashMap<>()) : visitedIndicators;
+                    ? Collections.newSetFromMap(new IdentityHashMap<>())
+                    : visitedIndicators;
             for (Class<?> type = component.getClass(); type != null
                     && type != Object.class; type = type.getSuperclass()) {
                 for (Field field : type.getDeclaredFields()) {
