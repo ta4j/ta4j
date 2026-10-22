@@ -13,13 +13,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -210,6 +213,104 @@ class ElliottResearchRelationsTest {
         Files.writeString(file, "", StandardCharsets.UTF_8);
         assertTrue(assertThrows(IllegalArgumentException.class, () -> ElliottResearchRelations.read(file, frame -> {
         })).getMessage().contains("missing header"));
+    }
+
+    @Test
+    public void observationIndicesRejectNarrowingAndNonIntegerValues() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        final JsonObject frame = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        for (final String invalid : List.of("2147483648", "-2147483649", "4294967296", "1e1000", "0.5", "\"3\"",
+                "true", "null")) {
+            frame.add("asOfIndex", JsonParser.parseString(invalid));
+            lines.set(1, frame.toString());
+            Files.write(file, lines, StandardCharsets.UTF_8);
+            final String message = assertThrows(IllegalArgumentException.class,
+                    () -> ElliottResearchRelations.read(file, ignored -> {
+                    })).getMessage();
+            assertTrue(message.contains(file.toString()) && message.contains("line 2")
+                    && message.contains("asOfIndex"), message);
+        }
+    }
+
+    @Test
+    public void signedIntegerBoundaryIndicesRemainExact() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        final JsonObject frame = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        for (final int boundary : new int[] { Integer.MIN_VALUE, Integer.MAX_VALUE }) {
+            frame.addProperty("asOfIndex", boundary);
+            lines.set(1, frame.toString());
+            Files.write(file, lines, StandardCharsets.UTF_8);
+            final long[] frames = new long[1];
+            assertTrue(ElliottResearchRelations.read(file, observed -> {
+                if (frames[0]++ == 0) {
+                    assertEquals(boundary, observed.get("asOfIndex").getAsInt());
+                }
+            }).complete());
+            assertEquals(totals.frames(), frames[0]);
+        }
+    }
+
+    @Test
+    public void storedEdgeAndCoverageIntegersCannotWrap() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        int line = 1;
+        while (line < lines.size() - 1 && !lines.get(line).contains("\"parentStart\"")) {
+            line++;
+        }
+        assertTrue(line < lines.size() - 1, "fixture must contain an edge");
+        final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+        final JsonObject edge = frame.getAsJsonArray("events").get(0).getAsJsonObject().getAsJsonObject("edge");
+        for (final JsonObject owner : List.of(frame.getAsJsonObject("coverage"), edge,
+                edge.getAsJsonObject("parentStart"), edge.getAsJsonObject("parentEnd"),
+                edge.getAsJsonArray("childPivots").get(0).getAsJsonObject())) {
+            for (final Map.Entry<String, JsonElement> entry : owner.entrySet()) {
+                final JsonElement original = entry.getValue();
+                if (!original.isJsonPrimitive() || !original.getAsJsonPrimitive().isNumber()) {
+                    continue;
+                }
+                owner.addProperty(entry.getKey(), 4294967296L);
+                lines.set(line, frame.toString());
+                Files.write(file, lines, StandardCharsets.UTF_8);
+                final String message = assertThrows(IllegalArgumentException.class,
+                        () -> ElliottResearchRelations.read(file, ignored -> {
+                        })).getMessage();
+                assertTrue(message.contains("line " + (line + 1)) && message.contains(entry.getKey()), message);
+                owner.add(entry.getKey(), original);
+            }
+        }
+    }
+
+    @Test
+    public void footerCountsMustMatchWithoutFractionalOrLongNarrowing() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        final JsonObject footer = JsonParser.parseString(lines.get(lines.size() - 1)).getAsJsonObject();
+        final String wrappingCount = BigInteger.ONE.shiftLeft(Long.SIZE)
+                .add(BigInteger.valueOf(totals.frames()))
+                .toString();
+        for (final String invalid : List.of(totals.frames() + ".5", "\"" + totals.frames() + "\"", "true",
+                wrappingCount)) {
+            footer.add("frames", JsonParser.parseString(invalid));
+            lines.set(lines.size() - 1, footer.toString());
+            Files.write(file, lines, StandardCharsets.UTF_8);
+            final String message = assertThrows(IllegalArgumentException.class,
+                    () -> ElliottResearchRelations.read(file, ignored -> {
+                    })).getMessage();
+            assertTrue(message.contains(file.toString()) && message.contains("line " + lines.size())
+                    && message.contains("frames"), message);
+        }
+    }
+
+    @Test
+    public void headerEdgeCapsCannotWrap() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        final JsonObject header = JsonParser.parseString(lines.get(0)).getAsJsonObject();
+        header.addProperty("edgeCap", 4294967296L);
+        lines.set(0, header.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        final String message = assertThrows(IllegalArgumentException.class,
+                () -> ElliottResearchRelations.read(file, ignored -> {
+                })).getMessage();
+        assertTrue(message.contains("line 1") && message.contains("edgeCap"), message);
     }
 
     @Test

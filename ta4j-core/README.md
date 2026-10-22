@@ -269,7 +269,9 @@ unexamined counts. Relations are research evidence only, not trading signals.
 Artifacts: `relations/<dataset>.jsonl` (header, `frame` lines, footer with totals)
 and a "Scale relations" section in `summary.md`. Inspect with
 `ElliottResearch relations <runDir> <dataset> [--as-of IDX] [--limit N] [--edge KEY]`
-(exit 2 when the file is missing, incomplete or from another run). Each printed edge
+(exit 2 when the file is missing, incomplete, corrupt or from another run). Replay
+checks integer indices, counters and limits without narrowing, and the footer's
+frame count must match exactly. Each printed edge
 lists its child pivots with their confirmation bars and every predicate with its
 explanation, and says so when more child pivots exist than the sidecar stores. Runs without a
 `hierarchy` write no `relations/` directory.
