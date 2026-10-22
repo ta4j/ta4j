@@ -373,13 +373,19 @@ class ElliottReplayInspectorTest {
     void writeFreshReplacesALinkInsteadOfWritingThroughIt() throws IOException {
         final Path victim = Files.writeString(temp.resolve("victim.txt"), "evidence");
         final Path destination = symbolicLink(temp.resolve("frame-1.jpg"), victim);
-        final byte[] image = { 1, 2, 3 };
+        final ReplayArtifact artifact = ReplayArtifact.open(ReplayFixture.write(temp.resolve("run")));
+        final ReplaySession session = ReplaySession.open(artifact, ReplayFixture.RULES_KEY,
+                ReplayArtifact.TRACE_MODE_REAL, 30, 8);
+        final ReplayChartModel model = ReplayChartModel.of(session.seek(36), session.bars());
+        final JFreeChart chart = ReplayFrameRenderer.chart(new ChartWorkflow(temp.toString()), model);
 
-        ElliottReplayInspector.writeFresh(destination, image);
+        ElliottReplayInspector.writeFresh(destination, chart);
 
         assertEquals("evidence", Files.readString(victim));
         assertFalse(Files.isSymbolicLink(destination));
-        assertArrayEquals(image, Files.readAllBytes(destination));
+        final BufferedImage image = ImageIO.read(destination.toFile());
+        assertEquals(ReplayFrameRenderer.EXPORT_WIDTH, image.getWidth());
+        assertEquals(ReplayFrameRenderer.EXPORT_HEIGHT, image.getHeight());
     }
 
     private static Path symbolicLink(final Path link, final Path target) throws IOException {

@@ -264,7 +264,7 @@ public final class ElliottReplayInspector {
             final ReplayChartModel model = ReplayChartModel.of(current, session.bars());
             final ChartWorkflow workflow = new ChartWorkflow();
             final JFreeChart chart = ReplayFrameRenderer.chart(workflow, model);
-            writeFresh(image, ReplayFrameRenderer.jpeg(chart));
+            writeFresh(image, chart);
             out.println("exported " + json + ", " + text.getFileName() + ", " + image.getFileName());
             if (display) {
                 workflow.displayChart(chart, model.title());
@@ -321,10 +321,13 @@ public final class ElliottReplayInspector {
                 StandardOpenOption.WRITE);
     }
 
-    /** Binary counterpart of {@link #writeFresh(Path, String)}. */
-    static void writeFresh(final Path destination, final byte[] content) throws IOException {
+    /** JPEG counterpart of {@link #writeFresh(Path, String)}. */
+    static void writeFresh(final Path destination, final JFreeChart chart) throws IOException {
         Files.deleteIfExists(destination);
-        Files.write(destination, content, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+        try (final var output = Files.newOutputStream(destination, StandardOpenOption.CREATE_NEW,
+                StandardOpenOption.WRITE)) {
+            ReplayFrameRenderer.jpeg(chart, output);
+        }
     }
 
     /**

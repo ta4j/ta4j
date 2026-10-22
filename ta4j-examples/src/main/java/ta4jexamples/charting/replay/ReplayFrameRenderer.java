@@ -3,8 +3,8 @@
  */
 package ta4jexamples.charting.replay;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
@@ -72,17 +72,13 @@ final class ReplayFrameRenderer {
     }
 
     /**
-     * Encodes the chart as the export JPEG. The caller writes the bytes, so the
-     * export creates its destination exclusively instead of handing a path to a
-     * chart storage that would open, and follow, whatever stands there.
+     * Encodes the chart directly into an exclusively opened export stream.
      *
-     * @param chart the chart
-     * @return the JPEG bytes
+     * @param chart  the chart
+     * @param output the destination stream
      * @throws IOException if the chart cannot be encoded
      */
-    static byte[] jpeg(final JFreeChart chart) throws IOException {
-        final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        ChartUtils.writeChartAsJPEG(bytes, chart, EXPORT_WIDTH, EXPORT_HEIGHT);
-        return bytes.toByteArray();
+    static void jpeg(final JFreeChart chart, final OutputStream output) throws IOException {
+        ChartUtils.writeChartAsJPEG(output, chart, EXPORT_WIDTH, EXPORT_HEIGHT);
     }
 }
