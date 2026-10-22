@@ -198,7 +198,13 @@ it exits with status 2 and prints the recapture command, quoted for a POSIX shel
 The command carries `--expect-fingerprint` (and, for `explore`, `--expect-source-sha256`),
 so a recapture against a changed configuration or edited candles fails instead of
 tracing different data. Coverage marks a partition `partial` when it has no bars or
-a gap longer than seven bar periods.
+a gap longer than seven bar periods. `summarize` and `inspect` read only files that
+resolve inside the run directory: a trace name that is absolute or climbs out with
+`..`, or a run file or trace that is a link leaving the directory, is refused
+(`inspect` exits with status 2; `summarize` reports such a trace as not captured),
+and `summary.md` is replaced rather than written through, so a link planted at that
+name never redirects the write. A run directory received from someone else is still
+an untrusted local artifact; read it with the care you give any downloaded file.
 
 ## Companion user guides
 
