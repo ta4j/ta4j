@@ -232,39 +232,28 @@ public interface RebalancePolicy {
     /**
      * Pre-trade portfolio state at one aligned bar's close, handed to
      * {@link RebalancePolicy#shouldRebalance(Context)}. Weights are fractions of
-     * the pre-trade portfolio value and are computed on demand.
+     * the pre-trade portfolio value and are computed on demand. Each context
+     * retains its bar's state and may be kept for comparison with later callbacks.
      *
      * @since 0.25.1
      */
     final class Context {
 
         private final PortfolioSeries series;
-        private int index;
-        private Num[] prices;
-        private Num[] units;
-        private Num cash;
-        private Num portfolioValue;
+        private final int index;
+        private final Num[] units;
+        private final Num cash;
+        private final Num portfolioValue;
         private final Num[] targetWeights;
         private Num maxDrift;
 
-        Context(PortfolioSeries series, int index, Num[] prices, Num[] units, Num cash, Num portfolioValue,
-                Num[] targetWeights) {
+        Context(PortfolioSeries series, int index, Num[] units, Num cash, Num portfolioValue, Num[] targetWeights) {
             this.series = series;
             this.index = index;
-            this.prices = prices;
             this.units = units;
             this.cash = cash;
             this.portfolioValue = portfolioValue;
             this.targetWeights = targetWeights;
-        }
-
-        void update(int index, Num[] prices, Num[] units, Num cash, Num portfolioValue) {
-            this.index = index;
-            this.prices = prices;
-            this.units = units;
-            this.cash = cash;
-            this.portfolioValue = portfolioValue;
-            this.maxDrift = null;
         }
 
         /**
@@ -306,7 +295,7 @@ public interface RebalancePolicy {
          */
         public Num getAssetWeight(String asset) {
             int position = position(asset);
-            return weight(prices[position].multipliedBy(units[position]));
+            return weight(series.closePrice(position, index).multipliedBy(units[position]));
         }
 
         /**
@@ -337,7 +326,7 @@ public interface RebalancePolicy {
                 Num targetCash = one;
                 Num drift = series.numFactory().zero();
                 for (int position = 0; position < units.length; position++) {
-                    Num weight = weight(prices[position].multipliedBy(units[position]));
+                    Num weight = weight(series.closePrice(position, index).multipliedBy(units[position]));
                     drift = drift.max(weight.minus(targetWeights[position]).abs());
                     targetCash = targetCash.minus(targetWeights[position]);
                 }

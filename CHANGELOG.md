@@ -1,6 +1,14 @@
 ## Unreleased
 
-- _No changes yet._
+### Changed
+
+- **Leaner portfolio rebalancing**: `PortfolioSeriesManager` reduces allocation and repeated data access when evaluating rebalance policies. Custom policies can still retain each bar's independent pre-trade context for later comparisons.
+
+
+### Fixed
+
+- **Consistent rolling Schaff Trend Cycle**: `SchaffTrendCycleIndicator` continues its smoothing and stochastic carry across bounded-series head advances when read on every bar, preserving live and retained full-history values without rebuilding the retained window on every append. Fresh instances still seed from retained history, and explicitly resetting sources still invalidate the chain (CF-720).
+- **Parabolic SAR on moving series (`CF-725`)**: SAR, trend, extreme and acceleration now continue together across retained-head advances. An instance read on each bar matches unbounded history without rebuilding the whole window on every append. Fresh instances still seed with NaN at the retained head; mutable terminal bars and historical replacements invalidate the complete recurrence state.
 
 ## 0.27.0 (2026-10-19)
 
