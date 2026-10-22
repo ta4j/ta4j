@@ -234,8 +234,8 @@ class ElliottResearchFamiliesTest {
         lines.set(1, frame.toString());
         Files.write(file, lines, StandardCharsets.UTF_8);
         final String message = rejection();
-        assertTrue(message.contains(file.toString()) && message.contains("line 2")
-                && message.contains("asOfIndex"), message);
+        assertTrue(message.contains(file.toString()) && message.contains("line 2") && message.contains("asOfIndex"),
+                message);
     }
 
     @Test
