@@ -988,6 +988,55 @@ class ElliottResearchTest {
         assertEquals(2, launch("relations", out.toString(), "toy").code());
     }
 
+    @Test
+    void relationReferencesThatLeaveTheRunDirectoryAreRefusedNotRead() throws Exception {
+        // Regression: the relation file name recorded in run.json was resolved against
+        // the run directory without containment, so a received run could make
+        // `relations` and `summarize` read whatever file the name pointed at.
+        final Path out = hierarchyRun("hier-escape",
+                "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}]}");
+        final Path outside = work.resolve("outside-relations.jsonl");
+        Files.copy(out.resolve("relations/toy.jsonl"), outside, StandardCopyOption.REPLACE_EXISTING);
+        final List<String> references = List.of("../outside-relations.jsonl", outside.toString());
+        for (int index = 0; index < references.size(); index++) {
+            final Path copy = work.resolve("escaping-relations-" + index);
+            copyTree(out, copy);
+            final JsonObject run = readJson(copy.resolve("run.json"));
+            run.getAsJsonArray("datasets")
+                    .get(0)
+                    .getAsJsonObject()
+                    .getAsJsonObject("relations")
+                    .addProperty("file", references.get(index));
+            Files.writeString(copy.resolve("run.json"), run.toString(), StandardCharsets.UTF_8);
+
+            final Result print = launch("relations", copy.toString(), "toy");
+            assertEquals(2, print.code(), references.get(index));
+            assertTrue(print.err().contains("lies outside the run directory"), print.err());
+            assertEquals(0, launch("summarize", copy.toString()).code());
+            final String summary = Files.readString(copy.resolve("summary.md"));
+            assertTrue(summary.contains("lies outside the run directory"), summary);
+            assertFalse(summary.contains("fractal-w5 > fractal-w3"), summary);
+        }
+    }
+
+    @Test
+    void relationFileLinkedFromOutsideTheRunDirectoryIsNotRead() throws Exception {
+        final Path out = hierarchyRun("hier-linked",
+                "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}]}");
+        final Path file = out.resolve("relations/toy.jsonl");
+        final Path outside = work.resolve("linked-relations.jsonl");
+        Files.move(file, outside);
+        symlinkOrSkip(file, outside);
+
+        final Result print = launch("relations", out.toString(), "toy");
+        assertEquals(2, print.code());
+        assertTrue(print.err().contains("lies outside the run directory"), print.err());
+        assertEquals(0, launch("summarize", out.toString()).code());
+        final String summary = Files.readString(out.resolve("summary.md"));
+        assertTrue(summary.contains("lies outside the run directory"), summary);
+        assertFalse(summary.contains("fractal-w5 > fractal-w3"), summary);
+    }
+
     private static void rewriteTraceHeader(final Path trace, final java.util.function.Consumer<JsonObject> edit) {
         try {
             final List<String> lines = new java.util.ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));

@@ -1559,9 +1559,7 @@ final class ElliottResearch {
         for (final JsonElement element : run.getAsJsonArray("datasets")) {
             final JsonObject dataset = element.getAsJsonObject();
             if (dataset.has("relations") && dataset.get("relations").isJsonObject()) {
-                relationLines.addAll(ElliottResearchRelations.summaryLines(
-                        dir.resolve(dataset.getAsJsonObject("relations").get("file").getAsString()),
-                        dataset.get("id").getAsString(), expectedRelationsHeader(run, dataset)));
+                relationLines.addAll(relationSummaryLines(dir, run, dataset));
             }
         }
         if (!relationLines.isEmpty()) {
@@ -1571,6 +1569,22 @@ final class ElliottResearch {
         }
         markdown.append("\nInspect any key with `inspect ").append(displayPath(dir)).append(" <key>`.\n");
         return markdown.toString();
+    }
+
+    /**
+     * Summary lines for one dataset's relation file. A recorded name that leaves
+     * the run directory is refused instead of read.
+     */
+    private static List<String> relationSummaryLines(final Path dir, final JsonObject run, final JsonObject dataset) {
+        final String id = dataset.get("id").getAsString();
+        final Path file;
+        try {
+            file = resolveInside(dir, dataset.getAsJsonObject("relations").get("file").getAsString());
+        } catch (final IOException | IllegalArgumentException unreadable) {
+            return List
+                    .of("- `" + id + "`: relation file unreadable (" + unreadable.getMessage() + "); rerun the recipe");
+        }
+        return ElliottResearchRelations.summaryLines(file, id, expectedRelationsHeader(run, dataset));
     }
 
     /**
@@ -1788,7 +1802,12 @@ final class ElliottResearch {
                     + dataset.get("status").getAsString()
                     + "); the recipe declares no hierarchy or the dataset failed");
         }
-        final Path file = dir.resolve(dataset.getAsJsonObject("relations").get("file").getAsString());
+        final Path file;
+        try {
+            file = resolveInside(dir, dataset.getAsJsonObject("relations").get("file").getAsString());
+        } catch (final IllegalArgumentException outside) {
+            throw new Diagnostic("relation file " + outside.getMessage() + "; refusing to read it; rerun the recipe");
+        }
         if (!Files.isRegularFile(file)) {
             throw new Diagnostic("relation file " + file + " is missing; rerun the recipe");
         }
