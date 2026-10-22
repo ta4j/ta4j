@@ -90,6 +90,21 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void nestedRecursiveSourceWarmsUpBeforeItsInputsLeaveTheWindow() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(3);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator actual = new EMAIndicator(new RSIIndicator(new ClosePriceIndicator(moving), 3), 3);
+        EMAIndicator reference = new EMAIndicator(new RSIIndicator(new ClosePriceIndicator(unbounded), 3), 3);
+        int[] closes = { 10, 13, 9, 15, 11, 17, 12, 19 };
+        for (int index = 0; index < closes.length; index++) {
+            moving.barBuilder().closePrice(closes[index]).add();
+            unbounded.barBuilder().closePrice(closes[index]).add();
+            assertNumEquals(reference.getValue(index), actual.getValue(index));
+        }
+    }
+
+    @Test
     public void twoBarWindowContinuesChainFromFormerTerminalValue() {
         TraceTestLogger capture = new TraceTestLogger();
         capture.open();
