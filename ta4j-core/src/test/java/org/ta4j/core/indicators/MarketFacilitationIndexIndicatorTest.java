@@ -6,11 +6,14 @@ package org.ta4j.core.indicators;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.num.NaN.NaN;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
@@ -29,6 +32,29 @@ public class MarketFacilitationIndexIndicatorTest extends AbstractIndicatorTest<
     @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+    }
+
+    @Test
+    public void startsAllRecursiveInputsBeforeWarmUpEnds() {
+        series.setMaximumBarCount(2);
+        MarketFacilitationIndexIndicator indicator = new MarketFacilitationIndexIndicator(
+                new EMAIndicator(new HighPriceIndicator(series), 3), new EMAIndicator(new LowPriceIndicator(series), 3),
+                new EMAIndicator(new VolumeIndicator(series), 3));
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index < 12; index++) {
+                series.barBuilder().highPrice(12).lowPrice(10).closePrice(11).volume(4).add();
+                Num value = indicator.getValue(index);
+                if (index < 3) {
+                    assertThat(value.isNaN()).isTrue();
+                } else {
+                    assertNumEquals(0.5, value);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

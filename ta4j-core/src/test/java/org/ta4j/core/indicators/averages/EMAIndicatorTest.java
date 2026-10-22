@@ -15,6 +15,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.RSIIndicator;
@@ -150,22 +151,69 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void twoBarWindowContinuesChainFromFormerTerminalValue() {
-        // With two retained bars the predecessor of each appended bar was the
-        // terminal bar on the previous read. Its value must survive the append, or
-        // the chain would have to recompute it after its own predecessor left the
-        // window and re-seed on every bar.
+    public void nestedRecursiveSourceWarmsUpBeforeItsInputsLeaveTheWindow() {
         BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        moving.setMaximumBarCount(2);
+        moving.setMaximumBarCount(3);
         BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(moving), 3);
-        EMAIndicator reference = new EMAIndicator(new ClosePriceIndicator(unbounded), 3);
-        for (int i = 0; i < 10; i++) {
-            moving.barBuilder().closePrice(10 + 3 * (i % 3)).add();
-            unbounded.barBuilder().closePrice(10 + 3 * (i % 3)).add();
-            assertNumEquals(reference.getValue(i), ema.getValue(i));
+        EMAIndicator actual = new EMAIndicator(new RSIIndicator(new ClosePriceIndicator(moving), 3), 3);
+        EMAIndicator reference = new EMAIndicator(new RSIIndicator(new ClosePriceIndicator(unbounded), 3), 3);
+        int[] closes = { 10, 13, 9, 15, 11, 17, 12, 19 };
+        for (int index = 0; index < closes.length; index++) {
+            moving.barBuilder().closePrice(closes[index]).add();
+            unbounded.barBuilder().closePrice(closes[index]).add();
+            assertNumEquals(reference.getValue(index), actual.getValue(index));
         }
-        assertThat(ema.getValue(9).isNaN()).isFalse();
+    }
+
+    @Test
+    public void twoBarWindowContinuesChainFromFormerTerminalValue() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            // With two retained bars the predecessor of each appended bar was the
+            // terminal bar on the previous read. Its value must survive the append, or
+            // the chain would have to recompute it after its own predecessor left the
+            // window and re-seed on every bar.
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(2);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(moving), 3);
+            EMAIndicator reference = new EMAIndicator(new ClosePriceIndicator(unbounded), 3);
+            for (int i = 0; i < 10; i++) {
+                moving.barBuilder().closePrice(10 + 3 * (i % 3)).add();
+                unbounded.barBuilder().closePrice(10 + 3 * (i % 3)).add();
+                assertNumEquals(reference.getValue(i), ema.getValue(i));
+            }
+            assertThat(ema.getValue(9).isNaN()).isFalse();
+        } finally {
+            capture.close();
+        }
+    }
+
+    @Test
+    public void oneBarWindowRetainsThePredecessorWithoutReseedingEveryAppend() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(1);
+        EMAIndicator indicator = new EMAIndicator(new ClosePriceIndicator(moving), 3);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index < 8; index++) {
+                moving.barBuilder().closePrice(10 + index).add();
+                Num actual = indicator.getValue(index);
+                if (index < 3) {
+                    assertTrue(actual.isNaN());
+                } else if (index == 3) {
+                    assertNumEquals(13, actual);
+                } else if (index == 7) {
+                    assertNumEquals(16.0625, actual);
+                }
+            }
+            moving.getLastBar().addPrice(numFactory.numOf(27));
+            assertNumEquals(21.0625, indicator.getValue(7));
+        } finally {
+            capture.close();
+        }
     }
 
     @Test
@@ -365,24 +413,30 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void continuedChainKeepsFullHistoryWarmUpWhenWindowIsShorterThanWarmUp() {
-        // The window (3 bars) is shorter than the warm-up (5 bars). Warm-up is
-        // counted from where the chain was seeded, so the continued chain still
-        // turns stable at index 5 like an unbounded series; a read of a pruned
-        // index must not re-seed the live chain.
-        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        moving.setMaximumBarCount(3);
-        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(moving), 5);
-        EMAIndicator reference = new EMAIndicator(new ClosePriceIndicator(unbounded), 5);
-        for (int i = 0; i < 10; i++) {
-            moving.barBuilder().closePrice(10 + i * (i % 2 == 0 ? 1 : -1)).add();
-            unbounded.barBuilder().closePrice(10 + i * (i % 2 == 0 ? 1 : -1)).add();
-            if (i == 7) {
-                ema.getValue(0);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            // The window (3 bars) is shorter than the warm-up (5 bars). Warm-up is
+            // counted from where the chain was seeded, so the continued chain still
+            // turns stable at index 5 like an unbounded series; a read of a pruned
+            // index must not re-seed the live chain.
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(3);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(moving), 5);
+            EMAIndicator reference = new EMAIndicator(new ClosePriceIndicator(unbounded), 5);
+            for (int i = 0; i < 10; i++) {
+                moving.barBuilder().closePrice(10 + i * (i % 2 == 0 ? 1 : -1)).add();
+                unbounded.barBuilder().closePrice(10 + i * (i % 2 == 0 ? 1 : -1)).add();
+                if (i == 7) {
+                    ema.getValue(0);
+                }
+                Num value = ema.getValue(i);
+                assertNumEquals(reference.getValue(i), value);
+                assertThat(value.isNaN()).isEqualTo(i < 5);
             }
-            Num value = ema.getValue(i);
-            assertNumEquals(reference.getValue(i), value);
-            assertThat(value.isNaN()).isEqualTo(i < 5);
+        } finally {
+            capture.close();
         }
     }
 
