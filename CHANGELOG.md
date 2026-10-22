@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- **Reject invalid saved bars and series**: Java object loading validates `BaseBar` prices, period, volume, amount and trade count, and `BaseBarSeries` retained indices and appendability. Corrupt state fails with `InvalidObjectException`; valid series and all-NaN placeholder bars still round-trip normally.
 - **Consistent rolling Schaff Trend Cycle**: `SchaffTrendCycleIndicator` continues its smoothing and stochastic carry across bounded-series head advances when read on every bar, preserving live and retained full-history values without rebuilding the retained window on every append. Fresh instances still seed from retained history, and explicitly resetting sources still invalidate the chain (CF-720).
 - **Parabolic SAR on moving series (`CF-725`)**: SAR, trend, extreme and acceleration now continue together across retained-head advances. An instance read on each bar matches unbounded history without rebuilding the whole window on every append. Fresh instances still seed with NaN at the retained head; mutable terminal bars and historical replacements invalidate the complete recurrence state.
 
