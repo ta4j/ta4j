@@ -30,6 +30,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class IndicatorSerializationTest {
     @Test
+    public void fromDescriptorWrapsMissingConstructorDependency() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            RuntimeException exception = assertThrows(RuntimeException.class,
+                    () -> fixture.invoke("deserializeIndicator"));
+            assertThat(exception.getClass().getName()).isEqualTo(IndicatorSerializationException.class.getName());
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class);
+        }
+    }
+
+    @Test
     public void toJsonRejectsUnresolvableIndicatorType() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
         Indicator<Boolean> indicator = new InvestedInterval(series, new BaseTradingRecord());

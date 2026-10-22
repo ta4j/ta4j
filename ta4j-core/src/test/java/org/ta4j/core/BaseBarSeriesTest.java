@@ -1014,4 +1014,5 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
                     throw failure;
                 })));
     }
+
 }

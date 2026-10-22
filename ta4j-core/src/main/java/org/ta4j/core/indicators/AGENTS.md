@@ -101,7 +101,9 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   override `requiresFullCacheInvalidationAfterHeadAdvance()` to return
   `true`. `StochasticIndicator` follows this policy and extends
   `RecursiveCachedIndicator` so inherited prefill rebuilds long flat
-  stretches iteratively after eviction.
+  stretches iteratively after eviction. The private stochastic stages in
+  `SchaffTrendCycleIndicator` instead continue their flat-range carry with
+  the MACD and smoothing chain; standalone stochastic semantics are unchanged.
 - An explicit reanchoring source invalidates every downstream component,
   including otherwise continuing Klinger chains. Keep all actual inputs
   registered so a reset on either high or low propagates through daily
