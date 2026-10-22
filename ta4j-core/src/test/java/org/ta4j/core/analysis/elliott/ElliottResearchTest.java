@@ -243,7 +243,8 @@ class ElliottResearchTest {
         Files.writeString(recipe, toyRecipe("overwrite"));
         final String recordedRun = Files.readString(smokeRun.resolve("run.json"));
         int caseIndex = 0;
-        for (final String artifact : List.of("traces/input.json", "reports/input.json", "summary.md", "bars/input.json")) {
+        for (final String artifact : List.of("traces/input.json", "reports/input.json", "summary.md",
+                "bars/input.json")) {
             for (final boolean recipeInput : List.of(false, true)) {
                 for (final boolean symlink : List.of(false, true)) {
                     final Path out = work.resolve("overwrite-managed-" + caseIndex++);
@@ -477,6 +478,10 @@ class ElliottResearchTest {
                         : line)
                 .collect(java.util.stream.Collectors.joining("\n", "", "\n"));
         Files.writeString(comparisons, relabeled, StandardCharsets.UTF_8);
+        final JsonObject relabeledMetadata = readJson(run.resolve("run.json"));
+        relabeledMetadata.addProperty("comparisonsSha256", HexFormat.of().formatHex(
+                MessageDigest.getInstance("SHA-256").digest(relabeled.getBytes(StandardCharsets.UTF_8))));
+        Files.writeString(run.resolve("run.json"), relabeledMetadata.toString(), StandardCharsets.UTF_8);
         final Result competing = launch("inspect", run.toString(), competingKey);
         assertEquals(0, competing.code(), competing.err());
         assertTrue(replayLine(competing.out()).startsWith("Replay: unavailable, this run retained only a selected"),
