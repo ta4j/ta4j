@@ -253,7 +253,7 @@ final class CliSupport {
         boolean csv = lowerCasePath.endsWith(".csv");
         if (csv) {
             requireBoundedDataFile(normalizedPath);
-            loadedSeries = CsvFileBarSeriesDataSource.loadCsvSeries(normalizedPath);
+            loadedSeries = CsvFileBarSeriesDataSource.loadCsvSeries(normalizedPath, true);
         } else if (lowerCasePath.endsWith(".json")) {
             requireBoundedDataFile(normalizedPath);
             loadedSeries = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(normalizedPath);

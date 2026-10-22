@@ -3,17 +3,17 @@
  */
 package org.ta4j.core.indicators.forecast;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.random.RandomGenerator;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.MonteCarloTestFixtures.FixedReturnIndicator;
@@ -116,7 +116,7 @@ public class MonteCarloSimulationTest {
     }
 
     private static void assertForecastMatches(Forecast expected, Forecast actual) {
-        assertTrue("fixture must be stable", actual.isStable());
+        assertTrue(actual.isStable(), "fixture must be stable");
         assertEquals(expected.support(), actual.support());
         assertEquals(expected.sampleCount(), actual.sampleCount());
         assertEquals(expected.mean().doubleValue(), actual.mean().doubleValue(), 0d);

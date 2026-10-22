@@ -4,6 +4,8 @@
 package ta4jexamples.datasources;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.ta4j.core.BarSeries;
 
 import java.io.BufferedReader;
@@ -303,7 +305,7 @@ public class CsvBarSeriesDataSourceTest {
                     """);
             Files.write(tempFile, new byte[] { (byte) 0xC3, (byte) 0x28 }, StandardOpenOption.APPEND);
 
-            assertNull(CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString()));
+            assertNull(CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString(), true));
         } finally {
             Files.deleteIfExists(tempFile);
         }
@@ -344,5 +346,26 @@ public class CsvBarSeriesDataSourceTest {
         assertThrows(IllegalArgumentException.class, () -> {
             dataSource.loadSeries("AAPL\\sub", Duration.ofDays(1), start, end);
         }, "Should throw IllegalArgumentException for ticker with backslash path traversal");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "2013-01-03,not-a-number,549.67,541.00,541.21,12605900",
+            "not-a-date,547.88,549.67,541.00,541.21,12605900", "2013-01-03,547.88" })
+    public void testMalformedRowsAreSkippedByDefaultAndRejectedInStrictMode(String malformedRow) throws Exception {
+        Path tempFile = Files.createTempFile("ta4j-malformed-row-", ".csv");
+        try {
+            Files.writeString(tempFile, "date,open,high,low,close,volume\n"
+                    + "2013-01-02,553.82,555.00,541.63,549.03,20018500\n" + malformedRow + "\n"
+                    + "2013-01-04,550.00,556.00,548.00,554.00,14000000\n");
+
+            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
+
+            assertNotNull(series);
+            assertEquals(2, series.getBarCount());
+            assertEquals(Instant.parse("2013-01-04T00:00:00Z"), series.getLastBar().getEndTime());
+            assertNull(CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString(), true));
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
     }
 }
