@@ -6,6 +6,7 @@ package org.ta4j.core.analysis.elliott;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -330,6 +331,22 @@ class ElliottResearchTest {
         assertEquals(1, result.code());
         assertTrue(result.err().contains("check out the recorded revision in a separate worktree"), result.err());
         assertFalse(Files.exists(out));
+    }
+
+    @Test
+    public void revisionBoundRecaptureRequiresKnownRevisionAndCleanProvenance() {
+        ElliottResearch.requireRecordedRevision("recorded", "recorded", "clean");
+        for (final String worktree : List.of("dirty", "unknown")) {
+            final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                    () -> ElliottResearch.requireRecordedRevision("recorded", "recorded", worktree));
+            assertTrue(error.getMessage().contains("clean worktree"), error.getMessage());
+        }
+        for (final List<String> revisions : List.of(List.of("unknown", "unknown"), List.of("recorded", "unknown"),
+                List.of("unknown", "recorded"))) {
+            final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                    () -> ElliottResearch.requireRecordedRevision(revisions.get(0), revisions.get(1), "clean"));
+            assertTrue(error.getMessage().contains("cannot be verified"), error.getMessage());
+        }
     }
 
     @Test
