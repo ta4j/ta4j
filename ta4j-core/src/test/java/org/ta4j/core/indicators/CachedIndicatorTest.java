@@ -50,6 +50,7 @@ import org.ta4j.core.indicators.statistics.EwmaVarianceIndicator;
 import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
 import org.ta4j.core.indicators.statistics.ZScoreIndicator;
 import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
+import org.ta4j.core.indicators.volume.OnBalanceVolumeIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
@@ -2417,34 +2418,6 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
-    public void removedIndexReadContinuesRetainedPredecessorChainInsteadOfReseeding() {
-        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        moving.setMaximumBarCount(2);
-        EMAIndicator actual = new EMAIndicator(new ClosePriceIndicator(moving), 2);
-        EMAIndicator expected = new EMAIndicator(new ClosePriceIndicator(unbounded), 2);
-        for (int index = 0; index < 6; index++) {
-            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
-            unbounded.barBuilder().closePrice(10 + index * 7 % 11).add();
-            assertNumEquals(expected.getValue(index), actual.getValue(index));
-        }
-        for (int index = 6; index < 8; index++) {
-            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
-            unbounded.barBuilder().closePrice(10 + index * 7 % 11).add();
-        }
-
-        assertEquals(6, moving.getBeginIndex());
-        // The removed read maps to the retained head, which continues from the cached
-        // predecessor
-        // and must not restart the live chain's warm-up.
-        assertNumEquals(expected.getValue(6), actual.getValue(0));
-        assertNumEquals(expected.getValue(7), actual.getValue(7));
-        moving.barBuilder().closePrice(17).add();
-        unbounded.barBuilder().closePrice(17).add();
-        assertNumEquals(expected.getValue(8), actual.getValue(8));
-    }
-
-    @Test
     public void recursiveChainReseedsWhenGapInputHasBeenRemoved() {
         BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         moving.setMaximumBarCount(2);
@@ -2942,6 +2915,24 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                 return 0;
             }
         };
+    }
+
+    @Test
+    public void advancingConsumerHeadKeepsPredecessorWhenRawRecursiveSourceSeriesIsUnpruned() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        Indicator<Num> source = new OnBalanceVolumeIndicator(sourceSeries);
+        RecursiveCachedIndicator<Num> actual = cumulativeOn(bounded, source);
+        RecursiveCachedIndicator<Num> expected = cumulativeOn(unbounded, source);
+        for (int index = 0; index < 6; index++) {
+            double close = 100 + index * 7 % 19;
+            sourceSeries.barBuilder().closePrice(close).volume(10 + index).add();
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+        }
     }
 
     @Test

@@ -823,14 +823,16 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * input meets their effective cache floors. These checks traverse non-cached
      * wrappers and use each source's own retained range; advancing an unrelated
      * consumer series does not remove source lookback. Raw-series constructors do
-     * not establish such a contract. An edited retained input drops that
-     * predecessor when its source can no longer reconstruct the input, even if the
-     * source declares no unstable bars. The whole retained window is replayed only
-     * when a registered source reports lookback truncation; a raw series or raw
-     * recursive source reads retained bars directly, so replaying the edited input
-     * over the intact full-history prefix stays consistent. They discard their
-     * whole cache only when their source graph contains a {@link CachedIndicator}
-     * that explicitly requires full invalidation (a discontinuity the chain cannot
+     * not establish such a contract, and neither does a raw recursive source whose
+     * series has removed bars; a raw recursive source on an unpruned series still
+     * reads its whole history. An edited retained input drops that predecessor when
+     * its source can no longer reconstruct the input, even if the source declares
+     * no unstable bars. The whole retained window is replayed only when a
+     * registered source reports lookback truncation; a raw series or raw recursive
+     * source reads retained bars directly, so replaying the edited input over the
+     * intact full-history prefix stays consistent. They discard their whole cache
+     * only when their source graph contains a {@link CachedIndicator} that
+     * explicitly requires full invalidation (a discontinuity the chain cannot
      * continue across). Numeric source floors do not invalidate unchanged values
      * that the chain has already consumed.
      * </p>
@@ -902,9 +904,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      *                             raw-series constructor or a raw recursive source)
      *                             is judged: {@code false} requires positive
      *                             evidence, so a removed predecessor is never
-     *                             bridged; {@code true} treats the missing contract
-     *                             as retained, so only a source that reports
-     *                             truncation fails
+     *                             bridged unless a raw recursive source's series
+     *                             has removed no bars; {@code true} treats the
+     *                             missing contract as retained, so only a source
+     *                             that reports truncation fails
      * @return whether the input is reconstructible
      */
     private boolean sourceLookbackIsRetained(int endIndex, boolean undeclaredIsRetained) {
@@ -920,8 +923,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             if (source instanceof CachedIndicator<?> cached) {
                 if (cached.hasRecursiveDependencies()) {
                     // Its next input must remain reconstructible too. The
-                    // precomputed frontier includes recursive sources' inputs.
-                    if (cached.sourceLookbackIndicators.length == 0 && !undeclaredIsRetained) {
+                    // precomputed frontier includes recursive sources' inputs. A raw
+                    // recursive source registers none, so only a series that never
+                    // lost a bar proves its history is intact.
+                    if (cached.sourceLookbackIndicators.length == 0 && !undeclaredIsRetained && sourceBeginIndex > 0) {
                         return false;
                     }
                     continue;

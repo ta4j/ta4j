@@ -88,6 +88,33 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void removedIndexReadContinuesRetainedPredecessorChainInsteadOfReseeding() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(2);
+        EMAIndicator actual = new EMAIndicator(new ClosePriceIndicator(moving), 2);
+        EMAIndicator expected = new EMAIndicator(new ClosePriceIndicator(unbounded), 2);
+        for (int index = 0; index < 6; index++) {
+            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
+            unbounded.barBuilder().closePrice(10 + index * 7 % 11).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+        }
+        for (int index = 6; index < 8; index++) {
+            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
+            unbounded.barBuilder().closePrice(10 + index * 7 % 11).add();
+        }
+
+        assertEquals(6, moving.getBeginIndex());
+        // The removed read maps to the retained head, which continues from the cached
+        // predecessor and must not restart the live chain's warm-up.
+        assertNumEquals(expected.getValue(6), actual.getValue(0));
+        assertNumEquals(expected.getValue(7), actual.getValue(7));
+        moving.barBuilder().closePrice(17).add();
+        unbounded.barBuilder().closePrice(17).add();
+        assertNumEquals(expected.getValue(8), actual.getValue(8));
+    }
+
+    @Test
     public void firstValueShouldBeNaNDuringUnstablePeriod() {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 1);
         // With barCount=1, unstable period is 1, so index 0 should return NaN
