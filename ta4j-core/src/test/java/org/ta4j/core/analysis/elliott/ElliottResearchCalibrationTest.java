@@ -292,6 +292,56 @@ class ElliottResearchCalibrationTest {
     }
 
     @Test
+    public void tablesRejectBlankOrCoercedRequiredIdentitiesBeforeScopeSelection(@TempDir final Path directory)
+            throws IOException {
+        final Calibrator table = Calibrator.fit("evaluation", IDENTITY, PROVENANCE, 1, List.of(),
+                List.of("calibration"), 100);
+        final JsonObject valid = table.toJson();
+        valid.getAsJsonObject("identity").add("rules", new JsonArray());
+        final Calibrator baseline = Calibrator.fromJson(valid);
+        final JsonArray held = new JsonArray();
+        held.add(valid);
+        final JsonObject file = new JsonObject();
+        file.addProperty("schema", ElliottResearchCalibration.SCHEMA);
+        file.add("tables", held);
+        final Path path = directory.resolve(ElliottResearchCalibration.TABLES_FILE);
+        Files.writeString(path, file.toString(), StandardCharsets.UTF_8);
+        assertEquals(List.of(baseline), ElliottResearchCalibration.readTables(path));
+
+        for (final String field : List.of("dataset", "detector", "detectorConfig", "grammar", "structuralMode",
+                "invalidation", "momentum", "target", "feature", "stage", "fit.partitions")) {
+            for (final String value : List.of("\"\"", "\"  \"", "3", "null", "[]", "{}", "missing")) {
+                if (field.equals("fit.partitions") && value.equals("missing")) {
+                    continue;
+                }
+                final JsonObject damaged = baseline.toJson();
+                if (field.equals("fit.partitions")) {
+                    damaged.getAsJsonObject("fit")
+                            .getAsJsonArray("partitions")
+                            .set(0, JsonParser.parseString(value));
+                } else {
+                    final JsonObject location = field.equals("stage") ? damaged : damaged.getAsJsonObject("identity");
+                    if (value.equals("missing")) {
+                        location.remove(field);
+                    } else {
+                        location.add(field, JsonParser.parseString(value));
+                    }
+                }
+                held.set(0, damaged);
+                Files.writeString(path, file.toString(), StandardCharsets.UTF_8);
+                final IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                        () -> ElliottResearchCalibration.readTables(path), field + "=" + value);
+                assertTrue(failure.getMessage().contains(path + " is not a calibration table file"),
+                        failure.getMessage());
+                assertTrue(failure.getMessage().contains(field + " must be a non-blank string"), failure.getMessage());
+            }
+        }
+        held.set(0, valid);
+        Files.writeString(path, file.toString(), StandardCharsets.UTF_8);
+        assertEquals(List.of(baseline), ElliottResearchCalibration.readTables(path));
+    }
+
+    @Test
     void settingsParseRequiresAHorizonOfTheRecipeAndChronologicalPartitions() {
         final ElliottResearchOutcomes.Settings outcomes = ElliottResearchOutcomes.Settings.defaults();
         final List<StudyRunner.Partition> partitions = List.of(

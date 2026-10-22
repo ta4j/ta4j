@@ -116,6 +116,11 @@ final class ElliottResearchCalibration {
             "modelLogLoss", "baseLogLoss", "logLossVsBase");
     private static final List<String> RELIABILITY_HEADER = List.of("dataset", "stage", "view", "bin", "lower", "upper",
             "rows", "groups", "weight", "successes", "failures", "meanForecast", "observedRate", "meanBase");
+    private static final List<String> PREDICTION_IDENTITY_FIELDS = List.of("dataset", "stage", "partition",
+            "candidateKey", "version", "direction", "target");
+    private static final List<String> SUMMARY_IDENTITY_FIELDS = List.of("dataset", "stage", "partition", "view",
+            "target", "fitPartitions");
+    private static final List<String> RELIABILITY_IDENTITY_FIELDS = List.of("dataset", "stage", "view");
 
     private ElliottResearchCalibration() {
     }
@@ -231,13 +236,16 @@ final class ElliottResearchCalibration {
             if (!json.has(field)) {
                 return fallback;
             }
-            final JsonElement element = json.get(field);
-            if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()
-                    || element.getAsString().isBlank()) {
-                throw new IllegalArgumentException("calibration." + field + " must be a non-blank string");
-            }
-            return element.getAsString();
+            return requiredText(json.get(field), "calibration." + field);
         }
+    }
+
+    private static String requiredText(final JsonElement element, final String field) {
+        if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()
+                || element.getAsString().isBlank()) {
+            throw new IllegalArgumentException(field + " must be a non-blank string");
+        }
+        return element.getAsString();
     }
 
     // ------------------------------------------------------------- identity
@@ -314,11 +322,15 @@ final class ElliottResearchCalibration {
             for (final JsonElement element : json.getAsJsonArray("rules")) {
                 rules.add(element.getAsString());
             }
-            return new Identity(json.get("dataset").getAsString(), json.get("detector").getAsString(),
-                    json.get("detectorConfig").getAsString(), json.get("grammar").getAsString(),
-                    json.get("structuralMode").getAsString(), json.get("invalidation").getAsString(), rules,
-                    json.get("momentum").getAsString(), json.get("target").getAsString(),
-                    json.get("feature").getAsString(), json.get("horizon").getAsInt());
+            return new Identity(requiredText(json.get("dataset"), "identity.dataset"),
+                    requiredText(json.get("detector"), "identity.detector"),
+                    requiredText(json.get("detectorConfig"), "identity.detectorConfig"),
+                    requiredText(json.get("grammar"), "identity.grammar"),
+                    requiredText(json.get("structuralMode"), "identity.structuralMode"),
+                    requiredText(json.get("invalidation"), "identity.invalidation"), rules,
+                    requiredText(json.get("momentum"), "identity.momentum"),
+                    requiredText(json.get("target"), "identity.target"),
+                    requiredText(json.get("feature"), "identity.feature"), json.get("horizon").getAsInt());
         }
 
         /** @return the names of the fields that differ from {@code other} */
@@ -887,7 +899,7 @@ final class ElliottResearchCalibration {
             }
             final JsonObject fit = json.getAsJsonObject("fit");
             final List<String> partitions = new ArrayList<>();
-            fit.getAsJsonArray("partitions").forEach(element -> partitions.add(element.getAsString()));
+            fit.getAsJsonArray("partitions").forEach(element -> partitions.add(requiredText(element, "fit.partitions")));
             final JsonObject provenance = json.getAsJsonObject("provenance");
             final Map<String, List<BinFit>> masks = new TreeMap<>();
             for (final JsonElement element : json.getAsJsonArray("masks")) {
@@ -902,7 +914,8 @@ final class ElliottResearchCalibration {
                 }
                 masks.put(entry.get("mask").getAsString(), bins);
             }
-            return new Calibrator(json.get("stage").getAsString(), Identity.fromJson(json.getAsJsonObject("identity")),
+            return new Calibrator(requiredText(json.get("stage"), "stage"),
+                    Identity.fromJson(json.getAsJsonObject("identity")),
                     new Provenance(provenance.get("fingerprint").getAsString(),
                             provenance.get("revision").getAsString()),
                     policy.get("minGroups").getAsInt(), partitions, fit.get("firstIndex").getAsInt(),
@@ -1258,7 +1271,7 @@ final class ElliottResearchCalibration {
                 tables.add(Calibrator.fromJson(element.getAsJsonObject()));
             }
         } catch (final JsonParseException | IllegalStateException | ClassCastException | NullPointerException
-                | UnsupportedOperationException exception) {
+                | UnsupportedOperationException | IllegalArgumentException exception) {
             throw new IllegalArgumentException(path + " is not a calibration table file: " + exception.getMessage());
         }
         return tables;
@@ -1386,11 +1399,11 @@ final class ElliottResearchCalibration {
             final JsonObject declared) {
         verifyTables(tables, ElliottResearchOutcomes.declaredCount(declared, "tables"));
         ElliottResearchOutcomes.verifyRows(predictions, PREDICTION_HEADER,
-                ElliottResearchOutcomes.declaredCount(declared, "predictions"));
+                ElliottResearchOutcomes.declaredCount(declared, "predictions"), PREDICTION_IDENTITY_FIELDS);
         ElliottResearchOutcomes.verifyRows(summary, SUMMARY_HEADER,
-                ElliottResearchOutcomes.declaredCount(declared, "summary"));
+                ElliottResearchOutcomes.declaredCount(declared, "summary"), SUMMARY_IDENTITY_FIELDS);
         ElliottResearchOutcomes.verifyRows(reliability, RELIABILITY_HEADER,
-                ElliottResearchOutcomes.declaredCount(declared, "reliability"));
+                ElliottResearchOutcomes.declaredCount(declared, "reliability"), RELIABILITY_IDENTITY_FIELDS);
     }
 
     private static void verifyTables(final Path path, final long declared) {

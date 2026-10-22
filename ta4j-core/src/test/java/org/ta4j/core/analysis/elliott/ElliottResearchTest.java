@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntToDoubleFunction;
@@ -1397,6 +1398,34 @@ class ElliottResearchTest {
                 ElliottResearchCalibration.SUMMARY_FILE, ElliottResearchCalibration.RELIABILITY_FILE)) {
             for (final Damage damage : ROW_DAMAGES) {
                 assertRefusedBySummarizeAndInspect(artifact, damage);
+            }
+        }
+    }
+
+    @Test
+    public void summarizeAndInspectRefuseBlankCalibrationCsvIdentities() throws IOException {
+        final Map<String, List<String>> fields = Map.of(ElliottResearchCalibration.PREDICTIONS_FILE,
+                List.of("dataset", "stage", "partition", "candidateKey", "version", "direction", "target"),
+                ElliottResearchCalibration.SUMMARY_FILE,
+                List.of("dataset", "stage", "partition", "view", "target", "fitPartitions"),
+                ElliottResearchCalibration.RELIABILITY_FILE, List.of("dataset", "stage", "view"));
+        for (final String artifact : List.of(ElliottResearchCalibration.PREDICTIONS_FILE,
+                ElliottResearchCalibration.SUMMARY_FILE, ElliottResearchCalibration.RELIABILITY_FILE)) {
+            final List<List<String>> table = ElliottResearchReport.parseCsv(calibratedRun.resolve(artifact));
+            assertTrue(table.size() > 1, "the calibrated run must exercise " + artifact);
+            final List<String> header = table.get(0);
+            for (final String field : fields.get(artifact)) {
+                for (final String blank : List.of("", "  ")) {
+                    final List<List<String>> rows = new ArrayList<>(table.subList(1, table.size()));
+                    final List<String> cells = new ArrayList<>(rows.get(0));
+                    cells.set(header.indexOf(field), blank);
+                    rows.set(0, cells);
+                    final Path damagedCsv = work.resolve("blank-calibration-identity.csv");
+                    ElliottResearchReport.writeTable(damagedCsv, header, rows);
+                    final String damaged = Files.readString(damagedCsv, StandardCharsets.UTF_8);
+                    assertRefusedBySummarizeAndInspect(artifact, new Damage("blank-" + field + "-" + blank.length(),
+                            text -> damaged, " row 1 has blank " + field + " identity"));
+                }
             }
         }
     }
