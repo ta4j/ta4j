@@ -210,7 +210,7 @@ final class PerformanceComparison {
         Path file = dir.resolve("performance.json");
         JsonElement root;
         try {
-            root = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8));
+            root = JsonParser.parseString(CliSupport.readBoundedSerializedFile(file));
         } catch (JsonParseException ex) {
             // A truncated or syntactically invalid artifact is operator-supplied
             // input, not a software failure: report it as a usage error.

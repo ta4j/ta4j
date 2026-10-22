@@ -24,6 +24,8 @@
 
 ### Fixed
 
+- **Separate walk-forward test and holdout scores**: CLI walk-forward reports average the non-holdout folds for `outOfSampleAverage`, retain the holdout score separately, and evaluate each fold criterion only once.
+- **Bound performance artifact memory**: CLI performance runs reject experiments recording more than 10,000 measurements across all scenario/bar-count cells, even for tiny inputs. Comparisons reject `performance.json` inputs larger than 16 MiB while reading, before parsing or writing artifacts.
 - **Preserve CSV loading policies across CLI integration**: Example CSV loading continues to skip malformed data rows, while the CLI uses an explicit strict-loading overload to reject invalid input without silently running on a partial series.
 - **Locale-independent walk-forward calibration metrics**: `WalkForwardTuner` now updates case-insensitive Brier, log-loss and calibration-error metric names consistently across system locales, including Turkish. Its calibration-metric benchmark exercises the same production path.
 - **JMA continues across moving-series head advances**: `JMAIndicator` now retains its full-history recurrence when bounded series evict old bars, including `maximumBarCount = 1`, so live and retained values match an unbounded series when each appended bar and finalized input mutation is read before eviction. With one-bar retention, read after the final mutation before appending, or retain at least two bars to recompute the previous input. Each append computes only the new state instead of replaying the retained window; a fresh indicator or a chain whose required inputs or recursive source bridge were lost seeds at the first retained bar.

@@ -172,6 +172,7 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--strategy`, `--strategies`, `--strategy-json-file`, `--strategies-json-file`: the same strategy input shapes supported by `strategy backtest`.
   - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: walk-forward splitter and ranking controls.
   - total evaluation work is bounded before execution: strategies × evaluated bars must not exceed 100,000,000 bar-strategy evaluations, counting the full-series backtest pass plus every fold's and holdout's test-bar range. Rolling-scanner reads (including scanners feeding recursive indicators, which refill each fold's whole preceding range) are charged over the full pass plus every fold's range through its last test bar.
+  - Criterion reports keep holdout scores separate: `outOfSampleAverage` is the mean of non-holdout test folds, while `holdout` is the final holdout score (or `null` when no holdout is configured).
   - strategy inputs are self-contained, so `strategy walk-forward` does not accept `--param`.
 - `strategy sweep`
   - always evaluates the bounded `sma-crossover` template.
@@ -212,11 +213,13 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--repetitions`: measured repetitions per scenario/bar-count cell, at most 1,000,000.
   - `--warmups`: warmup repetitions per scenario/bar-count cell, at most 1,000,000.
   - Total work is bounded before any scenario runs: `--bar-counts` × scenarios × (`--warmups` + `--repetitions`) must not exceed 1,000,000,000.
+  - Recorded measurements are bounded separately: number of distinct bar-count cells × selected scenarios × `--repetitions` must not exceed 10,000, even for one-bar inputs. Both limits are checked before scenarios run or artifact directories are created.
   - `--output-dir`: artifact directory for `performance.json` and `summary.md`; defaults to `./ta4j-performance/<experiment>/<timestamp>`.
   - `--profile`: include profiler hint metadata in `performance.json`.
 - `performance compare`
   - `--base-dir`: baseline experiment artifact directory.
   - `--candidate-dir`: candidate experiment artifact directory.
+  - Each `performance.json` input is limited to 16 MiB, enforced while reading before JSON materialization; an oversized baseline or candidate is a usage error (exit 2) and creates no comparison directory.
   - `--output-dir`: comparison artifact directory for `comparison.json` and `summary.md`.
   - `--max-regression-pct`: finite, non-negative allowed median runtime regression percentage.
   - `--candidate-dir` must not refer to `--base-dir` (including symlink aliases): comparing an artifact with itself would always pass.

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -467,6 +468,47 @@ class PerformanceComparisonTest {
         assertFalse(comparison.isJsonNull());
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)));
         assertFalse(Files.exists(baseDir.resolve(PerformanceComparison.SUMMARY_FILE)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "base", "candidate" })
+    public void comparisonRejectsOversizedArtifactsBeforeWritingOutput(String oversizedSide) throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        Path outputDir = tempDir.resolve("comparison");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        Path oversizedFile = tempDir.resolve(oversizedSide).resolve("performance.json");
+        try (RandomAccessFile file = new RandomAccessFile(oversizedFile.toFile(), "rw")) {
+            file.setLength((long) CliSupport.MAX_SERIALIZED_INPUT_BYTES + 1);
+        }
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d));
+
+        assertEquals(
+                "Serialized input " + oversizedFile + " exceeds " + CliSupport.MAX_SERIALIZED_INPUT_BYTES + " bytes.",
+                exception.getMessage());
+        assertFalse(Files.exists(outputDir), "An oversized input must not produce comparison artifacts");
+    }
+
+    @Test
+    public void comparisonAcceptsAnArtifactAtTheSerializedInputLimit() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        Path outputDir = tempDir.resolve("comparison");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        Path candidateFile = candidateDir.resolve("performance.json");
+        String json = Files.readString(candidateFile, StandardCharsets.UTF_8);
+        Files.writeString(candidateFile,
+                json + " ".repeat(CliSupport.MAX_SERIALIZED_INPUT_BYTES - json.getBytes(StandardCharsets.UTF_8).length),
+                StandardCharsets.UTF_8);
+
+        JsonObject comparison = PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d);
+
+        assertTrue(comparison.get("checksumMatch").getAsBoolean());
+        assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)));
     }
 
     private record ResultFixture(int barCount, long medianNanos) {

@@ -50,6 +50,7 @@ public final class PerformanceExperimentRunner {
     private static final int MAX_REPETITIONS = 1_000_000;
     static final int MAX_BAR_COUNT = 1_000_000;
     static final long MAX_TOTAL_BAR_WORK = 1_000_000_000L;
+    static final int MAX_TOTAL_MEASUREMENTS = 10_000;
 
     private PerformanceExperimentRunner() {
     }
@@ -109,6 +110,17 @@ public final class PerformanceExperimentRunner {
     }
 
     private static void requireBoundedExperimentWork(int scenarioCount, RunRequest request) {
+        long totalMeasurements;
+        try {
+            totalMeasurements = Math.multiplyExact(Math.multiplyExact((long) scenarioCount, request.barCounts().size()),
+                    request.repetitions());
+        } catch (ArithmeticException ex) {
+            throw new IllegalArgumentException("Performance experiment measurements are too large.", ex);
+        }
+        if (totalMeasurements > MAX_TOTAL_MEASUREMENTS) {
+            throw new IllegalArgumentException("scenarios x bar-count cells x repetitions must not exceed "
+                    + MAX_TOTAL_MEASUREMENTS + " (requested " + totalMeasurements + ").");
+        }
         long totalWork = 0L;
         for (Integer barCount : request.barCounts()) {
             long measurementsPerCell = (long) request.warmups() + (long) request.repetitions();

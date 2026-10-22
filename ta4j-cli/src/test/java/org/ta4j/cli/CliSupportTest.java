@@ -88,6 +88,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1357,6 +1358,49 @@ class CliSupportTest {
         assertThat(failures.get(0).get("foldId")).isEqualTo("fold-1");
         assertThat(failures.get(0).get("message")).isEqualTo("rule threw during fold");
         assertThat(failures.get(0).get("cause")).isEqualTo("boom");
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = { 0, 20 })
+    public void walkForwardCriteriaAverageOnlyOutOfSampleFoldsAndScoreEachFoldOnce(int holdoutBars) throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, InputStream.nullInputStream(), null, null,
+                null);
+        Strategy strategy = sampleSweepStrategy(series);
+        BacktestExecutor executor = CliSupport.buildExecutor(series, "current-close", "0", "0");
+        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, "120", "40", "20", null, null,
+                Integer.toString(holdoutBars), null, null, null);
+        StrategyWalkForwardExecutionResult result = executor.executeWalkForward(strategy,
+                series.numFactory().numOf(1000), config);
+        AtomicInteger calculations = new AtomicInteger();
+        GrossReturnCriterion criterion = new GrossReturnCriterion() {
+            @Override
+            public Num calculate(BarSeries actualSeries, TradingRecord tradingRecord) {
+                return actualSeries.numFactory().numOf(calculations.incrementAndGet());
+            }
+        };
+        CliSupport.CriterionSpec spec = new CliSupport.CriterionSpec("Counted", GrossReturnCriterion.class.getName(),
+                new GrossReturnCriterion().toJson(), null, criterion);
+
+        Map<String, Object> report = CliSupport.walkForwardToMap(series, result, List.of(spec), false, null, null);
+
+        int outOfSampleCount = (int) result.folds().stream().filter(fold -> !fold.split().holdout()).count();
+        assertThat(outOfSampleCount).isGreaterThan(1);
+        assertThat(calculations.get()).isEqualTo(result.folds().size());
+        Map<String, Object> scores = asMap(asMap(report.get("criteria")).get("Counted"));
+        Num expectedAverage = series.numFactory().numOf(outOfSampleCount + 1).dividedBy(series.numFactory().numOf(2));
+        assertThat(scores).containsEntry("outOfSampleAverage", expectedAverage.toString());
+        assertThat(scores).containsEntry("holdout",
+                holdoutBars == 0 ? null : series.numFactory().numOf(result.folds().size()).toString());
+        Map<String, Object> byFold = asMap(scores.get("byFold"));
+        List<?> reportedFolds = (List<?>) report.get("folds");
+        for (int index = 0; index < result.folds().size(); index++) {
+            String expectedValue = series.numFactory().numOf(index + 1).toString();
+            assertThat(byFold).containsEntry(result.folds().get(index).split().foldId(), expectedValue);
+            Map<String, Object> statement = asMap(asMap(reportedFolds.get(index)).get("statement"));
+            List<?> statementCriteria = (List<?>) statement.get("criteria");
+            assertThat(asMap(statementCriteria.getFirst())).containsEntry("value", expectedValue);
+        }
     }
 
     private static final class InitializerProbe {

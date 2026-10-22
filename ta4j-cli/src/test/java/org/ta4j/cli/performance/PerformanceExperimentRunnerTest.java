@@ -88,10 +88,11 @@ class PerformanceExperimentRunnerTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PerformanceExperimentRunner.run(new PerformanceExperimentRunner.RunRequest("kalman-filter",
-                        List.of(PerformanceExperimentRunner.MAX_BAR_COUNT), List.of(), 1_000_000, 1_000_000,
-                        Optional.of(outputDir), false)));
+                        List.of(PerformanceExperimentRunner.MAX_BAR_COUNT), List.of(), 1, 1000, Optional.of(outputDir),
+                        false)));
 
-        assertTrue(exception.getMessage().contains("must not exceed"), exception.getMessage());
+        assertTrue(exception.getMessage().startsWith("barCounts x scenarios x (warmups + repetitions)"),
+                exception.getMessage());
         assertFalse(Files.exists(outputDir), "No artifacts may be written when the work bound rejects the experiment");
     }
 
@@ -231,5 +232,34 @@ class PerformanceExperimentRunnerTest {
     void benchmarkRunnerExecutesWhenExplicitlyEnabled() throws Exception {
         PerformanceExperimentRunner.run(new PerformanceExperimentRunner.RunRequest("kalman-filter", List.of(64),
                 List.of("sequential", "endOnly"), 1, 0, Optional.of(tempDir.resolve("benchmark")), false));
+    }
+
+    @Test
+    public void runRejectsExcessiveMeasurementsEvenForSingleBarScenarios() {
+        Path outputDir = tempDir.resolve("oversized-measurements");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PerformanceExperimentRunner.run(new PerformanceExperimentRunner.RunRequest("kalman-filter",
+                        List.of(1), List.of("endOnly"), 1_000_000, 0, Optional.of(outputDir), false)));
+
+        assertTrue(
+                exception.getMessage()
+                        .contains("must not exceed " + PerformanceExperimentRunner.MAX_TOTAL_MEASUREMENTS),
+                exception.getMessage());
+        assertFalse(Files.exists(outputDir), "Measurement rejection must precede scenario work and artifact writes");
+    }
+
+    @Test
+    public void runBoundsMeasurementsAcrossAllScenariosAndBarCounts() {
+        Path outputDir = tempDir.resolve("oversized-grid");
+        int repetitions = PerformanceExperimentRunner.MAX_TOTAL_MEASUREMENTS / 4 + 1;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PerformanceExperimentRunner
+                        .run(new PerformanceExperimentRunner.RunRequest("kalman-filter", List.of(1, 2),
+                                List.of("endOnly", "sequential"), repetitions, 0, Optional.of(outputDir), false)));
+
+        assertTrue(exception.getMessage().contains("requested " + (4 * repetitions)), exception.getMessage());
+        assertFalse(Files.exists(outputDir), "The aggregate measurement budget applies to the entire experiment");
     }
 }

@@ -1995,19 +1995,22 @@ final class CliSupport {
         Map<String, Object> aggregateCriteria = linkedMap();
         for (int criterionIndex = 0; criterionIndex < criteria.size(); criterionIndex++) {
             Map<String, String> byFold = new LinkedHashMap<>();
-            List<Num> holdoutValues = new ArrayList<>();
+            List<Num> outOfSampleValues = new ArrayList<>();
+            Num holdoutValue = null;
             for (int foldIndex = 0; foldIndex < foldResults.size(); foldIndex++) {
                 WalkForwardSplit split = foldResults.get(foldIndex).split();
                 Num value = foldValues.get(foldIndex).get(criterionIndex);
                 byFold.put(split.foldId(), numberString(value));
                 if (split.holdout()) {
-                    holdoutValues.add(value);
+                    holdoutValue = value;
+                } else {
+                    outOfSampleValues.add(value);
                 }
             }
             Map<String, Object> values = linkedMap();
             values.put("byFold", byFold);
-            values.put("holdout", holdoutValues.isEmpty() ? null : numberString(holdoutValues.getFirst()));
-            values.put("outOfSampleAverage", average(holdoutValues));
+            values.put("holdout", numberString(holdoutValue));
+            values.put("outOfSampleAverage", average(outOfSampleValues));
             aggregateCriteria.put(criteria.get(criterionIndex).name(), values);
         }
         walkForward.put("criteria", aggregateCriteria);
