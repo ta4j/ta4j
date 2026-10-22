@@ -16,7 +16,8 @@ HANDOFF_ROOT="$TMP/root with spaces and 'quotes'"
 mkdir -p "$HANDOFF_ROOT/ta4j-acceleration"
 BASH_ENV=/dev/null bash "$ROOT/scripts/acceleration/linux-cuda-handoff.sh" "$HANDOFF_ROOT" >"$TMP/quoted-output"
 cd_command="$(sed -n '/^  cd /p' "$TMP/quoted-output")"
-if [[ -z "$cd_command" ]] || ! BASH_ENV=/dev/null bash -c "$cd_command"$'\n''[[ "$PWD" == "$1" ]]' -- "$HANDOFF_ROOT"; then
+# TMPDIR can introduce redundant separators; require the same directory, not spelling.
+if [[ -z "$cd_command" ]] || ! BASH_ENV=/dev/null bash -c "$cd_command"$'\n''[[ "$PWD" -ef "$1" ]]' -- "$HANDOFF_ROOT"; then
   echo "CUDA handoff must enter its repository before relative commands" >&2
   exit 1
 fi
