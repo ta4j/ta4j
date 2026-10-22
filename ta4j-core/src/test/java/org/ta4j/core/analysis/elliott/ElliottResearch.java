@@ -352,13 +352,9 @@ final class ElliottResearch {
     private record Setup(String fingerprint, StudyRunner.Partitions partitions, DetectorRecipe primary,
             List<DetectorRecipe> robustness, List<String> activeRules, int momentumBarCount,
             List<String> competingModes, List<Integer> blockLengths, int ensembleSize, long seed,
-            ElliottResearchOutcomes.Settings outcomes) {
+            List<String> structuralModes, ElliottResearchOutcomes.Settings outcomes) {
 
         Setup {
-            final List<String> structuralModes = RuleAblation.modes(rules(activeRules, momentumBarCount))
-                    .stream()
-                    .map(RuleAblation.Mode::name)
-                    .toList();
             if (!structuralModes.contains(outcomes.structuralMode())) {
                 throw new IllegalArgumentException("outcomes.structuralMode '" + outcomes.structuralMode()
                         + "' is not a mode this run evaluates; expected one of " + structuralModes);
@@ -372,6 +368,13 @@ final class ElliottResearch {
             return new StudyRunner(primary.supplier(), List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3),
                     rules(activeRules, momentumBarCount), new StudyRunner.Configuration(partitions, fingerprint, seed,
                             blockLengths, ensembleSize, specs, primary.name(), competingModes));
+        }
+
+        private static List<String> structuralModes(final List<String> activeRules, final int momentumBarCount) {
+            return RuleAblation.modes(rules(activeRules, momentumBarCount))
+                    .stream()
+                    .map(RuleAblation.Mode::name)
+                    .toList();
         }
 
         private static List<RelationshipRule> rules(final List<String> activeRules, final int momentumBarCount) {
@@ -459,7 +462,8 @@ final class ElliottResearch {
                 + "RSI14; competing 3+3,5+5,change-point-baseline; null block 20 ensemble 8 seed 5252026; "
                 + "outcomes horizons 5,20,60 all-rules origin-pivot";
         return new Setup(sha256(description.getBytes(StandardCharsets.UTF_8)), partitions, w5, List.of(w3, w5),
-                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L, ElliottResearchOutcomes.Settings.defaults());
+                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L, Setup.structuralModes(RULE_IDS, 14),
+                ElliottResearchOutcomes.Settings.defaults());
     }
 
     private static BarSeries smokeSeries() {
@@ -509,7 +513,12 @@ final class ElliottResearch {
         return new Setup(protocol.fingerprintSha256(), runnerPartitions, primary, detectors, RULE_IDS,
                 protocol.momentumIndicator().barCount(), protocol.competingGrammars(),
                 protocol.nullEnsemble().blockLengths(), protocol.nullEnsemble().ensembleSize(),
-                protocol.nullEnsemble().seed(), ElliottResearchOutcomes.Settings.defaults());
+                protocol.nullEnsemble().seed(), RuleAblation.frozenModeNames(), frozenOutcomeSettings());
+    }
+
+    static ElliottResearchOutcomes.Settings frozenOutcomeSettings() {
+        return new ElliottResearchOutcomes.Settings(ElliottResearchOutcomes.DEFAULT_HORIZONS, "classical-all",
+                ElliottResearchOutcomes.Invalidation.ORIGIN_PIVOT);
     }
 
     private static final Set<String> RECIPE_FIELDS = Set.of("datasetId", "asset", "partitions",
@@ -603,7 +612,8 @@ final class ElliottResearch {
         final int ensembleSize = integer(required(nulls, "ensembleSize", "recipe.null"), "recipe.null.ensembleSize");
         final long seed = longValue(required(nulls, "seed", "recipe.null"), "recipe.null.seed");
         final Setup setup = new Setup("explore-" + sha256(recipeBytes), runnerPartitions, primary, robustness,
-                activeRules, barCount, competing, blockLengths, ensembleSize, seed, outcomes);
+                activeRules, barCount, competing, blockLengths, ensembleSize, seed,
+                Setup.structuralModes(activeRules, barCount), outcomes);
         try {
             setup.runner();
             primary.supplier().get();

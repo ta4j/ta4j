@@ -228,6 +228,11 @@ recipe may add an optional `"outcomes"` object
 is `origin-pivot` or `origin-price`); the choices are recorded in `run.json` and
 fixed before labels are read.
 
+The frozen `frozen-cf525` recipe uses its preregistered `classical-all` mode
+for structural completion; `smoke` and the default `explore` configuration
+use `all-rules`. Outcome settings are validated against the selected runner's
+mode names before the run begins.
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html

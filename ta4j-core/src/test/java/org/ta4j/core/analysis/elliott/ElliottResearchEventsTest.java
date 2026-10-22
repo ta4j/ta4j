@@ -142,6 +142,26 @@ final class ElliottResearchEventsTest {
                         .structural());
     }
 
+    @Test
+    public void frozenAggregateCompletesEnrolledCorrections() {
+        final ElliottResearchOutcomes.Settings settings = ElliottResearch.frozenOutcomeSettings();
+        final ElliottResearchEvents recorder = new ElliottResearchEvents(settings.structuralMode(), 60);
+        final List<ConfirmedPivot> pivots = bullishCyclePivots();
+        observeMotive(recorder, 9, pivots.subList(0, 6));
+        final TopologyCandidate cycle = new TopologyCandidate(TopologyGrammar.CYCLE_5_3, WaveDirection.BULLISH, pivots);
+        recorder.topology(
+                StudyObserver.Scope.real("h2", RuleAblation.frozenModeNames().getLast(), "CYCLE_5_3", List.of(),
+                        "synthetic"),
+                "calibration", 12, AS_OF, pivots,
+                new TopologyAnalysis(TopologyStatus.COMPLETE, null, List.of(cycle), "cycle", -1, -1),
+                List.of(List.of()));
+
+        final Event event = soleEvent(recorder);
+        assertEquals(12, event.completionIndex);
+        assertEquals(Structural.CORRECTION_COMPLETED,
+                ElliottResearchOutcomes.label(event, 5, 100, null, settings, -1).structural());
+    }
+
     // --------------------------------------------------------------- helpers
 
     private static List<String> nullLabels(final BarSeries series, final int block, final int member) {
