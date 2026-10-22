@@ -276,24 +276,23 @@ public final class Forecast {
         Num mean;
         Num sumOfSquaredDeviations;
         if (numFactory instanceof DoubleNumFactory) {
-            // Same Welford update as SampleSummary, without its boxed m3/m4 terms.
-            double runningMean = 0d;
-            double runningM2 = 0d;
+            // Same Num Welford recurrence as SampleSummary, without unused m3/m4.
+            Num runningMean = numFactory.zero();
+            Num runningM2 = numFactory.zero();
             int count = 0;
             for (Num sample : samples) {
-                double value = sample.doubleValue();
                 if (count == 0) {
-                    runningMean = value;
+                    runningMean = sample;
                 } else {
-                    double delta = value - runningMean;
-                    double deltaN = delta / (count + 1);
-                    runningM2 += delta * deltaN * count;
-                    runningMean += deltaN;
+                    Num delta = sample.minus(runningMean);
+                    Num deltaN = delta.dividedBy(numFactory.numOf(count + 1));
+                    runningM2 = runningM2.plus(delta.multipliedBy(deltaN).multipliedBy(numFactory.numOf(count)));
+                    runningMean = runningMean.plus(deltaN);
                 }
                 count++;
             }
-            mean = numFactory.numOf(runningMean);
-            sumOfSquaredDeviations = numFactory.numOf(runningM2);
+            mean = runningMean;
+            sumOfSquaredDeviations = runningM2;
         } else {
             SampleSummary summary = SampleSummary.fromValues(samples.stream(), numFactory);
             mean = summary.mean();

@@ -11,7 +11,7 @@
 ### Changed
 
 - **Moving-series guidance for 0.27.0**: the [moving-series continuation example](https://ta4j.github.io/ta4j-wiki/Bar-series-and-bars.html#moving-series-and-continued-indicator-state) and [indicator cache policies](https://ta4j.github.io/ta4j-wiki/Technical-indicators.html#moving-series-cache-policies) explain continued versus fresh indicator state, mutation-aware latest-bar caching and retained-window exceptions in 0.27.0. Later releases extend continuation to additional indicators; consult their changelog entries for those changes.
-- **Faster `DoubleNum` forecast summaries**: Monte Carlo forecasts use primitive-double sorting and moment calculation for `DoubleNum` samples while preserving the series' numeric ownership for returned values.
+- **Leaner `DoubleNum` forecast summaries**: Monte Carlo summaries retain primitive-double sorting for `DoubleNum` samples and skip unused higher moments while keeping moment calculations in `Num` arithmetic and preserving the series' numeric ownership.
 
 - **Borrowing-cost conventions (CF-635)**: the `LinearBorrowingCostModel` documentation and `TradeCost` example now state the entry-value base, fee-per-index-step units and side applicability. Calendar spans and later marks do not alter the legacy approximation; fair-value marks continue to exclude hypothetical liquidation fees. Existing formulas and defaults are unchanged.
 - **Leaner portfolio rebalancing**: `PortfolioSeriesManager` reduces allocation and repeated data access when evaluating rebalance policies. Custom policies can still retain each bar's independent pre-trade context for later comparisons.
