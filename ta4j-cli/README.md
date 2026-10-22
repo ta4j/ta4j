@@ -164,12 +164,12 @@ cat bars.csv | java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar st
   - `--strategy-json-file`: path to one serialized ta4j strategy payload.
   - `--strategies-json-file`: path to a JSON file containing an array of one or more serialized ta4j strategy objects.
   - `--invalid-input`: `fail` (default) or explicit partial-execution `skip`.
-  - total evaluation work is bounded before execution: strategies × bars must not exceed 100,000,000 bar-strategy evaluations, where each strategy also pays one read per bar for every window a rolling scanner in its rules inspects (for example `HighestValue` over 2,000 bars costs 2,001 per bar).
+  - total evaluation work is bounded before execution: strategies × bars must not exceed 100,000,000 bar-strategy evaluations. Each strategy also pays for rolling-scanner windows (for example `HighestValue` over 2,000 bars costs 2,001 per bar) and repeated child-rule calls. `ChainRule` links charge `threshold + 1` child evaluations; `AndWithThresholdRule` and `OrWithThresholdRule` charge up to `threshold` calls to each child, including nested scanner work.
   - strategy inputs are self-contained, so `strategy backtest` does not accept `--param`.
 - `strategy walk-forward`
   - `--strategy`, `--strategies`, `--strategy-json-file`, `--strategies-json-file`: the same strategy input shapes supported by `strategy backtest`.
   - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: walk-forward splitter and ranking controls.
-  - total evaluation work is bounded before execution: strategies × evaluated bars must not exceed 100,000,000 bar-strategy evaluations, counting the full-series backtest pass plus every fold's and holdout's test-bar range. Rolling-scanner reads (including scanners feeding recursive indicators, which refill each fold's whole preceding range) are charged over the full pass plus every fold's range through its last test bar.
+  - total evaluation work is bounded before execution: strategies × evaluated bars must not exceed 100,000,000 bar-strategy evaluations, counting the full-series backtest pass plus every fold's and holdout's test-bar range. Rolling-scanner reads and repeated rule evaluations (including nested scanners feeding recursive indicators, which refill each fold's whole preceding range) are charged over the full pass plus every fold's range through its last test bar.
   - Criterion reports keep holdout scores separate: `outOfSampleAverage` is the mean of non-holdout test folds, while `holdout` is the final holdout score (or `null` when no holdout is configured).
   - strategy inputs are self-contained, so `strategy walk-forward` does not accept `--param`.
 - `strategy sweep`

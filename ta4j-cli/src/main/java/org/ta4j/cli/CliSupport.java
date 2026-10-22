@@ -95,8 +95,11 @@ import org.ta4j.core.indicators.statistics.StandardErrorIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
+import org.ta4j.core.rules.AndWithThresholdRule;
+import org.ta4j.core.rules.ChainLink;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
+import org.ta4j.core.rules.OrWithThresholdRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 import org.ta4j.core.rules.named.NamedRule;
@@ -628,14 +631,14 @@ final class CliSupport {
     /**
      * Rejects a strategy batch whose total work exceeds
      * {@link #MAX_BATCH_STRATEGY_WORK} before execution starts. Each strategy costs
-     * one evaluation per bar in {@code barEvaluations} plus the per-bar reads of
-     * every rolling-window scanner reachable from its entry and exit rules over
-     * {@code scanBarEvaluations}, so a serialized strategy cannot hide a large scan
-     * behind a single rule. Scan bars exceed evaluated bars for walk-forwards:
-     * recursive indicators prefill every preceding index when a fold starts
-     * mid-series, so a scanner feeding one is re-read across each fold's whole
-     * prefix. The product is computed exactly so a wide batch over a long series
-     * can never overflow into an accepted estimate.
+     * one evaluation per bar in {@code barEvaluations} plus repeated child-rule
+     * evaluations and rolling-window reads over {@code scanBarEvaluations}, so a
+     * serialized strategy cannot hide a large scan behind a single rule. Scan
+     * bars exceed evaluated bars for walk-forwards: recursive indicators prefill
+     * every preceding index when a fold starts mid-series, so a scanner feeding
+     * one is re-read across each fold's whole prefix. The product is computed
+     * exactly so a wide batch over a long series can never overflow into an
+     * accepted estimate.
      */
     static void requireBoundedStrategyBatch(List<Strategy> strategies, long barEvaluations, long scanBarEvaluations) {
         IdentityHashMap<Strategy, Long> scanWorkByStrategy = new IdentityHashMap<>();
@@ -649,8 +652,8 @@ final class CliSupport {
         if (work.compareTo(BigInteger.valueOf(MAX_BATCH_STRATEGY_WORK)) > 0) {
             throw new IllegalArgumentException("Strategy batch of " + strategies.size() + " strategies over "
                     + barEvaluations + " bars requires " + work + " bar-strategy evaluations"
-                    + (scanWork == 0L ? "" : " including rolling-window scans") + "; at most " + MAX_BATCH_STRATEGY_WORK
-                    + " are supported.");
+                    + (scanWork == 0L ? "" : " including rolling-window scans and repeated rule evaluations")
+                    + "; at most " + MAX_BATCH_STRATEGY_WORK + " are supported.");
         }
     }
 
@@ -763,53 +766,74 @@ final class CliSupport {
     }
 
     /**
-     * Sums the per-bar reads of every rolling-window scanner reachable from a
-     * strategy's entry and exit rules. Rules expose no dependency API, so the rule
-     * graph is walked through its instance fields, the same way rule serialization
-     * discovers components; indicators then follow
-     * {@link Indicator#getDependencies()}. Shared rules and indicators are counted
-     * once, matching per-instance indicator caching.
+     * Sums additional per-bar work reachable from a strategy's entry and exit
+     * rules. Rules expose no dependency API, so their instance fields are walked
+     * as in serialization; indicators follow {@link Indicator#getDependencies()}.
+     * Shared indicators are counted once within an evaluation subtree. Chain
+     * links and threshold rules charge their repeated child calls and conservatively
+     * multiply the complete child subtree, independently of earlier cached reads.
      */
     static long strategyWindowWork(Strategy strategy) {
-        Set<Object> visitedRules = Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<Object> activeRules = Collections.newSetFromMap(new IdentityHashMap<>());
         Set<Indicator<?>> visitedIndicators = Collections.newSetFromMap(new IdentityHashMap<>());
-        return saturatingAdd(componentWindowWork(strategy.getEntryRule(), visitedRules, visitedIndicators),
-                componentWindowWork(strategy.getExitRule(), visitedRules, visitedIndicators));
+        return saturatingAdd(componentWindowWork(strategy.getEntryRule(), activeRules, visitedIndicators),
+                componentWindowWork(strategy.getExitRule(), activeRules, visitedIndicators));
     }
 
-    private static long componentWindowWork(Object component, Set<Object> visitedRules,
+    private static long componentWindowWork(Object component, Set<Object> activeRules,
             Set<Indicator<?>> visitedIndicators) {
         if (component instanceof Indicator<?> indicator) {
             return sumRollingWindowBarCounts(indicator, visitedIndicators);
         }
-        long work = 0L;
-        if (component instanceof Rule) {
-            if (!visitedRules.add(component)) {
+        if (component instanceof ChainLink link) {
+            if (!activeRules.add(link)) {
                 return 0L;
             }
+            long childWork = componentWindowWork(link.getRule(), activeRules,
+                    Collections.newSetFromMap(new IdentityHashMap<>()));
+            activeRules.remove(link);
+            return saturatingMultiply(Math.max(0L, (long) link.getThreshold() + 1L), saturatingAdd(1L, childWork));
+        }
+        long work = 0L;
+        if (component instanceof Rule) {
+            if (!activeRules.add(component)) {
+                return 0L;
+            }
+            boolean thresholdRule = component instanceof AndWithThresholdRule
+                    || component instanceof OrWithThresholdRule;
+            long repetitions = 1L;
+            Set<Indicator<?>> childIndicators = thresholdRule
+                    ? Collections.newSetFromMap(new IdentityHashMap<>()) : visitedIndicators;
             for (Class<?> type = component.getClass(); type != null
                     && type != Object.class; type = type.getSuperclass()) {
                 for (Field field : type.getDeclaredFields()) {
-                    if (Modifier.isStatic(field.getModifiers()) || field.getType().isPrimitive()
-                            || !field.trySetAccessible()) {
+                    if (Modifier.isStatic(field.getModifiers()) || !field.trySetAccessible()) {
                         continue;
                     }
                     try {
-                        work = saturatingAdd(work,
-                                componentWindowWork(field.get(component), visitedRules, visitedIndicators));
+                        if (thresholdRule && field.getType() == int.class && field.getName().equals("threshold")) {
+                            repetitions = Math.max(1L, field.getInt(component));
+                        } else if (!field.getType().isPrimitive()) {
+                            work = saturatingAdd(work,
+                                    componentWindowWork(field.get(component), activeRules, childIndicators));
+                        }
                     } catch (IllegalAccessException ignored) {
                         // trySetAccessible succeeded; an inaccessible field holds no
                         // component the rule could evaluate.
                     }
                 }
             }
+            activeRules.remove(component);
+            if (thresholdRule) {
+                work = saturatingMultiply(repetitions, saturatingAdd(2L, work));
+            }
         } else if (component instanceof Object[] array) {
             for (Object element : array) {
-                work = saturatingAdd(work, componentWindowWork(element, visitedRules, visitedIndicators));
+                work = saturatingAdd(work, componentWindowWork(element, activeRules, visitedIndicators));
             }
         } else if (component instanceof Iterable<?> elements) {
             for (Object element : elements) {
-                work = saturatingAdd(work, componentWindowWork(element, visitedRules, visitedIndicators));
+                work = saturatingAdd(work, componentWindowWork(element, activeRules, visitedIndicators));
             }
         }
         return work;

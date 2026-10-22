@@ -25,6 +25,7 @@
 
 ### Fixed
 
+- **Bound repeated rule evaluation before CLI execution**: Strategy preflight follows serialized `ChainRule` links, charges their `threshold + 1` child calls, and accounts for threshold-composite fanout and nested rolling scanners. Oversized backtests and walk-forwards fail before execution or artifact creation; nested fanout cannot overflow into an accepted estimate.
 - **Reject impossible performance comparison numbers**: CLI comparisons reject invalid integer timing/count fields, non-integral or overflowing checksums, and non-finite or negative throughput before creating output. Zero timings, zero warmups, signed checksums and finite fractional throughput remain valid.
 - **Keep rejected named-component scans out of lookups**: Classes discovered in a package are committed only after the entire package passes simple-name conflict checks. A failed scan leaves existing registrations and successful packages intact, and retries cannot resolve an arbitrary conflicting class.
 - **Separate walk-forward test and holdout scores**: CLI walk-forward reports average the non-holdout folds for `outOfSampleAverage`, retain the holdout score separately, and evaluate each fold criterion only once.

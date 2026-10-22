@@ -14,6 +14,7 @@ import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BaseTradingRecord;
@@ -59,8 +60,12 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.AndRule;
+import org.ta4j.core.rules.AndWithThresholdRule;
 import org.ta4j.core.rules.BooleanRule;
+import org.ta4j.core.rules.ChainLink;
+import org.ta4j.core.rules.ChainRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
+import org.ta4j.core.rules.OrWithThresholdRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.strategy.named.NamedStrategy;
 import org.ta4j.core.walkforward.WalkForwardConfig;
@@ -1401,6 +1406,80 @@ class CliSupportTest {
             List<?> statementCriteria = (List<?>) statement.get("criteria");
             assertThat(asMap(statementCriteria.getFirst())).containsEntry("value", expectedValue);
         }
+    }
+
+    @Test
+    public void strategyBatchChargesSerializedChainLinkRuleFanout() {
+        BarSeries series = syntheticSeries(10);
+        Strategy strategy = Strategy.fromJson(series,
+                new BaseStrategy(new ChainRule(BooleanRule.TRUE, new ChainLink(BooleanRule.FALSE, 50_000)),
+                        BooleanRule.FALSE).toJson());
+
+        CliSupport.requireBoundedStrategyBatch(List.of(strategy), 1_999);
+        assertThatThrownBy(() -> CliSupport.requireBoundedStrategyBatch(List.of(strategy), 2_000))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("100004000 bar-strategy evaluations")
+                .hasMessageContaining("repeated rule evaluations");
+    }
+
+    @Test
+    public void strategyBatchChargesScannersInsideRepeatedChainLinks() {
+        BarSeries series = syntheticSeries(10);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Rule scanner = new OverIndicatorRule(new HighestValueIndicator(close, 2_000), close);
+        Strategy strategy = Strategy.fromJson(series,
+                new BaseStrategy(new ChainRule(scanner, new ChainLink(scanner, 50_000)),
+                        BooleanRule.FALSE).toJson());
+
+        assertThatThrownBy(() -> CliSupport.requireBoundedStrategyBatch(List.of(strategy), 10))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("including rolling-window scans");
+        Strategy small = new BaseStrategy(
+                new ChainRule(BooleanRule.TRUE, new ChainLink(BooleanRule.FALSE, 2)), BooleanRule.FALSE);
+        CliSupport.requireBoundedStrategyBatch(List.of(small), 10);
+    }
+
+    @Test
+    public void strategyBatchSaturatesNestedChainFanoutWithoutOverflow() {
+        Rule nested = BooleanRule.FALSE;
+        for (int level = 0; level < 3; level++) {
+            nested = new ChainRule(BooleanRule.TRUE, new ChainLink(nested, Integer.MAX_VALUE));
+        }
+        Strategy strategy = new BaseStrategy(nested, BooleanRule.FALSE);
+
+        assertThatThrownBy(() -> CliSupport.requireBoundedStrategyBatch(List.of(strategy), 1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("9223372036854775808 bar-strategy evaluations");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { true, false })
+    public void strategyBatchChargesThresholdCompositeFanout(boolean conjunction) {
+        BarSeries series = syntheticSeries(10);
+        Rule rule = conjunction
+                ? new AndWithThresholdRule(BooleanRule.FALSE, BooleanRule.FALSE, 50_000)
+                : new OrWithThresholdRule(BooleanRule.FALSE, BooleanRule.FALSE, 50_000);
+        Strategy strategy = Strategy.fromJson(series, new BaseStrategy(rule, BooleanRule.FALSE).toJson());
+
+        CliSupport.requireBoundedStrategyBatch(List.of(strategy), 999);
+        assertThatThrownBy(() -> CliSupport.requireBoundedStrategyBatch(List.of(strategy), 1_000))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("100001000 bar-strategy evaluations");
+    }
+
+    @Test
+    public void walkForwardChargesChainFanoutAcrossFoldPrefixes() {
+        BarSeries series = syntheticSeries(1_000);
+        Strategy strategy = new BaseStrategy(
+                new ChainRule(BooleanRule.TRUE, new ChainLink(BooleanRule.FALSE, 25_000)), BooleanRule.FALSE);
+        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, "100", "100", "100", "0", "0", "0",
+                null, null, null);
+
+        CliSupport.requireBoundedStrategyBatch(List.of(strategy), series.getBarCount());
+        assertThatThrownBy(
+                () -> CliSupport.requireBoundedWalkForward(List.of(strategy), List.of(), series, config))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("repeated rule evaluations");
     }
 
     private static final class InitializerProbe {
