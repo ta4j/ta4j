@@ -170,12 +170,106 @@ class ElliottResearchTest {
                 .get("fingerprint")
                 .getAsString();
         assertTrue(result.err().contains("--expect-fingerprint " + fingerprint), result.err());
+        assertTrue(result.err().contains("--expect-revision " + readJson(copy.resolve("run.json")).get("revision").getAsString()),
+                result.err());
         final Path stale = work.resolve("stale-smoke");
         final Result mismatch = launch("run", "smoke", "--expect-fingerprint", "0" + fingerprint, "--out",
                 stale.toString());
         assertEquals(1, mismatch.code());
         assertTrue(mismatch.err().contains("the recipe changed since the run"), mismatch.err());
         assertFalse(Files.exists(stale));
+    }
+
+    @Test
+    public void recaptureRejectsAnotherRevisionBeforeReadingInputsOrCreatingArtifacts() {
+        final Path out = work.resolve("wrong-revision");
+        final Result result = launch("run", "explore", "--expect-revision", "not-the-current-revision", "--source",
+                work.resolve("missing-candles.json").toString(), "--recipe", work.resolve("missing-recipe.json").toString(),
+                "--out", out.toString());
+        assertEquals(1, result.code());
+        assertTrue(result.err().contains("check out the recorded revision in a separate worktree"), result.err());
+        assertFalse(Files.exists(out));
+    }
+
+    @Test
+    public void comparisonsMustMatchRecordedDigestBeforeInspectOrSummaryTrustsRows() throws Exception {
+        for (final String corruption : List.of("changed-csv", "missing-digest")) {
+            final Path copy = work.resolve(corruption);
+            Files.createDirectories(copy);
+            Files.copy(smokeRun.resolve("run.json"), copy.resolve("run.json"));
+            Files.copy(smokeRun.resolve("comparisons.csv"), copy.resolve("comparisons.csv"));
+            Files.writeString(copy.resolve("summary.md"), "keep the existing summary");
+            if ("changed-csv".equals(corruption)) {
+                Files.writeString(copy.resolve("comparisons.csv"),
+                        Files.readString(copy.resolve("comparisons.csv")) + "\n");
+            } else {
+                final JsonObject run = readJson(copy.resolve("run.json"));
+                run.remove("comparisonsSha256");
+                Files.writeString(copy.resolve("run.json"), run.toString());
+            }
+            final Result summary = launch("summarize", copy.toString());
+            assertEquals(2, summary.code(), summary.err());
+            assertTrue(summary.err().contains("SHA-256"), summary.err());
+            assertEquals("keep the existing summary", Files.readString(copy.resolve("summary.md")));
+            final Result inspect = launch("inspect", copy.toString(), OCCUPANCY_KEY);
+            assertEquals(2, inspect.code(), inspect.err());
+            assertTrue(inspect.err().contains("SHA-256"), inspect.err());
+        }
+    }
+
+    @Test
+    public void overwritePreservesExploreInputsUnderManagedPathsIncludingSymlinkAliases() throws Exception {
+        final Path source = work.resolve("overwrite-source.json");
+        writeCandles(source, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve("overwrite-recipe.json");
+        Files.writeString(recipe, toyRecipe("overwrite"));
+        final String recordedRun = Files.readString(smokeRun.resolve("run.json"));
+        int caseIndex = 0;
+        for (final String artifact : List.of("traces/input.json", "reports/input.json", "summary.md",
+                "relations/input.json", "families/input.json")) {
+            for (final boolean recipeInput : List.of(false, true)) {
+                for (final boolean symlink : List.of(false, true)) {
+                    final Path out = work.resolve("overwrite-managed-" + caseIndex++);
+                    Files.createDirectories(out.resolve("reports"));
+                    Files.writeString(out.resolve("run.json"), recordedRun);
+                    Files.writeString(out.resolve("reports/keep.txt"), "keep");
+                    final Path input = out.resolve(artifact);
+                    Files.createDirectories(input.getParent());
+                    final String original = Files.readString(recipeInput ? recipe : source);
+                    Files.writeString(input, original);
+                    final Path selected = symlink
+                            ? Files.createSymbolicLink(work.resolve("input-alias-" + caseIndex), input)
+                            : input;
+                    final Result result = launch("run", "explore", "--source",
+                            (recipeInput ? source : selected).toString(), "--recipe",
+                            (recipeInput ? selected : recipe).toString(), "--out", out.toString(), "--overwrite");
+                    assertEquals(1, result.code(), result.err());
+                    assertTrue(result.err().contains("--overwrite would remove explore input"), result.err());
+                    assertEquals(recordedRun, Files.readString(out.resolve("run.json")));
+                    assertEquals("keep", Files.readString(out.resolve("reports/keep.txt")));
+                    assertEquals(original, Files.readString(input));
+                    assertFalse(Files.exists(out.resolve(".run.lock")));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void overwriteAllowsUnmanagedExploreInputsInTheRunDirectory() throws Exception {
+        final Path out = work.resolve("overwrite-unmanaged");
+        Files.createDirectories(out);
+        Files.copy(smokeRun.resolve("run.json"), out.resolve("run.json"));
+        final Path source = out.resolve("candles.json");
+        writeCandles(source, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = out.resolve("recipe.json");
+        Files.writeString(recipe, toyRecipe("preserved"));
+        final String candles = Files.readString(source);
+        final String definition = Files.readString(recipe);
+        final Result result = launch("run", "explore", "--source", source.toString(), "--recipe", recipe.toString(),
+                "--out", out.toString(), "--overwrite");
+        assertEquals(0, result.code(), result.err());
+        assertEquals(candles, Files.readString(source));
+        assertEquals(definition, Files.readString(recipe));
     }
 
     @Test
@@ -827,8 +921,7 @@ class ElliottResearchTest {
             assertEquals(0, result.code(), result.err());
             final JsonObject coverage = exploreCoverage(out);
             final boolean partial = missingDays > 7;
-            assertEquals(partial ? "partial" : "complete", coverage.get("status").getAsString(),
-                    coverage.toString());
+            assertEquals(partial ? "partial" : "complete", coverage.get("status").getAsString(), coverage.toString());
             final String message = coverage.get("message").getAsString();
             assertEquals(partial, message.contains("partition calibration starts at"), message);
             assertEquals(partial, message.contains("partition holdout ends at"), message);
