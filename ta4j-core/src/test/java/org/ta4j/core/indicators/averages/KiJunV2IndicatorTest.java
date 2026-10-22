@@ -10,7 +10,7 @@ import java.util.List;
 
 import static org.ta4j.core.TestUtils.*;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.CsvTestUtils;
 import org.ta4j.core.Indicator;

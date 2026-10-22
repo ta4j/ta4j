@@ -3,13 +3,13 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
@@ -22,7 +22,7 @@ public class NotRuleTest {
     private BarSeries series;
     private TraceTestLogger ruleTraceTestLogger;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
@@ -32,7 +32,7 @@ public class NotRuleTest {
         series = new MockBarSeriesBuilder().withData(1).build();
     }
 
-    @After
+    @AfterEach
     public void tearDownLogger() {
         ruleTraceTestLogger.close();
     }
@@ -68,9 +68,9 @@ public class NotRuleTest {
         notRule.isSatisfiedWithTraceMode(1, Rule.TraceMode.VERBOSE);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Verbose mode should log the negated child", logContent.contains("Negated Rule#isSatisfied"));
-        assertTrue("Verbose mode should log the parent", logContent.contains("Not Wrapper#isSatisfied"));
-        assertTrue("Verbose mode should attribute the negated rule path",
-                logContent.contains("path=root.ruleToNegate depth=1"));
+        assertTrue(logContent.contains("Negated Rule#isSatisfied"), "Verbose mode should log the negated child");
+        assertTrue(logContent.contains("Not Wrapper#isSatisfied"), "Verbose mode should log the parent");
+        assertTrue(logContent.contains("path=root.ruleToNegate depth=1"),
+                "Verbose mode should attribute the negated rule path");
     }
 }

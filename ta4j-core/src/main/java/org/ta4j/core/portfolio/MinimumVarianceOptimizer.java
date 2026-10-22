@@ -211,12 +211,13 @@ public final class MinimumVarianceOptimizer {
         List<String> assets = series.getAssets();
         int assetCount = assets.size();
         NumFactory numFactory = series.numFactory();
-        Num[][] deviations = new Num[barCount][assetCount];
+        Num[][] deviations = new Num[assetCount][barCount];
         int firstReturnIndex = index - barCount + 1;
         Num observationCount = numFactory.numOf(barCount);
 
         for (int assetIndex = 0; assetIndex < assetCount; assetIndex++) {
             String asset = assets.get(assetIndex);
+            Num[] assetDeviations = deviations[assetIndex];
             Num sum = numFactory.zero();
             Num previous = requirePositive(series.getClosePrice(asset, firstReturnIndex - 1), asset,
                     firstReturnIndex - 1);
@@ -228,23 +229,25 @@ public final class MinimumVarianceOptimizer {
                     throw new IllegalArgumentException(
                             "simple return must be finite for asset " + asset + " at index " + currentIndex);
                 }
-                deviations[observation][assetIndex] = value;
+                assetDeviations[observation] = value;
                 sum = sum.plus(value);
                 previous = current;
             }
             // Center once so the covariance loop needs one multiply-add per term.
             Num mean = sum.dividedBy(observationCount);
-            for (Num[] observation : deviations) {
-                observation[assetIndex] = observation[assetIndex].minus(mean);
+            for (int observation = 0; observation < barCount; observation++) {
+                assetDeviations[observation] = assetDeviations[observation].minus(mean);
             }
         }
 
         Num[][] covariance = new Num[assetCount][assetCount];
         for (int row = 0; row < assetCount; row++) {
+            Num[] rowDeviations = deviations[row];
             for (int column = row; column < assetCount; column++) {
+                Num[] columnDeviations = deviations[column];
                 Num sum = numFactory.zero();
-                for (Num[] observation : deviations) {
-                    sum = sum.plus(observation[row].multipliedBy(observation[column]));
+                for (int observation = 0; observation < barCount; observation++) {
+                    sum = sum.plus(rowDeviations[observation].multipliedBy(columnDeviations[observation]));
                 }
                 Num value = sum.dividedBy(observationCount);
                 if (!Num.isFinite(value)) {
@@ -270,8 +273,9 @@ public final class MinimumVarianceOptimizer {
     private void shrinkTowardScaledIdentity(Num[][] covariance, Num[][] deviations) {
         NumFactory numFactory = series.numFactory();
         int assetCount = covariance.length;
+        int observationCount = barCount;
         Num assets = numFactory.numOf(assetCount);
-        Num observations = numFactory.numOf(deviations.length);
+        Num observations = numFactory.numOf(observationCount);
 
         Num trace = numFactory.zero();
         Num squaredNorm = numFactory.zero();
@@ -281,12 +285,20 @@ public final class MinimumVarianceOptimizer {
                 squaredNorm = squaredNorm.plus(covariance[row][column].multipliedBy(covariance[row][column]));
             }
         }
-        Num fourthMoment = numFactory.zero();
-        for (Num[] observation : deviations) {
-            Num observationNorm = numFactory.zero();
-            for (Num value : observation) {
-                observationNorm = observationNorm.plus(value.multipliedBy(value));
+
+        Num[] observationNorms = new Num[observationCount];
+        Arrays.fill(observationNorms, numFactory.zero());
+        for (int row = 0; row < assetCount; row++) {
+            Num[] assetDeviations = deviations[row];
+            for (int observation = 0; observation < observationCount; observation++) {
+                Num value = assetDeviations[observation];
+                observationNorms[observation] = observationNorms[observation].plus(value.multipliedBy(value));
             }
+        }
+
+        Num fourthMoment = numFactory.zero();
+        for (int observation = 0; observation < observationCount; observation++) {
+            Num observationNorm = observationNorms[observation];
             fourthMoment = fourthMoment.plus(observationNorm.multipliedBy(observationNorm));
         }
 
