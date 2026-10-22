@@ -29,6 +29,7 @@ import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.averages.EDMAIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.KAMAIndicator;
+import org.ta4j.core.indicators.averages.JMAIndicator;
 import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.VIDYAIndicator;
@@ -215,6 +216,26 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         Num firstTime = sma.getValue(4);
         Num secondTime = sma.getValue(4);
         assertEquals(firstTime, secondTime);
+    }
+
+    @Test
+    public void compoundRecursiveStateRemainsBoundedAfterLongContinuation() {
+        for (int window : new int[] { 1, 2, 64 }) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(window);
+            CachedIndicator<Num> indicator = new JMAIndicator(new ClosePriceIndicator(moving), 3, 50, 2);
+            CachedIndicator<?> state = (CachedIndicator<?>) indicator.getDependencies().get(0);
+            for (int i = 0; i < 1024; i++) {
+                moving.barBuilder().closePrice(20 + (i * 7) % 13).add();
+                indicator.getValue(i);
+                for (CachedIndicator<?> cached : List.of(indicator, state)) {
+                    CachedBuffer<?> buffer = cached.getCache();
+                    assertTrue(buffer.getCapacity() <= window, "allocation must stay within the retained window");
+                    assertTrue(buffer.getHighestResultIndex() - buffer.getFirstCachedIndex() + 1 <= window,
+                            "retained state must not grow with stream length");
+                }
+            }
+        }
     }
 
     @Test

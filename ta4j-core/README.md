@@ -157,3 +157,27 @@ event-synchronization (F1) workflow with a one-line grid/GA/PSO switch.
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html
 - Live trading: https://ta4j.github.io/ta4j-wiki/Live-trading.html
 - Risk/criteria: https://ta4j.github.io/ta4j-wiki/Analysis-Criteria-and-Risk-Metrics.html
+
+## Borrowing costs and valuation
+
+`LinearBorrowingCostModel(feePerPeriod)` charges entry trade value times index
+distance times `feePerPeriod`. A period is one index step, not a calendar day.
+The rate is supplied in those units: timestamps, later marks, weekends and
+holidays do not change the arithmetic. The default applies only to short
+positions; `LONG_ONLY` and `BOTH` are opt-in alternatives. An open position needs
+an observation index. The price/amount overload returns zero because it cannot
+determine the holding duration.
+
+For example, borrowing two assets at an entry price of 100 for four index steps
+at 1% per step costs 8, even if the exit price is 250. A Friday-to-Monday hold
+spanning one index step costs 2 with those same inputs; it does not automatically
+charge for three calendar days. A daily or annual rate must not be substituted
+without choosing the intended time and mark convention. Exchange/instrument
+calendar, mark and rate inputs belong to an explicitly selected holding-cost
+model through the existing `CostModel` seam, rather than a silent change to the
+legacy formula.
+
+Fair-value/NAV marks remain the default and intentionally exclude hypothetical
+exit costs. Accrued borrowing and realized transaction fees are distinct from a
+liquidation estimate. This documentation introduces no liquidation output,
+estimated-exit-fee deduction or default migration.
