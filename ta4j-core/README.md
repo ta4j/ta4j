@@ -181,6 +181,8 @@ real-data trace on by default), `frozen-cf525` (the frozen study over the bundle
 datasets) and `explore --source candles.json --recipe recipe.json` (your own
 daily candles and study settings). Candle starts must share a daily cadence;
 missing whole days are allowed, but intraday or duplicate starts are rejected.
+Recipe asset labels must not begin with `=`, `+`, `-`, `@`, tab or carriage return;
+these prefixes would be interpreted as formulas by spreadsheet CSV readers.
 `--trace off|real|selected-null-member` with
 `--block L --member M` controls evidence capture; `--overwrite` reuses an existing
 run directory. For `explore --overwrite`, move the source candles and recipe outside
@@ -206,7 +208,8 @@ reference rank; neither is a confidence interval or a p-value, and partitions
 are never pooled. `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements. Every observation must match its trace
 header's dataset and null-member coordinates and carry a status defined for its
-record kind. When the trace is missing,
+record kind. All trace indices and coordinates must fit a signed 32-bit integer;
+the footer count must match exactly without numeric narrowing. When the trace is missing,
 truncated or corrupt, inspection exits with status 2 and prints the recapture
 command, quoted for a POSIX shell.
 The command carries `--expect-revision`, `--expect-fingerprint` and, for `explore`,

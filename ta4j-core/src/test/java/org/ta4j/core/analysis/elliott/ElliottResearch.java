@@ -558,6 +558,9 @@ final class ElliottResearch {
                     + MAX_DATASET_ID_LENGTH + " keeps every artifact file name within 255 bytes");
         }
         final String asset = text(required(root, "asset", "recipe"), "recipe.asset");
+        if ("=+-@\t\r".indexOf(asset.charAt(0)) >= 0) {
+            throw new IllegalArgumentException("recipe.asset must not start with a spreadsheet formula character");
+        }
         final List<StudyRunner.Partition> partitions = new ArrayList<>();
         final JsonArray partitionArray = arrayOf(required(root, "partitions", "recipe"), "recipe.partitions");
         for (int index = 0; index < partitionArray.size(); index++) {
@@ -1911,7 +1914,8 @@ final class ElliottResearch {
             final JsonElement member = run.getAsJsonObject("trace").get("member");
             final View nullView = row.nullBlockLength() > 0 ? load("null", findTrace(nullMatcher()),
                     expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER,
-                            row.nullBlockLength(), member == null || member.isJsonNull() ? -1 : member.getAsInt()),
+                            row.nullBlockLength(),
+                            member == null || member.isJsonNull() ? -1 : integer(member, "run.trace.member")),
                     this::inNullScope, this::inNullScope, recaptureNull()) : null;
             if (real == null && nullView == null) {
                 throw new Diagnostic(
@@ -2175,7 +2179,7 @@ final class ElliottResearch {
 
         private int memberOrZero() {
             final JsonElement member = run.getAsJsonObject("trace").get("member");
-            return member == null || member.isJsonNull() ? 0 : member.getAsInt();
+            return member == null || member.isJsonNull() ? 0 : integer(member, "run.trace.member");
         }
 
         private View load(final String label, final String relative, final JsonObject expected,
