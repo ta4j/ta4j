@@ -216,6 +216,9 @@ public final class PortfolioSeriesManager {
             Num[] prices = new Num[assetCount];
             List<Instant> endTimes = series.getEndTimes();
 
+            RebalancePolicy.Context context = new RebalancePolicy.Context(series, 0, prices, units, cash, zero,
+                    targetWeights);
+
             for (int index = 0; index < series.getBarCount(); index++) {
                 pricesAt(index, prices);
                 Num preTradeValue = portfolioValue(cash, units, prices);
@@ -223,8 +226,9 @@ public final class PortfolioSeriesManager {
                 Num tradedNotional = zero;
                 RebalanceStatus status = RebalanceStatus.NOT_SCHEDULED;
 
-                if (rebalancePolicy.shouldRebalance(
-                        new RebalancePolicy.Context(series, index, units, cash, preTradeValue, targetWeights))) {
+                context.update(index, prices, units, cash, preTradeValue);
+
+                if (rebalancePolicy.shouldRebalance(context)) {
                     Rebalance rebalance = new Rebalance(prices, units, cash, preTradeValue);
                     rebalance.execute();
                     units = rebalance.units;

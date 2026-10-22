@@ -5,7 +5,8 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.util.function.IntConsumer;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
@@ -17,14 +18,6 @@ import org.ta4j.core.num.Num;
 /**
  * Parabolic SAR indicator.
  *
- * <p>
- * On a moving series, an instance read on every bar continues SAR, trend,
- * extreme and acceleration together across head advances. Normal appends take
- * constant recurrence work and the cached state is bounded by series retention.
- * A fresh instance, or one whose predecessor history is no longer available,
- * seeds at the retained head: its first value is NaN and its second detects the
- * initial trend. It cannot reconstruct history it never observed.
- *
  * @see <a href=
  *      "https://www.investopedia.com/trading/introduction-to-parabolic-sar/">
  *      https://www.investopedia.com/trading/introduction-to-parabolic-sar/</a>
@@ -33,10 +26,23 @@ import org.ta4j.core.num.Num;
  */
 public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
+    private final transient LowPriceIndicator lowPriceIndicator;
+    private final transient LowestValueIndicator lowestValueIndicator;
+    private final transient HighPriceIndicator highPriceIndicator;
+    private final transient HighestValueIndicator highestValueIndicator;
+
     private final Num maxAcceleration;
     private final Num accelerationStart;
     private final Num accelerationIncrement;
-    private final transient SarStateIndicator stateIndicator;
+
+    private final transient Map<Integer, Boolean> isUpTrendMap = new HashMap<>();
+    private final transient Map<Integer, Num> lastExtreme = new HashMap<>();
+    private final transient Map<Integer, Num> lastAf = new HashMap<>();
+
+    /**
+     * If series have removed bars, first actual bar won't have 0 index.
+     */
+    private transient int seriesStartIndex = getBarSeries().getBeginIndex();
 
     /**
      * Constructor with:
@@ -74,21 +80,11 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
      */
     public ParabolicSarIndicator(BarSeries series, Num accelerationStart, Num maxAcceleration,
             Num accelerationIncrement) {
-        this(series, accelerationStart, maxAcceleration, accelerationIncrement, null);
-    }
-
-    // A bounded observer seam lets tests count actual tuple calculations without
-    // timing.
-    ParabolicSarIndicator(BarSeries series, Num accelerationStart, Num maxAcceleration, Num accelerationIncrement,
-            IntConsumer calculationObserver) {
-        this(new SarStateIndicator(series, accelerationStart, maxAcceleration, accelerationIncrement,
-                calculationObserver), accelerationStart, maxAcceleration, accelerationIncrement);
-    }
-
-    private ParabolicSarIndicator(SarStateIndicator stateIndicator, Num accelerationStart, Num maxAcceleration,
-            Num accelerationIncrement) {
-        super(stateIndicator);
-        this.stateIndicator = stateIndicator;
+        super(series);
+        this.lowPriceIndicator = new LowPriceIndicator(series);
+        this.lowestValueIndicator = new LowestValueIndicator(lowPriceIndicator, 2);
+        this.highPriceIndicator = new HighPriceIndicator(series);
+        this.highestValueIndicator = new HighestValueIndicator(highPriceIndicator, 2);
         this.maxAcceleration = maxAcceleration;
         this.accelerationStart = accelerationStart;
         this.accelerationIncrement = accelerationIncrement;
@@ -96,138 +92,144 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        return stateIndicator.getValue(index).sar();
+        lastExtreme.clear();
+        lastAf.clear();
+        isUpTrendMap.clear();
+
+        // Caching of this indicator value calculation is essential for performance!
+        //
+        // clear the maps and recalculate the values for start to index
+        // the internal calculations until the previous index will fill the
+        // required maps for the acceleration factor, the trend direction and the
+        // last extreme value.
+        // Cache doesn't require more than current and previous values.
+        if (index < getBarSeries().getBeginIndex()) {
+            return NaN;
+        }
+
+        seriesStartIndex = getBarSeries().getRemovedBarsCount();
+        if (index < seriesStartIndex) {
+            index = seriesStartIndex;
+        }
+
+        for (int i = seriesStartIndex; i < index; i++) {
+            calculateInternal(i);
+        }
+
+        return calculateInternal(index);
+    }
+
+    private Num calculateInternal(int index) {
+        Num sar = NaN;
+        boolean is_up_trend;
+
+        if (index == seriesStartIndex) {
+            lastExtreme.put(index, getBarSeries().getBar(index).getClosePrice());
+            lastAf.put(index, getBarSeries().numFactory().zero());
+            isUpTrendMap.put(index, false);
+            return sar; // no trend detection possible for the first value
+        } else if (index == seriesStartIndex + 1) { // start trend detection
+            is_up_trend = defineUpTrend(index);
+            lastAf.put(index, accelerationStart);
+            isUpTrendMap.put(index, is_up_trend);
+
+            if (is_up_trend) { // up trend
+                sar = lowestValueIndicator.getValue(index - 1); // put the lowest low value of
+                // two
+                lastExtreme.put(index, highestValueIndicator.getValue(index - 1));
+            } else { // down trend
+                sar = highestValueIndicator.getValue(index - 1); // put the highest high
+                // value of
+                lastExtreme.put(index, lowestValueIndicator.getValue(index - 1));
+            }
+            return sar;
+        }
+
+        Num priorSar = getValue(index - 1);
+
+        is_up_trend = isUpTrendMap.get(index - 1);
+
+        Num currentExtremePoint = lastExtreme.get(index - 1);
+        Num cur_high = highPriceIndicator.getValue(index);
+        Num cur_low = lowPriceIndicator.getValue(index);
+        Num cur_af = lastAf.get(index - 1);
+        sar = priorSar.plus(cur_af.multipliedBy((currentExtremePoint.minus(priorSar))));
+
+        if (is_up_trend) { // if up trend
+            if (cur_low.isLessThan(sar)) { // check if sar touches the low price
+                sar = currentExtremePoint;
+
+                lastAf.put(index, accelerationStart);
+                lastExtreme.put(index, cur_low);
+                is_up_trend = false;
+
+            } else { // up trend is going on
+                if (cur_high.isGreaterThan(currentExtremePoint)) {
+                    currentExtremePoint = cur_high;
+                    cur_af = incrementAcceleration(index);
+                }
+                lastExtreme.put(index, currentExtremePoint);
+                lastAf.put(index, cur_af);
+            }
+        } else { // downtrend
+            if (cur_high.isGreaterThanOrEqual(sar)) { // check if switch to up trend
+                sar = currentExtremePoint;
+
+                lastAf.put(index, accelerationStart);
+                lastExtreme.put(index, cur_high);
+                is_up_trend = true;
+
+            } else { // down trend io going on
+                if (cur_low.isLessThan(currentExtremePoint)) {
+                    currentExtremePoint = cur_low;
+                    cur_af = incrementAcceleration(index);
+                }
+                lastExtreme.put(index, currentExtremePoint);
+                lastAf.put(index, cur_af);
+
+            }
+        }
+
+        if (is_up_trend) {
+            Num lowestPriceOfTwoPreviousBars = lowestValueIndicator.getValue(index - 1);
+            if (sar.isGreaterThan(lowestPriceOfTwoPreviousBars)) {
+                sar = lowestPriceOfTwoPreviousBars;
+            }
+        } else {
+            Num highestPriceOfTwoPreviousBars = highestValueIndicator.getValue(index - 1);
+            if (sar.isLessThan(highestPriceOfTwoPreviousBars)) {
+                sar = highestPriceOfTwoPreviousBars;
+            }
+        }
+        isUpTrendMap.put(index, is_up_trend);
+        return sar;
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return stateIndicator.getCountOfUnstableBars();
+        return Math.max(lowestValueIndicator.getCountOfUnstableBars(), highestValueIndicator.getCountOfUnstableBars());
     }
 
-    /** One revision of the recurrence, including the distinct first-bar seed. */
-    private record SarState(Num sar, Num extreme, Num acceleration, boolean upTrend, boolean initialized) {
-    }
-
-    private static final class SarStateIndicator extends RecursiveCachedIndicator<SarState> {
-        private final LowPriceIndicator lowPriceIndicator;
-        private final LowestValueIndicator lowestValueIndicator;
-        private final HighPriceIndicator highPriceIndicator;
-        private final HighestValueIndicator highestValueIndicator;
-        private final Num accelerationStart;
-        private final Num maxAcceleration;
-        private final Num accelerationIncrement;
-
-        private final transient IntConsumer calculationObserver;
-
-        private SarStateIndicator(BarSeries series, Num accelerationStart, Num maxAcceleration,
-                Num accelerationIncrement, IntConsumer calculationObserver) {
-            super(series);
-            this.lowPriceIndicator = new LowPriceIndicator(series);
-            this.lowestValueIndicator = new LowestValueIndicator(lowPriceIndicator, 2);
-            this.highPriceIndicator = new HighPriceIndicator(series);
-            this.highestValueIndicator = new HighestValueIndicator(highPriceIndicator, 2);
-            this.accelerationStart = accelerationStart;
-            this.maxAcceleration = maxAcceleration;
-            this.accelerationIncrement = accelerationIncrement;
-            this.calculationObserver = calculationObserver;
-        }
-
-        @Override
-        protected SarState calculate(int index) {
-            if (calculationObserver != null) {
-                calculationObserver.accept(index);
-            }
-            while (true) {
-                int beginIndex = getBarSeries().getBeginIndex();
-                if (beginIndex < 0) {
-                    return new SarState(NaN, NaN, getBarSeries().numFactory().zero(), false, false);
-                }
-                if (index < beginIndex) {
-                    return getValue(beginIndex);
-                }
-                SarState state;
-                if (index == beginIndex) {
-                    state = new SarState(NaN, getBarSeries().getBar(index).getClosePrice(),
-                            getBarSeries().numFactory().zero(), false, false);
-                } else {
-                    // Resolve the complete predecessor before reading current inputs.
-                    // A NaN SAR can still be the valid first initialization phase.
-                    SarState previous = getValue(index - 1);
-                    state = advance(index, previous);
-                }
-                if (getBarSeries().getBeginIndex() == beginIndex) {
-                    return state;
-                }
-                // A removed input/predecessor must not publish a mixed-head tuple.
-            }
-        }
-
-        private SarState advance(int index, SarState previous) {
-            if (!previous.initialized()) {
-                boolean upTrend = getBarSeries().getBar(index - 1)
-                        .getClosePrice()
-                        .isLessThan(getBarSeries().getBar(index).getClosePrice());
-                Num sar = upTrend ? lowestValueIndicator.getValue(index - 1)
-                        : highestValueIndicator.getValue(index - 1);
-                Num extreme = upTrend ? highestValueIndicator.getValue(index - 1)
-                        : lowestValueIndicator.getValue(index - 1);
-                return new SarState(sar, extreme, accelerationStart, upTrend, true);
-            }
-
-            Num priorSar = previous.sar();
-            boolean upTrend = previous.upTrend();
-            Num extreme = previous.extreme();
-            Num high = highPriceIndicator.getValue(index);
-            Num low = lowPriceIndicator.getValue(index);
-            Num acceleration = previous.acceleration();
-            Num sar = priorSar.plus(acceleration.multipliedBy(extreme.minus(priorSar)));
-
-            if (upTrend) {
-                if (low.isLessThan(sar)) {
-                    sar = extreme;
-                    acceleration = accelerationStart;
-                    extreme = low;
-                    upTrend = false;
-                } else if (high.isGreaterThan(extreme)) {
-                    extreme = high;
-                    acceleration = acceleration.plus(accelerationIncrement);
-                    if (acceleration.isGreaterThan(maxAcceleration)) {
-                        acceleration = maxAcceleration;
-                    }
-                }
-            } else {
-                if (high.isGreaterThanOrEqual(sar)) {
-                    sar = extreme;
-                    acceleration = accelerationStart;
-                    extreme = high;
-                    upTrend = true;
-                } else if (low.isLessThan(extreme)) {
-                    extreme = low;
-                    acceleration = acceleration.plus(accelerationIncrement);
-                    if (acceleration.isGreaterThan(maxAcceleration)) {
-                        acceleration = maxAcceleration;
-                    }
-                }
-            }
-
-            if (upTrend) {
-                Num lowestPriceOfTwoPreviousBars = lowestValueIndicator.getValue(index - 1);
-                if (sar.isGreaterThan(lowestPriceOfTwoPreviousBars)) {
-                    sar = lowestPriceOfTwoPreviousBars;
-                }
-            } else {
-                Num highestPriceOfTwoPreviousBars = highestValueIndicator.getValue(index - 1);
-                if (sar.isLessThan(highestPriceOfTwoPreviousBars)) {
-                    sar = highestPriceOfTwoPreviousBars;
-                }
-            }
-            return new SarState(sar, extreme, acceleration, upTrend, true);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return Math.max(lowestValueIndicator.getCountOfUnstableBars(),
-                    highestValueIndicator.getCountOfUnstableBars());
+    private boolean defineUpTrend(final int barIndex) {
+        if (barIndex - 1 < seriesStartIndex) {
+            return false;
+        } else {
+            return getBarSeries().getBar(barIndex - 1)
+                    .getClosePrice()
+                    .isLessThan(getBarSeries().getBar(barIndex).getClosePrice());
         }
     }
+
+    /**
+     * Increments the acceleration factor.
+     */
+    private Num incrementAcceleration(int index) {
+        Num cur_af = lastAf.get(index - 1);
+        cur_af = cur_af.plus(accelerationIncrement);
+        if (cur_af.isGreaterThan(maxAcceleration)) {
+            cur_af = maxAcceleration;
+        }
+        return cur_af;
+    }
+
 }

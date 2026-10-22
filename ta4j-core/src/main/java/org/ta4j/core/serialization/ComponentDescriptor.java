@@ -113,7 +113,7 @@ public final class ComponentDescriptor {
         try {
             Class<?> candidate = Class.forName(className, false, ComponentDescriptor.class.getClassLoader());
             return expectedType.isAssignableFrom(candidate) ? candidate.asSubclass(expectedType) : null;
-        } catch (ClassNotFoundException | LinkageError ex) {
+        } catch (ClassNotFoundException ex) {
             return null;
         }
     }

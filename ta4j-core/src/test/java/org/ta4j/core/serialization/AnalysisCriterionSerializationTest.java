@@ -27,15 +27,6 @@ import org.ta4j.core.num.Num;
 public class AnalysisCriterionSerializationTest {
 
     @Test
-    public void fromDescriptorWrapsMissingConstructorDependency() throws Exception {
-        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
-            IllegalStateException exception = assertThrows(IllegalStateException.class,
-                    () -> fixture.invoke("deserializeCriterion"));
-            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class);
-        }
-    }
-
-    @Test
     public void expressionRestoresBuiltInCriterionAlias() {
         AnalysisCriterion criterion = AnalysisCriterion.fromExpression("NetProfit");
 

@@ -35,19 +35,6 @@
 - For live data, pause writes during the backtest, or build the strategies on a stable copy, for example `series.getSubSeries(series.getBeginIndex(), series.getEndIndex())`, which also leaves out the forming bar.
 - `BarSeries.withReadLock(...)` is for short, bar-only reads. Do not evaluate indicators or strategies inside it: indicator caches take their own locks and then read bars, so that order can deadlock with other readers once a writer is waiting.
 
-## Schaff Trend Cycle on a moving series
-
-Create `SchaffTrendCycleIndicator` once and read it after each appended bar.
-With enough retained bars for the cycle and warm-up, its MACD, stochastic carry
-and smoothing chain continue across head advances: live and retained values
-match an identically fed unbounded instance. At fixed periods, steady append/read
-work does not grow with `maximumBarCount`.
-
-A fresh instance on an already-pruned series seeds from the available history;
-it cannot recover evicted observations. A source that explicitly resets after a
-head advance also resets the composition. Standalone `StochasticIndicator`
-keeps its existing retained-window reset behavior.
-
 ## Trace rule decisions
 
 - To answer "why did this fire?" or "why did this not fire?", enable SLF4J `TRACE` on the relevant `Rule` or `Strategy` logger and run the normal `isSatisfied(...)`, `shouldEnter(...)`, or `shouldExit(...)` call.

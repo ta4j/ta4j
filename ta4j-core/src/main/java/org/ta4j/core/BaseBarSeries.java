@@ -4,7 +4,6 @@
 package org.ta4j.core;
 
 import java.io.IOException;
-import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.time.Instant;
@@ -51,7 +50,7 @@ public class BaseBarSeries implements BarSeries {
     /**
      * The list of bars of the bar series.
      */
-    private List<Bar> bars;
+    private final List<Bar> bars;
     private final BarBuilderFactory barBuilderFactory;
 
     private final NumFactory numFactory;
@@ -85,55 +84,8 @@ public class BaseBarSeries implements BarSeries {
         // Transient fields are null after deserialization; restore the logger
         // before any retained-bar access can reach the trace-logging branch.
         this.log = LoggerFactory.getLogger(getClass());
-        validateDeserializedState();
-        this.bars = new ArrayList<>(this.bars);
         if (!defersRetainedBarMutationTracking()) {
             attachRetainedBarMutationTracking();
-        }
-    }
-
-    private synchronized void validateDeserializedState() throws InvalidObjectException {
-        if (this.bars == null) {
-            throw new InvalidObjectException("bars list cannot be null");
-        }
-        if (this.numFactory == null) {
-            throw new InvalidObjectException("numFactory cannot be null");
-        }
-        if (this.barBuilderFactory == null) {
-            throw new InvalidObjectException("barBuilderFactory cannot be null");
-        }
-        if (this.barHistoryRevision < 0 || this.barHistoryRevision == Long.MAX_VALUE) {
-            throw new InvalidObjectException("Bar history revision must be non-negative and allow a next revision");
-        }
-        if (this.constrained && this.maximumBarCount != Integer.MAX_VALUE) {
-            throw new InvalidObjectException("Constrained series must retain an unbounded maximum bar count");
-        }
-        if (this.maximumBarCount <= 0 || this.bars.size() > this.maximumBarCount) {
-            throw new InvalidObjectException("Maximum bar count must be positive and contain all retained bars");
-        }
-        for (Bar bar : this.bars) {
-            if (bar == null) {
-                throw new InvalidObjectException("Retained bars must not contain null");
-            }
-        }
-        if (this.bars.isEmpty()) {
-            if (this.seriesBeginIndex != -1 || this.seriesEndIndex != -1 || this.removedBarsCount != 0) {
-                throw new InvalidObjectException(
-                        "Empty bar series must have beginIndex=-1, endIndex=-1, and removedBarsCount=0");
-            }
-        } else {
-            if (this.seriesEndIndex < this.seriesBeginIndex - 1) {
-                throw new InvalidObjectException("End index must be >= to begin index - 1");
-            }
-            if (this.removedBarsCount < 0 || this.seriesBeginIndex < this.removedBarsCount) {
-                throw new InvalidObjectException("Removed bars count must be non-negative and <= begin index");
-            }
-            if ((long) this.removedBarsCount + this.bars.size() - 1 > Integer.MAX_VALUE) {
-                throw new InvalidObjectException("Retained bar indexes exceed the supported integer range");
-            }
-            if ((long) this.seriesEndIndex >= (long) this.removedBarsCount + this.bars.size()) {
-                throw new InvalidObjectException("End index must be within the offset bar list");
-            }
         }
     }
 
@@ -450,8 +402,8 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * @throws NullPointerException if {@code bar} is {@code null}
-     * @throws ArithmeticException  if appending would advance a retained or logical
-     *                              absolute index beyond {@link Integer#MAX_VALUE}
+     * @throws ArithmeticException  if appending would advance the absolute index
+     *                              beyond {@link Integer#MAX_VALUE}
      */
     @Override
     @SuppressFBWarnings(value = "AT_STALE_THREAD_WRITE_OF_PRIMITIVE", justification = "BaseBarSeries structural indexes are intentionally single-threaded; concurrent callers must use ConcurrentBarSeries.")
@@ -465,13 +417,14 @@ public class BaseBarSeries implements BarSeries {
 
         if (!this.bars.isEmpty()) {
             if (replace) {
-                final int lastBarIndex = this.bars.size() - 1;
-                final int absoluteLastBarIndex = Math.addExact(this.removedBarsCount, lastBarIndex);
-                final Bar previousBar = this.bars.set(lastBarIndex, bar);
-                detachBarMutationTracking(previousBar, absoluteLastBarIndex);
-                attachBarMutationTracking(bar, absoluteLastBarIndex);
-                recordBarHistoryChange(absoluteLastBarIndex);
+                final Bar previousBar = this.bars.set(this.bars.size() - 1, bar);
+                detachBarMutationTracking(previousBar, this.seriesEndIndex);
+                attachBarMutationTracking(bar, this.seriesEndIndex);
+                recordBarHistoryChange(this.seriesEndIndex);
                 return;
+            }
+            if (this.seriesEndIndex == Integer.MAX_VALUE) {
+                throw new ArithmeticException("Bar series index overflow");
             }
             final int lastBarIndex = this.bars.size() - 1;
             final Instant seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
@@ -482,13 +435,12 @@ public class BaseBarSeries implements BarSeries {
             }
         }
 
-        final int newBarIndex = Math.addExact(this.removedBarsCount, this.bars.size());
         this.bars.add(bar);
         if (this.seriesBeginIndex == -1) {
             // The begin index is set to 0 if not already initialized:
             this.seriesBeginIndex = 0;
         }
-        this.seriesEndIndex = newBarIndex;
+        this.seriesEndIndex = Math.incrementExact(this.seriesEndIndex);
         attachBarMutationTracking(bar, this.seriesEndIndex);
         removeExceedingBars();
     }
