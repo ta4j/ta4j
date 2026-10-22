@@ -312,7 +312,7 @@ final class ReplayFixture {
         record.add("candidates", candidates);
         record.addProperty("status",
                 candidates.size() >= 2 ? "AMBIGUOUS" : candidates.size() == 1 ? "COMPLETE" : "NO_MATCH");
-        record.add("direction", candidates.isEmpty() ? JsonNull.INSTANCE : new JsonPrimitive("BULLISH"));
+        record.add("direction", candidates.size() == 1 ? new JsonPrimitive("BULLISH") : JsonNull.INSTANCE);
         final JsonArray labels = new JsonArray();
         if (candidates.size() >= 2) {
             labels.add("ambiguous");

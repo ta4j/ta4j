@@ -287,7 +287,8 @@ final class ReplayTraceIndex {
                 throw corrupt(display, line, where + field + " is blank");
             }
         }
-        if (!("topology".equals(kind) ? TOPOLOGY_STATUSES : ALTERNATIVE_STATUSES).contains(text(record, "status"))) {
+        final String status = text(record, "status");
+        if (!("topology".equals(kind) ? TOPOLOGY_STATUSES : ALTERNATIVE_STATUSES).contains(status)) {
             throw corrupt(display, line, where + "status " + record.get("status") + " is not a " + kind + " status");
         }
         for (final String field : List.of("nullBlockLength", "nullMemberIndex", "asOfIndex")) {
@@ -298,7 +299,7 @@ final class ReplayTraceIndex {
             throw corrupt(display, line, where + "direction is missing or not a string or null");
         }
         if ("topology".equals(kind) && (!direction.isJsonNull() && !isWaveDirection(direction.getAsString())
-                || direction.isJsonNull() && "FORMING".equals(text(record, "status")))) {
+                || direction.isJsonNull() && "FORMING".equals(status))) {
             throw corrupt(display, line, where + "direction must be a wave direction, and must not be null for FORMING");
         }
         requireTexts(display, line, record, "activeRules", where);
@@ -326,10 +327,11 @@ final class ReplayTraceIndex {
         }
         final JsonArray candidates = requireArray(display, line, record, "candidates", where);
         if ("topology".equals(kind) && (candidates.size() > 64
-                || "COMPLETE".equals(text(record, "status")) && candidates.size() != 1
-                || "AMBIGUOUS".equals(text(record, "status")) && candidates.size() < 2)) {
+                || "COMPLETE".equals(status) && candidates.size() != 1
+                || "AMBIGUOUS".equals(status) && candidates.size() < 2
+                || !"COMPLETE".equals(status) && !"AMBIGUOUS".equals(status) && !candidates.isEmpty())) {
             throw corrupt(display, line, where
-                    + "candidates exceed the bound of 64 or do not match status (COMPLETE: 1, AMBIGUOUS: 2-64)");
+                    + "candidates must match status (COMPLETE: 1, AMBIGUOUS: 2-64, all other states: 0)");
         }
         int requiredPivots = 0;
         for (int i = 0; i < candidates.size(); i++) {
@@ -420,8 +422,18 @@ final class ReplayTraceIndex {
                 }
             }
         }
-        if ("topology".equals(kind) && requiredPivots == 0) {
-            requireGrammar(display, line, record, where);
+        if ("topology".equals(kind)) {
+            if (requiredPivots == 0) {
+                requireGrammar(display, line, record, where);
+            }
+            if ("COMPLETE".equals(status)) {
+                if (direction.isJsonNull()
+                        || !direction.equals(candidates.get(0).getAsJsonObject().get("direction"))) {
+                    throw corrupt(display, line, where + "direction must match the COMPLETE candidate");
+                }
+            } else if (!"FORMING".equals(status) && !direction.isJsonNull()) {
+                throw corrupt(display, line, where + "direction must be null for " + status);
+            }
         }
         if ("alternative".equals(kind)) {
             requireTexts(display, line, record, "labels", where);

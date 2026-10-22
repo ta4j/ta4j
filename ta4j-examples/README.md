@@ -192,10 +192,12 @@ Candidate keys must match the recorded grammar, direction and ordered pivot
 placement; each version must bind that key to its exact ordered rule evidence.
 Edited or foreign identities are rejected with the trace line and candidate field.
 The ordered candidate rule IDs must exactly match `activeRules`, even when hashes
-are self-consistent. Topology state and the 64-candidate bound, supported grammar
-placement sizes, ordered alternating pivots with nonnegative indices and finite
-prices, confirmation ordering, wave directions, and null-or-PASS scores in
-`[0, 1]` are checked before selecting a replay family.
+are self-consistent. `COMPLETE` has one candidate with the same direction;
+`AMBIGUOUS` has 2-64 candidates and a null direction. All other topology states
+have no candidates; only `FORMING` carries a direction. Supported grammar placement
+sizes, ordered alternating pivots with nonnegative indices and finite prices,
+confirmation ordering, and null-or-PASS scores in `[0, 1]` are also checked before
+selecting a replay family.
 Malformed run metadata is also reported as an artifact diagnostic with the field
 to repair and regeneration guidance, rather than escaping as a Java stack trace.
 

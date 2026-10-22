@@ -22,6 +22,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 
 class ReplayArtifactTest {
 
@@ -659,7 +660,7 @@ class ReplayArtifactTest {
                     final int line = firstRulesCandidateLine(lines);
                     final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
                     record.addProperty("grammar", grammar);
-                    record.addProperty("direction", direction);
+                    record.add("direction", count == 1 ? new JsonPrimitive(direction) : JsonNull.INSTANCE);
                     record.addProperty("status", count == 1 ? "COMPLETE" : "AMBIGUOUS");
                     final JsonArray candidates = record.getAsJsonArray("candidates");
                     final JsonObject candidate = candidates.get(0).getAsJsonObject();
@@ -688,6 +689,56 @@ class ReplayArtifactTest {
                     lines.set(line, record.toString());
                     Files.write(trace, lines, StandardCharsets.UTF_8);
                     assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void everyTopologyStateEnforcesItsCandidateAndDirectionContractBeforeFiltering() throws IOException {
+        final String[] directions = { null, "BULLISH", "BEARISH" };
+        for (final String status : List.of("COMPLETE", "AMBIGUOUS", "FORMING", "NO_MATCH", "INVALIDATED",
+                "INSUFFICIENT_HISTORY")) {
+            for (final int count : List.of(0, 1, 2, 64, 65)) {
+                for (final String direction : directions) {
+                    final boolean validCount = switch (status) {
+                    case "COMPLETE" -> count == 1;
+                    case "AMBIGUOUS" -> count >= 2 && count <= 64;
+                    default -> count == 0;
+                    };
+                    final boolean validDirection = switch (status) {
+                    case "COMPLETE" -> "BULLISH".equals(direction);
+                    case "FORMING" -> direction != null;
+                    default -> direction == null;
+                    };
+                    final Path run = ReplayFixture.write(temp.resolve("state-" + status + "-" + count + "-" + direction));
+                    final Path trace = run.resolve("traces/d1-real.jsonl");
+                    final List<String> lines = Files.readAllLines(trace);
+                    final int line = firstRulesCandidateLine(lines);
+                    final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+                    record.addProperty("status", status);
+                    record.addProperty("direction", direction);
+                    final JsonArray candidates = new JsonArray();
+                    final JsonObject candidate = record.getAsJsonArray("candidates").get(0).getAsJsonObject();
+                    for (int i = 0; i < count; i++) {
+                        candidates.add(candidate.deepCopy());
+                    }
+                    record.add("candidates", candidates);
+                    ReplayFixture.refreshIdentity(record);
+                    lines.set(line, record.toString());
+                    Files.write(trace, lines, StandardCharsets.UTF_8);
+                    if (validCount && validDirection) {
+                        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true));
+                        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false));
+                    } else {
+                        final String field = "FORMING".equals(status) && direction == null || validCount
+                                ? "direction" : "candidates";
+                        for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
+                            final String message = failureOf(run, key);
+                            assertTrue(message.contains(field) && message.contains("line " + (line + 1))
+                                    && message.contains("regenerate"), status + "/" + count + "/" + direction + ": " + message);
+                        }
+                    }
                 }
             }
         }
