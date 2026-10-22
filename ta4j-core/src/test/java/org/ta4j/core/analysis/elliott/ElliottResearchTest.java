@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -590,6 +591,69 @@ class ElliottResearchTest {
     }
 
     @Test
+    void inspectRefusesTraceReferencesThatLeaveTheRunDirectory() throws Exception {
+        // Regression: a trace reference in run.json was resolved against the run
+        // directory without containment, so a received run could make inspect read
+        // whatever file the reference pointed at.
+        final Path outside = work.resolve("outside-real.jsonl");
+        Files.copy(smokeRun.resolve("traces/smoke-real.jsonl"), outside, StandardCopyOption.REPLACE_EXISTING);
+        final List<String> references = List.of("../outside-real.jsonl", outside.toString());
+        for (int index = 0; index < references.size(); index++) {
+            final Path copy = work.resolve("escaping-reference-" + index);
+            copyTree(smokeRun, copy);
+            final JsonObject run = readJson(copy.resolve("run.json"));
+            final JsonArray traces = new JsonArray();
+            traces.add(references.get(index));
+            run.getAsJsonArray("datasets").get(0).getAsJsonObject().add("traces", traces);
+            Files.writeString(copy.resolve("run.json"), run.toString(), StandardCharsets.UTF_8);
+
+            final Result result = launch("inspect", copy.toString(), OCCUPANCY_KEY);
+            assertEquals(2, result.code(), references.get(index));
+            assertTrue(result.err().contains("lies outside the run directory"), result.err());
+        }
+    }
+
+    @Test
+    void traceLinkedFromOutsideTheRunDirectoryIsNotEvidence() throws Exception {
+        // Regression: a trace that was a link to a file elsewhere was read as the
+        // run's own evidence by both summarize and inspect.
+        final Path outside = work.resolve("linked-target-real.jsonl");
+        Files.copy(smokeRun.resolve("traces/smoke-real.jsonl"), outside, StandardCopyOption.REPLACE_EXISTING);
+        final Path copy = work.resolve("linked-trace");
+        copyTree(smokeRun, copy);
+        final Path trace = copy.resolve("traces/smoke-real.jsonl");
+        Files.delete(trace);
+        symlinkOrSkip(trace, outside);
+
+        final Result summarize = launch("summarize", copy.toString());
+        assertEquals(0, summarize.code(), summarize.err());
+        assertTrue(Files.readString(copy.resolve("summary.md")).contains("Evidence not captured for smoke."));
+
+        final Result inspect = launch("inspect", copy.toString(), OCCUPANCY_KEY);
+        assertEquals(2, inspect.code());
+        assertTrue(inspect.err().contains("lies outside the run directory"), inspect.err());
+    }
+
+    @Test
+    void summarizeReplacesALinkedSummaryInsteadOfWritingThroughIt() throws Exception {
+        // Regression: summarize wrote summary.md through an existing link, so a
+        // received run could make it overwrite any file the link pointed at.
+        final Path copy = work.resolve("linked-summary");
+        copyTree(smokeRun, copy);
+        final Path victim = work.resolve("victim.txt");
+        Files.writeString(victim, "keep", StandardCharsets.UTF_8);
+        final Path summary = copy.resolve("summary.md");
+        Files.delete(summary);
+        symlinkOrSkip(summary, victim);
+
+        final Result result = launch("summarize", copy.toString());
+        assertEquals(0, result.code(), result.err());
+        assertEquals("keep", Files.readString(victim, StandardCharsets.UTF_8));
+        assertFalse(Files.isSymbolicLink(summary));
+        assertTrue(Files.readString(summary, StandardCharsets.UTF_8).contains("Elliott research run: smoke"));
+    }
+
+    @Test
     void exploreRecipeRejectsWindowsReservedDatasetIdBeforeRunning() throws Exception {
         final Path candles = work.resolve("reserved-candles.json");
         writeCandles(candles, LocalDate.of(2020, 1, 1), 300, date -> true);
@@ -1097,6 +1161,63 @@ class ElliottResearchTest {
         assertEquals(2, launch("families", out.toString(), "toy").code());
     }
 
+    private Path familyRunWithVisibleVerdicts(final String name) throws Exception {
+        final Result run = runWithFamilies(name, TWO_SCALES,
+                "{\"profiles\":[{\"id\":\"zigzag\"},{\"id\":\"regular-flat\",\"minRetracement\":\"0.8\"}]}");
+        assertEquals(0, run.code(), run.err());
+        final Path out = work.resolve(name);
+        assertTrue(Files.readString(out.resolve("summary.md")).contains("regular-flat/1{minRetracement=0.8"));
+        return out;
+    }
+
+    @Test
+    void familyReferencesThatLeaveTheRunDirectoryAreRefusedNotRead() throws Exception {
+        // Regression: the family file name recorded in run.json was resolved against
+        // the run directory without containment, so a received run could make
+        // `families` and `summarize` read whatever file the name pointed at.
+        final Path out = familyRunWithVisibleVerdicts("fam-escape");
+        final Path outside = work.resolve("outside-families.jsonl");
+        Files.copy(out.resolve("families/toy.jsonl"), outside, StandardCopyOption.REPLACE_EXISTING);
+        final List<String> references = List.of("../outside-families.jsonl", outside.toString());
+        for (int index = 0; index < references.size(); index++) {
+            final Path copy = work.resolve("escaping-families-" + index);
+            copyTree(out, copy);
+            final JsonObject run = readJson(copy.resolve("run.json"));
+            run.getAsJsonArray("datasets")
+                    .get(0)
+                    .getAsJsonObject()
+                    .getAsJsonObject("families")
+                    .addProperty("file", references.get(index));
+            Files.writeString(copy.resolve("run.json"), run.toString(), StandardCharsets.UTF_8);
+
+            final Result print = launch("families", copy.toString(), "toy");
+            assertEquals(2, print.code(), references.get(index));
+            assertTrue(print.err().contains("lies outside the run directory"), print.err());
+            assertEquals(0, launch("summarize", copy.toString()).code());
+            final String summary = Files.readString(copy.resolve("summary.md"));
+            assertTrue(summary.contains("family file unreadable"), summary);
+            assertTrue(summary.contains("lies outside the run directory"), summary);
+            assertFalse(summary.contains("regular-flat/1{minRetracement=0.8"), summary);
+        }
+    }
+
+    @Test
+    void familyFileLinkedFromOutsideTheRunDirectoryIsNotRead() throws Exception {
+        final Path out = familyRunWithVisibleVerdicts("fam-linked");
+        final Path file = out.resolve("families/toy.jsonl");
+        final Path outside = work.resolve("linked-families.jsonl");
+        Files.move(file, outside);
+        symlinkOrSkip(file, outside);
+
+        final Result print = launch("families", out.toString(), "toy");
+        assertEquals(2, print.code());
+        assertTrue(print.err().contains("lies outside the run directory"), print.err());
+        assertEquals(0, launch("summarize", out.toString()).code());
+        final String summary = Files.readString(out.resolve("summary.md"));
+        assertTrue(summary.contains("lies outside the run directory"), summary);
+        assertFalse(summary.contains("regular-flat/1{minRetracement=0.8"), summary);
+    }
+
     private Result runRecipeWithRobustnessDetector(final String name, final String detector) throws Exception {
         final Path candles = work.resolve(name + "-candles.json");
         writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
@@ -1153,6 +1274,55 @@ class ElliottResearchTest {
         assertEquals(2, launch("relations", out.toString(), "toy").code());
     }
 
+    @Test
+    void relationReferencesThatLeaveTheRunDirectoryAreRefusedNotRead() throws Exception {
+        // Regression: the relation file name recorded in run.json was resolved against
+        // the run directory without containment, so a received run could make
+        // `relations` and `summarize` read whatever file the name pointed at.
+        final Path out = hierarchyRun("hier-escape",
+                "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}]}");
+        final Path outside = work.resolve("outside-relations.jsonl");
+        Files.copy(out.resolve("relations/toy.jsonl"), outside, StandardCopyOption.REPLACE_EXISTING);
+        final List<String> references = List.of("../outside-relations.jsonl", outside.toString());
+        for (int index = 0; index < references.size(); index++) {
+            final Path copy = work.resolve("escaping-relations-" + index);
+            copyTree(out, copy);
+            final JsonObject run = readJson(copy.resolve("run.json"));
+            run.getAsJsonArray("datasets")
+                    .get(0)
+                    .getAsJsonObject()
+                    .getAsJsonObject("relations")
+                    .addProperty("file", references.get(index));
+            Files.writeString(copy.resolve("run.json"), run.toString(), StandardCharsets.UTF_8);
+
+            final Result print = launch("relations", copy.toString(), "toy");
+            assertEquals(2, print.code(), references.get(index));
+            assertTrue(print.err().contains("lies outside the run directory"), print.err());
+            assertEquals(0, launch("summarize", copy.toString()).code());
+            final String summary = Files.readString(copy.resolve("summary.md"));
+            assertTrue(summary.contains("lies outside the run directory"), summary);
+            assertFalse(summary.contains("fractal-w5 > fractal-w3"), summary);
+        }
+    }
+
+    @Test
+    void relationFileLinkedFromOutsideTheRunDirectoryIsNotRead() throws Exception {
+        final Path out = hierarchyRun("hier-linked",
+                "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}]}");
+        final Path file = out.resolve("relations/toy.jsonl");
+        final Path outside = work.resolve("linked-relations.jsonl");
+        Files.move(file, outside);
+        symlinkOrSkip(file, outside);
+
+        final Result print = launch("relations", out.toString(), "toy");
+        assertEquals(2, print.code());
+        assertTrue(print.err().contains("lies outside the run directory"), print.err());
+        assertEquals(0, launch("summarize", out.toString()).code());
+        final String summary = Files.readString(out.resolve("summary.md"));
+        assertTrue(summary.contains("lies outside the run directory"), summary);
+        assertFalse(summary.contains("fractal-w5 > fractal-w3"), summary);
+    }
+
     private static void rewriteTraceHeader(final Path trace, final java.util.function.Consumer<JsonObject> edit) {
         try {
             final List<String> lines = new java.util.ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
@@ -1162,6 +1332,14 @@ class ElliottResearchTest {
             Files.write(trace, lines, StandardCharsets.UTF_8);
         } catch (final IOException e) {
             throw new java.io.UncheckedIOException(e);
+        }
+    }
+
+    private static void symlinkOrSkip(final Path link, final Path target) {
+        try {
+            Files.createSymbolicLink(link, target);
+        } catch (final UnsupportedOperationException | IOException unsupported) {
+            assumeTrue(false, "symbolic links are unavailable: " + unsupported);
         }
     }
 }

@@ -3,8 +3,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
@@ -20,7 +20,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -32,7 +32,7 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         xls = new XLSIndicatorTest(this.getClass(), "RSI.xls", 10, numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(50.45, 50.30, 50.20, 50.15, 50.05, 50.06, 50.10, 50.08, 50.03, 50.07, 50.01, 50.14, 50.22,
@@ -47,6 +47,31 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         for (int i = 0; i < barCount; i++) {
             assertEquals(NaN.NaN, indicator.getValue(i));
+        }
+    }
+
+    @Test
+    public void movingSeriesMatchesUnboundedSeriesWhenReadEveryBar() {
+        // #1666: RSI on a moving series must not depend on the maximum bar
+        // count. Its MMAs continue their recurrences across head advances, so a
+        // reader of the latest bar sees the unbounded-series value.
+        double[] closes = { 44.34, 44.09, 44.15, 43.61, 44.33, 44.83, 45.10, 45.42, 45.84, 46.08, 45.89, 46.03, 45.61,
+                46.28, 46.28, 46.00, 46.03, 46.41, 46.22, 45.64, 46.21, 46.25, 45.71, 46.45 };
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(6);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(moving), 3);
+        RSIIndicator reference = new RSIIndicator(new ClosePriceIndicator(unbounded), 3);
+        for (int i = 0; i < closes.length; i++) {
+            moving.barBuilder().closePrice(closes[i]).add();
+            unbounded.barBuilder().closePrice(closes[i]).add();
+            Num expected = reference.getValue(i);
+            Num actual = rsi.getValue(i);
+            if (expected.isNaN()) {
+                assertThat(actual.isNaN()).isTrue();
+            } else {
+                assertThat(actual).isEqualByComparingTo(expected);
+            }
         }
     }
 

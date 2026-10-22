@@ -73,7 +73,7 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
         }
         Num sum = zero;
         int count = 0;
-        for (Position position : tradingRecord.getPositions()) {
+        for (Position position : tradingRecord.getContainedPositions(series)) {
             PositionEvaluation evaluation = evaluatePosition(series, position);
             if (!evaluation.validForAverage()) {
                 continue;

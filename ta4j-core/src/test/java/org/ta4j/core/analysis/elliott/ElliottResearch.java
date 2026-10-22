@@ -1391,7 +1391,7 @@ final class ElliottResearch {
             final JsonObject json = toJson();
             ElliottResearchReport.writeCoverage(dir.resolve(COVERAGE_FILE), coverage(json));
             Files.writeString(dir.resolve(RUN_FILE), GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
-            Files.writeString(dir.resolve(SUMMARY_FILE), renderSummary(dir, json, rows), StandardCharsets.UTF_8);
+            writeSummary(dir, renderSummary(dir, json, rows));
         }
 
         private void writeRunJson() throws IOException {
@@ -1569,7 +1569,7 @@ final class ElliottResearch {
         if (!Files.isDirectory(dir)) {
             throw new IllegalArgumentException("not a run directory: " + dir);
         }
-        final Path file = dir.resolve(RUN_FILE);
+        final Path file = resolveInside(dir, RUN_FILE);
         if (!Files.isRegularFile(file)) {
             throw new IllegalArgumentException("not a run directory: " + file + " is missing");
         }
@@ -1584,6 +1584,33 @@ final class ElliottResearch {
         } catch (final JsonParseException | IllegalStateException | NullPointerException | ClassCastException e) {
             throw new IllegalArgumentException(file + " is not a valid run file: " + e.getMessage());
         }
+    }
+
+    /**
+     * Resolves an artifact name recorded in a run directory. A run directory can
+     * come from someone else, so absolute names, traversal and links that leave it
+     * are refused instead of read.
+     */
+    private static Path resolveInside(final Path dir, final String relative) throws IOException {
+        final Path base = dir.toAbsolutePath().normalize();
+        final Path resolved = base.resolve(relative).normalize();
+        final boolean inside = !Path.of(relative).isAbsolute() && resolved.startsWith(base)
+                && (!Files.exists(resolved) || resolved.toRealPath().startsWith(base.toRealPath()));
+        if (!inside) {
+            throw new IllegalArgumentException("'" + relative + "' lies outside the run directory " + dir);
+        }
+        return resolved;
+    }
+
+    /**
+     * Replaces {@code summary.md} without writing through what it was: an existing
+     * symlink or hard link would otherwise redirect the regenerated Markdown to its
+     * target.
+     */
+    private static void writeSummary(final Path dir, final String markdown) throws IOException {
+        final Path file = dir.resolve(SUMMARY_FILE);
+        Files.deleteIfExists(file);
+        Files.writeString(file, markdown, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
     }
 
     private static List<CoverageRow> coverage(final JsonObject run) {
@@ -1637,9 +1664,7 @@ final class ElliottResearch {
         for (final JsonElement element : run.getAsJsonArray("datasets")) {
             final JsonObject dataset = element.getAsJsonObject();
             if (dataset.has("relations") && dataset.get("relations").isJsonObject()) {
-                relationLines.addAll(ElliottResearchRelations.summaryLines(
-                        dir.resolve(dataset.getAsJsonObject("relations").get("file").getAsString()),
-                        dataset.get("id").getAsString(), expectedSidecarHeader(run, dataset)));
+                relationLines.addAll(sidecarSummaryLines(Sidecar.RELATIONS, dir, run, dataset));
             }
         }
         if (!relationLines.isEmpty()) {
@@ -1651,9 +1676,7 @@ final class ElliottResearch {
         for (final JsonElement element : run.getAsJsonArray("datasets")) {
             final JsonObject dataset = element.getAsJsonObject();
             if (dataset.has("families") && dataset.get("families").isJsonObject()) {
-                familyLines.addAll(ElliottResearchFamilies.summaryLines(
-                        dir.resolve(dataset.getAsJsonObject("families").get("file").getAsString()),
-                        dataset.get("id").getAsString(), expectedSidecarHeader(run, dataset)));
+                familyLines.addAll(sidecarSummaryLines(Sidecar.FAMILIES, dir, run, dataset));
             }
         }
         if (!familyLines.isEmpty()) {
@@ -1669,10 +1692,43 @@ final class ElliottResearch {
     }
 
     /**
+     * Summary lines for one dataset's relation or family file. A recorded name that
+     * leaves the run directory is refused instead of read.
+     */
+    private static List<String> sidecarSummaryLines(final Sidecar sidecar, final Path dir, final JsonObject run,
+            final JsonObject dataset) {
+        final String id = dataset.get("id").getAsString();
+        final Path file;
+        try {
+            file = resolveInside(dir, dataset.getAsJsonObject(sidecar.command).get("file").getAsString());
+        } catch (final IOException | IllegalArgumentException unreadable) {
+            return List.of("- `" + id + "`: " + sidecar.fileNoun + " unreadable (" + unreadable.getMessage()
+                    + "); rerun the recipe");
+        }
+        final JsonObject expected = expectedSidecarHeader(run, dataset);
+        return sidecar == Sidecar.RELATIONS ? ElliottResearchRelations.summaryLines(file, id, expected)
+                : ElliottResearchFamilies.summaryLines(file, id, expected);
+    }
+
+    /**
+     * The relation or family file a dataset recorded, refused when its recorded
+     * name leaves the run directory.
+     */
+    private static Path sidecarFile(final Sidecar sidecar, final Path dir, final JsonObject dataset)
+            throws IOException {
+        try {
+            return resolveInside(dir, dataset.getAsJsonObject(sidecar.command).get("file").getAsString());
+        } catch (final IllegalArgumentException outside) {
+            throw new Diagnostic(
+                    sidecar.fileNoun + " " + outside.getMessage() + "; refusing to read it; rerun the recipe");
+        }
+    }
+
+    /**
      * Datasets whose real trace is listed in the run, present, complete and matches
      * {@link #expectedTraceHeader} for a real capture; only their rows may claim
-     * captured evidence. A deleted, truncated, corrupt, null-member or foreign
-     * trace is treated as not captured.
+     * captured evidence. A deleted, truncated, corrupt, null-member, foreign or
+     * out-of-directory trace is treated as not captured.
      */
     private static Set<String> verifiedRealTraces(final Path dir, final JsonObject run) {
         final Set<String> traced = new HashSet<>();
@@ -1680,19 +1736,22 @@ final class ElliottResearch {
             final JsonObject dataset = element.getAsJsonObject();
             final String id = dataset.get("id").getAsString();
             final String name = realTraceName(id);
-            final Path file = dir.resolve(name);
-            if (!dataset.getAsJsonArray("traces").contains(new JsonPrimitive(name)) || !Files.isRegularFile(file)) {
+            if (!dataset.getAsJsonArray("traces").contains(new JsonPrimitive(name))) {
                 continue;
             }
             final JsonObject expected = expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_REAL, -1, -1);
             try {
+                final Path file = resolveInside(dir, name);
+                if (!Files.isRegularFile(file)) {
+                    continue;
+                }
                 final ElliottResearchTrace.TraceFile parsed = ElliottResearchTrace.read(file, record -> false);
                 if (parsed.complete() && headerMismatch(parsed.header(), expected) == null) {
                     traced.add(id);
                 }
             } catch (final IOException | IllegalArgumentException unreadable) {
-                // An unreadable or corrupt trace is not evidence; the summary offers a
-                // recapture.
+                // An unreadable, corrupt or out-of-directory trace is not evidence; the
+                // summary offers a recapture.
             }
         }
         return traced;
@@ -1814,13 +1873,13 @@ final class ElliottResearch {
         }
         final Path dir = Path.of(args.get(0)).toAbsolutePath().normalize();
         final JsonObject run = loadRun(dir);
-        final Path comparisons = dir.resolve(COMPARISONS_FILE);
+        final Path comparisons = resolveInside(dir, COMPARISONS_FILE);
         if (!Files.isRegularFile(comparisons)) {
             throw new Diagnostic(COMPARISONS_FILE + " is missing in " + dir + " (run status "
                     + run.get("status").getAsString() + "); the run did not finish, rerun the recipe");
         }
         final List<Row> rows = ElliottResearchReport.readCsv(comparisons);
-        Files.writeString(dir.resolve(SUMMARY_FILE), renderSummary(dir, run, rows), StandardCharsets.UTF_8);
+        writeSummary(dir, renderSummary(dir, run, rows));
         out.println("Summary: " + dir.resolve(SUMMARY_FILE));
         return 0;
     }
@@ -1911,7 +1970,7 @@ final class ElliottResearch {
             throw new Diagnostic("dataset '" + datasetId + "' recorded no " + sidecar.noun + " (status "
                     + dataset.get("status").getAsString() + "); " + sidecar.absentCause + " or the dataset failed");
         }
-        final Path file = dir.resolve(dataset.getAsJsonObject(sidecar.command).get("file").getAsString());
+        final Path file = sidecarFile(sidecar, dir, dataset);
         if (!Files.isRegularFile(file)) {
             throw new Diagnostic(sidecar.fileNoun + " " + file + " is missing; rerun the recipe");
         }
@@ -1988,7 +2047,7 @@ final class ElliottResearch {
             throw new Diagnostic("dataset '" + key.dataset() + "' is " + dataset.get("status").getAsString() + ": "
                     + dataset.get("message").getAsString() + " (rerun the recipe to recompute it)");
         }
-        final Path comparisons = dir.resolve(COMPARISONS_FILE);
+        final Path comparisons = resolveInside(dir, COMPARISONS_FILE);
         if (!Files.isRegularFile(comparisons)) {
             throw new Diagnostic(COMPARISONS_FILE + " is missing in " + dir + "; rerun the recipe");
         }
@@ -2352,7 +2411,13 @@ final class ElliottResearch {
             if (relative == null) {
                 return null;
             }
-            final Path file = dir.resolve(relative);
+            final Path file;
+            try {
+                file = resolveInside(dir, relative);
+            } catch (final IllegalArgumentException outside) {
+                throw new Diagnostic(label + " trace " + outside.getMessage()
+                        + "; refusing to read it. Recapture with:\n  " + recapture);
+            }
             if (!Files.isRegularFile(file)) {
                 return null;
             }

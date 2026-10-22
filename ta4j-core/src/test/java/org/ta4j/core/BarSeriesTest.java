@@ -3,13 +3,13 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
@@ -18,9 +18,9 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.stream.IntStream;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -33,6 +33,7 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -48,7 +49,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         defaultName = "Series Name";
 
@@ -223,14 +224,18 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertNumEquals(5, defaultSeries.getBar(1).getClosePrice());
     }
 
-    @Test(expected = IndexOutOfBoundsException.class)
+    @Test
     public void getBarWithNegativeIndexShouldThrowExceptionTest() {
-        defaultSeries.getBar(-1);
+        assertThrows(IndexOutOfBoundsException.class, () -> {
+            defaultSeries.getBar(-1);
+        });
     }
 
-    @Test(expected = IndexOutOfBoundsException.class)
+    @Test
     public void getBarWithIndexGreaterThanBarCountShouldThrowExceptionTest() {
-        defaultSeries.getBar(10);
+        assertThrows(IndexOutOfBoundsException.class, () -> {
+            defaultSeries.getBar(10);
+        });
     }
 
     @Test
@@ -257,14 +262,18 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(defaultSeries.getEndIndex(), subSeries.getEndIndex());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void subSeriesCreationWithNegativeIndexTest() {
-        defaultSeries.getSubSeries(-1000, 1000);
+        assertThrows(IllegalArgumentException.class, () -> {
+            defaultSeries.getSubSeries(-1000, 1000);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void subSeriesWithWrongArgumentsTest() {
-        defaultSeries.getSubSeries(10, 9);
+        assertThrows(IllegalArgumentException.class, () -> {
+            defaultSeries.getSubSeries(10, 9);
+        });
     }
 
     @Test
@@ -272,13 +281,15 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         try {
             subSeries.setMaximumBarCount(10);
         } catch (Exception e) {
-            Assert.fail("setMaximumBarCount onConstrained series should not throw Exception");
+            Assertions.fail("setMaximumBarCount onConstrained series should not throw Exception");
         }
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void negativeMaximumBarCountShouldThrowExceptionTest() {
-        defaultSeries.setMaximumBarCount(-1);
+        assertThrows(IllegalArgumentException.class, () -> {
+            defaultSeries.setMaximumBarCount(-1);
+        });
     }
 
     @Test
@@ -296,15 +307,19 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(3, defaultSeries.getBarCount());
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void addNullBarShouldThrowExceptionTest() {
-        defaultSeries.addBar(null);
+        assertThrows(NullPointerException.class, () -> {
+            defaultSeries.addBar(null);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void addBarWithEndTimePriorToSeriesEndTimeShouldThrowExceptionTest() {
-        defaultSeries.addBar(
-                defaultSeries.barBuilder().endTime(Instant.parse("2000-01-01T00:00:00Z")).closePrice(99d).build());
+        assertThrows(IllegalArgumentException.class, () -> {
+            defaultSeries.addBar(
+                    defaultSeries.barBuilder().endTime(Instant.parse("2000-01-01T00:00:00Z")).closePrice(99d).build());
+        });
     }
 
     @Test
@@ -380,22 +395,26 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertNumEquals(series.numFactory().numOf(100), series.getLastBar().getClosePrice());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void wrongBarTypeDoubleTest() {
-        var series = new BaseBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
-        series.addBar(new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
-                .endTime(Instant.now())
-                .closePrice(DecimalNumFactory.getInstance().one())
-                .build());
+        assertThrows(IllegalArgumentException.class, () -> {
+            var series = new BaseBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+            series.addBar(new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                    .endTime(Instant.now())
+                    .closePrice(DecimalNumFactory.getInstance().one())
+                    .build());
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void wrongBarTypeBigDecimalTest() {
-        var series = new BaseBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
-        series.addBar(new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
-                .endTime(Instant.now())
-                .closePrice(DoubleNumFactory.getInstance().one())
-                .build());
+        assertThrows(IllegalArgumentException.class, () -> {
+            var series = new BaseBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
+            series.addBar(new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                    .endTime(Instant.now())
+                    .closePrice(DoubleNumFactory.getInstance().one())
+                    .build());
+        });
     }
 
     @Test

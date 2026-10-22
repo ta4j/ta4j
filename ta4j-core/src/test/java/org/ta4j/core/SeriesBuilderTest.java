@@ -3,13 +3,13 @@
  */
 package org.ta4j.core;
 
-import static junit.framework.TestCase.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.Instant;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
