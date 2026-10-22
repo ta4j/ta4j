@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -880,7 +879,7 @@ class ElliottResearchTest {
     }
 
     @Test
-    void traceLinkedFromOutsideTheRunDirectoryIsNotEvidence() throws Exception {
+    public void traceLinkedFromOutsideTheRunDirectoryIsNotEvidence() throws Exception {
         // Regression: a trace that was a link to a file elsewhere was read as the
         // run's own evidence by both summarize and inspect.
         final Path outside = work.resolve("linked-target-real.jsonl");
@@ -889,7 +888,7 @@ class ElliottResearchTest {
         copyTree(smokeRun, copy);
         final Path trace = copy.resolve("traces/smoke-real.jsonl");
         Files.delete(trace);
-        symlinkOrSkip(trace, outside);
+        Files.createSymbolicLink(trace, outside);
 
         final Result summarize = launch("summarize", copy.toString());
         assertEquals(0, summarize.code(), summarize.err());
@@ -901,7 +900,7 @@ class ElliottResearchTest {
     }
 
     @Test
-    void summarizeReplacesALinkedSummaryInsteadOfWritingThroughIt() throws Exception {
+    public void summarizeReplacesALinkedSummaryInsteadOfWritingThroughIt() throws Exception {
         // Regression: summarize wrote summary.md through an existing link, so a
         // received run could make it overwrite any file the link pointed at.
         final Path copy = work.resolve("linked-summary");
@@ -910,7 +909,7 @@ class ElliottResearchTest {
         Files.writeString(victim, "keep", StandardCharsets.UTF_8);
         final Path summary = copy.resolve("summary.md");
         Files.delete(summary);
-        symlinkOrSkip(summary, victim);
+        Files.createSymbolicLink(summary, victim);
 
         final Result result = launch("summarize", copy.toString());
         assertEquals(0, result.code(), result.err());
@@ -1210,14 +1209,6 @@ class ElliottResearchTest {
             Files.write(trace, lines, StandardCharsets.UTF_8);
         } catch (final IOException e) {
             throw new java.io.UncheckedIOException(e);
-        }
-    }
-
-    private static void symlinkOrSkip(final Path link, final Path target) {
-        try {
-            Files.createSymbolicLink(link, target);
-        } catch (final UnsupportedOperationException | IOException unsupported) {
-            assumeTrue(false, "symbolic links are unavailable: " + unsupported);
         }
     }
 }
