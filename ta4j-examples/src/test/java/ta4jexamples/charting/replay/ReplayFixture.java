@@ -18,6 +18,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonParser;
 
 /**
  * Writes a small but complete {@code elliott-research-run/1} bundle in the
@@ -160,11 +161,12 @@ final class ReplayFixture {
             final JsonArray datasets = new JsonArray();
             datasets.add(dataset);
             run.add("datasets", datasets);
-            Files.writeString(directory.resolve("run.json"), run.toString(), StandardCharsets.UTF_8);
             Files.writeString(directory.resolve("comparisons.csv"),
                     HEADER + "\n" + row(RULES_KEY, "all-rules", "wave2-origin;wave3-not-shortest") + "\n"
                             + row(TOPOLOGY_KEY, "topology-only", "") + "\n" + competingRow() + "\n",
                     StandardCharsets.UTF_8);
+            run.addProperty("comparisonsSha256", ReplayArtifact.sha256(Files.readAllBytes(directory.resolve("comparisons.csv"))));
+            Files.writeString(directory.resolve("run.json"), run.toString(), StandardCharsets.UTF_8);
             writeTrace(directory.resolve("traces/d1-real.jsonl"), options, false);
             if (options.nullTrace) {
                 writeTrace(directory.resolve("traces/d1-null.jsonl"), options, true);
@@ -173,6 +175,13 @@ final class ReplayFixture {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    static void refreshComparisonsDigest(final Path directory) throws IOException {
+        final Path metadata = directory.resolve("run.json");
+        final JsonObject run = JsonParser.parseString(Files.readString(metadata)).getAsJsonObject();
+        run.addProperty("comparisonsSha256", ReplayArtifact.sha256(Files.readAllBytes(directory.resolve("comparisons.csv"))));
+        Files.writeString(metadata, run.toString(), StandardCharsets.UTF_8);
     }
 
     private static String row(final String key, final String mode, final String rules) {

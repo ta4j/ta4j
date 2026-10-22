@@ -404,6 +404,7 @@ class ReplaySessionTest {
                 + ReplayFixture.RULES_KEY.replace("|h2|", "|competing|")
                 + ",d1,FIXTURE,competing,all-rules,MOTIVE_5,,fractal-w5,kernel-topology,calibration,ambiguousRate,20,0.5\n",
                 java.nio.charset.StandardCharsets.UTF_8);
+        ReplayFixture.refreshComparisonsDigest(run);
         final String competing = assertThrows(ReplayArtifactException.class,
                 () -> openNull(run, ReplayFixture.RULES_KEY.replace("|h2|", "|competing|"))).getMessage();
         assertTrue(competing.contains("records only h1 and h2 rows"), competing);

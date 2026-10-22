@@ -273,8 +273,28 @@ class ReplayArtifactTest {
         final Path run = ReplayFixture.write(temp.resolve("run"));
         final Path csv = run.resolve("comparisons.csv");
         Files.writeString(csv, Files.readString(csv).replace(",20,0.5", ",,0.5"), StandardCharsets.UTF_8);
+        ReplayFixture.refreshComparisonsDigest(run);
 
         assertEquals(0, ReplayArtifact.open(run).comparison(ReplayFixture.RULES_KEY).nullBlockLength());
+    }
+
+    @Test
+    public void comparisonRowsRequireTheRecordedContentDigest() throws IOException {
+        for (final String corruption : List.of("foreign-comparisons", "missing-digest")) {
+            final Path run = ReplayFixture.write(temp.resolve(corruption));
+            if ("foreign-comparisons".equals(corruption)) {
+                final Path csv = run.resolve("comparisons.csv");
+                Files.writeString(csv, Files.readString(csv).replace(",0.5", ",0.6"), StandardCharsets.UTF_8);
+            } else {
+                final Path metadata = run.resolve("run.json");
+                final JsonObject json = JsonParser.parseString(Files.readString(metadata)).getAsJsonObject();
+                json.remove("comparisonsSha256");
+                Files.writeString(metadata, json.toString(), StandardCharsets.UTF_8);
+            }
+            final String message = assertThrows(ReplayArtifactException.class, () -> ReplayArtifact.open(run)).getMessage();
+            assertTrue(message.contains("comparisons.csv"), message);
+            assertTrue(message.contains("SHA-256"), message);
+        }
     }
 
     @Test

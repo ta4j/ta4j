@@ -864,8 +864,7 @@ class ElliottResearchTest {
             assertEquals(0, result.code(), result.err());
             final JsonObject coverage = exploreCoverage(out);
             final boolean partial = missingDays > 7;
-            assertEquals(partial ? "partial" : "complete", coverage.get("status").getAsString(),
-                    coverage.toString());
+            assertEquals(partial ? "partial" : "complete", coverage.get("status").getAsString(), coverage.toString());
             final String message = coverage.get("message").getAsString();
             assertEquals(partial, message.contains("partition calibration starts at"), message);
             assertEquals(partial, message.contains("partition holdout ends at"), message);

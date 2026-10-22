@@ -115,7 +115,7 @@ final class ReplayArtifact {
             throw new ReplayArtifactException(
                     "missing comparisons.csv in " + dir + "; comparison keys cannot be resolved. " + REGENERATE);
         }
-        final ReplayArtifact artifact = new ReplayArtifact(dir, run, readComparisons(csv));
+        final ReplayArtifact artifact = new ReplayArtifact(dir, run, readComparisons(csv, run));
         final JsonArray array = run.getAsJsonArray("datasets");
         if (array == null) {
             throw new ReplayArtifactException("run.json in " + dir + " has no datasets array. " + REGENERATE);
@@ -426,16 +426,20 @@ final class ReplayArtifact {
         return series;
     }
 
-    private static List<ComparisonRow> readComparisons(final Path csv) {
+    private static List<ComparisonRow> readComparisons(final Path csv, final JsonObject run) {
+        final JsonElement digest = run.get("comparisonsSha256");
+        if (digest == null || !digest.isJsonPrimitive() || !digest.getAsJsonPrimitive().isString()) {
+            throw new ReplayArtifactException("comparisons.csv has no recorded SHA-256 in run.json. " + REGENERATE);
+        }
         final List<List<String>> rows;
-        try (Reader reader = Files.newBufferedReader(csv, StandardCharsets.UTF_8)) {
-            final StringBuilder text = new StringBuilder();
-            final char[] buffer = new char[1 << 14];
-            int read;
-            while ((read = reader.read(buffer)) > 0) {
-                text.append(buffer, 0, read);
+        try {
+            final byte[] bytes = Files.readAllBytes(csv);
+            if (!sha256(bytes).equals(digest.getAsString())) {
+                throw new ReplayArtifactException(
+                        "comparisons.csv SHA-256 differs from run.json; the artifact bundle was modified or mixed. "
+                                + REGENERATE);
             }
-            rows = parseCsv(text.toString());
+            rows = parseCsv(new String(bytes, StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new ReplayArtifactException("cannot read " + csv + ": " + e.getMessage(), e);
         }
