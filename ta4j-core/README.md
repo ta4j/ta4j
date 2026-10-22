@@ -215,9 +215,11 @@ are never pooled. `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements. Every observation must match its trace
 header's dataset and null-member coordinates and carry a status defined for its
 record kind; required scope labels and as-of timestamps must be nonblank.
-Topology status and candidate counts must satisfy the kernel's bounds (`COMPLETE`
-has exactly one candidate, `AMBIGUOUS` has 2-64), and `FORMING` requires a wave
-direction. Each candidate's rules must exactly match `activeRules` in order;
+Topology status, candidate count and direction must agree: `COMPLETE` has one
+candidate and its direction, `AMBIGUOUS` has 2-64 candidates and a null direction,
+and all other states have no candidates. `FORMING` requires a wave direction;
+the remaining states have a null direction.
+Each candidate's rules must exactly match `activeRules` in order;
 scores are null except for `PASS`, whose recorded score, if present, is in `[0, 1]`.
 Pivots require nonnegative indices, finite prices and valid high/low types, with
 confirmation no earlier than the pivot. Candidate placement must have the

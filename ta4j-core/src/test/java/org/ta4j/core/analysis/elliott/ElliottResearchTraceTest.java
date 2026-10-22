@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.HexFormat;
@@ -835,7 +836,7 @@ class ElliottResearchTraceTest {
                 for (final int count : List.of(1, 2, 64)) {
                     final JsonObject record = original.deepCopy();
                     record.addProperty("grammar", grammar.name());
-                    record.addProperty("direction", direction.name());
+                    record.add("direction", count == 1 ? new JsonPrimitive(direction.name()) : JsonNull.INSTANCE);
                     record.addProperty("status", count == 1 ? "COMPLETE" : "AMBIGUOUS");
                     final JsonObject candidate = firstCandidate(record);
                     candidate.addProperty("direction", direction.name());
@@ -857,6 +858,60 @@ class ElliottResearchTraceTest {
                     Files.write(copy, changed, StandardCharsets.UTF_8);
                     assertEquals(record, ElliottResearchTrace.read(copy).records().get(0));
                     assertTrue(ElliottResearchTrace.read(copy, ignored -> false).records().isEmpty());
+                }
+            }
+        }
+    }
+
+    @Test
+    public void persistedTopologyStatesMatchTheModelBeforeRetention() throws Exception {
+        final List<String> lines = Files.readAllLines(domainTrace("topology-states.jsonl"), StandardCharsets.UTF_8);
+        final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        final TopologyCandidate modelCandidate = new TopologyCandidate(TopologyGrammar.CYCLE_5_3,
+                WaveDirection.BULLISH, alternating(10, 20, 14, 26, 18, 32, 24, 30, 20));
+        final WaveDirection[] directions = { null, WaveDirection.BULLISH, WaveDirection.BEARISH };
+        for (final TopologyStatus status : TopologyStatus.values()) {
+            for (final int count : List.of(0, 1, 2, 64, 65)) {
+                for (final WaveDirection direction : directions) {
+                    final boolean validCount = switch (status) {
+                    case COMPLETE -> count == 1;
+                    case AMBIGUOUS -> count >= 2 && count <= 64;
+                    default -> count == 0;
+                    };
+                    final boolean validDirection = switch (status) {
+                    case COMPLETE -> direction == WaveDirection.BULLISH;
+                    case FORMING -> direction != null;
+                    default -> direction == null;
+                    };
+                    final List<TopologyCandidate> modelCandidates = Collections.nCopies(count, modelCandidate);
+                    final int start = status == TopologyStatus.FORMING ? 0 : -1;
+                    final int end = status == TopologyStatus.FORMING ? 8 : -1;
+                    final JsonObject record = original.deepCopy();
+                    record.addProperty("status", status.name());
+                    record.add("direction", direction == null ? JsonNull.INSTANCE : new JsonPrimitive(direction.name()));
+                    final JsonArray candidates = new JsonArray();
+                    for (int i = 0; i < count; i++) {
+                        candidates.add(firstCandidate(original).deepCopy());
+                    }
+                    record.add("candidates", candidates);
+                    if (validCount && validDirection) {
+                        assertEquals(direction, new TopologyAnalysis(status, direction, modelCandidates, "", start, end)
+                                .direction());
+                        final List<String> changed = new ArrayList<>(lines);
+                        changed.set(1, record.toString());
+                        final Path copy = directory.resolve("state-" + status + "-" + count + "-" + direction + ".jsonl");
+                        Files.write(copy, changed, StandardCharsets.UTF_8);
+                        assertEquals(record, ElliottResearchTrace.read(copy).records().get(0));
+                        assertTrue(ElliottResearchTrace.read(copy, ignored -> false).records().isEmpty());
+                    } else {
+                        final Class<? extends RuntimeException> error = validCount && status == TopologyStatus.FORMING
+                                && direction == null ? NullPointerException.class : IllegalArgumentException.class;
+                        assertThrows(error,
+                                () -> new TopologyAnalysis(status, direction, modelCandidates, "", start, end));
+                        final String field = status == TopologyStatus.FORMING && direction == null || validCount
+                                ? "direction" : "candidates";
+                        assertMalformedAtLine2(lines, record, field);
+                    }
                 }
             }
         }

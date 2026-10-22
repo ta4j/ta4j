@@ -518,9 +518,10 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             }
         }
         final String status = record.get("status").getAsString();
+        TopologyStatus topologyStatus = null;
         if ("topology".equals(kind)) {
             try {
-                TopologyStatus.valueOf(status);
+                topologyStatus = TopologyStatus.valueOf(status);
             } catch (final IllegalArgumentException e) {
                 throw corrupt(path, lineNumber, where + "status " + record.get("status") + " is not a topology status");
             }
@@ -556,14 +557,15 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             requirePlacement(path, lineNumber, pivots.get(i), where + "pivots[" + i + "]", true);
         }
         final JsonArray candidates = requireArray(path, lineNumber, record, "candidates", where);
-        if ("topology".equals(kind)) {
+        if (topologyStatus != null) {
             try {
-                TopologyAnalysis.validateCandidateCount(TopologyStatus.valueOf(status), candidates.size());
+                TopologyAnalysis.validateCandidateCount(topologyStatus, candidates.size());
             } catch (final IllegalArgumentException e) {
                 throw corrupt(path, lineNumber, where + "candidates: " + e.getMessage());
             }
         }
         TopologyGrammar grammar = null;
+        WaveDirection candidateDirection = null;
         for (int i = 0; i < candidates.size(); i++) {
             final String at = where + "candidates[" + i + "]";
             final JsonObject candidate = requireObject(path, lineNumber, candidates.get(i), at);
@@ -633,7 +635,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                 grammar = requireGrammar(path, lineNumber, record, where);
             }
             try {
-                WaveDirection.valueOf(candidate.get("direction").getAsString());
+                candidateDirection = WaveDirection.valueOf(candidate.get("direction").getAsString());
             } catch (final IllegalArgumentException e) {
                 throw corrupt(path, lineNumber, at + ".direction is not a wave direction");
             }
@@ -643,8 +645,17 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                 throw corrupt(path, lineNumber, at + ".placement: " + e.getMessage());
             }
         }
-        if ("topology".equals(kind) && grammar == null) {
-            requireGrammar(path, lineNumber, record, where);
+        if (topologyStatus != null) {
+            if (grammar == null) {
+                requireGrammar(path, lineNumber, record, where);
+            }
+            try {
+                TopologyAnalysis.validateDirection(topologyStatus,
+                        direction.isJsonNull() ? null : WaveDirection.valueOf(direction.getAsString()),
+                        candidateDirection);
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber, where + "direction: " + e.getMessage());
+            }
         }
         if ("alternative".equals(kind)) {
             requireTexts(path, lineNumber, record, "labels", where);

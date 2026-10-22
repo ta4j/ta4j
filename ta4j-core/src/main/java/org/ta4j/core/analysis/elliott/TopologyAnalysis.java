@@ -10,8 +10,10 @@ import java.util.Objects;
  * Immutable result of one as-of topology evaluation.
  *
  * @param status               explicit outcome; never a forced count
- * @param direction            declared direction of reported candidates;
- *                             {@code null} when no candidates are reported
+ * @param direction            the sole candidate's direction for
+ *                             {@link TopologyStatus#COMPLETE}, the forming
+ *                             suffix's direction for {@link TopologyStatus#FORMING},
+ *                             otherwise {@code null}
  * @param candidates           bounded candidate list; non-empty only for
  *                             {@link TopologyStatus#COMPLETE} and
  *                             {@link TopologyStatus#AMBIGUOUS}
@@ -34,8 +36,9 @@ record TopologyAnalysis(TopologyStatus status, WaveDirection direction, List<Top
         candidates = candidates == null ? List.of() : List.copyOf(candidates);
         Objects.requireNonNull(explanation, "explanation");
         validateCandidateCount(status, candidates.size());
+        validateDirection(status, direction,
+                status == TopologyStatus.COMPLETE ? candidates.get(0).direction() : null);
         if (status == TopologyStatus.FORMING) {
-            Objects.requireNonNull(direction, "FORMING direction");
             if (formingStartBarIndex < 0 || formingEndBarIndex < formingStartBarIndex) {
                 throw new IllegalArgumentException("FORMING requires an ordered pivot range");
             }
@@ -53,6 +56,22 @@ record TopologyAnalysis(TopologyStatus status, WaveDirection direction, List<Top
         }
         if (status == TopologyStatus.AMBIGUOUS && count < 2) {
             throw new IllegalArgumentException("AMBIGUOUS requires at least two tied candidates");
+        }
+        if (status != TopologyStatus.COMPLETE && status != TopologyStatus.AMBIGUOUS && count != 0) {
+            throw new IllegalArgumentException(status + " cannot carry candidates");
+        }
+    }
+
+    static void validateDirection(final TopologyStatus status, final WaveDirection direction,
+            final WaveDirection candidateDirection) {
+        if (status == TopologyStatus.COMPLETE) {
+            if (direction == null || direction != candidateDirection) {
+                throw new IllegalArgumentException("COMPLETE direction must match its candidate");
+            }
+        } else if (status == TopologyStatus.FORMING) {
+            Objects.requireNonNull(direction, "FORMING direction");
+        } else if (direction != null) {
+            throw new IllegalArgumentException(status + " cannot carry a direction");
         }
     }
 
