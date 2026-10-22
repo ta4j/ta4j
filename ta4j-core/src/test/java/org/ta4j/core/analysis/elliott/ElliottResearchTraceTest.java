@@ -460,8 +460,7 @@ class ElliottResearchTraceTest {
                 for (final String status : List.of("bogus", "", topology ? "complete" : "COMPLETE")) {
                     final JsonObject damaged = original.deepCopy();
                     damaged.addProperty("status", status);
-                    final IllegalArgumentException error = assertMalformedAtLine(lines, damaged, index + 1,
-                            "status");
+                    final IllegalArgumentException error = assertMalformedAtLine(lines, damaged, index + 1, "status");
                     assertTrue(error.getMessage().contains(damaged.get("status").toString()), error.getMessage());
                 }
             }

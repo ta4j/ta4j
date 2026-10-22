@@ -183,7 +183,10 @@ daily candles and study settings). Candle starts must share a daily cadence;
 missing whole days are allowed, but intraday or duplicate starts are rejected.
 `--trace off|real|selected-null-member` with
 `--block L --member M` controls evidence capture; `--overwrite` reuses an existing
-run directory. `help` lists every option.
+run directory. For `explore --overwrite`, move the source candles and recipe outside
+managed artifact paths first, including paths reached through symbolic links; ordinary
+unmanaged files such as `candles.json` and `recipe.json` inside the run directory are preserved.
+`help` lists every option.
 
 A run directory holds `run.json` (revision and whether the worktree was dirty,
 recipe, configuration, dataset
@@ -194,6 +197,9 @@ metric and null block length), `coverage.csv`, `summary.md`, `traces/`
 a second run into the same directory is refused. `summarize` validates run metadata
 before creating a lock file, then holds the same lock while reading evidence and
 replacing artifacts, refusing while a run is writing.
+Completed metadata binds `comparisons.csv` with `comparisonsSha256`; `summarize` and
+`inspect` verify that digest before reading rows. Modified, mixed or older unbound
+bundles must be regenerated rather than paired with the recorded provenance.
 Each comparison sets the observed value against a
 null reference band of member-level 2.5%-97.5% quantiles and an empirical
 reference rank; neither is a confidence interval or a p-value, and partitions
@@ -203,12 +209,14 @@ header's dataset and null-member coordinates and carry a status defined for its
 record kind. When the trace is missing,
 truncated or corrupt, inspection exits with status 2 and prints the recapture
 command, quoted for a POSIX shell.
-The command carries `--expect-fingerprint` (and, for `explore`, `--expect-source-sha256`),
-so a recapture against a changed configuration or edited candles fails instead of
-tracing different data. If no trace was captured and the calibration tables cover
-the requested row, `inspect` prints its calibration estimates with a "real trace
-not captured" note and exits with status 0. Other detector, H2 and competing rows
-still require a trace. Coverage marks a partition `partial` when it has no bars,
+The command carries `--expect-revision`, `--expect-fingerprint` and, for `explore`,
+`--expect-source-sha256`, so a recapture against different code, a changed configuration
+or edited candles fails instead of tracing different evidence. Check out the recorded
+revision in a separate worktree before recapturing an archived run.
+If no trace was captured and the calibration tables cover the requested row, `inspect`
+prints its calibration estimates with a "real trace not captured" note and exits with
+status 0. Other detector, H2 and competing rows still require a trace.
+Coverage marks a partition `partial` when it has no bars,
 an internal gap, or missing data at either partition boundary longer than seven
 bar periods, including the outermost requested boundaries; intentionally unrequested
 intervals between partitions do not count.

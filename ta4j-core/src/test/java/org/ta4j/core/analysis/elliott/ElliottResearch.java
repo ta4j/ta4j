@@ -125,6 +125,11 @@ final class ElliottResearch {
     private static final String SUMMARY_FILE = "summary.md";
     private static final String REPORTS_DIR = "reports";
     private static final String TRACES_DIR = "traces";
+    private static final List<String> MANAGED_FILES = List.of(RUN_FILE, COMPARISONS_FILE, COVERAGE_FILE, SUMMARY_FILE,
+            ElliottResearchOutcomes.EVENTS_FILE, ElliottResearchOutcomes.OUTCOMES_FILE, ElliottResearchOutcomes.SUMMARY_FILE,
+            ElliottResearchCalibration.TABLES_FILE, ElliottResearchCalibration.PREDICTIONS_FILE,
+            ElliottResearchCalibration.SUMMARY_FILE, ElliottResearchCalibration.RELIABILITY_FILE);
+    private static final List<String> MANAGED_DIRECTORIES = List.of(REPORTS_DIR, TRACES_DIR);
     /**
      * Consecutive in-window bars further apart than this many bar periods mark
      * coverage partial.
@@ -215,6 +220,7 @@ final class ElliottResearch {
                 "      --source FILE --recipe FILE   candle JSON and recipe JSON (explore only, both required)",
                 "      --expect-fingerprint FP       fail unless the run's configuration fingerprint is FP",
                 "      --expect-source-sha256 SHA    fail unless the explore source candles hash to SHA",
+                "      --expect-revision REV        fail unless the current code revision is REV",
                 "  summarize <runDir>       regenerate summary.md from the recorded artifacts",
                 "  inspect <runDir> <key> [--as-of IDX] [--candidate KEY] [--limit N]",
                 "          [--rank enrollment|probability] [--retrospective]",
@@ -250,7 +256,7 @@ final class ElliottResearch {
     // ------------------------------------------------------------------ run
 
     private record RunOptions(String recipe, Path out, boolean overwrite, String trace, Integer block, Integer member,
-            Path source, Path recipeFile, String expectFingerprint, String expectSourceSha256) {
+            Path source, Path recipeFile, String expectFingerprint, String expectSourceSha256, String expectRevision) {
     }
 
     private static RunOptions parseRunOptions(final List<String> args) {
@@ -272,7 +278,7 @@ final class ElliottResearch {
                 overwrite = true;
             } else if (Set
                     .of("--out", "--trace", "--block", "--member", "--source", "--recipe", "--expect-fingerprint",
-                            "--expect-source-sha256")
+                            "--expect-source-sha256", "--expect-revision")
                     .contains(option)) {
                 if (index + 1 >= args.size() || args.get(index + 1).startsWith("--")) {
                     throw new IllegalArgumentException("option " + option + " requires a value");
@@ -312,7 +318,7 @@ final class ElliottResearch {
         return new RunOptions(recipe, values.containsKey("--out") ? Path.of(values.get("--out")) : null, overwrite,
                 trace, block, member, values.containsKey("--source") ? Path.of(values.get("--source")) : null,
                 values.containsKey("--recipe") ? Path.of(values.get("--recipe")) : null,
-                values.get("--expect-fingerprint"), values.get("--expect-source-sha256"));
+                values.get("--expect-fingerprint"), values.get("--expect-source-sha256"), values.get("--expect-revision"));
     }
 
     private static Integer integerOption(final Map<String, String> values, final String option) {
@@ -764,6 +770,11 @@ final class ElliottResearch {
     private static int runCommand(final List<String> args, final PrintStream out, final PrintStream err)
             throws IOException {
         final RunOptions options = parseRunOptions(args);
+        final String revision = gitRevision();
+        if (options.expectRevision() != null && !options.expectRevision().equals(revision)) {
+            throw new IllegalArgumentException("current revision is " + revision + ", not the recorded revision "
+                    + options.expectRevision() + "; check out the recorded revision in a separate worktree before recapturing");
+        }
         final Setup setup;
         final Recipe recipe;
         final RunPlan plan;
@@ -840,9 +851,13 @@ final class ElliottResearch {
                 : Path.of("target", "elliott-research", options.recipe() + "-" + STAMP.format(Instant.now())))
                 .toAbsolutePath()
                 .normalize();
+        if (options.overwrite() && RECIPE_EXPLORE.equals(options.recipe())) {
+            final Path realDir = Files.exists(dir) ? dir.toRealPath() : dir;
+            requirePreservedInput(dir, realDir, options.source());
+            requirePreservedInput(dir, realDir, options.recipeFile());
+        }
         // Probe provenance before claiming the directory: an output path inside the
         // checkout would otherwise mark a clean worktree dirty with our own lock file.
-        final String revision = gitRevision();
         final String worktree = gitWorktreeState();
         try (FileChannel lock = reserveRunDirectory(dir, options.overwrite())) {
             final Run run = new Run(dir, options, setup, recipe, revision, worktree);
@@ -958,17 +973,35 @@ final class ElliottResearch {
         return true;
     }
 
+    private static void requirePreservedInput(final Path dir, final Path realDir, final Path input) throws IOException {
+        if (isManagedArtifact(dir, input.toAbsolutePath().normalize()) || isManagedArtifact(realDir, input.toRealPath())) {
+            throw new IllegalArgumentException("--overwrite would remove explore input " + input
+                    + "; move --source and --recipe outside the run's managed artifact paths before rerunning");
+        }
+    }
+
+    private static boolean isManagedArtifact(final Path dir, final Path input) {
+        for (final String file : MANAGED_FILES) {
+            if (input.equals(dir.resolve(file))) {
+                return true;
+            }
+        }
+        for (final String directory : MANAGED_DIRECTORIES) {
+            if (input.startsWith(dir.resolve(directory))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static void prepareRunDirectory(final Path dir, final boolean overwrite) throws IOException {
         if (checkRunDirectory(dir, overwrite)) {
-            for (final String file : List.of(RUN_FILE, COMPARISONS_FILE, COVERAGE_FILE, SUMMARY_FILE,
-                    ElliottResearchOutcomes.EVENTS_FILE, ElliottResearchOutcomes.OUTCOMES_FILE,
-                    ElliottResearchOutcomes.SUMMARY_FILE, ElliottResearchCalibration.TABLES_FILE,
-                    ElliottResearchCalibration.PREDICTIONS_FILE, ElliottResearchCalibration.SUMMARY_FILE,
-                    ElliottResearchCalibration.RELIABILITY_FILE)) {
+            for (final String file : MANAGED_FILES) {
                 Files.deleteIfExists(dir.resolve(file));
             }
-            deleteTree(dir.resolve(REPORTS_DIR));
-            deleteTree(dir.resolve(TRACES_DIR));
+            for (final String directory : MANAGED_DIRECTORIES) {
+                deleteTree(dir.resolve(directory));
+            }
         }
         Files.createDirectories(dir.resolve(REPORTS_DIR));
         Files.createDirectories(dir.resolve(TRACES_DIR));
@@ -1315,6 +1348,7 @@ final class ElliottResearch {
             }
             outcomeRecords = ElliottResearchOutcomes.recordCounts(results);
             final JsonObject json = toJson();
+            json.addProperty("comparisonsSha256", sha256(Files.readAllBytes(dir.resolve(COMPARISONS_FILE))));
             ElliottResearchReport.writeCoverage(dir.resolve(COVERAGE_FILE), coverage(json));
             // run.json declares the final status and the outcome and calibration record
             // counts, so it is written after every artifact it vouches for: a run
@@ -1808,9 +1842,9 @@ final class ElliottResearch {
                     .getAsString();
             args.append(" --expect-source-sha256 ").append(sourceSha256);
         }
-        // The recorded identity makes the recapture fail on edited inputs instead of
-        // pairing a trace from different data or settings with this run's rows.
+        // Bind the recapture to the original code, inputs and settings.
         args.append(" --expect-fingerprint ").append(run.getAsJsonObject("identity").get("fingerprint").getAsString());
+        args.append(" --expect-revision ").append(run.get("revision").getAsString());
         args.append(" --out ").append(execQuoted(displayPath(dir) + "-recapture"));
         return "mvn -q -pl ta4j-core test-compile exec:java " + shellQuoted("-Dexec.args=" + args);
     }
@@ -1828,11 +1862,25 @@ final class ElliottResearch {
                 throw new Diagnostic(COMPARISONS_FILE + " is missing in " + dir + " (run status "
                         + run.get("status").getAsString() + "); the run did not finish, rerun the recipe");
             }
-            final List<Row> rows = ElliottResearchReport.readCsv(comparisons);
+            final List<Row> rows = readVerifiedComparisons(comparisons, run);
             writeSummary(dir, renderSummary(dir, run, rows));
             out.println("Summary: " + dir.resolve(SUMMARY_FILE));
             return 0;
         }
+    }
+
+    private static List<Row> readVerifiedComparisons(final Path path, final JsonObject run) throws IOException {
+        final JsonElement digest = run.get("comparisonsSha256");
+        if (digest == null || !digest.isJsonPrimitive() || !digest.getAsJsonPrimitive().isString()) {
+            throw new Diagnostic(COMPARISONS_FILE
+                    + " has no recorded SHA-256 in run.json; rerun the recipe to produce a bound artifact bundle");
+        }
+        final byte[] bytes = Files.readAllBytes(path);
+        if (!sha256(bytes).equals(digest.getAsString())) {
+            throw new Diagnostic(COMPARISONS_FILE
+                    + " SHA-256 differs from run.json; the artifact bundle was modified or mixed, rerun the recipe");
+        }
+        return ElliottResearchReport.readCsv(path, bytes);
     }
 
     // -------------------------------------------------------------- inspect
@@ -1904,7 +1952,7 @@ final class ElliottResearch {
         if (!Files.isRegularFile(comparisons)) {
             throw new Diagnostic(COMPARISONS_FILE + " is missing in " + dir + "; rerun the recipe");
         }
-        final List<Row> rows = ElliottResearchReport.readCsv(comparisons);
+        final List<Row> rows = readVerifiedComparisons(comparisons, run);
         Row row = null;
         for (final Row candidateRow : rows) {
             if (candidateRow.key().equals(key.toString())) {
