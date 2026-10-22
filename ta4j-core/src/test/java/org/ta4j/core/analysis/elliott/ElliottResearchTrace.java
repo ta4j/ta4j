@@ -531,12 +531,10 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             try {
                 TopologyStatus.valueOf(status);
             } catch (final IllegalArgumentException e) {
-                throw corrupt(path, lineNumber,
-                        where + "status " + record.get("status") + " is not a topology status");
+                throw corrupt(path, lineNumber, where + "status " + record.get("status") + " is not a topology status");
             }
         } else if (!ALTERNATIVE_STATUSES.contains(status)) {
-            throw corrupt(path, lineNumber,
-                    where + "status " + record.get("status") + " is not an alternative status");
+            throw corrupt(path, lineNumber, where + "status " + record.get("status") + " is not an alternative status");
         }
         final int recordBlockLength = requireCoordinate(path, lineNumber, record, "nullBlockLength", where);
         final int recordMemberIndex = requireCoordinate(path, lineNumber, record, "nullMemberIndex", where);
