@@ -522,7 +522,15 @@ final class ElliottResearchReport {
      * @throws IllegalArgumentException naming file and line when malformed
      */
     static List<Row> readCsv(final Path path) {
-        final List<List<String>> table = parseCsv(path);
+        try {
+            return readCsv(path, Files.readAllBytes(path));
+        } catch (final IOException exception) {
+            throw new UncheckedIOException("Unable to read " + path, exception);
+        }
+    }
+
+    static List<Row> readCsv(final Path path, final byte[] bytes) {
+        final List<List<String>> table = parseCsv(path, new String(bytes, StandardCharsets.UTF_8));
         if (table.isEmpty() || !table.get(0).equals(ROW_HEADER)) {
             throw new IllegalArgumentException(path + ":1: unexpected header, expected " + ROW_HEADER);
         }
@@ -746,13 +754,7 @@ final class ElliottResearchReport {
         writer.write("\r\n");
     }
 
-    private static List<List<String>> parseCsv(final Path path) {
-        final String text;
-        try {
-            text = Files.readString(path, StandardCharsets.UTF_8);
-        } catch (final IOException exception) {
-            throw new UncheckedIOException("Unable to read " + path, exception);
-        }
+    private static List<List<String>> parseCsv(final Path path, final String text) {
         final List<List<String>> table = new ArrayList<>();
         List<String> cells = new ArrayList<>();
         final StringBuilder cell = new StringBuilder();

@@ -231,6 +231,11 @@ the row's null block length) and replay with
 rows are refused with an explanation. The member's own recorded prices are shown,
 never the real series.
 
+Replay verifies the completed run's `comparisonsSha256` before accepting comparison
+rows. Regenerate older bundles without this metadata, or bundles whose CSV was
+modified or copied from another run; matching keys alone do not bind statistics to
+the recorded provenance.
+
 ## Suggested progression
 
 1. `ta4jexamples.Quickstart`
