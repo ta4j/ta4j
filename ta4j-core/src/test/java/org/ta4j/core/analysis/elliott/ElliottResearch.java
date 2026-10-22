@@ -1796,8 +1796,8 @@ final class ElliottResearch {
             final JsonElement member = run.getAsJsonObject("trace").get("member");
             final View nullView = row.nullBlockLength() > 0 ? load("null", findTrace(nullMatcher()),
                     expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER,
-                            row.nullBlockLength(), member == null || member.isJsonNull() ? -1
-                                    : integer(member, "run.trace.member")),
+                            row.nullBlockLength(),
+                            member == null || member.isJsonNull() ? -1 : integer(member, "run.trace.member")),
                     this::inNullScope, this::inNullScope, recaptureNull()) : null;
             if (real == null && nullView == null) {
                 throw new Diagnostic(
