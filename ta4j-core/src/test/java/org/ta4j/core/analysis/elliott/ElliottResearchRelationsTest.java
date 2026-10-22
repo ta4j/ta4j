@@ -219,16 +219,16 @@ class ElliottResearchRelationsTest {
     public void observationIndicesRejectNarrowingAndNonIntegerValues() throws IOException {
         final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
         final JsonObject frame = JsonParser.parseString(lines.get(1)).getAsJsonObject();
-        for (final String invalid : List.of("2147483648", "-2147483649", "4294967296", "1e1000", "0.5", "\"3\"",
-                "true", "null")) {
+        for (final String invalid : List.of("2147483648", "-2147483649", "4294967296", "1e1000", "0.5", "\"3\"", "true",
+                "null")) {
             frame.add("asOfIndex", JsonParser.parseString(invalid));
             lines.set(1, frame.toString());
             Files.write(file, lines, StandardCharsets.UTF_8);
             final String message = assertThrows(IllegalArgumentException.class,
                     () -> ElliottResearchRelations.read(file, ignored -> {
                     })).getMessage();
-            assertTrue(message.contains(file.toString()) && message.contains("line 2")
-                    && message.contains("asOfIndex"), message);
+            assertTrue(message.contains(file.toString()) && message.contains("line 2") && message.contains("asOfIndex"),
+                    message);
         }
     }
 
