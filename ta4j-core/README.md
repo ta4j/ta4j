@@ -241,9 +241,12 @@ only `horizon` is required and it must be one of `outcomes.horizons`). Without i
 a run is unchanged, every artifact above is identical apart from the fingerprint
 that hashes the recipe. With it the run adds `calibration-tables.json`,
 `calibration-predictions.csv`, `calibration-summary.csv`,
-`calibration-reliability.csv` and an "Outcome calibration" section in `summary.md`. The
-target is the structural label "the correction completes before invalidation
-within `horizon` bars"; the only feature is the heuristic rule score
+`calibration-reliability.csv` and an "Outcome calibration" section in `summary.md`.
+`run.json` declares how many records each calibration artifact holds, so `summarize`
+and `inspect` exit with status 2 and ask for a rerun when one is missing, header-only,
+cut short, or a tables file lost a table, instead of reporting "No dataset produced
+calibration evidence". The target is the structural label "the correction completes
+before invalidation within `horizon` bars"; the only feature is the heuristic rule score
 `pass/(pass+fail)` frozen at enrollment (pending, unavailable and not-applicable
 rules are coverage states, not failures), kept as a separate field from the
 estimated probability. The estimator is a five-bin smoothed weighted frequency

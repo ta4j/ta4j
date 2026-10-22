@@ -8,15 +8,21 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.analysis.elliott.ElliottResearchCalibration.BinFit;
 import org.ta4j.core.analysis.elliott.ElliottResearchCalibration.Calibrator;
 import org.ta4j.core.analysis.elliott.ElliottResearchCalibration.Estimate;
@@ -253,6 +259,36 @@ class ElliottResearchCalibrationTest {
         assertEquals(table.estimate(IDENTITY, query), reloaded.estimate(IDENTITY, query));
         json.addProperty("schema", "other/1");
         assertThrows(IllegalArgumentException.class, () -> Calibrator.fromJson(json));
+    }
+
+    @Test
+    void tablesFileReloadsAndEveryTornShapeIsNamedAsNotACalibrationTableFile(@TempDir final Path directory)
+            throws IOException {
+        final List<Row> rows = new ArrayList<>();
+        for (int index = 0; index < 6; index++) {
+            rows.add(labeled(index, "k" + index, 2, 1, index % 2 == 0 ? Outcome.SUCCESS : Outcome.FAILURE));
+        }
+        final Calibrator table = Calibrator.fit("evaluation", IDENTITY, PROVENANCE, 2, rows, List.of("calibration"),
+                100);
+        final JsonArray held = new JsonArray();
+        held.add(table.toJson());
+        final JsonObject file = new JsonObject();
+        file.addProperty("schema", ElliottResearchCalibration.SCHEMA);
+        file.add("tables", held);
+        final String whole = file.toString();
+        final Path path = directory.resolve(ElliottResearchCalibration.TABLES_FILE);
+
+        Files.writeString(path, whole, StandardCharsets.UTF_8);
+        assertEquals(List.of(table), ElliottResearchCalibration.readTables(path));
+
+        final String schemaOnlyTable = "{\"tables\":[{\"schema\":\"" + ElliottResearchCalibration.SCHEMA + "\"}]}";
+        for (final String torn : List.of("", "[]", "{}", "{\"tables\":3}", "{\"tables\":[1]}", schemaOnlyTable,
+                whole.substring(0, whole.length() / 2))) {
+            Files.writeString(path, torn, StandardCharsets.UTF_8);
+            final IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                    () -> ElliottResearchCalibration.readTables(path), torn);
+            assertTrue(failure.getMessage().contains(path + " is not a calibration table file"), failure.getMessage());
+        }
     }
 
     @Test

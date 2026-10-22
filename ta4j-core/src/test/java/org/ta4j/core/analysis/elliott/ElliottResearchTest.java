@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntToDoubleFunction;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
@@ -38,6 +39,19 @@ class ElliottResearchTest {
 
     private static final String OCCUPANCY_KEY = "smoke|h1|topology-only|fractal-w5|calibration|completeOccupancyRate|b20";
 
+    /**
+     * Ways a published calibration CSV can disagree with the row count its run
+     * recorded, each with the reason a reader must name.
+     */
+    private static final List<Damage> ROW_DAMAGES = List.of(
+            new Damage("header-only", text -> text.substring(0, text.indexOf("\r\n") + 2),
+                    " holds 0 rows but the run recorded "),
+            new Damage("lost-last-row", text -> text.substring(0, text.lastIndexOf("\r\n", text.length() - 3) + 2),
+                    " rows but the run recorded "),
+            new Damage("cut-in-last-row",
+                    text -> text.substring(0, text.lastIndexOf("\r\n", text.length() - 3) + 2 + 10),
+                    " cells, expected "));
+
     @TempDir
     static Path shared;
 
@@ -45,16 +59,32 @@ class ElliottResearchTest {
     Path work;
 
     private static Path smokeRun;
+    private static Path calibratedRun;
 
     /** Captured result of one launcher invocation. */
     private record Result(int code, String out, String err) {
     }
 
+    /**
+     * One way of damaging a published artifact and the reason readers must give.
+     */
+    private record Damage(String name, UnaryOperator<String> edit, String reason) {
+    }
+
     @BeforeAll
-    static void runSmoke() {
+    static void runSmoke() throws IOException {
         smokeRun = shared.resolve("smoke");
         final Result result = launch("run", "smoke", "--out", smokeRun.toString());
         assertEquals(0, result.code(), result.err());
+
+        final Path candles = shared.resolve("calibrated-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = shared.resolve("calibrated-recipe.json");
+        Files.writeString(recipe, calibrationRecipe("cal", "{\"horizon\":5,\"minGroups\":1}"));
+        calibratedRun = shared.resolve("calibrated");
+        final Result calibrated = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                recipe.toString(), "--out", calibratedRun.toString());
+        assertEquals(0, calibrated.code(), calibrated.err());
     }
 
     private static Result launch(final String... args) {
@@ -566,13 +596,19 @@ class ElliottResearchTest {
 
     private static void writeCandles(final Path file, final LocalDate first, final int days,
             final java.util.function.Predicate<LocalDate> keep) throws IOException {
+        writeCandles(file, first, days, keep,
+                index -> 100.0d + 15.0d * StrictMath.sin(0.2d * index) + 6.0d * StrictMath.sin(0.7d * index));
+    }
+
+    private static void writeCandles(final Path file, final LocalDate first, final int days,
+            final java.util.function.Predicate<LocalDate> keep, final IntToDoubleFunction closeAt) throws IOException {
         final JsonArray array = new JsonArray();
         for (int index = 0; index < days; index++) {
             final LocalDate date = first.plusDays(index);
             if (!keep.test(date)) {
                 continue;
             }
-            final double close = 100.0d + 15.0d * StrictMath.sin(0.2d * index) + 6.0d * StrictMath.sin(0.7d * index);
+            final double close = closeAt.applyAsDouble(index);
             final JsonObject candle = new JsonObject();
             candle.addProperty("start", date.atStartOfDay(ZoneOffset.UTC).toEpochSecond());
             candle.addProperty("open", Double.toString(close - 0.5d));
@@ -1125,6 +1161,148 @@ class ElliottResearchTest {
     }
 
     @Test
+    void runJsonDeclaresTheRecordCountsOfTheCalibrationArtifactsItVouchesFor() throws Exception {
+        final JsonObject records = readJson(calibratedRun.resolve("run.json")).getAsJsonObject("calibration")
+                .getAsJsonObject("records");
+
+        assertEquals(
+                ElliottResearchCalibration.readTables(calibratedRun.resolve(ElliottResearchCalibration.TABLES_FILE))
+                        .size(),
+                records.get("tables").getAsLong());
+        assertEquals(csvRows(calibratedRun, ElliottResearchCalibration.PREDICTIONS_FILE),
+                records.get("predictions").getAsLong());
+        assertEquals(csvRows(calibratedRun, ElliottResearchCalibration.SUMMARY_FILE),
+                records.get("summary").getAsLong());
+        assertEquals(csvRows(calibratedRun, ElliottResearchCalibration.RELIABILITY_FILE),
+                records.get("reliability").getAsLong());
+        for (final String count : List.of("tables", "predictions", "summary", "reliability")) {
+            assertTrue(records.get(count).getAsLong() > 0, "the calibrated run must exercise the " + count + " count");
+        }
+    }
+
+    @Test
+    void summarizeRejectsAHeaderOnlyCalibrationSummaryInsteadOfReportingNoEvidence() throws Exception {
+        final Result result = summarizeAfterEditing(calibratedRun, "calibration-summary-header-only",
+                ElliottResearchCalibration.SUMMARY_FILE, text -> text.substring(0, text.indexOf("\r\n") + 2));
+
+        assertIncomplete(result, "calibration-summary.csv holds 0 rows but the run recorded ");
+    }
+
+    @Test
+    void summarizeAndInspectRefuseCalibrationRowsThatDisagreeWithTheRecordedCounts() throws Exception {
+        for (final String artifact : List.of(ElliottResearchCalibration.PREDICTIONS_FILE,
+                ElliottResearchCalibration.SUMMARY_FILE, ElliottResearchCalibration.RELIABILITY_FILE)) {
+            for (final Damage damage : ROW_DAMAGES) {
+                assertRefusedBySummarizeAndInspect(artifact, damage);
+            }
+        }
+    }
+
+    @Test
+    void summarizeAndInspectRefuseACalibrationTablesFileThatIsNotWhole() throws Exception {
+        final String tables = ElliottResearchCalibration.TABLES_FILE;
+        final String notATableFile = " is not a calibration table file";
+
+        assertRefusedBySummarizeAndInspect(tables, new Damage("empty", text -> "", notATableFile));
+        assertRefusedBySummarizeAndInspect(tables,
+                new Damage("cut", text -> text.substring(0, text.length() / 2), notATableFile));
+        assertRefusedBySummarizeAndInspect(tables, new Damage("lost-table", text -> {
+            final JsonObject file = JsonParser.parseString(text).getAsJsonObject();
+            final JsonArray held = file.getAsJsonArray("tables");
+            held.remove(held.size() - 1);
+            return file.toString();
+        }, " holds 1 tables but the run recorded 2"));
+    }
+
+    @Test
+    void summarizeAndInspectRefuseARunThatNeverDeclaredItsCalibrationRecordCounts() throws Exception {
+        // A run interrupted while publishing keeps the checkpoint run.json: status
+        // "running" and no record counts, beside artifacts that may look complete.
+        final Path copy = editedCopy(calibratedRun, "calibration-no-records", "run.json", text -> {
+            final JsonObject run = JsonParser.parseString(text).getAsJsonObject();
+            run.addProperty("status", "running");
+            run.getAsJsonObject("calibration").remove("records");
+            return run.toString();
+        });
+
+        final Result inspected = launch("inspect", copy.toString(), keyOfPartition(copy, "holdout"));
+        assertEquals(2, inspected.code(), inspected.err());
+        assertTrue(inspected.err().contains("declares the calibration artifacts without their record counts"),
+                inspected.err());
+        assertEquals("", inspected.out());
+        final Result summarized = summarizeExpectingNoSummary(copy);
+        assertEquals(2, summarized.code(), summarized.err());
+        assertTrue(summarized.err().contains("declares the calibration artifacts without their record counts"),
+                summarized.err());
+    }
+
+    @Test
+    void summarizeRejectsCalibrationRecordCountsThatLackAnArtifact() throws Exception {
+        final Path copy = editedCopy(calibratedRun, "calibration-partial-records", "run.json", text -> {
+            final JsonObject run = JsonParser.parseString(text).getAsJsonObject();
+            run.getAsJsonObject("calibration").getAsJsonObject("records").remove("reliability");
+            return run.toString();
+        });
+
+        assertIncomplete(summarizeExpectingNoSummary(copy), "the run declares no reliability record count");
+    }
+
+    @Test
+    void aCalibrationRunThatEnrolledNothingIsEmptyNotIncomplete() throws Exception {
+        // Flat prices enroll no alternative: the run records zero predictions beside a
+        // header-only file, which is an honest empty result readers must keep
+        // accepting.
+        final Path candles = work.resolve("flat-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true, index -> 100.0d);
+        final Path recipe = work.resolve("flat-recipe.json");
+        Files.writeString(recipe, calibrationRecipe("cal", "{\"horizon\":5,\"minGroups\":1}"));
+        final Path run = work.resolve("flat");
+        final Result ran = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--out", run.toString());
+        assertEquals(0, ran.code(), ran.err());
+        final JsonObject records = readJson(run.resolve("run.json")).getAsJsonObject("calibration")
+                .getAsJsonObject("records");
+        assertEquals(0L, records.get("predictions").getAsLong());
+        assertEquals(0L, csvRows(run, ElliottResearchCalibration.PREDICTIONS_FILE));
+        assertTrue(records.get("summary").getAsLong() > 0, records.toString());
+
+        Files.delete(run.resolve("summary.md"));
+        final Result summarized = launch("summarize", run.toString());
+        assertEquals(0, summarized.code(), summarized.err());
+        assertTrue(Files.isRegularFile(run.resolve("summary.md")), "the run is complete, so it is summarized");
+        final Result inspected = launch("inspect", run.toString(), keyOfPartition(run, "holdout"));
+        assertEquals(0, inspected.code(), inspected.err());
+        assertTrue(inspected.out().contains("No calibration predictions for dataset cal partition holdout"),
+                inspected.out());
+    }
+
+    @Test
+    void aRunThatRecordedNoCalibrationRowsStillReportsNoCalibrationEvidence() throws Exception {
+        final Path copy = work.resolve("calibration-recorded-empty");
+        copyTree(calibratedRun, copy);
+        for (final String artifact : List.of(ElliottResearchCalibration.PREDICTIONS_FILE,
+                ElliottResearchCalibration.SUMMARY_FILE, ElliottResearchCalibration.RELIABILITY_FILE)) {
+            final String text = Files.readString(copy.resolve(artifact), StandardCharsets.UTF_8);
+            Files.writeString(copy.resolve(artifact), text.substring(0, text.indexOf("\r\n") + 2),
+                    StandardCharsets.UTF_8);
+        }
+        Files.writeString(copy.resolve(ElliottResearchCalibration.TABLES_FILE),
+                "{\"schema\":\"" + ElliottResearchCalibration.SCHEMA + "\",\"tables\":[]}\n", StandardCharsets.UTF_8);
+        final JsonObject run = readJson(copy.resolve("run.json"));
+        final JsonObject records = run.getAsJsonObject("calibration").getAsJsonObject("records");
+        for (final String count : List.of("tables", "predictions", "summary", "reliability")) {
+            records.addProperty(count, 0);
+        }
+        Files.writeString(copy.resolve("run.json"), run.toString(), StandardCharsets.UTF_8);
+        Files.delete(copy.resolve("summary.md"));
+
+        final Result result = launch("summarize", copy.toString());
+
+        assertEquals(0, result.code(), result.err());
+        assertTrue(Files.readString(copy.resolve("summary.md")).contains("No dataset produced calibration evidence."));
+    }
+
+    @Test
     void calibrationRecipeErrorsFailBeforeCreatingArtifacts() throws Exception {
         final Path candles = work.resolve("bad-cal-candles.json");
         writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
@@ -1304,14 +1482,46 @@ class ElliottResearchTest {
 
     private Result summarizeAfterEditing(final String name, final String artifact, final UnaryOperator<String> edit)
             throws IOException {
+        return summarizeAfterEditing(smokeRun, name, artifact, edit);
+    }
+
+    private Result summarizeAfterEditing(final Path source, final String name, final String artifact,
+            final UnaryOperator<String> edit) throws IOException {
+        return summarizeExpectingNoSummary(editedCopy(source, name, artifact, edit));
+    }
+
+    /**
+     * A copy of {@code source} in which {@code artifact} is rewritten by
+     * {@code edit}.
+     */
+    private Path editedCopy(final Path source, final String name, final String artifact,
+            final UnaryOperator<String> edit) throws IOException {
         final Path copy = work.resolve(name);
-        copyTree(smokeRun, copy);
-        Files.delete(copy.resolve("summary.md"));
+        copyTree(source, copy);
         Files.writeString(copy.resolve(artifact), edit.apply(Files.readString(copy.resolve(artifact))),
                 StandardCharsets.UTF_8);
+        return copy;
+    }
+
+    /** Summarizes a run that must be refused, after dropping its stale summary. */
+    private static Result summarizeExpectingNoSummary(final Path copy) throws IOException {
+        Files.delete(copy.resolve("summary.md"));
         final Result result = launch("summarize", copy.toString());
         assertFalse(Files.exists(copy.resolve("summary.md")), "an incomplete run must not get a summary");
         return result;
+    }
+
+    /**
+     * Both readers refuse the calibrated run once {@code artifact} is damaged, and
+     * inspect prints nothing before refusing.
+     */
+    private void assertRefusedBySummarizeAndInspect(final String artifact, final Damage damage) throws IOException {
+        final Path copy = editedCopy(calibratedRun, artifact + "-" + damage.name(), artifact, damage.edit());
+
+        final Result inspected = launch("inspect", copy.toString(), keyOfPartition(copy, "holdout"));
+        assertIncomplete(inspected, damage.reason());
+        assertEquals("", inspected.out(), "inspect must not print partial evidence: " + copy.getFileName());
+        assertIncomplete(summarizeExpectingNoSummary(copy), damage.reason());
     }
 
     private static void assertIncomplete(final Result result, final String reason) {
@@ -1320,7 +1530,11 @@ class ElliottResearchTest {
         assertTrue(result.err().contains("the run is incomplete, rerun the recipe"), result.err());
     }
 
+    private static long csvRows(final Path run, final String name) {
+        return ElliottResearchReport.parseCsv(run.resolve(name)).size() - 1L;
+    }
+
     private static long csvRows(final String name) {
-        return ElliottResearchReport.parseCsv(smokeRun.resolve(name)).size() - 1L;
+        return csvRows(smokeRun, name);
     }
 }

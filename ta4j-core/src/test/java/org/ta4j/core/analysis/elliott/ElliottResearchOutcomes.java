@@ -1153,7 +1153,15 @@ final class ElliottResearchOutcomes {
         verifyRows(summary, SUMMARY_HEADER, declaredCount(declared, "summary"));
     }
 
-    private static long declaredCount(final JsonObject declared, final String name) {
+    /**
+     * The record count a run declares for one artifact.
+     *
+     * @param declared record counts a run declared
+     * @param name     artifact name inside {@code declared}
+     * @return the declared count
+     * @throws IllegalArgumentException when the run declares no numeric count
+     */
+    static long declaredCount(final JsonObject declared, final String name) {
         final JsonElement count = declared.get(name);
         if (count == null || !count.isJsonPrimitive() || !count.getAsJsonPrimitive().isNumber()) {
             throw new IllegalArgumentException("the run declares no " + name + " record count");
@@ -1215,7 +1223,17 @@ final class ElliottResearchOutcomes {
         }
     }
 
-    private static void verifyRows(final Path path, final List<String> header, final long declared) {
+    /**
+     * Checks one written CSV artifact against the row count the run declared for
+     * it: its exact header, the declared number of whole rows, a full set of cells
+     * in every row, and the line break that terminates every written row.
+     *
+     * @param path     artifact to check
+     * @param header   header the artifact must start with
+     * @param declared row count the run recorded
+     * @throws IllegalArgumentException naming the first disagreement
+     */
+    static void verifyRows(final Path path, final List<String> header, final long declared) {
         final List<List<String>> table = ElliottResearchReport.parseCsv(path);
         if (table.isEmpty() || !table.get(0).equals(header)) {
             throw new IllegalArgumentException(path + ":1: unexpected header, expected " + header);

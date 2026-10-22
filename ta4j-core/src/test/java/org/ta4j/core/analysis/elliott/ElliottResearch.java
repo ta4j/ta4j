@@ -89,10 +89,12 @@ import com.google.gson.JsonPrimitive;
  * <p>
  * Exit codes: {@code 0} success, {@code 1} usage error or run failure (also a
  * partial or failed run, an unknown key or as-of index), {@code 2} inspection
- * diagnostic (missing, truncated or corrupt trace, failed dataset). A run that
- * declares {@code calibration} and has no captured trace is still inspectable:
- * {@code inspect} prints its calibration estimates with a "real trace not
- * captured" note and exits {@code 0}.
+ * diagnostic (missing, truncated or corrupt trace, failed dataset) or
+ * incomplete run (an outcome or calibration artifact that is missing, does not
+ * hold the record count {@code run.json} declares for it, or has no declared
+ * count). A run that declares {@code calibration} and has no captured trace is
+ * still inspectable: {@code inspect} prints its calibration estimates with a
+ * "real trace not captured" note and exits {@code 0}.
  * </p>
  *
  * @since 0.25.1
@@ -228,9 +230,11 @@ final class ElliottResearch {
                 "calibration-tables.json, calibration-predictions.csv, calibration-summary.csv and",
                 "calibration-reliability.csv: outcome-calibrated event probabilities, fitted chronologically.",
                 "Null-member events are included for the member chosen with --trace selected-null-member.", "",
-                "Exit codes: 0 ok; 1 usage error or run failure; 2 missing, truncated or corrupt trace, or failed",
-                "dataset while inspecting. A run that declares calibration but captured no trace still exits 0:",
-                "inspect prints the calibration estimates with a \"real trace not captured\" note.");
+                "Exit codes: 0 ok; 1 usage error or run failure; 2 missing, truncated or corrupt trace, failed",
+                "dataset while inspecting, or an incomplete run (an outcome or calibration artifact that is missing,",
+                "does not hold the record count run.json declares for it, or has none: rerun the recipe). A run that",
+                "declares calibration but captured no trace still exits 0: inspect prints the calibration estimates",
+                "with a \"real trace not captured\" note.");
     }
 
     /** Actionable inspection failure that maps to exit code 2. */
@@ -1009,6 +1013,7 @@ final class ElliottResearch {
         private String numFactory = "unknown";
         private String status = "running";
         private JsonObject outcomeRecords;
+        private JsonObject calibrationRecords;
 
         Run(final Path dir, final RunOptions options, final Setup setup, final Recipe recipe, final String revision,
                 final String worktree) {
@@ -1269,14 +1274,15 @@ final class ElliottResearch {
                         computations);
                 ElliottResearchCalibration.writeReliability(dir.resolve(ElliottResearchCalibration.RELIABILITY_FILE),
                         computations);
+                calibrationRecords = ElliottResearchCalibration.recordCounts(computations);
             }
             outcomeRecords = ElliottResearchOutcomes.recordCounts(results);
             final JsonObject json = toJson();
             ElliottResearchReport.writeCoverage(dir.resolve(COVERAGE_FILE), coverage(json));
-            // run.json declares the final status and the outcome record counts, so it is
-            // written after every artifact it vouches for: a run interrupted while
-            // publishing keeps the "running" status and no counts of its last checkpoint,
-            // which readers reject as incomplete.
+            // run.json declares the final status and the outcome and calibration record
+            // counts, so it is written after every artifact it vouches for: a run
+            // interrupted while publishing keeps the "running" status and no counts of its
+            // last checkpoint, which readers reject as incomplete.
             Files.writeString(dir.resolve(RUN_FILE), GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
             writeSummary(dir, renderSummary(dir, json, rows));
         }
@@ -1358,6 +1364,9 @@ final class ElliottResearch {
                 calibrationFiles.addProperty("predictions", ElliottResearchCalibration.PREDICTIONS_FILE);
                 calibrationFiles.addProperty("summary", ElliottResearchCalibration.SUMMARY_FILE);
                 calibrationFiles.addProperty("reliability", ElliottResearchCalibration.RELIABILITY_FILE);
+                if (calibrationRecords != null) {
+                    calibrationFiles.add("records", calibrationRecords);
+                }
                 json.add("calibration", calibrationFiles);
             }
             return json;
@@ -1556,11 +1565,12 @@ final class ElliottResearch {
                     .append("`.\n");
         }
         if (run.has("calibration")) {
-            final Path calibrationSummary = runArtifact(dir, ElliottResearchCalibration.SUMMARY_FILE, "calibration");
-            final Path calibrationReliability = runArtifact(dir, ElliottResearchCalibration.RELIABILITY_FILE,
-                    "calibration");
+            // Likewise for calibration: a header-only summary of a run that scored
+            // datasets must not read as "no dataset produced calibration evidence".
+            final CalibrationFiles calibration = verifiedCalibration(dir, run.get("calibration"));
             markdown.append('\n')
-                    .append(ElliottResearchCalibration.summaryMarkdown(calibrationSummary, calibrationReliability));
+                    .append(ElliottResearchCalibration.summaryMarkdown(calibration.summary(),
+                            calibration.reliability()));
         }
         markdown.append("\nInspect any key with `inspect ").append(displayPath(dir)).append(" <key>`.\n");
         return markdown.toString();
@@ -1578,17 +1588,50 @@ final class ElliottResearch {
         final Path events = runArtifact(dir, ElliottResearchOutcomes.EVENTS_FILE, "outcome");
         final Path outcomes = runArtifact(dir, ElliottResearchOutcomes.OUTCOMES_FILE, "outcome");
         final Path summary = runArtifact(dir, ElliottResearchOutcomes.SUMMARY_FILE, "outcome");
-        final JsonElement records = declared.isJsonObject() ? declared.getAsJsonObject().get("records") : null;
-        if (records == null || !records.isJsonObject()) {
-            throw new Diagnostic(RUN_FILE + " declares the outcome artifacts without their record counts in " + dir
-                    + "; the run did not finish publishing, rerun the recipe");
-        }
+        final JsonObject records = declaredRecords(dir, declared, "outcome");
         try {
-            ElliottResearchOutcomes.verifyArtifacts(events, outcomes, summary, records.getAsJsonObject());
+            ElliottResearchOutcomes.verifyArtifacts(events, outcomes, summary, records);
         } catch (final IllegalArgumentException incomplete) {
             throw new Diagnostic(incomplete.getMessage() + "; the run is incomplete, rerun the recipe");
         }
         return summary;
+    }
+
+    /** The verified calibration artifacts of one run directory. */
+    private record CalibrationFiles(Path tables, Path predictions, Path summary, Path reliability) {
+    }
+
+    /**
+     * Resolves the calibration artifacts a run declares and checks them against the
+     * record counts {@code run.json} carries, as {@link #verifiedOutcomes} does for
+     * the outcome artifacts. A header-only summary, reliability, or prediction file
+     * of a run that scored datasets, a table file that lost a table, and artifacts
+     * truncated after publishing no longer match: all are incomplete, never
+     * summarized or inspected.
+     *
+     * @return the verified calibration artifacts
+     */
+    private static CalibrationFiles verifiedCalibration(final Path dir, final JsonElement declared) throws IOException {
+        final Path tables = runArtifact(dir, ElliottResearchCalibration.TABLES_FILE, "calibration");
+        final Path predictions = runArtifact(dir, ElliottResearchCalibration.PREDICTIONS_FILE, "calibration");
+        final Path summary = runArtifact(dir, ElliottResearchCalibration.SUMMARY_FILE, "calibration");
+        final Path reliability = runArtifact(dir, ElliottResearchCalibration.RELIABILITY_FILE, "calibration");
+        final JsonObject records = declaredRecords(dir, declared, "calibration");
+        try {
+            ElliottResearchCalibration.verifyArtifacts(tables, predictions, summary, reliability, records);
+        } catch (final IllegalArgumentException incomplete) {
+            throw new Diagnostic(incomplete.getMessage() + "; the run is incomplete, rerun the recipe");
+        }
+        return new CalibrationFiles(tables, predictions, summary, reliability);
+    }
+
+    private static JsonObject declaredRecords(final Path dir, final JsonElement declared, final String kind) {
+        final JsonElement records = declared.isJsonObject() ? declared.getAsJsonObject().get("records") : null;
+        if (records == null || !records.isJsonObject()) {
+            throw new Diagnostic(RUN_FILE + " declares the " + kind + " artifacts without their record counts in " + dir
+                    + "; the run did not finish publishing, rerun the recipe");
+        }
+        return records.getAsJsonObject();
     }
 
     private static Path runArtifact(final Path dir, final String name, final String kind) throws IOException {
@@ -1903,13 +1946,10 @@ final class ElliottResearch {
                 List<JsonObject> scope) {
         }
 
-        private void printCalibration(final PrintStream out, final Integer asOf, final String candidate)
-                throws IOException {
-            final Path predictions = runArtifact(dir, ElliottResearchCalibration.PREDICTIONS_FILE, "calibration");
-            final Path reliability = runArtifact(dir, ElliottResearchCalibration.RELIABILITY_FILE, "calibration");
-            final Path tables = runArtifact(dir, ElliottResearchCalibration.TABLES_FILE, "calibration");
-            final String mismatch = ElliottResearchCalibration.scopeMismatch(tables, row.dataset(), row.section(),
-                    row.grammar(), row.detector());
+        private void printCalibration(final PrintStream out, final CalibrationFiles files, final Integer asOf,
+                final String candidate) throws IOException {
+            final String mismatch = ElliottResearchCalibration.scopeMismatch(files.tables(), row.dataset(),
+                    row.section(), row.grammar(), row.detector());
             if (mismatch != null) {
                 out.println();
                 out.println("Calibration: not applicable to this scope - the fitted tables describe only the primary"
@@ -1917,11 +1957,16 @@ final class ElliottResearch {
                         + mismatch);
                 return;
             }
-            ElliottResearchCalibration.inspect(out, predictions, reliability, row.dataset(), row.partition(), candidate,
-                    asOf, limit, rank, retrospective);
+            ElliottResearchCalibration.inspect(out, files.predictions(), files.reliability(), row.dataset(),
+                    row.partition(), candidate, asOf, limit, rank, retrospective);
         }
 
         void print(final PrintStream out, final Integer asOf, final String candidate) throws IOException {
+            // Calibration artifacts are verified before anything is printed, so a
+            // truncated run never shows partial evidence.
+            final CalibrationFiles calibration = run.has("calibration")
+                    ? verifiedCalibration(dir, run.get("calibration"))
+                    : null;
             // Real: retain the whole family so cross-mode rule disagreements stay visible.
             final String realTrace = findTrace(realSuffixMatcher());
             final View real = load("real", realTrace,
@@ -1978,8 +2023,8 @@ final class ElliottResearch {
             if (focus != null && candidate != null) {
                 printCandidate(out, focus, candidate);
             }
-            if (run.has("calibration")) {
-                printCalibration(out, asOf, candidate);
+            if (calibration != null) {
+                printCalibration(out, calibration, asOf, candidate);
             }
         }
 

@@ -5,6 +5,7 @@ package org.ta4j.core.analysis.elliott;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -1249,15 +1250,16 @@ final class ElliottResearchCalibration {
      * @since 0.26.1
      */
     static List<Calibrator> readTables(final Path path) throws IOException {
-        final JsonObject json;
-        try {
-            json = JsonParser.parseString(Files.readString(path, StandardCharsets.UTF_8)).getAsJsonObject();
-        } catch (final JsonParseException | IllegalStateException exception) {
-            throw new IllegalArgumentException(path + " is not a calibration table file: " + exception.getMessage());
-        }
+        final String text = Files.readString(path, StandardCharsets.UTF_8);
         final List<Calibrator> tables = new ArrayList<>();
-        for (final JsonElement element : json.getAsJsonArray("tables")) {
-            tables.add(Calibrator.fromJson(element.getAsJsonObject()));
+        try {
+            final JsonObject json = JsonParser.parseString(text).getAsJsonObject();
+            for (final JsonElement element : json.getAsJsonArray("tables")) {
+                tables.add(Calibrator.fromJson(element.getAsJsonObject()));
+            }
+        } catch (final JsonParseException | IllegalStateException | ClassCastException | NullPointerException
+                | UnsupportedOperationException exception) {
+            throw new IllegalArgumentException(path + " is not a calibration table file: " + exception.getMessage());
         }
         return tables;
     }
@@ -1335,6 +1337,72 @@ final class ElliottResearchCalibration {
         final List<List<String>> table = new ArrayList<>();
         computations.forEach(computation -> computation.reliability().forEach(bin -> table.add(bin.cells())));
         ElliottResearchReport.writeTable(path, RELIABILITY_HEADER, table);
+    }
+
+    /**
+     * The record counts a run declares for its calibration artifacts: the tables,
+     * prediction rows, summary rows, and reliability rows it wrote.
+     *
+     * @param computations per-dataset output the artifacts were written from
+     * @return {@code tables}, {@code predictions}, {@code summary}, and
+     *         {@code reliability} record counts
+     * @since 0.26.1
+     */
+    static JsonObject recordCounts(final List<Computation> computations) {
+        long tables = 0;
+        long predictions = 0;
+        long summary = 0;
+        long reliability = 0;
+        for (final Computation computation : computations) {
+            tables += computation.tables().size();
+            predictions += computation.predictions().size();
+            summary += computation.metrics().size();
+            reliability += computation.reliability().size();
+        }
+        final JsonObject counts = new JsonObject();
+        counts.addProperty("tables", tables);
+        counts.addProperty("predictions", predictions);
+        counts.addProperty("summary", summary);
+        counts.addProperty("reliability", reliability);
+        return counts;
+    }
+
+    /**
+     * Checks the published calibration artifacts against the counts the run
+     * declared for them. A header-only file, a prefix of whole rows, a cut through
+     * the last row, or a tables file that lost a table no longer matches, so a
+     * reader never reports partial evidence as a dataset without calibration
+     * evidence.
+     *
+     * @param tables      {@code calibration-tables.json}
+     * @param predictions {@code calibration-predictions.csv}
+     * @param summary     {@code calibration-summary.csv}
+     * @param reliability {@code calibration-reliability.csv}
+     * @param declared    counts from {@link #recordCounts}
+     * @throws IllegalArgumentException naming the first artifact that disagrees
+     * @since 0.26.1
+     */
+    static void verifyArtifacts(final Path tables, final Path predictions, final Path summary, final Path reliability,
+            final JsonObject declared) {
+        verifyTables(tables, ElliottResearchOutcomes.declaredCount(declared, "tables"));
+        ElliottResearchOutcomes.verifyRows(predictions, PREDICTION_HEADER,
+                ElliottResearchOutcomes.declaredCount(declared, "predictions"));
+        ElliottResearchOutcomes.verifyRows(summary, SUMMARY_HEADER,
+                ElliottResearchOutcomes.declaredCount(declared, "summary"));
+        ElliottResearchOutcomes.verifyRows(reliability, RELIABILITY_HEADER,
+                ElliottResearchOutcomes.declaredCount(declared, "reliability"));
+    }
+
+    private static void verifyTables(final Path path, final long declared) {
+        final int held;
+        try {
+            held = readTables(path).size();
+        } catch (final IOException e) {
+            throw new UncheckedIOException("Unable to read " + path, e);
+        }
+        if (held != declared) {
+            throw new IllegalArgumentException(path + " holds " + held + " tables but the run recorded " + declared);
+        }
     }
 
     // ------------------------------------------------------------- summary
