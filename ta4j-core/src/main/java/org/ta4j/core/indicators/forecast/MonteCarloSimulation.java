@@ -203,6 +203,11 @@ final class MonteCarloSimulation {
             state = MonteCarloKernel.initialPathState(seed, decisionIndex, horizon, pathIndex);
         }
 
+        /**
+         * {@inheritDoc}
+         *
+         * @since 0.27.1
+         */
         @Override
         public int nextInt(int bound) {
             if (bound <= 0) {
@@ -217,27 +222,52 @@ final class MonteCarloSimulation {
             return (int) remainder;
         }
 
+        /**
+         * {@inheritDoc}
+         *
+         * @since 0.27.1
+         */
         @Override
         public double nextGaussian() {
             return MonteCarloKernel.gaussian(nextDouble(), nextDouble());
         }
 
+        /**
+         * {@inheritDoc}
+         *
+         * @since 0.27.1
+         */
         @Override
         public int nextInt() {
             return (int) nextLong();
         }
 
+        /**
+         * {@inheritDoc}
+         *
+         * @since 0.27.1
+         */
         @Override
         public long nextLong() {
             state = MonteCarloKernel.advanceState(state);
             return MonteCarloKernel.mix64(state);
         }
 
+        /**
+         * {@inheritDoc}
+         *
+         * @since 0.27.1
+         */
         @Override
         public double nextDouble() {
             return MonteCarloKernel.toUnitDouble(nextLong());
         }
 
+        /**
+         * {@inheritDoc}
+         *
+         * @since 0.27.1
+         */
         @Override
         public float nextFloat() {
             // 24 random mantissa bits keep the result strictly below 1.0f; narrowing
@@ -245,6 +275,11 @@ final class MonteCarloSimulation {
             return (nextLong() >>> 40) * 0x1.0p-24f;
         }
 
+        /**
+         * {@inheritDoc}
+         *
+         * @since 0.27.1
+         */
         @Override
         public boolean nextBoolean() {
             return nextLong() < 0L;

@@ -27,7 +27,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Operation;
  * finite; a kernel that reports a non-finite value for a row is still evaluated
  * on the CPU, where the indicator decodes it.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 public interface Kernel {
 
@@ -35,7 +35,7 @@ public interface Kernel {
      * Returns the versioned operation providers implement.
      *
      * @return operation
-     * @since 0.26.1
+     * @since 0.27.1
      */
     Operation operation();
 
@@ -43,7 +43,7 @@ public interface Kernel {
      * Returns the base seed copied into every request.
      *
      * @return base seed, {@code 0} for deterministic kernels without randomness
-     * @since 0.26.1
+     * @since 0.27.1
      */
     long seed();
 
@@ -51,7 +51,7 @@ public interface Kernel {
      * Returns the operation parameters copied into every request.
      *
      * @return a new array of parameters defined by the operation contract
-     * @since 0.26.1
+     * @since 0.27.1
      */
     double[] params();
 
@@ -59,7 +59,7 @@ public interface Kernel {
      * Returns the number of row buffers, each holding one value per decision row.
      *
      * @return non-negative row buffer count
-     * @since 0.26.1
+     * @since 0.27.1
      */
     int inputsPerRow();
 
@@ -69,7 +69,7 @@ public interface Kernel {
      *
      * @return non-negative window length; {@code 0} when the request carries no
      *         window buffer
-     * @since 0.26.1
+     * @since 0.27.1
      */
     int windowLength();
 
@@ -77,7 +77,7 @@ public interface Kernel {
      * Returns the number of raw output values per decision row.
      *
      * @return positive output count
-     * @since 0.26.1
+     * @since 0.27.1
      */
     int outputsPerRow();
 
@@ -87,7 +87,7 @@ public interface Kernel {
      * values is accounted for separately.
      *
      * @return non-negative byte count, {@link Long#MAX_VALUE} when it overflows
-     * @since 0.26.1
+     * @since 0.27.1
      */
     long deviceBytesPerRow();
 
@@ -96,7 +96,7 @@ public interface Kernel {
      * takes, the baseline accelerators must beat.
      *
      * @return estimated nanoseconds, non-positive when unknown
-     * @since 0.26.1
+     * @since 0.27.1
      */
     long scalarNanosPerRow();
 
@@ -107,7 +107,7 @@ public interface Kernel {
      *                read
      * @param row     decision row, {@code 0 <= row < request.size()}
      * @param outputs destination of length {@link #outputsPerRow()}
-     * @since 0.26.1
+     * @since 0.27.1
      */
     void run(KernelRequest request, int row, double[] outputs);
 }

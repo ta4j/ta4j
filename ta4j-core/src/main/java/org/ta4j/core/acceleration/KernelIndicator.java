@@ -37,7 +37,7 @@ import org.ta4j.core.indicators.CachedIndicator;
  * computed.
  *
  * @param <T> indicator value type
- * @since 0.26.1
+ * @since 0.27.1
  */
 public abstract class KernelIndicator<T> extends CachedIndicator<T> {
 
@@ -48,7 +48,7 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      *
      * @param kernel kernel computing every value
      * @param series bar series
-     * @since 0.26.1
+     * @since 0.27.1
      */
     protected KernelIndicator(Kernel kernel, BarSeries series) {
         super(series);
@@ -61,7 +61,7 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      * @param kernel            kernel computing every value
      * @param firstSource       first source indicator
      * @param additionalSources further source indicators
-     * @since 0.26.1
+     * @since 0.27.1
      */
     protected KernelIndicator(Kernel kernel, Indicator<?> firstSource, Indicator<?>... additionalSources) {
         super(firstSource, additionalSources);
@@ -72,7 +72,7 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      * Returns the kernel computing every value of this indicator.
      *
      * @return kernel
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public final Kernel kernel() {
         return kernel;
@@ -84,7 +84,7 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      * @param index     decision index
      * @param rowInputs destination of length {@link Kernel#inputsPerRow()}
      * @return {@code false} when the index is unavailable
-     * @since 0.26.1
+     * @since 0.27.1
      */
     protected abstract boolean snapshot(int index, double[] rowInputs);
 
@@ -93,7 +93,7 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      *
      * @param barIndex bar index, never negative
      * @return window value, {@code NaN} when unusable
-     * @since 0.26.1
+     * @since 0.27.1
      */
     protected abstract double windowValue(int barIndex);
 
@@ -104,7 +104,7 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      * @param index   decision index
      * @param outputs raw outputs of length {@link Kernel#outputsPerRow()}
      * @return decoded value, never {@code null}
-     * @since 0.26.1
+     * @since 0.27.1
      */
     protected abstract T decode(int index, double[] outputs);
 
@@ -113,7 +113,7 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      *
      * @param index decision index
      * @return value reported without running the kernel
-     * @since 0.26.1
+     * @since 0.27.1
      */
     protected abstract T unavailable(int index);
 
@@ -121,7 +121,7 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      * Returns the accelerated value of the current scope's batch, or runs the
      * kernel on the CPU for this index.
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     @Override
     protected final T calculate(int index) {

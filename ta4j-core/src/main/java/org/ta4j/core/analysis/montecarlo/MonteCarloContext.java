@@ -45,9 +45,9 @@ public record MonteCarloContext(int index, int horizon, int iterationCount, List
 
     /**
      * Validates a context. The eight-component form carrying {@code perPathRandoms}
-     * is canonical since 0.26.1.
+     * is canonical since 0.27.1.
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public MonteCarloContext {
         if (index < 0) {
@@ -83,6 +83,17 @@ public record MonteCarloContext(int index, int horizon, int iterationCount, List
     }
 
     /**
+     * Returns the engine-provided factory of independent per-path random streams.
+     *
+     * @return the per-path stream factory, or {@code null} when methods use the
+     *         shared sequential stream
+     * @since 0.27.1
+     */
+    public IntFunction<RandomGenerator> perPathRandoms() {
+        return perPathRandoms;
+    }
+
+    /**
      * Returns the random generator a method must consume for simulated path
      * {@code pathIndex}: an independent engine-seeded stream when per-path streams
      * are present, otherwise the shared sequential stream. Drawing each path's
@@ -91,7 +102,7 @@ public record MonteCarloContext(int index, int horizon, int iterationCount, List
      *
      * @param pathIndex zero-based index of the simulated path
      * @return the deterministic random generator for that path
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public RandomGenerator randomForPath(int pathIndex) {
         return perPathRandoms != null ? perPathRandoms.apply(pathIndex) : random;

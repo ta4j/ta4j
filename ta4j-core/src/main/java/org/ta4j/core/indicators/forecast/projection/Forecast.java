@@ -250,11 +250,21 @@ public final class Forecast {
         }
         Arrays.sort(values);
         return new AbstractList<>() {
+            /**
+             * {@inheritDoc}
+             *
+             * @since 0.27.1
+             */
             @Override
             public Num get(int index) {
                 return DoubleNum.valueOf(values[index]);
             }
 
+            /**
+             * {@inheritDoc}
+             *
+             * @since 0.27.1
+             */
             @Override
             public int size() {
                 return values.length;

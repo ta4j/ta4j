@@ -90,76 +90,156 @@ import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.Vol
  * {@link StrictMath} (fdlibm) semantics, so native kernels must use a bitwise
  * port of those two functions; {@code sqrt} is correctly rounded everywhere.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 public final class MonteCarloKernel implements Kernel {
 
-    /** Operation buffer order: spot prices. */
+    /**
+     * Operation buffer order: spot prices.
+     *
+     * @since 0.27.1
+     */
     public static final int INPUT_PRICES = 0;
 
-    /** Operation buffer order: starting means. */
+    /**
+     * Operation buffer order: starting means.
+     *
+     * @since 0.27.1
+     */
     public static final int INPUT_MEANS = 1;
 
-    /** Operation buffer order: forward drifts. */
+    /**
+     * Operation buffer order: forward drifts.
+     *
+     * @since 0.27.1
+     */
     public static final int INPUT_DRIFTS = 2;
 
-    /** Operation buffer order: starting variances. */
+    /**
+     * Operation buffer order: starting variances.
+     *
+     * @since 0.27.1
+     */
     public static final int INPUT_VARIANCES = 3;
 
-    /** Operation buffer order: contiguous historical log returns. */
+    /**
+     * Operation buffer order: contiguous historical log returns.
+     *
+     * @since 0.27.1
+     */
     public static final int INPUT_RETURNS = 4;
 
-    /** Number of input buffers. */
+    /**
+     * Number of input buffers.
+     *
+     * @since 0.27.1
+     */
     public static final int INPUT_COUNT = 5;
 
-    /** Shock-model code: bootstrap historical log returns. */
+    /**
+     * Shock-model code: bootstrap historical log returns.
+     *
+     * @since 0.27.1
+     */
     public static final int SHOCK_HISTORICAL_BOOTSTRAP = 0;
 
-    /** Shock-model code: bootstrap standardized historical returns. */
+    /**
+     * Shock-model code: bootstrap standardized historical returns.
+     *
+     * @since 0.27.1
+     */
     public static final int SHOCK_STANDARDIZED_EMPIRICAL = 1;
 
-    /** Shock-model code: kernel-smoothed standardized historical returns. */
+    /**
+     * Shock-model code: kernel-smoothed standardized historical returns.
+     *
+     * @since 0.27.1
+     */
     public static final int SHOCK_SMOOTHED_EMPIRICAL = 2;
 
-    /** Shock-model code: standard normal shocks. */
+    /**
+     * Shock-model code: standard normal shocks.
+     *
+     * @since 0.27.1
+     */
     public static final int SHOCK_NORMAL = 3;
 
-    /** Volatility-mode code: constant volatility along each path. */
+    /**
+     * Volatility-mode code: constant volatility along each path.
+     *
+     * @since 0.27.1
+     */
     public static final int VOLATILITY_CONSTANT = 0;
 
-    /** Volatility-mode code: EWMA volatility updates along each path. */
+    /**
+     * Volatility-mode code: EWMA volatility updates along each path.
+     *
+     * @since 0.27.1
+     */
     public static final int VOLATILITY_EWMA = 1;
 
-    /** Parameter index: shock-model code. */
+    /**
+     * Parameter index: shock-model code.
+     *
+     * @since 0.27.1
+     */
     public static final int PARAM_SHOCK_MODEL = 0;
 
-    /** Parameter index: volatility-mode code. */
+    /**
+     * Parameter index: volatility-mode code.
+     *
+     * @since 0.27.1
+     */
     public static final int PARAM_VOLATILITY_MODE = 1;
 
-    /** Parameter index: horizon in bars. */
+    /**
+     * Parameter index: horizon in bars.
+     *
+     * @since 0.27.1
+     */
     public static final int PARAM_HORIZON = 2;
 
-    /** Parameter index: simulated paths per decision index. */
+    /**
+     * Parameter index: simulated paths per decision index.
+     *
+     * @since 0.27.1
+     */
     public static final int PARAM_ITERATIONS = 3;
 
-    /** Parameter index: historical lookback bar count. */
+    /**
+     * Parameter index: historical lookback bar count.
+     *
+     * @since 0.27.1
+     */
     public static final int PARAM_LOOKBACK = 4;
 
-    /** Parameter index: EWMA decay factor. */
+    /**
+     * Parameter index: EWMA decay factor.
+     *
+     * @since 0.27.1
+     */
     public static final int PARAM_DECAY = 5;
 
     /**
      * Parameter index: smoothed-empirical bandwidth factor
      * {@link #smoothingBandwidthFactor(int)} of the lookback.
+     *
+     * @since 0.27.1
      */
     public static final int PARAM_SMOOTHING_FACTOR = 6;
 
-    /** Number of request parameters. */
+    /**
+     * Number of request parameters.
+     *
+     * @since 0.27.1
+     */
     public static final int PARAM_COUNT = 7;
 
     /**
      * Cumulative log-return magnitude above which the core decoder and the scalar
      * lane report an unstable forecast instead of a terminal price.
+     *
+     * @since 0.27.1
      */
     public static final double MAX_EXPONENT = 700d;
 
@@ -170,7 +250,7 @@ public final class MonteCarloKernel implements Kernel {
      *
      * @param observationCount number of standardized residuals
      * @return bandwidth factor multiplied by the residual standard deviation
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static double smoothingBandwidthFactor(int observationCount) {
         return 1.06d * Math.pow(observationCount, -0.2d);
@@ -215,16 +295,31 @@ public final class MonteCarloKernel implements Kernel {
         return settings;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public Operation operation() {
         return Operation.MONTE_CARLO_SHOCK_PATHS_V1;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public long seed() {
         return settings.seed();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public double[] params() {
         double[] params = new double[PARAM_COUNT];
@@ -238,16 +333,31 @@ public final class MonteCarloKernel implements Kernel {
         return params;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public int inputsPerRow() {
         return INPUTS_PER_ROW;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public int windowLength() {
         return settings.lookbackBarCount();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public int outputsPerRow() {
         return settings.iterationCount();
@@ -256,6 +366,8 @@ public final class MonteCarloKernel implements Kernel {
     /**
      * Four scalar inputs and one new window return, the output paths, and one
      * per-step workspace value per path.
+     *
+     * @since 0.27.1
      */
     @Override
     public long deviceBytesPerRow() {
@@ -268,12 +380,22 @@ public final class MonteCarloKernel implements Kernel {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public long scalarNanosPerRow() {
         long steps = (long) settings.iterationCount() * settings.horizon();
         return steps > Long.MAX_VALUE / NANOS_PER_PATH_STEP ? Long.MAX_VALUE : steps * NANOS_PER_PATH_STEP;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public void run(KernelRequest request, int row, double[] outputs) {
         int model = (int) request.param(PARAM_SHOCK_MODEL);
@@ -369,7 +491,7 @@ public final class MonteCarloKernel implements Kernel {
      * @param horizon       forecast horizon in bars
      * @param pathIndex     path ordinal within the decision index
      * @return initial stream state
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static long initialPathState(long seed, int decisionIndex, int horizon, int pathIndex) {
         if (decisionIndex < 0) {
@@ -395,7 +517,7 @@ public final class MonteCarloKernel implements Kernel {
      *
      * @param state current raw stream state
      * @return next raw stream state
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static long advanceState(long state) {
         return state + GOLDEN_GAMMA;
@@ -406,7 +528,7 @@ public final class MonteCarloKernel implements Kernel {
      *
      * @param mixed mixed output bits
      * @return uniform double
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static double toUnitDouble(long mixed) {
         return (mixed >>> 11) * DOUBLE_UNIT;
@@ -419,7 +541,7 @@ public final class MonteCarloKernel implements Kernel {
      * @param first  first uniform
      * @param second second uniform
      * @return standard normal draw
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static double gaussian(double first, double second) {
         double radius = StrictMath.sqrt(-2d * StrictMath.log(1d - first));
@@ -431,7 +553,7 @@ public final class MonteCarloKernel implements Kernel {
      *
      * @param value raw stream state
      * @return mixed output bits, not the state for the next draw
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static long mix64(long value) {
         value = (value ^ value >>> 30) * 0xBF58476D1CE4E5B9L;
