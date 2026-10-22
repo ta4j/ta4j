@@ -18,6 +18,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
@@ -82,6 +84,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
 
     private static final Set<String> ALTERNATIVE_STATUSES = Set.of("insufficient-history", "no-match", "forming",
             "complete", "ambiguous");
+
+    private static final Comparator<ConfirmedPivot> PIVOT_INDEX_ORDER = Comparator
+            .comparingInt(ConfirmedPivot::pivotIndex);
 
     private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
 
@@ -530,7 +535,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         }
         final int recordBlockLength = requireCoordinate(path, lineNumber, record, "nullBlockLength", where);
         final int recordMemberIndex = requireCoordinate(path, lineNumber, record, "nullMemberIndex", where);
-        requireCoordinate(path, lineNumber, record, "asOfIndex", where);
+        final int asOfIndex = requireCoordinate(path, lineNumber, record, "asOfIndex", where);
         if (!datasetId.equals(record.get("dataset").getAsString()) || recordBlockLength != nullBlockLength
                 || recordMemberIndex != nullMemberIndex) {
             throw corrupt(path, lineNumber,
@@ -553,8 +558,17 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         }
         requireTexts(path, lineNumber, record, "activeRules", where);
         final JsonArray pivots = requireArray(path, lineNumber, record, "pivots", where);
+        final List<ConfirmedPivot> visiblePivots = new ArrayList<>(pivots.size());
         for (int i = 0; i < pivots.size(); i++) {
-            requirePlacement(path, lineNumber, pivots.get(i), where + "pivots[" + i + "]", true);
+            final String at = where + "pivots[" + i + "]";
+            final ConfirmedPivot pivot = requirePlacement(path, lineNumber, pivots.get(i), at, true);
+            if (pivot.confirmationIndex() > asOfIndex) {
+                throw corrupt(path, lineNumber, at + ".confirmationIndex must not exceed asOfIndex " + asOfIndex);
+            }
+            if (i > 0 && pivot.pivotIndex() <= visiblePivots.get(i - 1).pivotIndex()) {
+                throw corrupt(path, lineNumber, at + ".index must strictly increase in the visible pivot view");
+            }
+            visiblePivots.add(pivot);
         }
         final JsonArray candidates = requireArray(path, lineNumber, record, "candidates", where);
         if (topologyStatus != null) {
@@ -643,6 +657,14 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                 TopologyCandidate.validatePivots(grammar, candidatePivots);
             } catch (final IllegalArgumentException e) {
                 throw corrupt(path, lineNumber, at + ".placement: " + e.getMessage());
+            }
+            for (int p = 0; p < candidatePivots.size(); p++) {
+                final ConfirmedPivot placed = candidatePivots.get(p);
+                final int visibleIndex = Collections.binarySearch(visiblePivots, placed, PIVOT_INDEX_ORDER);
+                if (visibleIndex < 0 || visiblePivots.get(visibleIndex).type() != placed.type()
+                        || !visiblePivots.get(visibleIndex).price().isEqual(placed.price())) {
+                    throw corrupt(path, lineNumber, at + ".placement[" + p + "] does not match a visible pivot");
+                }
             }
         }
         if (topologyStatus != null) {

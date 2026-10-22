@@ -139,8 +139,8 @@ class ElliottResearchTraceTest {
         try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
                 ElliottResearchTrace.MODE_REAL, -1, -1)) {
             trace.topology(StudyObserver.Scope.real("h2", "all-rules", "MOTIVE_5", List.of("first", "second"), "d"),
-                    "calibration", 11, Instant.parse("2018-01-12T00:00:00Z"), alternating(10, 20, 14), analysis,
-                    evidence);
+                    "calibration", 11, Instant.parse("2018-01-12T00:00:00Z"),
+                    alternating(10, 20, 14, 26, 18, 32, 24, 40, 30, 48, 36, 19), analysis, evidence);
         }
 
         final JsonObject record = ElliottResearchTrace.read(file).records().get(0);
@@ -845,6 +845,7 @@ class ElliottResearchTraceTest {
                         placement.remove(placement.size() - 1);
                     }
                     placement.get(0).getAsJsonObject().addProperty("price", "1e400");
+                    record.getAsJsonArray("pivots").get(0).getAsJsonObject().addProperty("price", "1e400");
                     candidate.getAsJsonArray("rules").get(0).getAsJsonObject().addProperty("score", 0);
                     candidate.getAsJsonArray("rules").get(1).getAsJsonObject().addProperty("score", 1);
                     final JsonArray candidates = record.getAsJsonArray("candidates");
@@ -867,8 +868,8 @@ class ElliottResearchTraceTest {
     public void persistedTopologyStatesMatchTheModelBeforeRetention() throws Exception {
         final List<String> lines = Files.readAllLines(domainTrace("topology-states.jsonl"), StandardCharsets.UTF_8);
         final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
-        final TopologyCandidate modelCandidate = new TopologyCandidate(TopologyGrammar.CYCLE_5_3,
-                WaveDirection.BULLISH, alternating(10, 20, 14, 26, 18, 32, 24, 30, 20));
+        final TopologyCandidate modelCandidate = new TopologyCandidate(TopologyGrammar.CYCLE_5_3, WaveDirection.BULLISH,
+                alternating(10, 20, 14, 26, 18, 32, 24, 30, 20));
         final WaveDirection[] directions = { null, WaveDirection.BULLISH, WaveDirection.BEARISH };
         for (final TopologyStatus status : TopologyStatus.values()) {
             for (final int count : List.of(0, 1, 2, 64, 65)) {
@@ -888,18 +889,20 @@ class ElliottResearchTraceTest {
                     final int end = status == TopologyStatus.FORMING ? 8 : -1;
                     final JsonObject record = original.deepCopy();
                     record.addProperty("status", status.name());
-                    record.add("direction", direction == null ? JsonNull.INSTANCE : new JsonPrimitive(direction.name()));
+                    record.add("direction",
+                            direction == null ? JsonNull.INSTANCE : new JsonPrimitive(direction.name()));
                     final JsonArray candidates = new JsonArray();
                     for (int i = 0; i < count; i++) {
                         candidates.add(firstCandidate(original).deepCopy());
                     }
                     record.add("candidates", candidates);
                     if (validCount && validDirection) {
-                        assertEquals(direction, new TopologyAnalysis(status, direction, modelCandidates, "", start, end)
-                                .direction());
+                        assertEquals(direction,
+                                new TopologyAnalysis(status, direction, modelCandidates, "", start, end).direction());
                         final List<String> changed = new ArrayList<>(lines);
                         changed.set(1, record.toString());
-                        final Path copy = directory.resolve("state-" + status + "-" + count + "-" + direction + ".jsonl");
+                        final Path copy = directory
+                                .resolve("state-" + status + "-" + count + "-" + direction + ".jsonl");
                         Files.write(copy, changed, StandardCharsets.UTF_8);
                         assertEquals(record, ElliottResearchTrace.read(copy).records().get(0));
                         assertTrue(ElliottResearchTrace.read(copy, ignored -> false).records().isEmpty());
@@ -909,12 +912,83 @@ class ElliottResearchTraceTest {
                         assertThrows(error,
                                 () -> new TopologyAnalysis(status, direction, modelCandidates, "", start, end));
                         final String field = status == TopologyStatus.FORMING && direction == null || validCount
-                                ? "direction" : "candidates";
+                                ? "direction"
+                                : "candidates";
                         assertMalformedAtLine2(lines, record, field);
                     }
                 }
             }
         }
+    }
+
+    @Test
+    public void placementsMustBelongToTheConfirmedAsOfPivotViewBeforeRetention() throws Exception {
+        final List<String> lines = Files.readAllLines(domainTrace("causal-pivots.jsonl"), StandardCharsets.UTF_8);
+        final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        for (final String mutation : List.of("missing-visible-pivot", "different-visible-index",
+                "different-visible-price", "different-visible-type", "future-confirmation", "duplicate-visible-index",
+                "unsorted-visible-indices", "price-beyond-default-precision")) {
+            final JsonObject damaged = original.deepCopy();
+            final JsonArray pivots = damaged.getAsJsonArray("pivots");
+            final JsonObject visible = pivots.get(0).getAsJsonObject();
+            final JsonObject placed = firstCandidate(damaged).getAsJsonArray("placement").get(0).getAsJsonObject();
+            final String field;
+            switch (mutation) {
+            case "missing-visible-pivot" -> {
+                pivots.remove(0);
+                field = "placement[0]";
+            }
+            case "different-visible-index" -> {
+                firstCandidate(damaged).getAsJsonArray("placement").get(8).getAsJsonObject().addProperty("index", 9);
+                field = "placement[8]";
+            }
+            case "different-visible-price" -> {
+                placed.addProperty("price", "11");
+                field = "placement[0]";
+            }
+            case "different-visible-type" -> {
+                visible.addProperty("type", "HIGH");
+                field = "placement[0]";
+            }
+            case "future-confirmation" -> {
+                visible.addProperty("confirmationIndex", damaged.get("asOfIndex").getAsInt() + 1);
+                field = "pivots[0].confirmationIndex";
+            }
+            case "duplicate-visible-index" -> {
+                pivots.get(1).getAsJsonObject().addProperty("index", 0);
+                field = "pivots[1].index";
+            }
+            case "unsorted-visible-indices" -> {
+                pivots.set(0, pivots.get(1));
+                pivots.set(1, visible);
+                field = "pivots[1].index";
+            }
+            case "price-beyond-default-precision" -> {
+                visible.addProperty("price", "10.0000000000000000000000000000000000000000");
+                placed.addProperty("price", "10.0000000000000000000000000000000000000001");
+                field = "placement[0]";
+            }
+            default -> throw new AssertionError(mutation);
+            }
+            refreshIdentity(damaged);
+            assertMalformedAtLine2(lines, damaged, field);
+        }
+        final JsonObject alternative = original.deepCopy();
+        alternative.addProperty("kind", "alternative");
+        alternative.addProperty("status", "complete");
+        alternative.add("direction", JsonNull.INSTANCE);
+        alternative.add("candidates", new JsonArray());
+        alternative.add("labels", new JsonArray());
+        alternative.getAsJsonArray("pivots").get(0).getAsJsonObject().addProperty("confirmationIndex", 9);
+        assertMalformedAtLine2(lines, alternative, "pivots[0].confirmationIndex");
+
+        final JsonObject equivalentPrices = original.deepCopy();
+        equivalentPrices.getAsJsonArray("pivots").get(0).getAsJsonObject().addProperty("price", "1e1");
+        final List<String> equivalentLines = new ArrayList<>(lines);
+        equivalentLines.set(1, equivalentPrices.toString());
+        final Path equivalent = directory.resolve("equivalent-pivot-prices.jsonl");
+        Files.write(equivalent, equivalentLines, StandardCharsets.UTF_8);
+        assertEquals(equivalentPrices, ElliottResearchTrace.read(equivalent).records().get(0));
     }
 
     private Path domainTrace(final String name) throws IOException {

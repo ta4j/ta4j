@@ -183,7 +183,10 @@ daily candles and study settings). Candle starts must share a daily cadence;
 missing whole days are allowed, but intraday or duplicate starts are rejected.
 Recipe asset, partition and detector labels (including robustness detectors) must
 not begin with `=`, `+`, `-`, `@`, tab or carriage return; these prefixes would be
-interpreted as formulas by spreadsheet CSV readers.
+interpreted as formulas by spreadsheet CSV readers. Control characters and line
+separators are rejected anywhere in these labels before artifacts are created.
+Recipes' `activeRules` order is preserved in execution, individual ablations,
+reports, comparisons and trace evidence.
 `--trace off|real|selected-null-member` with
 `--block L --member M` controls evidence capture; `--overwrite` reuses an existing
 run directory. For `explore --overwrite`, move the source candles and recipe outside
@@ -221,10 +224,12 @@ and all other states have no candidates. `FORMING` requires a wave direction;
 the remaining states have a null direction.
 Each candidate's rules must exactly match `activeRules` in order;
 scores are null except for `PASS`, whose recorded score, if present, is in `[0, 1]`.
-Pivots require nonnegative indices, finite prices and valid high/low types, with
-confirmation no earlier than the pivot. Candidate placement must have the
-grammar's required number of strictly ordered, alternating pivots and a valid
-direction. Candidate keys must match the recorded grammar, direction and full
+Pivots require nonnegative, strictly increasing indices, finite prices and valid
+high/low types, with confirmation no earlier than the pivot and no later than the
+observation's `asOfIndex`. Candidate placement must match the visible pivot view
+by index, type and exact numeric price, have the grammar's required number of
+strictly ordered, alternating pivots and a valid direction. Candidate keys must
+match the recorded grammar, direction and full
 placement, and evidence versions must match the candidate key and serialized rules.
 All these checks precede scope filtering. Trace capture
 shares the immutable evidence consumed by report metrics rather than reevaluating

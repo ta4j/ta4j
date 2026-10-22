@@ -12,8 +12,9 @@ import java.util.Objects;
  * @param status               explicit outcome; never a forced count
  * @param direction            the sole candidate's direction for
  *                             {@link TopologyStatus#COMPLETE}, the forming
- *                             suffix's direction for {@link TopologyStatus#FORMING},
- *                             otherwise {@code null}
+ *                             suffix's direction for
+ *                             {@link TopologyStatus#FORMING}, otherwise
+ *                             {@code null}
  * @param candidates           bounded candidate list; non-empty only for
  *                             {@link TopologyStatus#COMPLETE} and
  *                             {@link TopologyStatus#AMBIGUOUS}
@@ -36,8 +37,7 @@ record TopologyAnalysis(TopologyStatus status, WaveDirection direction, List<Top
         candidates = candidates == null ? List.of() : List.copyOf(candidates);
         Objects.requireNonNull(explanation, "explanation");
         validateCandidateCount(status, candidates.size());
-        validateDirection(status, direction,
-                status == TopologyStatus.COMPLETE ? candidates.get(0).direction() : null);
+        validateDirection(status, direction, status == TopologyStatus.COMPLETE ? candidates.get(0).direction() : null);
         if (status == TopologyStatus.FORMING) {
             if (formingStartBarIndex < 0 || formingEndBarIndex < formingStartBarIndex) {
                 throw new IllegalArgumentException("FORMING requires an ordered pivot range");

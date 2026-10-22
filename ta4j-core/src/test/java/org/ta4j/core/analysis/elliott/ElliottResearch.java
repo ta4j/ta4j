@@ -357,10 +357,19 @@ final class ElliottResearch {
         StudyRunner runner() {
             final Function<BarSeries, Indicator<Num>> momentum = series -> new RSIIndicator(
                     new ClosePriceIndicator(series), momentumBarCount);
-            final List<RelationshipRule> rules = ClassicalRelationshipRules.classicalRelationships(momentum)
-                    .stream()
-                    .filter(rule -> activeRules.contains(rule.id()))
-                    .toList();
+            final List<RelationshipRule> registered = ClassicalRelationshipRules.classicalRelationships(momentum);
+            final List<RelationshipRule> rules = new ArrayList<>(activeRules.size());
+            for (final String id : activeRules) {
+                for (final RelationshipRule rule : registered) {
+                    if (id.equals(rule.id())) {
+                        rules.add(rule);
+                        break;
+                    }
+                }
+            }
+            if (rules.size() != activeRules.size()) {
+                throw new IllegalArgumentException("activeRules contains an unregistered relationship rule");
+            }
             final List<DetectorRobustnessMatrix.DetectorSpec> specs = robustness.stream()
                     .map(detector -> new DetectorRobustnessMatrix.DetectorSpec(detector.name(), detector.supplier()))
                     .toList();
@@ -670,6 +679,12 @@ final class ElliottResearch {
         final String value = text(element, where);
         if ("=+-@\t\r".indexOf(value.charAt(0)) >= 0) {
             throw new IllegalArgumentException(where + " must not start with a spreadsheet formula character");
+        }
+        for (int i = 0; i < value.length(); i++) {
+            final char character = value.charAt(i);
+            if (Character.isISOControl(character) || character == '\u2028' || character == '\u2029') {
+                throw new IllegalArgumentException(where + " must not contain control characters or line separators");
+            }
         }
         return value;
     }

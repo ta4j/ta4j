@@ -495,6 +495,61 @@ class ElliottResearchTest {
     }
 
     @Test
+    public void explorePreservesRecipeRuleOrderAcrossExecutionAndEveryArtifact() throws Exception {
+        final Path candles = work.resolve("ordered-rule-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        int index = 0;
+        for (final List<String> order : List.of(
+                List.of("wave5-divergence", "wave4-nonoverlap", "wave3-not-shortest", "wave2-origin"),
+                List.of("wave5-divergence", "wave2-origin", "wave4-nonoverlap"))) {
+            final JsonObject definition = JsonParser.parseString(toyRecipe("ordered")).getAsJsonObject();
+            final JsonArray activeRules = new JsonArray();
+            order.forEach(activeRules::add);
+            definition.add("activeRules", activeRules);
+            final Path recipe = work.resolve("ordered-rule-recipe-" + index + ".json");
+            Files.writeString(recipe, definition.toString());
+            final Path out = work.resolve("ordered-rules-" + index++);
+            final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                    recipe.toString(), "--trace", "real", "--out", out.toString());
+            assertEquals(0, result.code(), result.err());
+            assertEquals(activeRules,
+                    readJson(out.resolve("run.json")).getAsJsonObject("configuration").getAsJsonArray("activeRules"));
+            final JsonArray modes = readJson(out.resolve("reports/ordered.json")).getAsJsonObject("H2")
+                    .getAsJsonArray("modes");
+            for (int i = 0; i < order.size(); i++) {
+                assertEquals("+" + order.get(i), modes.get(i + 1).getAsJsonObject().get("mode").getAsString());
+            }
+            assertEquals(activeRules, modes.get(modes.size() - 1).getAsJsonObject().getAsJsonArray("activeRules"));
+            final List<ElliottResearchReport.Row> rows = ElliottResearchReport.readCsv(out.resolve("comparisons.csv"))
+                    .stream()
+                    .filter(row -> "h2".equals(row.section()) && "all-rules".equals(row.mode()))
+                    .toList();
+            assertFalse(rows.isEmpty());
+            rows.forEach(row -> assertEquals(order, row.activeRules()));
+            final List<JsonObject> records = ElliottResearchTrace.read(out.resolve("traces/ordered-real.jsonl"))
+                    .records()
+                    .stream()
+                    .filter(record -> "h2".equals(record.get("section").getAsString())
+                            && "all-rules".equals(record.get("mode").getAsString()))
+                    .toList();
+            assertFalse(records.isEmpty());
+            int candidateCount = 0;
+            for (final JsonObject record : records) {
+                assertEquals(activeRules, record.getAsJsonArray("activeRules"));
+                for (final com.google.gson.JsonElement candidate : record.getAsJsonArray("candidates")) {
+                    final JsonArray rules = candidate.getAsJsonObject().getAsJsonArray("rules");
+                    assertEquals(order.size(), rules.size());
+                    for (int i = 0; i < order.size(); i++) {
+                        assertEquals(order.get(i), rules.get(i).getAsJsonObject().get("id").getAsString());
+                    }
+                    candidateCount++;
+                }
+            }
+            assertTrue(candidateCount > 0);
+        }
+    }
+
+    @Test
     void exploreRunMarksCoveragePartialWhenAMiddlePartitionHasNoBars() throws Exception {
         // Regression: coverage compared only the first and last bar with the
         // requested window, so a tape missing the whole validation partition
@@ -599,34 +654,7 @@ class ElliottResearchTest {
         for (final String field : List.of("asset", "partitions[1].name", "detector.name",
                 "robustnessDetectors[0].name")) {
             for (final String prefix : List.of("=", "+", "-", "@", "\t", "\r")) {
-                final JsonObject definition = JsonParser.parseString(toyRecipe("formula")).getAsJsonObject();
-                final String value = prefix + "1+1";
-                switch (field) {
-                case "asset" -> definition.addProperty("asset", value);
-                case "partitions[1].name" -> {
-                    final JsonArray original = definition.getAsJsonArray("partitions");
-                    original.get(0).getAsJsonObject().addProperty("end", "2020-03-31");
-                    final JsonObject extra = new JsonObject();
-                    extra.addProperty("name", value);
-                    extra.addProperty("start", "2020-04-01");
-                    extra.addProperty("end", "2020-06-30");
-                    final JsonArray partitions = new JsonArray();
-                    partitions.add(original.get(0));
-                    partitions.add(extra);
-                    partitions.add(original.get(1));
-                    partitions.add(original.get(2));
-                    definition.add("partitions", partitions);
-                }
-                case "detector.name" -> definition.getAsJsonObject("detector").addProperty("name", value);
-                case "robustnessDetectors[0].name" -> {
-                    final JsonObject detector = definition.getAsJsonObject("detector").deepCopy();
-                    detector.addProperty("name", value);
-                    final JsonArray detectors = new JsonArray();
-                    detectors.add(detector);
-                    definition.add("robustnessDetectors", detectors);
-                }
-                default -> throw new AssertionError(field);
-                }
+                final JsonObject definition = recipeWithLabel(field, prefix + "1+1");
                 Files.writeString(recipe, definition.toString());
                 final Path out = work.resolve("formula-label-" + index++);
                 final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
@@ -637,6 +665,32 @@ class ElliottResearchTest {
                                 .contains("recipe." + field + " must not start with a spreadsheet formula character"),
                         result.err());
                 assertFalse(Files.exists(out));
+            }
+        }
+    }
+
+    @Test
+    public void exploreRecipeRejectsStructuralControlsInEveryCsvLabelBeforeRunning() throws Exception {
+        final Path candles = work.resolve("control-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve("control-recipe.json");
+        int index = 0;
+        for (final String field : List.of("asset", "partitions[1].name", "detector.name",
+                "robustnessDetectors[0].name")) {
+            for (final String control : List.of("\n", "\t", "\r", "\0", "\u001b", "\u0085", "\u2028", "\u2029")) {
+                for (final boolean leading : List.of(false, true)) {
+                    final String value = (leading ? "" : "label") + control + "value";
+                    Files.writeString(recipe, recipeWithLabel(field, value).toString());
+                    final Path out = work.resolve("control-label-" + index++);
+                    final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                            recipe.toString(), "--out", out.toString());
+                    assertEquals(1, result.code(), result.err());
+                    final String diagnostic = leading && ("\t".equals(control) || "\r".equals(control))
+                            ? " must not start with a spreadsheet formula character"
+                            : " must not contain control characters or line separators";
+                    assertTrue(result.err().contains("recipe." + field + diagnostic), result.err());
+                    assertFalse(Files.exists(out));
+                }
             }
         }
     }
@@ -954,6 +1008,37 @@ class ElliottResearchTest {
                  "momentum":{"type":"RSI","barCount":14},
                  "null":{"blockLengths":[10],"ensembleSize":2,"seed":7}}
                 """.formatted(datasetId);
+    }
+
+    private static JsonObject recipeWithLabel(final String field, final String value) {
+        final JsonObject definition = JsonParser.parseString(toyRecipe("labels")).getAsJsonObject();
+        switch (field) {
+        case "asset" -> definition.addProperty("asset", value);
+        case "partitions[1].name" -> {
+            final JsonArray original = definition.getAsJsonArray("partitions");
+            original.get(0).getAsJsonObject().addProperty("end", "2020-03-31");
+            final JsonObject extra = new JsonObject();
+            extra.addProperty("name", value);
+            extra.addProperty("start", "2020-04-01");
+            extra.addProperty("end", "2020-06-30");
+            final JsonArray partitions = new JsonArray();
+            partitions.add(original.get(0));
+            partitions.add(extra);
+            partitions.add(original.get(1));
+            partitions.add(original.get(2));
+            definition.add("partitions", partitions);
+        }
+        case "detector.name" -> definition.getAsJsonObject("detector").addProperty("name", value);
+        case "robustnessDetectors[0].name" -> {
+            final JsonObject detector = definition.getAsJsonObject("detector").deepCopy();
+            detector.addProperty("name", value);
+            final JsonArray detectors = new JsonArray();
+            detectors.add(detector);
+            definition.add("robustnessDetectors", detectors);
+        }
+        default -> throw new AssertionError(field);
+        }
+        return definition;
     }
 
     private static JsonObject exploreCoverage(final Path out) throws IOException {
