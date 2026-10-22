@@ -208,14 +208,18 @@ reference rank; neither is a confidence interval or a p-value, and partitions
 are never pooled. `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements. Every observation must match its trace
 header's dataset and null-member coordinates and carry a status defined for its
-record kind. All trace indices and coordinates must fit a signed 32-bit integer;
+record kind; nested rules must carry a known rule-evidence state. Trace capture
+shares the immutable evidence consumed by report metrics rather than reevaluating
+the same candidates. All trace indices and coordinates must fit a signed 32-bit integer;
 the footer count must match exactly without numeric narrowing. When the trace is missing,
 truncated or corrupt, inspection exits with status 2 and prints the recapture
 command, quoted for a POSIX shell.
 The command carries `--expect-revision`, `--expect-fingerprint` and, for `explore`,
 `--expect-source-sha256`, so a recapture against different code, a changed configuration
-or edited candles fails instead of tracing different evidence. Check out the recorded
-revision in a separate worktree before recapturing an archived run.
+or edited candles fails instead of tracing different evidence. Revision-bound
+recapture also requires a known revision and clean worktree, so uncommitted changes
+or unverifiable provenance fail before inputs are read or artifacts created.
+Check out the recorded revision in a separate clean worktree before recapturing an archived run.
 Coverage marks a partition `partial` when it has no bars,
 an internal gap, or missing data at either partition boundary longer than seven
 bar periods, including the outermost requested boundaries; intentionally unrequested

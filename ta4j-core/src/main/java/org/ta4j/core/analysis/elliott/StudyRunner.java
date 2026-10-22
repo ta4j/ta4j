@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -649,14 +650,17 @@ final class StudyRunner {
                 final List<ConfirmedPivot> observedVisible = observed ? translate(visible, recordedIndexOffset) : null;
                 final TopologyAnalysis observedAnalysis = observed ? translate(analysis, recordedIndexOffset) : null;
                 for (final TopologyRecording recording : recordings) {
+                    final List<List<RuleEvidence>> evidence = observed
+                            ? candidateEvidence(analysis, recording.activeRules(), series)
+                            : null;
                     if (observed) {
                         observer.topology(recording.scope(), partitions.entries().get(partitionIndex).name(),
                                 recordedIndex, series.getBar(index).getEndTime(), observedVisible, observedAnalysis,
-                                candidateEvidence(analysis, recording.activeRules(), series));
+                                evidence);
                     }
                     recording.accumulators()
                             .get(partitionIndex)
-                            .record(analysis, recordedIndex, recording.activeRules(), series);
+                            .record(analysis, recordedIndex, recording.activeRules(), series, evidence);
                 }
             }
             if (index == end) {
@@ -694,12 +698,15 @@ final class StudyRunner {
 
     private static List<List<RuleEvidence>> candidateEvidence(final TopologyAnalysis analysis,
             final List<RelationshipRule> activeRules, final BarSeries series) {
+        if (analysis.candidates().isEmpty()) {
+            return List.of();
+        }
         final List<List<RuleEvidence>> evidence = new ArrayList<>(analysis.candidates().size());
         for (final TopologyCandidate candidate : analysis.candidates()) {
             evidence.add(
                     activeRules.isEmpty() ? List.of() : MetricAccumulator.ruleEvidence(candidate, activeRules, series));
         }
-        return evidence;
+        return Collections.unmodifiableList(evidence);
     }
 
     private static StudyReport.ModeReport evaluateAlternativeGrammar(final BarSeries series, final int start,
@@ -1025,7 +1032,7 @@ final class StudyRunner {
         }
 
         private void record(final TopologyAnalysis analysis, final int index, final List<RelationshipRule> activeRules,
-                final BarSeries series) {
+                final BarSeries series, final List<List<RuleEvidence>> candidateEvidence) {
             evaluationCount++;
             firstIndex = Math.min(firstIndex, index);
             lastIndex = Math.max(lastIndex, index);
@@ -1042,7 +1049,8 @@ final class StudyRunner {
                 }
                 confirmationLagSum += lag / candidate.pivots().size();
                 confirmationLagCount++;
-                evaluateRules(candidate, activeRules, series);
+                recordRules(candidateEvidence == null ? ruleEvidence(candidate, activeRules, series)
+                        : candidateEvidence.get(0));
             }
             case FORMING -> {
                 formingCount++;
@@ -1057,9 +1065,11 @@ final class StudyRunner {
                 }
                 updateStability(labels);
                 if (ambiguousCandidateEvidence != null) {
-                    for (final TopologyCandidate candidate : analysis.candidates()) {
+                    for (int candidateIndex = 0; candidateIndex < analysis.candidates().size(); candidateIndex++) {
+                        final TopologyCandidate candidate = analysis.candidates().get(candidateIndex);
                         ambiguousCandidateEvidence.add(new StudyReport.AmbiguousCandidateEvidence(index, candidate,
-                                ruleEvidence(candidate, activeRules, series)));
+                                candidateEvidence == null ? ruleEvidence(candidate, activeRules, series)
+                                        : candidateEvidence.get(candidateIndex)));
                     }
                 }
             }
@@ -1125,14 +1135,12 @@ final class StudyRunner {
             return List.copyOf(evidence);
         }
 
-        private void evaluateRules(final TopologyCandidate candidate, final List<RelationshipRule> activeRules,
-                final BarSeries series) {
-            if (activeRules.isEmpty()) {
+        private void recordRules(final List<RuleEvidence> ruleEvidence) {
+            if (ruleEvidence.isEmpty()) {
                 return;
             }
-            final List<RuleEvidence> ruleEvidence = ruleEvidence(candidate, activeRules, series);
             boolean allRulesPass = true;
-            for (int index = 0; index < activeRules.size(); index++) {
+            for (int index = 0; index < ruleEvidence.size(); index++) {
                 final RuleEvidence evidence = ruleEvidence.get(index);
                 evidenceEvaluationCount++;
                 if (evidence.state() != EvidenceState.PASS) {
