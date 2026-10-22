@@ -27,9 +27,7 @@ The package phase produces a runnable fat jar at `ta4j-cli/target/ta4j-cli-<vers
 
 CLI runs are scalar: the CLI does not bundle an acceleration provider. Native
 acceleration is a library feature of the separate `ta4j-acceleration` artifact,
-which batches Monte Carlo price forecasts inside `BarSeriesManager` backtests. See
-[the acceleration guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration)
-for classifiers, opt-in properties, diagnostics, and benchmark evidence.
+which batches Monte Carlo price forecasts inside `BarSeriesManager` backtests.
 
 ## Canonical Local Input
 
@@ -127,9 +125,9 @@ Use `--error-format JSON` (anywhere on the command line) for structured error en
 ```
 
 ```bash
-ta4j-cli catalog
-ta4j-cli completion --shell bash > ~/.local/share/ta4j-cli-completion.bash
-cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --strategy 'SMA(7,21)' --reproducible --error-format json
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar catalog
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar completion --shell bash > ~/.local/share/ta4j-cli-completion.bash
+cat bars.csv | java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar strategy backtest --data-file - --data-format csv --strategy 'SMA(7,21)' --reproducible --error-format json
 ```
 
 ## Command Surface

@@ -10,7 +10,6 @@ if [[ ! -d "$root/ta4j-acceleration" ]]; then
 fi
 
 echo "CF-336 Linux CUDA continuation root: $root"
-echo "Linux CUDA qualification guide: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration#linux-cuda-qualification"
 echo
 echo "Required preflight and validation commands:"
 printf '  cd -- %q\n' "$root"

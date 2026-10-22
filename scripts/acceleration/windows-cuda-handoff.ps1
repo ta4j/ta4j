@@ -11,7 +11,6 @@ $library = Join-Path $root "ta4j-acceleration\target\native\cuda\package\META-IN
 
 Write-Host "CF-336 Windows CUDA root: $root"
 Write-Host "CUDA provider serves MONTE_CARLO_SHOCK_PATHS_V1 (row-major cumulative log-returns) under an approximate tolerance."
-Write-Host "Implementation record: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration"
 
 if ([System.Environment]::OSVersion.Platform -ne [System.PlatformID]::Win32NT) {
     throw "The cuda-windows-x86_64 profile requires Windows"

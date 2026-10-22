@@ -9,7 +9,6 @@ BASH_ENV=/dev/null bash "$ROOT/scripts/acceleration/linux-cuda-handoff.sh" "$ROO
 grep -q "nvidia-smi" "$TMP/linux-output"
 grep -q "./mvnw -B -pl ta4j-acceleration -am -Pcuda-linux-x86_64" "$TMP/linux-output"
 grep -q "libta4j-cuda-accelerator.so" "$TMP/linux-output"
-grep -q "ta4j-wiki/wiki/Indicator-Acceleration#linux-cuda-qualification" "$TMP/linux-output"
 grep -q -- "-Dtest=CudaNativeIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false" "$TMP/linux-output"
 
 HANDOFF_ROOT="$TMP/root with spaces and 'quotes'"
