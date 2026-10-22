@@ -1,10 +1,23 @@
 ## Unreleased
 
+### Added
+
+- **Hardware-accelerated Monte Carlo backtests (`CF-336`)**: Backtests using `MonteCarloPriceForecastIndicator` can hand simulation to an installed, qualified acceleration provider without changing strategy code. Enable it with `-Dta4j.acceleration.enabled=auto` on any `Num` series. Missing or unsupported providers and provider failures fall back to CPU evaluation; `AccelerationRuntime.lastDiagnostic()` explains the decision. Stale provider batches are discarded and retried at the next decision index. `BacktestExecutor` runs still throw `IllegalStateException` when a bar in their captured window changes. Other indicators can opt in through `KernelIndicator` and `Kernel`, sharing the arithmetic between CPU and provider execution. Native providers and their hardware qualification are delivered separately.
+
 ### Changed
 
 - **Moving-series guidance for 0.27.0**: the [moving-series continuation example](https://ta4j.github.io/ta4j-wiki/Bar-series-and-bars.html#moving-series-and-continued-indicator-state) and [indicator cache policies](https://ta4j.github.io/ta4j-wiki/Technical-indicators.html#moving-series-cache-policies) explain continued versus fresh indicator state, mutation-aware latest-bar caching and retained-window exceptions in 0.27.0. Later releases extend continuation to additional indicators; consult their changelog entries for those changes.
+- **Leaner `DoubleNum` forecast summaries**: Monte Carlo summaries retain primitive-double sorting for `DoubleNum` samples and skip unused higher moments while keeping moment calculations in `Num` arithmetic and preserving the series' numeric ownership.
+
 - **Borrowing-cost conventions (CF-635)**: the `LinearBorrowingCostModel` documentation and `TradeCost` example now state the entry-value base, fee-per-index-step units and side applicability. Calendar spans and later marks do not alter the legacy approximation; fair-value marks continue to exclude hypothetical liquidation fees. Existing formulas and defaults are unchanged.
 - **Leaner portfolio rebalancing**: `PortfolioSeriesManager` reduces allocation and repeated data access when evaluating rebalance policies. Custom policies can still retain each bar's independent pre-trade context for later comparisons.
+
+### Breaking
+
+- **Custom Monte Carlo methods build their own indicator type**: `MonteCarloPriceForecastIndicator.Builder#monteCarloMethod(...)` now returns a `CustomMonteCarloPriceForecastIndicator.Builder`, whose `build()` returns a `CustomMonteCarloPriceForecastIndicator`. Code storing the result as `MonteCarloPriceForecastIndicator` must use the new type or `ForecastProjectionIndicator`; default shock-path forecasts remain kernel-backed.
+- **Default shock-path forecasts simulate in double precision on every `Num` type**: `MonteCarloPriceForecastIndicator` now simulates in `double` arithmetic on `DecimalNum` series too; terminal prices and summaries remain in the series' `Num` type. Seeded decimal forecasts may differ from earlier releases. For decimal simulation, pass an explicit `ShockPathMonteCarloMethod` to `.monteCarloMethod(...)`.
+- **Seeded shock-path forecasts draw one random stream per path**: `ShockPathMonteCarloMethod` and the default `MonteCarloPriceForecastIndicator` give each simulated path its own deterministic stream, including inside ensembles. CPU and qualified accelerated runs use the same streams. Re-baseline stored seeded shock-path outputs; reproducibility for a given seed is retained. Methods drawing only from `MonteCarloContext.random()` are unchanged.
+
 
 ### Fixed
 
