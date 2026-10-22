@@ -17,7 +17,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  * Assessment remains lazy; loading and probing happen only when the provider is
  * selected.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 public final class CudaAccelerationProvider extends ShockPathKernelProvider {
 
@@ -26,6 +26,11 @@ public final class CudaAccelerationProvider extends ShockPathKernelProvider {
     private final Object kernelLock = new Object();
     private volatile SampleKernel kernel;
 
+    /**
+     * Creates a lazy CUDA provider.
+     *
+     * @since 0.27.1
+     */
     public CudaAccelerationProvider() {
         super(Backend.CUDA, "cuda", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, true,
                 ShockPathErrorBound.Precision.FP64, ShockPathQualification.QUALIFIED);

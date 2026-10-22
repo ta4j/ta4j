@@ -58,7 +58,7 @@ import org.ta4j.core.indicators.forecast.MonteCarloKernel;
  * normal double range, where the bound on the smooth {@code exp(C)} mapping
  * does not describe the scalar lane's unstable result.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 final class ShockPathErrorBound {
 

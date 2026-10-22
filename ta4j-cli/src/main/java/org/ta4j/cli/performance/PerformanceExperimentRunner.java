@@ -358,6 +358,11 @@ public final class PerformanceExperimentRunner {
      */
     public record RunRequest(String experimentId, List<Integer> barCounts, List<String> scenarioIds, int repetitions,
             int warmups, Optional<Path> outputDir, boolean profile) {
+        /**
+         * Validates and snapshots the requested experiment grid.
+         *
+         * @since 0.27.1
+         */
         public RunRequest {
             if (experimentId == null || experimentId.isBlank()) {
                 throw new IllegalArgumentException("experimentId must not be blank");
@@ -391,11 +396,23 @@ public final class PerformanceExperimentRunner {
             outputDir = outputDir == null ? Optional.empty() : outputDir;
         }
 
+        /**
+         * Returns the immutable, sorted bar counts with duplicates removed.
+         *
+         * @return requested bar counts
+         * @since 0.27.1
+         */
         @Override
         public List<Integer> barCounts() {
             return List.copyOf(barCounts);
         }
 
+        /**
+         * Returns the immutable scenario identifiers with duplicates removed.
+         *
+         * @return selected scenario identifiers, or empty for defaults
+         * @since 0.27.1
+         */
         @Override
         public List<String> scenarioIds() {
             return List.copyOf(scenarioIds);

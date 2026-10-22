@@ -110,6 +110,8 @@ public final class AccelerationRuntime {
      * System property opting execution into a finite positive approximate tolerance
      * that providers must meet against the scalar oracle. Unset (or invalid) leaves
      * exact, bitwise-identical execution as the only mode.
+     *
+     * @since 0.27.1
      */
     public static final String APPROXIMATE_TOLERANCE_PROPERTY = "ta4j.acceleration.approximateTolerance";
 
@@ -458,6 +460,8 @@ public final class AccelerationRuntime {
          * are responsible for qualifying this accuracy contract against the scalar
          * oracle. The runtime validates output shape, finiteness and series freshness;
          * it does not replay the scalar workload on every execution.
+         *
+         * @since 0.27.1
          */
         APPROXIMATE
     }

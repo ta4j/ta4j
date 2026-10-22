@@ -29,7 +29,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  * exists solely for {@link java.util.ServiceLoader} and performs no probe or
  * native loading.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 public final class MetalAccelerationProvider extends ShockPathKernelProvider {
 
@@ -44,6 +44,8 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
 
     /**
      * Creates a lazy Metal provider.
+     *
+     * @since 0.27.1
      */
     public MetalAccelerationProvider() {
         this(MetalNativeLibrary::load, new JniMetalNativeBridge());
