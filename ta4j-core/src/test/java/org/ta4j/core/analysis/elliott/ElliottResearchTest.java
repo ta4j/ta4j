@@ -577,6 +577,26 @@ class ElliottResearchTest {
     }
 
     @Test
+    public void exploreRecipeRejectsFormulaLeadingAssetBeforeRunning() throws Exception {
+        final Path candles = work.resolve("formula-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve("formula-recipe.json");
+        int index = 0;
+        for (final String prefix : List.of("=", "+", "-", "@", "\t", "\r")) {
+            final JsonObject definition = JsonParser.parseString(toyRecipe("formula")).getAsJsonObject();
+            definition.addProperty("asset", prefix + "1+1");
+            Files.writeString(recipe, definition.toString());
+            final Path out = work.resolve("formula-asset-" + index++);
+            final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                    recipe.toString(), "--out", out.toString());
+            assertEquals(1, result.code(), result.err());
+            assertTrue(result.err().contains("recipe.asset must not start with a spreadsheet formula character"),
+                    result.err());
+            assertFalse(Files.exists(out));
+        }
+    }
+
+    @Test
     void runRefusesDirectoryHeldByAnotherRun() throws Exception {
         final Path held = work.resolve("held");
         Files.createDirectories(held);
@@ -633,6 +653,21 @@ class ElliottResearchTest {
             assertEquals(1, result.code(), result.err());
             assertTrue(result.err().contains("run.json"), result.err());
             assertFalse(Files.exists(dir.resolve(".run.lock")), "invalid metadata gained a lock file");
+        }
+    }
+
+    @Test
+    public void inspectRejectsRecordedNullMemberOutsideTheIntegerRange() throws Exception {
+        final Path copy = work.resolve("member-range");
+        copyTree(smokeRun, copy);
+        final JsonObject original = readJson(copy.resolve("run.json"));
+        for (final String number : List.of("-2147483649", "2147483648", "4294967296", "1.0000000000000001")) {
+            final JsonObject damaged = original.deepCopy();
+            damaged.getAsJsonObject("trace").add("member", JsonParser.parseString(number));
+            Files.writeString(copy.resolve("run.json"), damaged.toString());
+            final Result result = launch("inspect", copy.toString(), OCCUPANCY_KEY);
+            assertEquals(1, result.code(), result.err());
+            assertTrue(result.err().contains("run.trace.member must be an integer"), result.err());
         }
     }
 
