@@ -142,8 +142,7 @@ final class ReplayArtifact {
             }
             for (final JsonElement trace : recordedTraces.getAsJsonArray()) {
                 if (!trace.isJsonPrimitive() || !trace.getAsJsonPrimitive().isString()) {
-                    throw new ReplayArtifactException(
-                            "artifact field traces must contain only strings. " + REGENERATE);
+                    throw new ReplayArtifactException("artifact field traces must contain only strings. " + REGENERATE);
                 }
                 traces.add(trace.getAsString());
             }
