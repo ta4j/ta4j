@@ -3,8 +3,8 @@
  */
 package ta4jexamples.research;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 
@@ -15,6 +15,6 @@ public class CandleMorphologyExampleTest {
         BarSeries series = CandleMorphologyExample.buildSeries();
         Rule customMorphology = CandleMorphologyExample.customMorphology(series);
 
-        Assert.assertTrue(customMorphology.isSatisfied(series.getEndIndex()));
+        Assertions.assertTrue(customMorphology.isSatisfied(series.getEndIndex()));
     }
 }

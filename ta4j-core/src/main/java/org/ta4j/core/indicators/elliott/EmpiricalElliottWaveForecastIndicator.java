@@ -104,7 +104,14 @@ public final class EmpiricalElliottWaveForecastIndicator
     private EmpiricalElliottWaveForecastIndicator(final BarSeries series,
             final Indicator<ElliottScenarioSet> scenarioIndicator, final Indicator<ElliottPhase> phaseIndicator,
             final Settings settings) {
-        super(Objects.requireNonNull(series, "series"));
+        this(series, scenarioIndicator, phaseIndicator, settings,
+                new ATRIndicator(Objects.requireNonNull(series, "series"), ATR_BAR_COUNT));
+    }
+
+    private EmpiricalElliottWaveForecastIndicator(final BarSeries series,
+            final Indicator<ElliottScenarioSet> scenarioIndicator, final Indicator<ElliottPhase> phaseIndicator,
+            final Settings settings, final ATRIndicator averageTrueRange) {
+        super(series, sources(scenarioIndicator, phaseIndicator, averageTrueRange));
         this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
         if (!IndicatorUtils.isSameSeries(series, scenarioIndicator.getBarSeries())) {
             throw new IllegalArgumentException("scenarioIndicator must use the same BarSeries instance");
@@ -114,7 +121,27 @@ public final class EmpiricalElliottWaveForecastIndicator
         }
         this.phaseIndicator = phaseIndicator;
         this.settings = Objects.requireNonNull(settings, "settings");
-        this.atr = new ATRIndicator(series, ATR_BAR_COUNT);
+        this.atr = averageTrueRange;
+    }
+
+    private static Indicator<?>[] sources(final Indicator<ElliottScenarioSet> scenarioIndicator,
+            final Indicator<ElliottPhase> phaseIndicator, final ATRIndicator averageTrueRange) {
+        Indicator<?> scenarios = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
+        if (phaseIndicator == null) {
+            return new Indicator<?>[] { scenarios, averageTrueRange };
+        }
+        return new Indicator<?>[] { scenarios, phaseIndicator, averageTrueRange };
+    }
+
+    /**
+     * The empirical training observations are drawn from the retained window, so a
+     * head advance changes the eligible history behind every cached forecast.
+     *
+     * @return {@code true}
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
     private static BuiltInSources builtInSources(final BarSeries series, final ElliottDegree degree) {

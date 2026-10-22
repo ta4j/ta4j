@@ -7,10 +7,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.math.BigDecimal;
 import java.util.Set;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -18,6 +19,7 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.supportresistance.PriceClusterSupportIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -35,7 +37,7 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
     /**
      * Initializes the test fixtures used by these scenarios.
      */
-    @Before
+    @BeforeEach
     public void setUp() {
         series = buildSeries(new double[] { 20, 20, 20, 12, 12, 12, 15, 15, 15 },
                 new double[] { 5, 4, 6, 10, 11, 12, 7, 8, 9 });
@@ -98,8 +100,12 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
 
         var indicator = new PriceClusterSupportIndicator(withNaN, 2, numOf(0.1));
 
+        // KDE weights use the factory-precision square root, so DecimalNum's weighted
+        // cluster price rounds to one 16-digit ulp above 20; DoubleNum stays exact.
+        Num expectedPrice = numFactory instanceof DecimalNumFactory ? numOf(new BigDecimal("20.00000000000001"))
+                : numOf(20);
         assertThat(indicator.getValue(2)).as("valid values should survive mixed window")
-                .isEqualByComparingTo(numOf(20));
+                .isEqualByComparingTo(expectedPrice);
         assertThat(indicator.getClusterIndex(2)).isEqualTo(2);
 
         assertThat(indicator.getValue(7).isNaN()).as("NaN when entire lookback is invalid").isTrue();
