@@ -8,6 +8,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
@@ -57,6 +58,8 @@ final class ElliottResearchRelations {
     static final String RELATIONS_DIR = "relations";
 
     private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
+    private static final List<String> COVERAGE_COUNTS = List.of("parentCandidates", "legsChecked", "edgesGenerated",
+            "edgesRetained", "edgesOmitted", "edgeCap", "decompositionLegsTruncated");
 
     private ElliottResearchRelations() {
     }
@@ -356,6 +359,11 @@ final class ElliottResearchRelations {
             if (declared == null || !declared.isJsonPrimitive() || !schema.equals(declared.getAsString())) {
                 throw corrupt(path, 1, "unsupported schema " + declared);
             }
+            try {
+                requireInt(header, "edgeCap");
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, 1, "malformed header: " + e.getMessage());
+            }
             JsonObject footer = null;
             long frames = 0;
             long lineNumber = 1;
@@ -380,9 +388,13 @@ final class ElliottResearchRelations {
                     frames++;
                     sink.accept(object);
                 } else if (object.has("complete") && !object.has("kind")) {
-                    final JsonElement count = object.get("frames");
-                    if (count == null || !count.isJsonPrimitive() || count.getAsLong() != frames
-                            || !object.get("complete").isJsonPrimitive()
+                    final long count;
+                    try {
+                        count = requireLong(object, "frames");
+                    } catch (final IllegalArgumentException e) {
+                        throw corrupt(path, lineNumber, "malformed footer: " + e.getMessage());
+                    }
+                    if (count != frames || !object.get("complete").isJsonPrimitive()
                             || !object.get("complete").getAsJsonPrimitive().isBoolean()
                             || !object.get("complete").getAsBoolean()) {
                         throw corrupt(path, lineNumber, "footer disagrees with the " + frames + " frames read");
@@ -404,15 +416,68 @@ final class ElliottResearchRelations {
             }
         }
         try {
-            frame.get("asOfIndex").getAsInt();
-            frame.getAsJsonObject("coverage");
+            requireInt(frame, "asOfIndex");
+            requireCoverage(frame.getAsJsonObject("coverage"));
             for (final JsonElement event : frame.getAsJsonArray("events")) {
                 final JsonObject object = event.getAsJsonObject();
-                object.getAsJsonObject("edge").get("key").getAsString();
+                final JsonObject edge = object.getAsJsonObject("edge");
+                edge.get("key").getAsString();
+                requireInt(edge, "parentLeg");
+                requireInt(edge, "childPivotCount");
+                requireInt(edge, "availableAt");
+                requirePivot(edge.getAsJsonObject("parentStart"));
+                requirePivot(edge.getAsJsonObject("parentEnd"));
+                for (final JsonElement pivot : edge.getAsJsonArray("childPivots")) {
+                    requirePivot(pivot.getAsJsonObject());
+                }
                 object.get("lifecycle").getAsString();
             }
         } catch (final RuntimeException e) {
             throw corrupt(path, line, "malformed frame: " + e.getMessage());
+        }
+    }
+
+    static void requireCoverage(final JsonObject coverage) {
+        for (final String field : COVERAGE_COUNTS) {
+            requireInt(coverage, field);
+        }
+    }
+
+    static void requirePivot(final JsonObject pivot) {
+        requireInt(pivot, "index");
+        requireInt(pivot, "confirmationIndex");
+    }
+
+    static int requireInt(final JsonObject owner, final String field) {
+        final BigDecimal integer = requireInteger(owner, field);
+        try {
+            return integer.intValueExact();
+        } catch (final ArithmeticException e) {
+            throw new IllegalArgumentException(field + " " + owner.get(field) + " is outside the integer range");
+        }
+    }
+
+    static long requireLong(final JsonObject owner, final String field) {
+        final BigDecimal integer = requireInteger(owner, field);
+        try {
+            return integer.longValueExact();
+        } catch (final ArithmeticException e) {
+            throw new IllegalArgumentException(field + " " + owner.get(field) + " is outside the long integer range");
+        }
+    }
+
+    private static BigDecimal requireInteger(final JsonObject owner, final String field) {
+        final JsonElement value = owner.get(field);
+        try {
+            final BigDecimal integer = value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber()
+                    ? value.getAsBigDecimal()
+                    : null;
+            if (integer == null || integer.stripTrailingZeros().scale() > 0) {
+                throw new IllegalArgumentException(field + " is missing or not an integer");
+            }
+            return integer;
+        } catch (final ArithmeticException | NumberFormatException e) {
+            throw new IllegalArgumentException(field + " " + value + " is not a supported integer");
         }
     }
 
