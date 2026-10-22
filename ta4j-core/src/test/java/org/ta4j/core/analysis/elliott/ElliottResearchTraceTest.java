@@ -471,6 +471,42 @@ class ElliottResearchTraceTest {
         }
     }
 
+    @Test
+    public void asOfIndicesMustFitTheWriterIntegerRangeBeforeRetention() throws Exception {
+        final Path file = coordinateTrace("as-of-range.jsonl", false);
+        final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        for (final String number : List.of("-2147483649", "2147483648", "4294967296", "1.0000000000000001",
+                "1e2147483648", "100e2147483647")) {
+            final JsonObject damaged = original.deepCopy();
+            damaged.add("asOfIndex", JsonParser.parseString(number));
+            assertMalformedAtLine(lines, damaged, 2, "asOfIndex");
+        }
+        for (final int boundary : List.of(Integer.MIN_VALUE, -1, 0, Integer.MAX_VALUE)) {
+            final JsonObject supported = original.deepCopy();
+            supported.addProperty("asOfIndex", boundary);
+            final List<String> supportedLines = new ArrayList<>(lines);
+            supportedLines.set(1, supported.toString());
+            Files.write(file, supportedLines, StandardCharsets.UTF_8);
+            final ElliottResearchTrace.TraceFile parsed = ElliottResearchTrace.read(file);
+            assertTrue(parsed.complete());
+            assertEquals(boundary, parsed.records().getFirst().get("asOfIndex").getAsInt());
+        }
+    }
+
+    @Test
+    public void footerCountMustExactlyMatchWithoutLongNarrowing() throws Exception {
+        final Path file = coordinateTrace("footer-count-range.jsonl", false);
+        final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        assertEquals(2, lines.size() - 2);
+        final JsonObject original = JsonParser.parseString(lines.getLast()).getAsJsonObject();
+        for (final String number : List.of("2.5", "18446744073709551618", "1e2147483648", "100e2147483647")) {
+            final JsonObject damaged = original.deepCopy();
+            damaged.add("records", JsonParser.parseString(number));
+            assertMalformedAtLine(lines, damaged, lines.size(), "records");
+        }
+    }
+
     private Path coordinateTrace(final String name, final boolean selectedNull) throws IOException {
         final Path file = directory.resolve(name);
         final int blockLength = selectedNull ? 2 : -1;
@@ -492,7 +528,7 @@ class ElliottResearchTraceTest {
     }
 
     @Test
-    void recordLinesMissingWrittenFieldsAreRejectedWithLocation() throws Exception {
+    public void recordLinesMissingWrittenFieldsAreRejectedWithLocation() throws Exception {
         // Regression: any object with a "kind" member counted as an observation,
         // so a hand-edited line matched the footer count and fed inspection.
         final Path file = directory.resolve("BTC.real.jsonl");
@@ -528,6 +564,20 @@ class ElliottResearchTraceTest {
                         && !firstCandidate(record).getAsJsonArray("placement").isEmpty())
                 .findFirst()
                 .orElseThrow();
+        for (final String number : List.of("-2147483649", "2147483648", "4294967296", "1.0000000000000001",
+                "1e2147483648", "100e2147483647")) {
+            for (final String field : List.of("index", "confirmationIndex")) {
+                final JsonObject damaged = nested.deepCopy();
+                damaged.getAsJsonArray("pivots").get(0).getAsJsonObject().add(field, JsonParser.parseString(number));
+                assertMalformedAtLine2(lines, damaged, "pivots[0]." + field);
+            }
+            final JsonObject damaged = nested.deepCopy();
+            firstCandidate(damaged).getAsJsonArray("placement")
+                    .get(0)
+                    .getAsJsonObject()
+                    .add("index", JsonParser.parseString(number));
+            assertMalformedAtLine2(lines, damaged, "candidates[0].placement[0].index");
+        }
         final JsonObject emptyCandidate = nested.deepCopy();
         emptyCandidate.getAsJsonArray("candidates").set(0, new JsonObject());
         assertMalformedAtLine2(lines, emptyCandidate, "candidates[0].candidateKey");
