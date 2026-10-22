@@ -2,6 +2,7 @@
 
 ### Changed
 
+- **Borrowing-cost conventions (CF-635)**: the `LinearBorrowingCostModel` documentation and `TradeCost` example now state the entry-value base, fee-per-index-step units and side applicability. Calendar spans and later marks do not alter the legacy approximation; fair-value marks continue to exclude hypothetical liquidation fees. Existing formulas and defaults are unchanged.
 - **Leaner portfolio rebalancing**: `PortfolioSeriesManager` reduces allocation and repeated data access when evaluating rebalance policies. Custom policies can still retain each bar's independent pre-trade context for later comparisons.
 
 
