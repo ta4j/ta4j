@@ -3,12 +3,12 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -16,9 +16,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -33,7 +31,6 @@ import org.ta4j.core.num.NumFactory;
  *
  * @since 0.22.2
  */
-@RunWith(Parameterized.class)
 public class ConcurrentBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     public ConcurrentBarSeriesBuilderTest(NumFactory numFactory) {
@@ -504,9 +501,11 @@ public class ConcurrentBarSeriesBuilderTest extends AbstractIndicatorTest<BarSer
 
     // ==================== Null Parameter Handling Tests ====================
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void testWithBarsNull() {
-        new ConcurrentBarSeriesBuilder().withBars(null);
+        assertThrows(NullPointerException.class, () -> {
+            new ConcurrentBarSeriesBuilder().withBars(null);
+        });
     }
 
     @Test

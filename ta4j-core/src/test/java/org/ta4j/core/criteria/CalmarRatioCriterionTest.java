@@ -3,9 +3,9 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.criteria.RatioCriterionTestSupport.alwaysInvested;
 
@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ConcurrentBarSeries;
@@ -120,7 +120,7 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
         Num constrainedValue = criterion.calculate(constrained, constrainedRecord);
 
         assertNumEquals(criterion.calculate(truncated, openAtWindowEnd), constrainedValue, 1e-12);
-        assertTrue("the later exit at 55 must not create a drawdown", constrainedValue.isPositive());
+        assertTrue(constrainedValue.isPositive(), "the later exit at 55 must not create a drawdown");
     }
 
     @Test
@@ -384,13 +384,13 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
                     for (ReturnRepresentation representation : ReturnRepresentation.values()) {
                         CalmarRatioCriterion criterion = new CalmarRatioCriterion(representation, mode, handling);
                         String scenario = fixture.name() + "/" + mode + "/" + handling + "/" + representation;
-                        assertEquals(scenario + " record",
-                                criterion.calculate(fixture.series(), fixture.tradingRecord()),
-                                criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode)));
+                        assertEquals(criterion.calculate(fixture.series(), fixture.tradingRecord()),
+                                criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode)),
+                                scenario + " record");
                         if (fixture.equivalentPosition(mode) != null) {
-                            assertEquals(scenario + " position",
-                                    criterion.calculate(fixture.series(), fixture.position()),
-                                    criterion.calculate(fixture.equivalentSeries(), fixture.equivalentPosition(mode)));
+                            assertEquals(criterion.calculate(fixture.series(), fixture.position()),
+                                    criterion.calculate(fixture.equivalentSeries(), fixture.equivalentPosition(mode)),
+                                    scenario + " position");
                         }
                     }
                 }

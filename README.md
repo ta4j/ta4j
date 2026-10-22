@@ -39,7 +39,7 @@ ta4j requires **Java 25+**. Most applications need only `ta4j-core`:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.26.0</version>
+  <version>0.27.0</version>
 </dependency>
 ```
 
@@ -65,7 +65,7 @@ Snapshot builds are published through the Sonatype Central snapshot repository:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.26.1-SNAPSHOT</version>
+  <version>0.27.1-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -79,7 +79,7 @@ Stable examples artifact:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.26.0</version>
+  <version>0.27.0</version>
 </dependency>
 ```
 
@@ -93,7 +93,7 @@ Snapshot examples artifact:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.26.1-SNAPSHOT</version>
+  <version>0.27.1-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -394,6 +394,10 @@ Restore supported components with `Indicator.fromJson(series, json)` and `Strate
 Beyond the basic strategy loop, ta4j includes building blocks for batch backtests, static target-weight multi-asset portfolio backtests, portfolio correlation clustering and minimum-variance allocation, parameter research, position sizing, causal swing detection, rolling correlations, regime-aware rules, candlestick patterns, Elliott Wave analysis, LPPL residuals, streaming trade ingestion, and fill-aware live records.
 
 These capabilities are intentionally not expanded into mini-manuals here. Use the [examples index](ta4j-examples/README.md), [core API guide](ta4j-core/README.md), [Javadoc](https://ta4j.github.io/ta4j/), and [wiki](https://ta4j.github.io/ta4j-wiki/) to go deeper without losing the onboarding path.
+
+### Bounded trading records
+
+A `BaseTradingRecord` created with a start or end index scopes position-based criteria to that range: positions entered before the start are excluded, and positions exiting after the end count as still open at the end. Use `TradingRecord.getContainedPositions(series)` to inspect the closed positions a criterion will see, or `AnalysisWindow` with `AnalysisContext` to choose a different inclusion policy for an unbounded record.
 
 ### Performance
 

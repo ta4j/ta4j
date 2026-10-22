@@ -3,13 +3,16 @@
  */
 package org.ta4j.core.portfolio;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -189,8 +192,9 @@ public final class PortfolioSeriesManager {
             if (!Num.isFinite(this.initialCash) || this.initialCash.isNegativeOrZero()) {
                 throw new IllegalArgumentException("initialCash must be finite and > 0 but was " + initialCash);
             }
+            Set<String> assetSet = new HashSet<>(assets);
             for (String asset : allocation.getTargetWeights().keySet()) {
-                if (!assets.contains(asset)) {
+                if (!assetSet.contains(asset)) {
                     throw new IllegalArgumentException(
                             "allocation asset is not in the portfolio series: " + asset + " (assets: " + assets + ")");
                 }
@@ -209,16 +213,18 @@ public final class PortfolioSeriesManager {
             Num cash = initialCash;
             Num previousValue = initialCash;
             List<PortfolioSnapshot> snapshots = new ArrayList<>(series.getBarCount());
+            Num[] prices = new Num[assetCount];
+            List<Instant> endTimes = series.getEndTimes();
 
             for (int index = 0; index < series.getBarCount(); index++) {
-                Num[] prices = pricesAt(index);
+                pricesAt(index, prices);
                 Num preTradeValue = portfolioValue(cash, units, prices);
                 Num transactionCost = zero;
                 Num tradedNotional = zero;
                 RebalanceStatus status = RebalanceStatus.NOT_SCHEDULED;
 
-                if (rebalancePolicy.shouldRebalance(new RebalancePolicy.Context(series, index, prices, units, cash,
-                        preTradeValue, targetWeights))) {
+                if (rebalancePolicy.shouldRebalance(
+                        new RebalancePolicy.Context(series, index, units, cash, preTradeValue, targetWeights))) {
                     Rebalance rebalance = new Rebalance(prices, units, cash, preTradeValue);
                     rebalance.execute();
                     units = rebalance.units;
@@ -233,16 +239,15 @@ public final class PortfolioSeriesManager {
                 Num periodReturn = previousValue.isZero() ? zero
                         : portfolioValue.minus(previousValue).dividedBy(previousValue);
                 Num turnover = preTradeValue.isZero() ? zero : tradedNotional.dividedBy(preTradeValue);
-                snapshots.add(new PortfolioSnapshot(index, series.getEndTimes().get(index), toMap(prices), holdings,
-                        cash, portfolioValue, periodReturn, transactionCost, tradedNotional, turnover, status));
+                snapshots.add(new PortfolioSnapshot(index, endTimes.get(index), toMap(prices), holdings, cash,
+                        portfolioValue, periodReturn, transactionCost, tradedNotional, turnover, status));
                 previousValue = portfolioValue;
             }
 
             return new PortfolioExecutionResult(series, allocation, initialCash, snapshots);
         }
 
-        private Num[] pricesAt(int index) {
-            Num[] prices = new Num[assets.size()];
+        private void pricesAt(int index, Num[] prices) {
             for (int position = 0; position < prices.length; position++) {
                 Num price = series.closePrice(position, index);
                 if (!Num.isFinite(price) || price.isNegativeOrZero()) {
@@ -251,7 +256,6 @@ public final class PortfolioSeriesManager {
                 }
                 prices[position] = price;
             }
-            return prices;
         }
 
         private Num portfolioValue(Num cash, Num[] units, Num[] prices) {

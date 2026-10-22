@@ -8,8 +8,8 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -39,7 +39,7 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         return List.of(serializationFixture(series, indicator, 0, 1, 10, 19, series.getEndIndex()));
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (var price : typicalPrices) {
