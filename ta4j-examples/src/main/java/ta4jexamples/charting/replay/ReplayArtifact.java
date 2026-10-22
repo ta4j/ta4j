@@ -142,7 +142,7 @@ final class ReplayArtifact {
         return new Dataset(text(object, "id"), text(object, "asset"), text(coverage, "status"),
                 text(coverage, "message"), List.copyOf(traces), bars == null ? null : text(bars, "path"),
                 bars == null ? null : text(bars, "sha256"),
-                bars == null || !bars.has("rows") ? -1 : bars.get("rows").getAsInt(),
+                bars == null || !bars.has("rows") ? -1 : integer(bars, "rows"),
                 source.has("sha256") && !source.get("sha256").isJsonNull() ? text(source, "sha256") : null);
     }
 
@@ -297,14 +297,20 @@ final class ReplayArtifact {
     private int runTraceCoordinate(final String name) {
         final JsonElement trace = run.get("trace");
         final JsonElement value = trace != null && trace.isJsonObject() ? trace.getAsJsonObject().get(name) : null;
-        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber() ? value.getAsInt()
-                : -1;
+        return value == null || value.isJsonNull() ? -1 : integer(trace.getAsJsonObject(), name);
     }
 
     private static int integer(final JsonObject object, final String name) {
         final JsonElement value = object.get(name);
-        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber() ? value.getAsInt()
-                : Integer.MIN_VALUE;
+        final String message = name + " " + value + " must be an exact 32-bit integer. " + REGENERATE;
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            throw new ReplayArtifactException(message);
+        }
+        try {
+            return value.getAsBigDecimal().intValueExact();
+        } catch (ArithmeticException | NumberFormatException e) {
+            throw new ReplayArtifactException(message, e);
+        }
     }
 
     Path resolveInside(final String relative) {

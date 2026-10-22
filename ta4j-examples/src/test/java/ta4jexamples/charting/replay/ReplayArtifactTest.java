@@ -174,7 +174,8 @@ class ReplayArtifactTest {
     void malformedFooterIsRejectedAsArtifactError() throws IOException {
         final String footer = "{\"complete\":true,\"records\":150}";
         for (final String replacement : List.of("{\"complete\":[],\"records\":150}", "{\"complete\":true}",
-                "{\"complete\":true,\"records\":\"150\"}", "{\"complete\":true,\"records\":150.5}")) {
+                "{\"complete\":true,\"records\":\"150\"}", "{\"complete\":true,\"records\":150.5}",
+                "{\"complete\":true,\"records\":150e2147483648}")) {
             final Path run = ReplayFixture.write(temp.resolve("run-" + Math.abs(replacement.hashCode())));
             final Path trace = run.resolve("traces/d1-real.jsonl");
             final String original = Files.readString(trace);
@@ -399,5 +400,165 @@ class ReplayArtifactTest {
         Files.writeString(rulesTrace, Files.readString(rulesTrace).replace("\"rules\":[", "\"rulez\":["),
                 StandardCharsets.UTF_8);
         assertTrue(failureOf(rules, ReplayFixture.RULES_KEY).contains("rules is missing or not an array"));
+    }
+
+    @Test
+    public void unknownTraceStatusesAndRuleStatesAreRejectedAtTheirLine() throws IOException {
+        int fixture = 0;
+        for (final String scope : List.of("topology", "alternative", "rule")) {
+            for (final String value : List.of("bogus", "", "pass", "PASS ")) {
+                final Path run = ReplayFixture.write(temp.resolve("state-" + fixture++));
+                final Path trace = run.resolve("traces/d1-real.jsonl");
+                final List<String> lines = Files.readAllLines(trace);
+                int changedLine = -1;
+                for (int line = 1; line < lines.size() - 1; line++) {
+                    final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+                    final String field = "rule".equals(scope) ? "state" : "status";
+                    final JsonObject owner;
+                    if ("rule".equals(scope)) {
+                        final var candidates = record.getAsJsonArray("candidates");
+                        if (candidates.isEmpty()
+                                || candidates.get(0).getAsJsonObject().getAsJsonArray("rules").isEmpty()) {
+                            continue;
+                        }
+                        owner = candidates.get(0).getAsJsonObject().getAsJsonArray("rules").get(0).getAsJsonObject();
+                    } else if (scope.equals(record.get("kind").getAsString())) {
+                        owner = record;
+                    } else {
+                        continue;
+                    }
+                    owner.addProperty(field, value);
+                    lines.set(line, record.toString());
+                    changedLine = line;
+                    break;
+                }
+                assertTrue(changedLine > 0, scope);
+                Files.write(trace, lines, StandardCharsets.UTF_8);
+
+                final String message = failureOf(run, ReplayFixture.RULES_KEY);
+                assertTrue(message.contains("rule".equals(scope) ? ".state" : "status")
+                        && message.contains("line " + (changedLine + 1)), scope + "=" + value + ": " + message);
+            }
+        }
+    }
+
+    @Test
+    public void allRecordedRuleStatesRemainReplayable() throws IOException {
+        for (final String state : List.of("PASS", "FAIL", "PENDING", "UNAVAILABLE", "NOT_APPLICABLE")) {
+            final Path run = ReplayFixture.write(temp.resolve("valid-state-" + state));
+            final Path trace = run.resolve("traces/d1-real.jsonl");
+            final List<String> lines = Files.readAllLines(trace);
+            int asOf = -1;
+            for (int line = 1; line < lines.size() - 1; line++) {
+                final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+                final var candidates = record.getAsJsonArray("candidates");
+                if (!candidates.isEmpty() && !candidates.get(0).getAsJsonObject().getAsJsonArray("rules").isEmpty()) {
+                    candidates.get(0).getAsJsonObject().getAsJsonArray("rules").get(0).getAsJsonObject()
+                            .addProperty("state", state);
+                    lines.set(line, record.toString());
+                    asOf = record.get("asOfIndex").getAsInt();
+                    break;
+                }
+            }
+            assertTrue(asOf >= 0, state);
+            Files.write(trace, lines, StandardCharsets.UTF_8);
+
+            final ReplaySession session = ReplaySession.open(ReplayArtifact.open(run), ReplayFixture.RULES_KEY,
+                    ReplayArtifact.TRACE_MODE_REAL, 120, 8);
+            assertTrue(ReplayEvidenceText.render(session.seek(asOf)).contains(state), state);
+        }
+    }
+
+    @Test
+    public void traceIntegersCannotWrapBeforeReplayFramesReadThem() throws IOException {
+        final List<String> fields = List.of("asOfIndex", "nullBlockLength", "nullMemberIndex", "pivot.index",
+                "pivot.confirmationIndex", "candidate.placement.index");
+        int fixture = 0;
+        for (final String field : fields) {
+            for (final String value : List.of("2147483648", "-2147483649", "4294967296", "1e1000", "10.5",
+                    "1e2147483648")) {
+                final Path run = ReplayFixture.write(temp.resolve("record-integer-" + fixture++));
+                final Path trace = run.resolve("traces/d1-real.jsonl");
+                final List<String> lines = Files.readAllLines(trace);
+                int line = 1;
+                JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+                while (record.getAsJsonArray("candidates").isEmpty()) {
+                    record = JsonParser.parseString(lines.get(++line)).getAsJsonObject();
+                }
+                final JsonObject owner;
+                final String name;
+                if (field.startsWith("pivot.")) {
+                    owner = record.getAsJsonArray("pivots").get(0).getAsJsonObject();
+                    name = field.substring("pivot.".length());
+                } else if (field.equals("candidate.placement.index")) {
+                    owner = record.getAsJsonArray("candidates").get(0).getAsJsonObject()
+                            .getAsJsonArray("placements").get(0).getAsJsonObject();
+                    name = "index";
+                } else {
+                    owner = record;
+                    name = field;
+                }
+                owner.add(name, JsonParser.parseString(value));
+                lines.set(line, record.toString());
+                Files.write(trace, lines, StandardCharsets.UTF_8);
+
+                final String message = failureOf(run, ReplayFixture.RULES_KEY);
+                assertTrue(message.contains(name) && message.contains("32-bit")
+                        && message.contains("line " + (line + 1)), field + "=" + value + ": " + message);
+            }
+        }
+    }
+
+    @Test
+    public void headerAndSelectedMemberCoordinatesCannotWrapBeforeIdentityChecks() throws IOException {
+        int fixture = 0;
+        for (final String field : List.of("nullBlockLength", "nullMemberIndex")) {
+            for (final String value : List.of("2147483648", "-2147483649", "4294967295", "1e1000", "1.5",
+                    "1e2147483648")) {
+                final Path run = ReplayFixture.write(temp.resolve("header-integer-" + fixture++));
+                final Path trace = run.resolve("traces/d1-real.jsonl");
+                final List<String> lines = Files.readAllLines(trace);
+                final JsonObject header = JsonParser.parseString(lines.getFirst()).getAsJsonObject();
+                header.add(field, JsonParser.parseString(value));
+                lines.set(0, header.toString());
+                Files.write(trace, lines, StandardCharsets.UTF_8);
+
+                final String message = failureOf(run, ReplayFixture.RULES_KEY);
+                assertTrue(message.contains(field) && message.contains("32-bit"), value + ": " + message);
+
+                final Path selected = ReplayFixture.write(temp.resolve("selected-integer-" + fixture++), options -> {
+                    options.nullTrace = true;
+                    return options;
+                });
+                final Path metadata = selected.resolve("run.json");
+                final JsonObject runJson = JsonParser.parseString(Files.readString(metadata)).getAsJsonObject();
+                runJson.getAsJsonObject("trace").add(field, JsonParser.parseString(value));
+                Files.writeString(metadata, runJson.toString(), StandardCharsets.UTF_8);
+                final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
+                        () -> ReplaySession.open(ReplayArtifact.open(selected), ReplayFixture.RULES_KEY,
+                                ReplayArtifact.TRACE_MODE_NULL_MEMBER, 120, 8));
+                assertTrue(e.getMessage().contains(field) && e.getMessage().contains("32-bit"),
+                        value + ": " + e.getMessage());
+            }
+        }
+    }
+
+    @Test
+    public void retainedPriceBarRowCountIsValidatedBeforeNarrowing() throws IOException {
+        int fixture = 0;
+        for (final String value : List.of("4294967446", "2147483648", "-2147483649", "150.5", "1e1000",
+                "1e2147483648")) {
+            final Path run = ReplayFixture.write(temp.resolve("rows-integer-" + fixture++));
+            final Path metadata = run.resolve("run.json");
+            final JsonObject runJson = JsonParser.parseString(Files.readString(metadata)).getAsJsonObject();
+            runJson.getAsJsonArray("datasets").get(0).getAsJsonObject().getAsJsonObject("priceBars")
+                    .add("rows", JsonParser.parseString(value));
+            Files.writeString(metadata, runJson.toString(), StandardCharsets.UTF_8);
+
+            final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
+                    () -> ReplayArtifact.open(run));
+            assertTrue(e.getMessage().contains("rows") && e.getMessage().contains("32-bit"),
+                    value + ": " + e.getMessage());
+        }
     }
 }

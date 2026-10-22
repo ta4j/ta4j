@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import com.google.gson.JsonArray;
@@ -41,6 +42,15 @@ import ta4jexamples.charting.replay.ReplayArtifact.PriceBar;
  * the parsed trace is never held in memory.
  */
 final class ReplayTraceIndex {
+
+    private static final Set<String> TOPOLOGY_STATUSES = Set.of("INSUFFICIENT_HISTORY", "NO_MATCH", "FORMING",
+            "COMPLETE", "AMBIGUOUS", "INVALIDATED");
+
+    private static final Set<String> ALTERNATIVE_STATUSES = Set.of("insufficient-history", "no-match", "forming",
+            "complete", "ambiguous");
+
+    private static final Set<String> EVIDENCE_STATES = Set.of("PASS", "FAIL", "PENDING", "UNAVAILABLE",
+            "NOT_APPLICABLE");
 
     /** Identity of one recorded as-of stream inside a trace. */
     record Family(String section, String mode, String grammar, String detector, String partition) {
@@ -200,10 +210,15 @@ final class ReplayTraceIndex {
                         + " is truncated: no completion footer. Regenerate it with the original recipe and --trace real");
             }
             final JsonElement declared = footer.get("records");
-            if (declared == null || !declared.isJsonPrimitive() || !declared.getAsJsonPrimitive().isNumber()
-                    || declared.getAsBigDecimal().compareTo(BigDecimal.valueOf(records)) != 0) {
-                throw new ReplayArtifactException("trace " + display + " footer declares " + declared + " records but "
-                        + records + " were read; regenerate the run");
+            try {
+                if (declared == null || !declared.isJsonPrimitive() || !declared.getAsJsonPrimitive().isNumber()
+                        || declared.getAsBigDecimal().compareTo(BigDecimal.valueOf(records)) != 0) {
+                    throw new ReplayArtifactException("trace " + display + " footer declares " + declared
+                            + " records but " + records + " were read; regenerate the run");
+                }
+            } catch (ArithmeticException | NumberFormatException e) {
+                throw new ReplayArtifactException("trace " + display + " footer declares unsupported record count "
+                        + declared + "; regenerate the run", e);
             }
             return new ReplayTraceIndex(file, display, header, records, entries);
         }
@@ -269,6 +284,10 @@ final class ReplayTraceIndex {
                 "status")) {
             requireText(display, line, record, field, where);
         }
+        if (!("topology".equals(kind) ? TOPOLOGY_STATUSES : ALTERNATIVE_STATUSES)
+                .contains(text(record, "status"))) {
+            throw corrupt(display, line, where + "status " + record.get("status") + " is not a " + kind + " status");
+        }
         for (final String field : List.of("nullBlockLength", "nullMemberIndex", "asOfIndex")) {
             requireInteger(display, line, record, field, where);
         }
@@ -312,6 +331,9 @@ final class ReplayTraceIndex {
                 final JsonObject rule = requireObject(display, line, rules.get(r), ruleAt);
                 for (final String field : List.of("id", "state", "explanation")) {
                     requireText(display, line, rule, field, ruleAt + ".");
+                }
+                if (!EVIDENCE_STATES.contains(text(rule, "state"))) {
+                    throw corrupt(display, line, ruleAt + ".state " + rule.get("state") + " is not a recorded rule state");
                 }
                 final JsonElement score = rule.get("score");
                 if (score == null
@@ -373,9 +395,13 @@ final class ReplayTraceIndex {
     private static void requireInteger(final String display, final long line, final JsonObject owner,
             final String field, final String where) {
         final JsonElement value = owner.get(field);
-        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()
-                || value.getAsDouble() != Math.rint(value.getAsDouble())) {
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
             throw corrupt(display, line, where + field + " is missing or not an integer");
+        }
+        try {
+            value.getAsBigDecimal().intValueExact();
+        } catch (ArithmeticException | NumberFormatException e) {
+            throw corrupt(display, line, where + field + " is not an exact 32-bit integer");
         }
     }
 

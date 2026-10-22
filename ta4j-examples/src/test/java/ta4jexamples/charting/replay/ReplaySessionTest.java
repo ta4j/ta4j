@@ -355,7 +355,7 @@ class ReplaySessionTest {
 
         final ReplayFrame frame = session.seek(ReplayFixture.FIRST_AS_OF);
 
-        assertEquals("NONE", frame.status());
+        assertEquals("NO_MATCH", frame.status());
         assertTrue(frame.candidates().isEmpty());
         assertTrue(ReplayEvidenceText.render(frame).contains("candidates retained: 0"));
         assertEquals(1,

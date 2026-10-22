@@ -180,7 +180,12 @@ Finite extreme endpoint innovations are whitened before subtraction, so
 "Run Elliott wave pattern research") knew at each bar. It reads only the run
 directory: it never recomputes a count, fetches data, or writes into the run, and
 it rejects a trace whose dataset, run revision, fingerprint, source digest or
-null block/member coordinates differ from `run.json`.
+null block/member coordinates differ from `run.json`. Trace indices, header and
+selected-member coordinates, and retained price-bar row counts must be exact
+32-bit integers: fractional or out-of-range JSON numbers are rejected before
+conversion, never wrapped into another bar or member. Unknown topology statuses,
+alternative outcomes and nested rule-evidence states are rejected at the trace
+line that contains them instead of being presented as recorded evidence.
 
 Reproducible smoke walkthrough (synthetic data, no network):
 
