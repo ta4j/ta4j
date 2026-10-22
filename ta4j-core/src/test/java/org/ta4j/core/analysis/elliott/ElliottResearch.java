@@ -1316,13 +1316,13 @@ final class ElliottResearch {
                     + "; check out the recorded revision in a separate worktree before recapturing");
         }
         if (!expected.equals(revision)) {
-            throw new IllegalArgumentException(
-                    "current revision is " + revision + ", not the recorded revision " + expected
-                            + "; check out the recorded revision in a separate worktree before recapturing");
+            throw new IllegalArgumentException("current revision is " + revision + ", not the recorded revision "
+                    + expected + "; check out the recorded revision in a separate worktree before recapturing");
         }
         if (!"clean".equals(worktree)) {
-            throw new IllegalArgumentException("revision-bound recapture requires a clean worktree, but this checkout is "
-                    + worktree + "; check out the recorded revision in a separate worktree before recapturing");
+            throw new IllegalArgumentException(
+                    "revision-bound recapture requires a clean worktree, but this checkout is " + worktree
+                            + "; check out the recorded revision in a separate worktree before recapturing");
         }
     }
 

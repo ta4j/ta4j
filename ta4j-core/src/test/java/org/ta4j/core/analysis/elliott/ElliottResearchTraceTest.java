@@ -590,7 +590,10 @@ class ElliottResearchTraceTest {
         }
         for (final EvidenceState state : EvidenceState.values()) {
             final JsonObject supported = nested.deepCopy();
-            firstCandidate(supported).getAsJsonArray("rules").get(0).getAsJsonObject().addProperty("state", state.name());
+            firstCandidate(supported).getAsJsonArray("rules")
+                    .get(0)
+                    .getAsJsonObject()
+                    .addProperty("state", state.name());
             final List<String> supportedLines = new ArrayList<>(lines);
             supportedLines.set(1, supported.toString());
             final Path supportedFile = directory.resolve("supported-rule-state.jsonl");

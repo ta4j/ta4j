@@ -552,7 +552,8 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                 try {
                     EvidenceState.valueOf(rule.get("state").getAsString());
                 } catch (final IllegalArgumentException e) {
-                    throw corrupt(path, lineNumber, ruleAt + ".state " + rule.get("state") + " is not an evidence state");
+                    throw corrupt(path, lineNumber,
+                            ruleAt + ".state " + rule.get("state") + " is not an evidence state");
                 }
                 final JsonElement score = rule.get("score");
                 if (score == null
