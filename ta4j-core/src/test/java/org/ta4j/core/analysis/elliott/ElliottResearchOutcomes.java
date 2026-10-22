@@ -106,6 +106,10 @@ final class ElliottResearchOutcomes {
             "unconditionalUpRate", "momentumAllDates", "momentumAllMeanAligned", "momentumEventDates",
             "momentumEventMeanAligned", "cohortKept", "cohortDiscarded", "cohortSuccess", "cohortInvalidated",
             "cohortExpired", "cohortCensored", "cohortResolvedRate");
+    private static final List<String> OUTCOME_IDENTITY_FIELDS = List.of("dataset", "stream", "partition",
+            "candidateKey", "version", "direction");
+    private static final List<String> SUMMARY_IDENTITY_FIELDS = List.of("dataset", "stream", "partition",
+            "structuralMode", "invalidation");
 
     private ElliottResearchOutcomes() {
     }
@@ -1119,8 +1123,8 @@ final class ElliottResearchOutcomes {
 
     /**
      * Checks the published artifacts against the counts the run declared for them.
-     * A header-only file, a prefix of whole rows, or a cut through the last row no
-     * longer matches, so a reader never summarizes partial evidence.
+     * A header-only file, a prefix of whole rows, a cut through the last row, or a
+     * blank required identity is rejected before a reader presents partial evidence.
      *
      * @param events   {@code events.jsonl}
      * @param outcomes {@code outcomes.csv}
@@ -1130,8 +1134,8 @@ final class ElliottResearchOutcomes {
      */
     static void verifyArtifacts(final Path events, final Path outcomes, final Path summary, final JsonObject declared) {
         verifyEvents(events, declaredCount(declared, "events"));
-        verifyRows(outcomes, OUTCOMES_HEADER, declaredCount(declared, "outcomes"));
-        verifyRows(summary, SUMMARY_HEADER, declaredCount(declared, "summary"));
+        verifyRows(outcomes, OUTCOMES_HEADER, declaredCount(declared, "outcomes"), OUTCOME_IDENTITY_FIELDS);
+        verifyRows(summary, SUMMARY_HEADER, declaredCount(declared, "summary"), SUMMARY_IDENTITY_FIELDS);
     }
 
     private static long declaredCount(final JsonObject declared, final String name) {
@@ -1196,7 +1200,8 @@ final class ElliottResearchOutcomes {
         }
     }
 
-    private static void verifyRows(final Path path, final List<String> header, final long declared) {
+    private static void verifyRows(final Path path, final List<String> header, final long declared,
+            final List<String> requiredIdentity) {
         final List<List<String>> table = ElliottResearchReport.parseCsv(path);
         if (table.isEmpty() || !table.get(0).equals(header)) {
             throw new IllegalArgumentException(path + ":1: unexpected header, expected " + header);
@@ -1209,6 +1214,15 @@ final class ElliottResearchOutcomes {
             if (table.get(row).size() != header.size()) {
                 throw new IllegalArgumentException(
                         path + " row " + row + " has " + table.get(row).size() + " cells, expected " + header.size());
+            }
+        }
+        for (int identity = 0; identity < requiredIdentity.size(); identity++) {
+            final String field = requiredIdentity.get(identity);
+            final int column = header.indexOf(field);
+            for (int row = 1; row < table.size(); row++) {
+                if (table.get(row).get(column).isBlank()) {
+                    throw new IllegalArgumentException(path + " row " + row + " has blank " + field + " identity");
+                }
             }
         }
         if (!endsWithLineBreak(path)) {

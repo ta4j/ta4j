@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -16,6 +18,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.analysis.elliott.ElliottResearchEvents.Event;
@@ -41,6 +44,44 @@ class ElliottResearchOutcomesTest {
 
     private static final StreamKey REAL = new StreamKey(-1, -1, "calibration");
     static final Settings SETTINGS = new Settings(List.of(5), "all-rules", Invalidation.ORIGIN_PIVOT);
+
+    @Test
+    public void publishedCsvArtifactsRejectBlankRequiredIdentities(@TempDir final Path directory) throws IOException {
+        final Event event = bullishEvent(10);
+        final Label label = ElliottResearchOutcomes.label(event, 5, 100, null, SETTINGS, -1);
+        final List<ElliottResearchOutcomes.Result> results = List.of(new ElliottResearchOutcomes.Result("toy", SETTINGS,
+                List.of(new ElliottResearchOutcomes.Evaluated(event, List.of(label))),
+                List.of(new ElliottResearchOutcomes.SummaryRow("real", "ALL", 5, new Tally()))));
+        final Path events = directory.resolve(ElliottResearchOutcomes.EVENTS_FILE);
+        final Path outcomes = directory.resolve(ElliottResearchOutcomes.OUTCOMES_FILE);
+        final Path summary = directory.resolve(ElliottResearchOutcomes.SUMMARY_FILE);
+        ElliottResearchOutcomes.writeEvents(events, "fingerprint", SETTINGS, results);
+        ElliottResearchOutcomes.writeOutcomes(outcomes, results);
+        ElliottResearchOutcomes.writeSummary(summary, results);
+        ElliottResearchOutcomes.verifyArtifacts(events, outcomes, summary, ElliottResearchOutcomes.recordCounts(results));
+
+        for (final Path artifact : List.of(outcomes, summary)) {
+            final List<List<String>> table = ElliottResearchReport.parseCsv(artifact);
+            final List<String> header = table.get(0);
+            final List<String> fields = artifact.equals(outcomes)
+                    ? List.of("dataset", "stream", "partition", "candidateKey", "version", "direction")
+                    : List.of("dataset", "stream", "partition", "structuralMode", "invalidation");
+            for (final String field : fields) {
+                for (final String blank : List.of("", "  ")) {
+                    final List<String> cells = new ArrayList<>(table.get(1));
+                    cells.set(header.indexOf(field), blank);
+                    ElliottResearchReport.writeTable(artifact, header, List.of(cells));
+                    final IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                            () -> ElliottResearchOutcomes.verifyArtifacts(events, outcomes, summary,
+                                    ElliottResearchOutcomes.recordCounts(results)));
+                    assertTrue(failure.getMessage().contains(artifact + " row 1 has blank " + field + " identity"),
+                            failure.getMessage());
+                }
+            }
+            ElliottResearchReport.writeTable(artifact, header, table.subList(1, table.size()));
+        }
+        ElliottResearchOutcomes.verifyArtifacts(events, outcomes, summary, ElliottResearchOutcomes.recordCounts(results));
+    }
 
     // ------------------------------------------------------------ structural
 
