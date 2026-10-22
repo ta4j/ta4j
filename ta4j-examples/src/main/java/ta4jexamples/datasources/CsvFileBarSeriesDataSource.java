@@ -201,8 +201,8 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
     }
 
     /**
-     * Loads daily CSV data, optionally rejecting the entire input when any data
-     * row is malformed. Blank lines and non-UTF-8 header bytes remain tolerated.
+     * Loads daily CSV data, optionally rejecting the entire input when any data row
+     * is malformed. Blank lines and non-UTF-8 header bytes remain tolerated.
      *
      * @param filename the name of the CSV file to load
      * @param strict   whether a malformed data row rejects the entire input
@@ -271,7 +271,9 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
                             continue;
                         }
                         try {
-                            Instant date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneOffset.UTC).toInstant();
+                            Instant date = LocalDate.parse(line[0], DATE_FORMAT)
+                                    .atStartOfDay(ZoneOffset.UTC)
+                                    .toInstant();
                             double open = Double.parseDouble(line[1]);
                             double high = Double.parseDouble(line[2]);
                             double low = Double.parseDouble(line[3]);

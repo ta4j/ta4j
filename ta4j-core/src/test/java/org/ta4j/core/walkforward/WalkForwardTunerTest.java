@@ -214,9 +214,9 @@ class WalkForwardTunerTest {
             Num brier = numFactory.numOf(0.1);
             Num logLoss = numFactory.numOf(0.2);
             Num ece = numFactory.numOf(0.05);
-            Map<String, Num> metrics = new HashMap<>(Map.of("BRIER", numFactory.zero(), "LOGLOSS", numFactory.zero(),
-                    "LOG_LOSS", numFactory.zero(), "LOG-LOSS", numFactory.zero(), "ECE", numFactory.zero(), "agreement",
-                    numFactory.one()));
+            Map<String, Num> metrics = new HashMap<>(
+                    Map.of("BRIER", numFactory.zero(), "LOGLOSS", numFactory.zero(), "LOG_LOSS", numFactory.zero(),
+                            "LOG-LOSS", numFactory.zero(), "ECE", numFactory.zero(), "agreement", numFactory.one()));
 
             WalkForwardTuner.patchCalibrationMetrics(metrics, brier, logLoss, ece);
 

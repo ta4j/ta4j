@@ -354,9 +354,9 @@ public class CsvBarSeriesDataSourceTest {
     public void testMalformedRowsAreSkippedByDefaultAndRejectedInStrictMode(String malformedRow) throws Exception {
         Path tempFile = Files.createTempFile("ta4j-malformed-row-", ".csv");
         try {
-            Files.writeString(tempFile, "date,open,high,low,close,volume\n"
-                    + "2013-01-02,553.82,555.00,541.63,549.03,20018500\n" + malformedRow + "\n"
-                    + "2013-01-04,550.00,556.00,548.00,554.00,14000000\n");
+            Files.writeString(tempFile,
+                    "date,open,high,low,close,volume\n" + "2013-01-02,553.82,555.00,541.63,549.03,20018500\n"
+                            + malformedRow + "\n" + "2013-01-04,550.00,556.00,548.00,554.00,14000000\n");
 
             BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
 
