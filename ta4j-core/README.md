@@ -181,8 +181,9 @@ real-data trace on by default), `frozen-cf525` (the frozen study over the bundle
 datasets) and `explore --source candles.json --recipe recipe.json` (your own
 daily candles and study settings). Candle starts must share a daily cadence;
 missing whole days are allowed, but intraday or duplicate starts are rejected.
-Recipe asset labels must not begin with `=`, `+`, `-`, `@`, tab or carriage return;
-these prefixes would be interpreted as formulas by spreadsheet CSV readers.
+Recipe asset, partition and detector labels (including robustness detectors) must
+not begin with `=`, `+`, `-`, `@`, tab or carriage return; these prefixes would be
+interpreted as formulas by spreadsheet CSV readers.
 `--trace off|real|selected-null-member` with
 `--block L --member M` controls evidence capture; `--overwrite` reuses an existing
 run directory. For `explore --overwrite`, move the source candles and recipe outside
@@ -208,7 +209,9 @@ reference rank; neither is a confidence interval or a p-value, and partitions
 are never pooled. `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements. Every observation must match its trace
 header's dataset and null-member coordinates and carry a status defined for its
-record kind; nested rules must carry a known rule-evidence state. Trace capture
+record kind; nested rules must carry a known rule-evidence state. Candidate keys
+must match the recorded grammar, direction and full placement, and evidence
+versions must match the candidate key and serialized rules. Trace capture
 shares the immutable evidence consumed by report metrics rather than reevaluating
 the same candidates. All trace indices and coordinates must fit a signed 32-bit integer;
 the footer count must match exactly without numeric narrowing. When the trace is missing,

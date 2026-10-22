@@ -13,12 +13,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -594,6 +597,7 @@ class ElliottResearchTraceTest {
                     .get(0)
                     .getAsJsonObject()
                     .addProperty("state", state.name());
+            refreshVersion(firstCandidate(supported));
             final List<String> supportedLines = new ArrayList<>(lines);
             supportedLines.set(1, supported.toString());
             final Path supportedFile = directory.resolve("supported-rule-state.jsonl");
@@ -622,6 +626,67 @@ class ElliottResearchTraceTest {
         labels.add(new JsonObject());
         objectLabel.add("labels", labels);
         assertMalformedAtLine2(lines, objectLabel, "labels[0]");
+    }
+
+    @Test
+    public void candidateIdentityAndEvidenceVersionMustMatchRecordedContents() throws Exception {
+        final Path file = directory.resolve("candidate-identity.jsonl");
+        traceEvaluation(file, buildSeries(24), 0, 19);
+        final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        final JsonObject original = lines.stream()
+                .skip(1)
+                .map(line -> JsonParser.parseString(line).getAsJsonObject())
+                .filter(record -> record.has("candidates") && !record.getAsJsonArray("candidates").isEmpty()
+                        && firstCandidate(record).getAsJsonArray("rules").size() > 1)
+                .findFirst()
+                .orElseThrow();
+        for (final String field : List.of("candidateKey", "version", "grammar", "direction", "placement.index",
+                "placement.type", "placement.price", "placement.order", "placement.removed", "rules.id", "rules.state",
+                "rules.score", "rules.observations", "rules.explanation", "rules.order", "rules.removed")) {
+            final JsonObject damaged = original.deepCopy();
+            final JsonObject candidate = firstCandidate(damaged);
+            final JsonArray placement = candidate.getAsJsonArray("placement");
+            final JsonObject pivot = placement.get(0).getAsJsonObject();
+            final JsonArray rules = candidate.getAsJsonArray("rules");
+            final JsonObject rule = rules.get(0).getAsJsonObject();
+            switch (field) {
+            case "candidateKey", "version" -> candidate.addProperty(field, "fabricated");
+            case "grammar" -> damaged.addProperty("grammar", "FOREIGN");
+            case "direction" -> candidate.addProperty("direction",
+                    "BULLISH".equals(candidate.get("direction").getAsString()) ? "BEARISH" : "BULLISH");
+            case "placement.index" -> pivot.addProperty("index", pivot.get("index").getAsInt() + 1);
+            case "placement.type" ->
+                pivot.addProperty("type", "LOW".equals(pivot.get("type").getAsString()) ? "HIGH" : "LOW");
+            case "placement.price" -> pivot.addProperty("price", pivot.get("price").getAsString() + "0");
+            case "placement.order" -> {
+                final JsonElement first = placement.get(0);
+                placement.set(0, placement.get(1));
+                placement.set(1, first);
+            }
+            case "placement.removed" -> placement.remove(0);
+            case "rules.id" -> rule.addProperty("id", "edited");
+            case "rules.state" -> rule.addProperty("state", "FAIL");
+            case "rules.score" -> rule.addProperty("score", 0.123);
+            case "rules.observations" -> rule.getAsJsonArray("observations").add("edited");
+            case "rules.explanation" -> rule.addProperty("explanation", "edited");
+            case "rules.order" -> {
+                final JsonElement first = rules.get(0);
+                rules.set(0, rules.get(1));
+                rules.set(1, first);
+            }
+            case "rules.removed" -> rules.remove(0);
+            default -> throw new AssertionError(field);
+            }
+            assertMalformedAtLine2(lines, damaged, "candidates[0]."
+                    + (field.startsWith("rules.") || "version".equals(field) ? "version" : "candidateKey"));
+        }
+    }
+
+    private static void refreshVersion(final JsonObject candidate) throws NoSuchAlgorithmException {
+        final byte[] digest = MessageDigest.getInstance("SHA-256")
+                .digest(candidate.getAsJsonArray("rules").toString().getBytes(StandardCharsets.UTF_8));
+        candidate.addProperty("version",
+                candidate.get("candidateKey").getAsString() + "@" + HexFormat.of().formatHex(digest, 0, 16));
     }
 
     private static JsonObject firstCandidate(final JsonObject record) {

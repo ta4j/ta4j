@@ -329,6 +329,20 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         return digest(identity.toString());
     }
 
+    private static String candidateKey(final String grammar, final String direction, final JsonArray placement) {
+        final StringBuilder identity = new StringBuilder(grammar).append('|').append(direction);
+        for (final JsonElement entry : placement) {
+            final JsonObject pivot = entry.getAsJsonObject();
+            identity.append('|')
+                    .append(pivot.get("index").getAsInt())
+                    .append(':')
+                    .append(pivot.get("type").getAsString())
+                    .append(':')
+                    .append(pivot.get("price").getAsString());
+        }
+        return digest(identity.toString());
+    }
+
     /** First 128 bits of the text's SHA-256, as lowercase hex. */
     private static String digest(final String text) {
         try {
@@ -561,6 +575,15 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                     throw corrupt(path, lineNumber, ruleAt + ".score is missing or not a number or null");
                 }
                 requireTexts(path, lineNumber, rule, "observations", ruleAt + ".");
+            }
+            final String key = candidateKey(record.get("grammar").getAsString(),
+                    candidate.get("direction").getAsString(), placement);
+            if (!key.equals(candidate.get("candidateKey").getAsString())) {
+                throw corrupt(path, lineNumber,
+                        at + ".candidateKey does not match grammar, direction and full placement");
+            }
+            if (!(key + "@" + digest(rules.toString())).equals(candidate.get("version").getAsString())) {
+                throw corrupt(path, lineNumber, at + ".version does not match the candidate key and rule evidence");
             }
         }
         if ("alternative".equals(kind)) {

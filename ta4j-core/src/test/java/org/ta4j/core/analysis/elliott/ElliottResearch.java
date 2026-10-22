@@ -525,17 +525,14 @@ final class ElliottResearch {
             throw new IllegalArgumentException("recipe.datasetId is " + datasetId.length() + " characters; at most "
                     + MAX_DATASET_ID_LENGTH + " keeps every artifact file name within 255 bytes");
         }
-        final String asset = text(required(root, "asset", "recipe"), "recipe.asset");
-        if ("=+-@\t\r".indexOf(asset.charAt(0)) >= 0) {
-            throw new IllegalArgumentException("recipe.asset must not start with a spreadsheet formula character");
-        }
+        final String asset = csvLabel(required(root, "asset", "recipe"), "recipe.asset");
         final List<StudyRunner.Partition> partitions = new ArrayList<>();
         final JsonArray partitionArray = arrayOf(required(root, "partitions", "recipe"), "recipe.partitions");
         for (int index = 0; index < partitionArray.size(); index++) {
             final String where = "recipe.partitions[" + index + "]";
             final JsonObject entry = objectOf(partitionArray.get(index), where);
             rejectUnknown(entry, where, Set.of("name", "start", "end"));
-            final String name = text(required(entry, "name", where), where + ".name");
+            final String name = csvLabel(required(entry, "name", where), where + ".name");
             ElliottResearchReport.requireKeyPart(name, where + ".name");
             partitions.add(new StudyRunner.Partition(name, date(required(entry, "start", where), where + ".start"),
                     date(required(entry, "end", where), where + ".end")));
@@ -609,7 +606,7 @@ final class ElliottResearch {
                 params.add(integer(array.get(index), where + ".params[" + index + "]"));
             }
         }
-        final String name = text(required(object, "name", where), where + ".name");
+        final String name = csvLabel(required(object, "name", where), where + ".name");
         ElliottResearchReport.requireKeyPart(name, where + ".name");
         return new DetectorRecipe(name, text(required(object, "factory", where), where + ".factory"), params);
     }
@@ -666,6 +663,14 @@ final class ElliottResearch {
             throw new IllegalArgumentException(where + " must be a non-blank string");
         }
         return element.getAsString();
+    }
+
+    private static String csvLabel(final JsonElement element, final String where) {
+        final String value = text(element, where);
+        if ("=+-@\t\r".indexOf(value.charAt(0)) >= 0) {
+            throw new IllegalArgumentException(where + " must not start with a spreadsheet formula character");
+        }
+        return value;
     }
 
     private static int integer(final JsonElement element, final String where) {

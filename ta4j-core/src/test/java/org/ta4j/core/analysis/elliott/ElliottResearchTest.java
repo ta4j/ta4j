@@ -592,22 +592,53 @@ class ElliottResearchTest {
     }
 
     @Test
-    public void exploreRecipeRejectsFormulaLeadingAssetBeforeRunning() throws Exception {
+    public void exploreRecipeRejectsFormulaLeadingCsvLabelsBeforeRunning() throws Exception {
         final Path candles = work.resolve("formula-candles.json");
         writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
         final Path recipe = work.resolve("formula-recipe.json");
         int index = 0;
-        for (final String prefix : List.of("=", "+", "-", "@", "\t", "\r")) {
-            final JsonObject definition = JsonParser.parseString(toyRecipe("formula")).getAsJsonObject();
-            definition.addProperty("asset", prefix + "1+1");
-            Files.writeString(recipe, definition.toString());
-            final Path out = work.resolve("formula-asset-" + index++);
-            final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
-                    recipe.toString(), "--out", out.toString());
-            assertEquals(1, result.code(), result.err());
-            assertTrue(result.err().contains("recipe.asset must not start with a spreadsheet formula character"),
-                    result.err());
-            assertFalse(Files.exists(out));
+        for (final String field : List.of("asset", "partitions[1].name", "detector.name",
+                "robustnessDetectors[0].name")) {
+            for (final String prefix : List.of("=", "+", "-", "@", "\t", "\r")) {
+                final JsonObject definition = JsonParser.parseString(toyRecipe("formula")).getAsJsonObject();
+                final String value = prefix + "1+1";
+                switch (field) {
+                case "asset" -> definition.addProperty("asset", value);
+                case "partitions[1].name" -> {
+                    final JsonArray original = definition.getAsJsonArray("partitions");
+                    original.get(0).getAsJsonObject().addProperty("end", "2020-03-31");
+                    final JsonObject extra = new JsonObject();
+                    extra.addProperty("name", value);
+                    extra.addProperty("start", "2020-04-01");
+                    extra.addProperty("end", "2020-06-30");
+                    final JsonArray partitions = new JsonArray();
+                    partitions.add(original.get(0));
+                    partitions.add(extra);
+                    partitions.add(original.get(1));
+                    partitions.add(original.get(2));
+                    definition.add("partitions", partitions);
+                }
+                case "detector.name" -> definition.getAsJsonObject("detector").addProperty("name", value);
+                case "robustnessDetectors[0].name" -> {
+                    final JsonObject detector = definition.getAsJsonObject("detector").deepCopy();
+                    detector.addProperty("name", value);
+                    final JsonArray detectors = new JsonArray();
+                    detectors.add(detector);
+                    definition.add("robustnessDetectors", detectors);
+                }
+                default -> throw new AssertionError(field);
+                }
+                Files.writeString(recipe, definition.toString());
+                final Path out = work.resolve("formula-label-" + index++);
+                final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                        recipe.toString(), "--out", out.toString());
+                assertEquals(1, result.code(), result.err());
+                assertTrue(
+                        result.err()
+                                .contains("recipe." + field + " must not start with a spreadsheet formula character"),
+                        result.err());
+                assertFalse(Files.exists(out));
+            }
         }
     }
 
