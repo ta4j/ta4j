@@ -275,7 +275,9 @@ and a "Scale relations" section in `summary.md`. Inspect with
 `ElliottResearch relations <runDir> <dataset> [--as-of IDX] [--limit N] [--edge KEY]`
 (exit 2 when the file is missing, incomplete, corrupt or from another run). Replay
 checks integer indices, counters and limits without narrowing, and the footer's
-frame count must match exactly. Each printed edge
+frame count must match exactly. Opaque edge and candidate references must keep
+their 32-digit lowercase-hex keys and matching `key@hash` versions; this checks
+stored references, not candidate contents absent from the sidecar. Each printed edge
 lists its child pivots with their confirmation bars and every predicate with its
 explanation, and says so when more child pivots exist than the sidecar stores. Runs without a
 `hierarchy` write no `relations/` directory.

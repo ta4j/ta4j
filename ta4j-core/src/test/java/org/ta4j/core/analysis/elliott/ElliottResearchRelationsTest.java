@@ -281,6 +281,76 @@ class ElliottResearchRelationsTest {
     }
 
     @Test
+    public void edgeAndParentIdentitiesRejectMalformedKeysAndVersions() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        int line = 1;
+        while (line < lines.size() - 1 && !lines.get(line).contains("\"parentStart\"")) {
+            line++;
+        }
+        assertTrue(line < lines.size() - 1, "fixture must contain an edge");
+        final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+        final JsonObject edge = frame.getAsJsonArray("events").get(0).getAsJsonObject().getAsJsonObject("edge");
+        for (final String[] fields : List.of(new String[] { "key", "version" },
+                new String[] { "parentCandidateKey", "parentVersion" })) {
+            final JsonElement originalKey = edge.get(fields[0]);
+            final JsonElement originalVersion = edge.get(fields[1]);
+            for (final String invalid : List.of("null", "42", "true", "\"\"", "\"short\"",
+                    "\"" + "A".repeat(32) + "\"", "\"" + "0".repeat(64) + "\"")) {
+                edge.add(fields[0], JsonParser.parseString(invalid));
+                assertIdentityRejected(lines, line, frame, fields[0]);
+            }
+            edge.add(fields[0], originalKey);
+            final String key = originalKey.getAsString();
+            final String otherKey = (key.charAt(0) == '0' ? "1" : "0") + key.substring(1);
+            for (final String invalid : List.of("null", "42", "true", "\"\"", "\"" + key + "@short\"",
+                    "\"" + otherKey + "@" + "0".repeat(32) + "\"", "\"" + key + "@" + "A".repeat(32) + "\"")) {
+                edge.add(fields[1], JsonParser.parseString(invalid));
+                assertIdentityRejected(lines, line, frame, fields[1]);
+            }
+            edge.add(fields[1], originalVersion);
+        }
+    }
+
+    @Test
+    public void optionalChildIdentityIsAbsentOrAConsistentPair() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        int line = 1;
+        while (line < lines.size() - 1 && !lines.get(line).contains("\"parentStart\"")) {
+            line++;
+        }
+        assertTrue(line < lines.size() - 1, "fixture must contain an edge");
+        final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+        final JsonObject edge = frame.getAsJsonArray("events").get(0).getAsJsonObject().getAsJsonObject("edge");
+        edge.remove("childCandidateKey");
+        edge.remove("childVersion");
+        lines.set(line, frame.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        assertTrue(ElliottResearchRelations.read(file, ignored -> {
+        }).complete());
+
+        edge.add("childCandidateKey", edge.get("parentCandidateKey"));
+        assertIdentityRejected(lines, line, frame, "childVersion");
+        edge.add("childVersion", edge.get("parentVersion"));
+        lines.set(line, frame.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        assertTrue(ElliottResearchRelations.read(file, ignored -> {
+        }).complete());
+
+        final String key = edge.get("childCandidateKey").getAsString();
+        final String otherKey = (key.charAt(0) == '0' ? "1" : "0") + key.substring(1);
+        edge.addProperty("childVersion", otherKey + "@" + "0".repeat(32));
+        assertIdentityRejected(lines, line, frame, "childVersion");
+        edge.remove("childCandidateKey");
+        assertIdentityRejected(lines, line, frame, "childCandidateKey");
+        edge.add("childCandidateKey", JsonParser.parseString("null"));
+        edge.add("childVersion", JsonParser.parseString("null"));
+        lines.set(line, frame.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        assertTrue(ElliottResearchRelations.read(file, ignored -> {
+        }).complete());
+    }
+
+    @Test
     public void footerCountsMustMatchWithoutFractionalOrLongNarrowing() throws IOException {
         final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
         final JsonObject footer = JsonParser.parseString(lines.get(lines.size() - 1)).getAsJsonObject();
@@ -363,6 +433,16 @@ class ElliottResearchRelationsTest {
         final IllegalArgumentException mismatch = assertThrows(IllegalArgumentException.class,
                 () -> hourly.validateSeries("toy", ScaleRelationFixtures.series(5)));
         assertTrue(mismatch.getMessage().contains("not resampled or aligned"), mismatch.getMessage());
+    }
+
+    private void assertIdentityRejected(final List<String> lines, final int line, final JsonObject frame,
+            final String field) throws IOException {
+        lines.set(line, frame.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        final String message = assertThrows(IllegalArgumentException.class,
+                () -> ElliottResearchRelations.read(file, ignored -> {
+                })).getMessage();
+        assertTrue(message.startsWith(file + ": line " + (line + 1) + ": malformed frame: " + field + " "), message);
     }
 
     private String printed(final Integer asOf, final int limit, final String edge) throws IOException {
