@@ -96,7 +96,7 @@ import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.AndWithThresholdRule;
-import org.ta4j.core.rules.ChainLink;
+import org.ta4j.core.rules.helper.ChainLink;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OrWithThresholdRule;
@@ -785,24 +785,20 @@ final class CliSupport {
         if (component instanceof Indicator<?> indicator) {
             return sumRollingWindowBarCounts(indicator, visitedIndicators);
         }
-        if (component instanceof ChainLink link) {
-            if (!activeRules.add(link)) {
-                return 0L;
-            }
-            long childWork = componentWindowWork(link.getRule(), activeRules,
-                    Collections.newSetFromMap(new IdentityHashMap<>()));
-            activeRules.remove(link);
-            return saturatingMultiply(Math.max(0L, (long) link.getThreshold() + 1L), saturatingAdd(1L, childWork));
-        }
         long work = 0L;
-        if (component instanceof Rule) {
+        if (component instanceof Rule || component instanceof ChainLink) {
             if (!activeRules.add(component)) {
                 return 0L;
             }
+            boolean chainLink = component instanceof ChainLink;
             boolean thresholdRule = component instanceof AndWithThresholdRule
                     || component instanceof OrWithThresholdRule;
-            long repetitions = 1L;
-            Set<Indicator<?>> childIndicators = thresholdRule
+            long repetitions = chainLink ? Math.max(0L, (long) ((ChainLink) component).getThreshold() + 1L) : 1L;
+            if (repetitions == 0L) {
+                activeRules.remove(component);
+                return 0L;
+            }
+            Set<Indicator<?>> childIndicators = chainLink || thresholdRule
                     ? Collections.newSetFromMap(new IdentityHashMap<>()) : visitedIndicators;
             for (Class<?> type = component.getClass(); type != null
                     && type != Object.class; type = type.getSuperclass()) {
@@ -824,7 +820,9 @@ final class CliSupport {
                 }
             }
             activeRules.remove(component);
-            if (thresholdRule) {
+            if (chainLink) {
+                work = saturatingMultiply(repetitions, saturatingAdd(1L, work));
+            } else if (thresholdRule) {
                 work = saturatingMultiply(repetitions, saturatingAdd(2L, work));
             }
         } else if (component instanceof Object[] array) {

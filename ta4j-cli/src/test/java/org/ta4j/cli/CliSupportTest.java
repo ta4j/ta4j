@@ -62,7 +62,7 @@ import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.AndWithThresholdRule;
 import org.ta4j.core.rules.BooleanRule;
-import org.ta4j.core.rules.ChainLink;
+import org.ta4j.core.rules.helper.ChainLink;
 import org.ta4j.core.rules.ChainRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OrWithThresholdRule;
@@ -1480,6 +1480,18 @@ class CliSupportTest {
                 () -> CliSupport.requireBoundedWalkForward(List.of(strategy), List.of(), series, config))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("repeated rule evaluations");
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = { -1, 0 })
+    public void strategyBatchHonorsEmptyAndCurrentBarChainWindows(int threshold) {
+        BarSeries series = syntheticSeries(10);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Rule scanner = new OverIndicatorRule(new HighestValueIndicator(close, 2_000), close);
+        Strategy strategy = new BaseStrategy(
+                new ChainRule(BooleanRule.TRUE, new ChainLink(scanner, threshold)), BooleanRule.FALSE);
+
+        assertThat(CliSupport.strategyWindowWork(strategy)).isEqualTo(threshold < 0 ? 0L : 2_001L);
     }
 
     private static final class InitializerProbe {
