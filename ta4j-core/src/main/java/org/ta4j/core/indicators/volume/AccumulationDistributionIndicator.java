@@ -10,6 +10,12 @@ import org.ta4j.core.num.Num;
 
 /**
  * Accumulation-distribution indicator.
+ *
+ * <p>
+ * A live instance carries accumulated money flow across retained-head advances,
+ * including one-bar windows. Without a cached predecessor it starts from the
+ * retained bar's money flow; index zero retains its zero baseline.
+ * </p>
  */
 public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -21,8 +27,12 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
      * @param series the bar series
      */
     public AccumulationDistributionIndicator(BarSeries series) {
-        super(series);
-        this.clvIndicator = new CloseLocationValueIndicator(series);
+        this(new CloseLocationValueIndicator(series));
+    }
+
+    private AccumulationDistributionIndicator(CloseLocationValueIndicator clvIndicator) {
+        super(clvIndicator);
+        this.clvIndicator = clvIndicator;
     }
 
     @Override
@@ -37,7 +47,8 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
         // Calculating the money flow volume
         Num moneyFlowVolume = moneyFlowMultiplier.multipliedBy(getBarSeries().getBar(index).getVolume());
 
-        return moneyFlowVolume.plus(getValue(index - 1));
+        Num previous = index == getBarSeries().getBeginIndex() ? getCachedValueOrNull(index - 1) : getValue(index - 1);
+        return moneyFlowVolume.plus(previous == null ? getBarSeries().numFactory().zero() : previous);
     }
 
     @Override
