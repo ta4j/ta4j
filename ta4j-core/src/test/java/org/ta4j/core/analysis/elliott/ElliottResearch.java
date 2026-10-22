@@ -2085,11 +2085,13 @@ final class ElliottResearch {
             // one.
             final JsonElement member = run.getAsJsonObject("trace").get("member");
             final String nullTrace = row.nullBlockLength() > 0 ? findTrace(nullMatcher()) : null;
-            final View nullView = nullTrace != null ? load("null", nullTrace,
-                    expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER,
-                            row.nullBlockLength(),
-                            member == null || member.isJsonNull() ? -1 : integer(member, "run.trace.member")),
-                    this::inNullScope, this::inNullScope, recaptureNull()) : null;
+            final View nullView = nullTrace != null
+                    ? load("null", nullTrace,
+                            expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER,
+                                    row.nullBlockLength(),
+                                    member == null || member.isJsonNull() ? -1 : integer(member, "run.trace.member")),
+                            this::inNullScope, this::inNullScope, recaptureNull())
+                    : null;
             // Only applicable calibration estimates can replace an uncaptured trace;
             // a declared trace that is missing is still an incomplete capture.
             final boolean traceDeclared = realTrace != null || nullTrace != null;
