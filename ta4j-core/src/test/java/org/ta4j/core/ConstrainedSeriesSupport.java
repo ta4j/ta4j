@@ -146,6 +146,20 @@ public final class ConstrainedSeriesSupport {
     }
 
     /**
+     * Copies retained bars into an unbounded series without changing their absolute
+     * indexes or restoring removed history.
+     *
+     * @param name   the reference series name
+     * @param source the pruned series
+     * @return the independent retained-history series
+     */
+    public static BarSeries retainedCopy(String name, BarSeries source) {
+        return new BaseBarSeries(name, new ArrayList<>(source.getBarData()), source.getBeginIndex(),
+                source.getEndIndex(), source.getRemovedBarsCount(), false, source.numFactory(),
+                new TimeBarBuilderFactory());
+    }
+
+    /**
      * Builds a constrained one-bar series whose single bar sits at
      * {@link Integer#MAX_VALUE}, exposing the terminal index to analyses that must
      * survive loop arithmetic on the last representable index.

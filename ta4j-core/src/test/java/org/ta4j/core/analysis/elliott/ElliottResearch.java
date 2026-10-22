@@ -829,6 +829,18 @@ final class ElliottResearch {
         }
         checkRunDirectory(dir, overwrite);
         Files.createDirectories(dir);
+        final FileChannel channel = lockRunDirectory(dir);
+        try {
+            prepareRunDirectory(dir, overwrite);
+            return channel;
+        } catch (final IOException | RuntimeException e) {
+            channel.close();
+            throw e;
+        }
+    }
+
+    /** Holds the shared writer lock until the returned channel closes. */
+    private static FileChannel lockRunDirectory(final Path dir) throws IOException {
         final FileChannel channel = FileChannel.open(dir.resolve(LOCK_FILE), StandardOpenOption.CREATE,
                 StandardOpenOption.WRITE);
         try {
@@ -841,7 +853,6 @@ final class ElliottResearch {
             if (lock == null) {
                 throw new IllegalArgumentException("another run is writing to " + dir + "; choose another --out");
             }
-            prepareRunDirectory(dir, overwrite);
             return channel;
         } catch (final IOException | RuntimeException e) {
             channel.close();
@@ -1067,8 +1078,8 @@ final class ElliottResearch {
             LocalDate last = null;
             int count = 0;
             final List<StudyRunner.Partition> partitions = setup.partitions().entries();
-            final boolean[] populated = new boolean[partitions.size()];
-            final Instant[] previous = new Instant[partitions.size()];
+            final Bar[] firstObserved = new Bar[partitions.size()];
+            final Bar[] previous = new Bar[partitions.size()];
             int internalGaps = 0;
             Instant widestFrom = null;
             Instant widestTo = null;
@@ -1087,19 +1098,22 @@ final class ElliottResearch {
                     if (!window.contains(date)) {
                         continue;
                     }
-                    populated[partition] = true;
+                    if (firstObserved[partition] == null) {
+                        firstObserved[partition] = bar;
+                    }
                     // Only missing bars within this partition affect its as-of windows;
                     // intervals between configured partitions are intentionally unrequested.
-                    final Instant prior = previous[partition];
-                    if (prior != null && Duration.between(prior, bar.getBeginTime()).compareTo(tolerance) > 0) {
+                    final Bar prior = previous[partition];
+                    if (prior != null
+                            && Duration.between(prior.getBeginTime(), bar.getBeginTime()).compareTo(tolerance) > 0) {
                         internalGaps++;
-                        if (widestFrom == null || Duration.between(prior, bar.getBeginTime())
+                        if (widestFrom == null || Duration.between(prior.getBeginTime(), bar.getBeginTime())
                                 .compareTo(Duration.between(widestFrom, widestTo)) > 0) {
-                            widestFrom = prior;
+                            widestFrom = prior.getBeginTime();
                             widestTo = bar.getBeginTime();
                         }
                     }
-                    previous[partition] = bar.getBeginTime();
+                    previous[partition] = bar;
                 }
             }
             entry.effectiveFrom = first;
@@ -1114,10 +1128,35 @@ final class ElliottResearch {
                 gaps.add("data cover " + first + ".." + last + ", narrower than requested " + from + ".." + to);
             }
             for (int partition = 0; first != null && partition < partitions.size(); partition++) {
-                if (!populated[partition]) {
-                    final StudyRunner.Partition missing = partitions.get(partition);
-                    gaps.add("partition " + missing.name() + " (" + missing.start() + ".." + missing.end()
+                final StudyRunner.Partition window = partitions.get(partition);
+                final Bar firstBar = firstObserved[partition];
+                final Bar lastBar = previous[partition];
+                if (firstBar == null) {
+                    gaps.add("partition " + window.name() + " (" + window.start() + ".." + window.end()
                             + ") has no bars");
+                    continue;
+                }
+                final Instant start = window.start().atStartOfDay(ZoneOffset.UTC).toInstant();
+                final Instant end = window.end().atStartOfDay(ZoneOffset.UTC).toInstant();
+                final Instant firstDay = firstBar.getBeginTime()
+                        .atZone(ZoneOffset.UTC)
+                        .toLocalDate()
+                        .atStartOfDay(ZoneOffset.UTC)
+                        .toInstant();
+                final Instant lastDay = lastBar.getBeginTime()
+                        .atZone(ZoneOffset.UTC)
+                        .toLocalDate()
+                        .atStartOfDay(ZoneOffset.UTC)
+                        .toInstant();
+                if (Duration.between(start, firstDay)
+                        .compareTo(firstBar.getTimePeriod().multipliedBy(INTERNAL_GAP_BAR_PERIODS)) > 0) {
+                    gaps.add("partition " + window.name() + " starts at " + firstBar.getBeginTime() + ", more than "
+                            + INTERNAL_GAP_BAR_PERIODS + " bar periods after " + start);
+                }
+                if (Duration.between(lastDay, end)
+                        .compareTo(lastBar.getTimePeriod().multipliedBy(INTERNAL_GAP_BAR_PERIODS)) > 0) {
+                    gaps.add("partition " + window.name() + " ends at " + lastBar.getBeginTime() + ", more than "
+                            + INTERNAL_GAP_BAR_PERIODS + " bar periods before " + end);
                 }
             }
             if (internalGaps > 0) {
@@ -1609,16 +1648,18 @@ final class ElliottResearch {
             throw new IllegalArgumentException("summarize takes exactly one run directory");
         }
         final Path dir = Path.of(args.get(0)).toAbsolutePath().normalize();
-        final JsonObject run = loadRun(dir);
-        final Path comparisons = resolveInside(dir, COMPARISONS_FILE);
-        if (!Files.isRegularFile(comparisons)) {
-            throw new Diagnostic(COMPARISONS_FILE + " is missing in " + dir + " (run status "
-                    + run.get("status").getAsString() + "); the run did not finish, rerun the recipe");
+        try (FileChannel lock = lockRunDirectory(dir)) {
+            final JsonObject run = loadRun(dir);
+            final Path comparisons = resolveInside(dir, COMPARISONS_FILE);
+            if (!Files.isRegularFile(comparisons)) {
+                throw new Diagnostic(COMPARISONS_FILE + " is missing in " + dir + " (run status "
+                        + run.get("status").getAsString() + "); the run did not finish, rerun the recipe");
+            }
+            final List<Row> rows = ElliottResearchReport.readCsv(comparisons);
+            writeSummary(dir, renderSummary(dir, run, rows));
+            out.println("Summary: " + dir.resolve(SUMMARY_FILE));
+            return 0;
         }
-        final List<Row> rows = ElliottResearchReport.readCsv(comparisons);
-        writeSummary(dir, renderSummary(dir, run, rows));
-        out.println("Summary: " + dir.resolve(SUMMARY_FILE));
-        return 0;
     }
 
     // -------------------------------------------------------------- inspect

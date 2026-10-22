@@ -534,6 +534,24 @@ class ElliottResearchTest {
     }
 
     @Test
+    public void summarizeRefusesAnActiveRunAndLeavesItsSummaryUntouched() throws Exception {
+        final Path copy = work.resolve("held-summary");
+        copyTree(smokeRun, copy);
+        final Path summary = copy.resolve("summary.md");
+        Files.writeString(summary, "writer-owned summary");
+        try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(copy.resolve(".run.lock"),
+                java.nio.file.StandardOpenOption.WRITE); java.nio.channels.FileLock lock = channel.lock()) {
+            final Result result = launch("summarize", copy.toString());
+            assertEquals(1, result.code(), result.err());
+            assertTrue(result.err().contains("another run is writing to"), result.err());
+            assertEquals("writer-owned summary", Files.readString(summary));
+        }
+        final Result released = launch("summarize", copy.toString());
+        assertEquals(0, released.code(), released.err());
+        assertTrue(Files.readString(summary).contains("Elliott research run: smoke"));
+    }
+
+    @Test
     void traceFooterWithNonTrueCompleteIsCorrupt() throws Exception {
         final Path copy = work.resolve("bad-footer");
         copyTree(smokeRun, copy);
@@ -584,7 +602,8 @@ class ElliottResearchTest {
 
             final Result result = launch("inspect", copy.toString(), OCCUPANCY_KEY);
             assertEquals(2, result.code(), "mutation " + index);
-            assertTrue(result.err().contains("was captured for"), result.err());
+            final String expected = index < 2 ? "do not match header" : "was captured for";
+            assertTrue(result.err().contains(expected), result.err());
             assertTrue(result.err().contains("Recapture"), result.err());
         }
     }
@@ -765,6 +784,40 @@ class ElliottResearchTest {
         assertEquals("partial", coverage.get("status").getAsString(), coverage.toString());
         assertEquals("1 internal gap(s) longer than 7 bar periods, widest 2020-03-09T00:00:00Z..2020-03-19T00:00:00Z",
                 coverage.get("message").getAsString());
+    }
+
+    @Test
+    public void exploreCoverageChecksBothEdgesOfEveryPopulatedPartition() throws Exception {
+        final Path recipe = work.resolve("partition-edges-recipe.json");
+        Files.writeString(recipe, noncontiguousRecipe());
+        final int[] firstDays = { 16, 9, 1, 8 };
+        final int[] lastDays = { 16, 31, 23, 24 };
+        for (int index = 0; index < firstDays.length; index++) {
+            final LocalDate first = LocalDate.of(2020, 3, firstDays[index]);
+            final LocalDate last = LocalDate.of(2020, 3, lastDays[index]);
+            final Path candles = work.resolve("partition-edges-" + index + ".json");
+            writeCandles(candles, LocalDate.of(2020, 1, 1), 152, date -> date.getMonthValue() == 1
+                    || date.getMonthValue() == 5 || !date.isBefore(first) && !date.isAfter(last));
+            if (index == 3) {
+                final JsonObject shifted = readJson(candles);
+                for (final com.google.gson.JsonElement candle : shifted.getAsJsonArray("candles")) {
+                    final JsonObject item = candle.getAsJsonObject();
+                    item.addProperty("start", item.get("start").getAsLong() + 43_200);
+                }
+                Files.writeString(candles, shifted.toString());
+            }
+            final Path out = work.resolve("partition-edges-" + index);
+            final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                    recipe.toString(), "--out", out.toString());
+            assertEquals(0, result.code(), result.err());
+            final JsonObject coverage = exploreCoverage(out);
+            assertEquals(index == 3 ? "complete" : "partial", coverage.get("status").getAsString(),
+                    coverage.toString());
+            final String message = coverage.get("message").getAsString();
+            assertEquals(index == 0 || index == 1, message.contains("partition validation starts at"), message);
+            assertEquals(index == 0 || index == 2, message.contains("partition validation ends at"), message);
+            assertFalse(message.contains("internal gap"), message);
+        }
     }
 
     private static String noncontiguousRecipe() {
