@@ -11,6 +11,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -256,12 +257,12 @@ public final class ElliottReplayInspector {
         rejectLinkedDestinations(stem);
         try {
             Files.createDirectories(outDirectory);
-            Files.writeString(outDirectory.resolve(stem + ".json"), current.toSemanticJson(), StandardCharsets.UTF_8);
-            Files.writeString(outDirectory.resolve(stem + ".txt"), ReplayEvidenceText.render(current),
-                    StandardCharsets.UTF_8);
+            writeFresh(outDirectory.resolve(stem + ".json"), current.toSemanticJson());
+            writeFresh(outDirectory.resolve(stem + ".txt"), ReplayEvidenceText.render(current));
             final ReplayChartModel model = ReplayChartModel.of(current, session.bars());
             final ChartWorkflow workflow = new ChartWorkflow(outDirectory.toString());
             final JFreeChart chart = ReplayFrameRenderer.chart(workflow, model);
+            Files.deleteIfExists(outDirectory.resolve(stem + ".jpg"));
             final Optional<Path> image = ReplayFrameRenderer.save(chart, model, outDirectory, stem);
             out.println("exported " + outDirectory.resolve(stem + ".json") + ", " + stem + ".txt, "
                     + image.map(path -> path.getFileName().toString()).orElse("(image not written)"));
@@ -300,6 +301,18 @@ public final class ElliottReplayInspector {
                         + " is a symbolic link; replay never writes through links, so remove it or choose another --out directory");
             }
         }
+    }
+
+    /**
+     * Writes {@code content} to a destination created anew. An existing file is
+     * removed first so that a hard link standing at the destination, which shares
+     * its content with a file of the replayed run, is replaced instead of being
+     * truncated in place.
+     */
+    private static void writeFresh(final Path destination, final String content) throws IOException {
+        Files.deleteIfExists(destination);
+        Files.writeString(destination, content, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW,
+                StandardOpenOption.WRITE);
     }
 
     private static Path realPathThroughExistingAncestor(final Path path) throws IOException {

@@ -301,4 +301,29 @@ class ElliottReplayInspectorTest {
         assertFalse(Files.exists(out.resolve("frame-36.txt")));
         assertFalse(Files.exists(out.resolve("frame-36.jpg")));
     }
+
+    @Test
+    void exportReplacesHardLinkedFrameFilesInsteadOfTruncatingTheRunFiles() throws IOException {
+        final Path run = ReplayFixture.write(temp.resolve("run"));
+        final Path out = Files.createDirectories(temp.resolve("out"));
+        final java.util.Map<String, String> before = snapshot(run);
+        final Path runJson = run.resolve("run.json");
+        try {
+            Files.createLink(out.resolve("frame-36.json"), runJson);
+            Files.createLink(out.resolve("frame-36.txt"), run.resolve("comparisons.csv"));
+            Files.createLink(out.resolve("frame-36.jpg"), run.resolve("bars").resolve("d1.csv"));
+        } catch (IOException | UnsupportedOperationException e) {
+            Assumptions.abort("this environment cannot create hard links: " + e);
+        }
+
+        final Result result = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
+                out.toString());
+
+        assertEquals(0, result.status(), result.err());
+        assertEquals(before, snapshot(run));
+        assertFalse(Files.isSameFile(out.resolve("frame-36.json"), runJson));
+        assertFalse(Files.isSameFile(out.resolve("frame-36.txt"), run.resolve("comparisons.csv")));
+        assertFalse(Files.isSameFile(out.resolve("frame-36.jpg"), run.resolve("bars").resolve("d1.csv")));
+        assertNotNull(ImageIO.read(out.resolve("frame-36.jpg").toFile()));
+    }
 }
