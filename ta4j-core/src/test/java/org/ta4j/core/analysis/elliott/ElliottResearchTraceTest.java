@@ -583,6 +583,20 @@ class ElliottResearchTraceTest {
         final JsonObject stateless = nested.deepCopy();
         firstCandidate(stateless).getAsJsonArray("rules").get(0).getAsJsonObject().remove("state");
         assertMalformedAtLine2(lines, stateless, "candidates[0].rules[0].state");
+        for (final String state : List.of("bogus", "pass", "", "PASS ")) {
+            final JsonObject damaged = nested.deepCopy();
+            firstCandidate(damaged).getAsJsonArray("rules").get(0).getAsJsonObject().addProperty("state", state);
+            assertMalformedAtLine2(lines, damaged, "candidates[0].rules[0].state");
+        }
+        for (final EvidenceState state : EvidenceState.values()) {
+            final JsonObject supported = nested.deepCopy();
+            firstCandidate(supported).getAsJsonArray("rules").get(0).getAsJsonObject().addProperty("state", state.name());
+            final List<String> supportedLines = new ArrayList<>(lines);
+            supportedLines.set(1, supported.toString());
+            final Path supportedFile = directory.resolve("supported-rule-state.jsonl");
+            Files.write(supportedFile, supportedLines, StandardCharsets.UTF_8);
+            assertTrue(ElliottResearchTrace.read(supportedFile).complete());
+        }
         final JsonObject textScore = nested.deepCopy();
         firstCandidate(textScore).getAsJsonArray("rules").get(0).getAsJsonObject().addProperty("score", "high");
         assertMalformedAtLine2(lines, textScore, "candidates[0].rules[0].score");
