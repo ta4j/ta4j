@@ -74,7 +74,11 @@ public class MonteCarloPriceForecastIndicatorTest
         Num upperPrice = price.multipliedBy(numOf(1).exp());
         assertNumEquals(lowerPrice, prediction.quantile(0.0));
         assertNumEquals(upperPrice, prediction.quantile(1.0));
-        assertNumEquals(lowerPrice.plus(upperPrice).dividedBy(numOf(2)), prediction.mean());
+        Num expectedMean = lowerPrice.plus(upperPrice).dividedBy(numOf(2));
+        assertNumEquals(expectedMean, prediction.mean());
+        assertNumEquals(expectedMean, prediction.median());
+        assertNumEquals(expectedMean, prediction.quantile(0.5));
+        assertNumEquals(upperPrice.minus(lowerPrice).dividedBy(numOf(2)), prediction.standardDeviation());
     }
 
     @Test
