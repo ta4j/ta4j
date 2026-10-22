@@ -64,7 +64,8 @@ import org.ta4j.core.num.NumFactory;
  * source warm-up are retained; cached unstable predecessors do not replace
  * missing seed observations. Retained cached values describe the consumed
  * history, not a newly constructed estimator over only the current window.
- * Reads bracket the removal count and retry when pruning races the calculation.
+ * Reads bracket the removal count and bar-history revision and retry when
+ * pruning or a terminal-bar edit races the calculation.
  *
  * <p>
  * Combined with {@link CusumIndicator} this provides the volatility leg of a
@@ -170,18 +171,23 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      * <p>
      * Serializes the retained-head check with the complete recursive cache read so
      * the indicator monitor is always acquired before the cache write lock.
-     * Recursive reads safely reenter the monitor.
+     * Recursive reads safely reenter the monitor. The variance and mean legs are
+     * read again until neither a retained-head removal nor a bar-history revision
+     * (such as a terminal-bar edit) separates them, so one returned value always
+     * pairs a variance and mean computed from the same input.
      */
     @Override
     public synchronized Num getValue(int index) {
         BarSeries series = getBarSeries();
         while (true) {
             int removedBarsCount = series.getRemovedBarsCount();
+            long barHistoryRevision = series.getBarHistoryRevision();
             // Advance both moments before this bar can leave the source. Otherwise
             // a variance-only reader leaves its mean one bar behind at capacity one.
             Num value = super.getValue(index);
             meanIndicator.readValue(index);
-            if (series.getRemovedBarsCount() == removedBarsCount) {
+            if (series.getRemovedBarsCount() == removedBarsCount
+                    && series.getBarHistoryRevision() == barHistoryRevision) {
                 return value;
             }
         }

@@ -78,7 +78,8 @@ import org.ta4j.core.num.NumFactory;
  * fresh instance, or an invalidated chain with no cached predecessor, seeds at
  * the first retained bar. Both the rounded scale and any exact underflow
  * residue share one bounded cache entry and one invalidation lifecycle. Reads
- * serialize monitor-before-cache lock acquisition and retry a concurrent prune.
+ * serialize monitor-before-cache lock acquisition and retry when a concurrent
+ * prune or terminal-bar edit separates the statistic from its deviation scale.
  *
  * <p>
  * Typical use is a statistical control-limit kill switch on an equity curve or
@@ -108,16 +109,22 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
      * <p>
      * Serializes the retained-head check with the complete recursive cache read so
      * this indicator's monitor is always acquired before either recursive cache
-     * write lock. Recursive reads safely reenter the monitor.
+     * write lock. Recursive reads safely reenter the monitor. The statistic and
+     * deviation-scale legs are read again until neither a retained-head removal nor
+     * a bar-history revision (such as a terminal-bar edit) separates them, so one
+     * returned value always pairs a statistic and scale computed from the same
+     * input.
      */
     @Override
     public synchronized Num getValue(int index) {
         BarSeries series = getBarSeries();
         while (true) {
             int removedBarsCount = series.getRemovedBarsCount();
+            long barHistoryRevision = series.getBarHistoryRevision();
             Num value = super.getValue(index);
             deviationScale.getValue(index);
-            if (series.getRemovedBarsCount() == removedBarsCount) {
+            if (series.getRemovedBarsCount() == removedBarsCount
+                    && series.getBarHistoryRevision() == barHistoryRevision) {
                 return value;
             }
         }

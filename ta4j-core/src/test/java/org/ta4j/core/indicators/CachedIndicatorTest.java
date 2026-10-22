@@ -2949,6 +2949,35 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         };
     }
 
+    @Test
+    public void rawRecursiveTerminalEditKeepsFullHistoryRecurrenceInPrunedWindow() {
+        for (boolean observeEdit : List.of(false, true)) {
+            BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            bounded.setMaximumBarCount(3);
+            RecursiveCachedIndicator<Num> actual = rawPriceChanges(bounded);
+            RecursiveCachedIndicator<Num> expected = rawPriceChanges(unbounded);
+            for (int index = 0; index < 8; index++) {
+                double close = 100 + index * 7 % 19;
+                bounded.barBuilder().closePrice(close).add();
+                unbounded.barBuilder().closePrice(close).add();
+                assertNumEquals(expected.getValue(index), actual.getValue(index));
+            }
+
+            bounded.getLastBar().addPrice(numOf(150));
+            unbounded.getLastBar().addPrice(numOf(150));
+            if (observeEdit) {
+                assertNumEquals(expected.getValue(7), actual.getValue(7));
+            }
+            for (int index = 8; index < 11; index++) {
+                double close = 100 + index * 7 % 19;
+                bounded.barBuilder().closePrice(close).add();
+                unbounded.barBuilder().closePrice(close).add();
+                assertNumEquals(expected.getValue(index), actual.getValue(index));
+            }
+        }
+    }
+
     /**
      * The direct cross-series registration itself must reconcile the dependency:
      * advancing the moving average's series rebuilds the cached distance values

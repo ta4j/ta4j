@@ -20,6 +20,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -887,6 +888,41 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
             allowCalculation.countDown();
             executor.shutdownNow();
         }
+    }
+
+    @Test
+    public void terminalEditBetweenStatisticAndScaleLegsRetriesPairedRead() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        AtomicInteger terminalReads = new AtomicInteger();
+        AtomicBoolean armed = new AtomicBoolean();
+        Indicator<Num> source = new AbstractIndicator<Num>(series) {
+            @Override
+            public Num getValue(int index) {
+                // The statistic leg reads the terminal once; the scale leg's read then
+                // lands after a terminal edit that leaves the removal count unchanged.
+                if (index == 3 && armed.get() && terminalReads.incrementAndGet() == 2) {
+                    getBarSeries().getLastBar().addPrice(numOf(10));
+                }
+                return getBarSeries().getBar(index).getClosePrice();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        CusumIndicator cusum = new CusumIndicator(source, 10, 0, 3.0, 0.5);
+        cusum.getValue(2);
+        armed.set(true);
+
+        Num raced = cusum.getValue(3);
+
+        assertTrue(terminalReads.get() >= 2, "the terminal edit must land between the CUSUM legs");
+        assertNumEquals(new CusumIndicator(new ClosePriceIndicator(series), 10, 0, 3.0, 0.5).getValue(3), raced);
+
+        series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(5).add();
+        CusumIndicator freshAfterAppend = new CusumIndicator(new ClosePriceIndicator(series), 10, 0, 3.0, 0.5);
+        assertNumEquals(freshAfterAppend.getValue(4), cusum.getValue(4));
     }
 
     @Test

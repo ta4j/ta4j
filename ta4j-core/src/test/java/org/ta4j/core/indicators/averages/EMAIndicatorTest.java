@@ -264,6 +264,35 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void terminalEditOverRawRecursiveSourceKeepsFullHistoryRecurrence() {
+        for (boolean observeEdit : List.of(false, true)) {
+            BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            bounded.setMaximumBarCount(3);
+            EMAIndicator actual = new EMAIndicator(new OnBalanceVolumeIndicator(bounded), 2);
+            EMAIndicator expected = new EMAIndicator(new OnBalanceVolumeIndicator(unbounded), 2);
+            for (int index = 0; index < 8; index++) {
+                double close = 100 + index * 7 % 19;
+                bounded.barBuilder().closePrice(close).volume(10 + index).add();
+                unbounded.barBuilder().closePrice(close).volume(10 + index).add();
+                assertNumEquals(expected.getValue(index), actual.getValue(index));
+            }
+
+            bounded.getLastBar().addPrice(numOf(150));
+            unbounded.getLastBar().addPrice(numOf(150));
+            if (observeEdit) {
+                assertNumEquals(expected.getValue(7), actual.getValue(7));
+            }
+            for (int index = 8; index < 11; index++) {
+                double close = 100 + index * 7 % 19;
+                bounded.barBuilder().closePrice(close).volume(10 + index).add();
+                unbounded.barBuilder().closePrice(close).volume(10 + index).add();
+                assertNumEquals(expected.getValue(index), actual.getValue(index));
+            }
+        }
+    }
+
+    @Test
     public void emptySeriesReturnsNaNWithoutRecursing() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();

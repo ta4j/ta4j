@@ -21,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -891,6 +892,44 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
             allowCalculation.countDown();
             executor.shutdownNow();
         }
+    }
+
+    @Test
+    public void terminalEditBetweenMomentLegsRetriesPairedRead() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        AtomicInteger terminalReads = new AtomicInteger();
+        AtomicBoolean armed = new AtomicBoolean();
+        Indicator<Num> source = new AbstractIndicator<Num>(series) {
+            @Override
+            public Num getValue(int index) {
+                // The variance leg reads the terminal once; the mean leg's read then
+                // lands after a terminal edit that leaves the removal count unchanged.
+                if (index == 3 && armed.get() && terminalReads.incrementAndGet() == 2) {
+                    getBarSeries().getLastBar().addPrice(numOf(10));
+                }
+                return getBarSeries().getBar(index).getClosePrice();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(source, 1, 0.5);
+        variance.getValue(2);
+        armed.set(true);
+
+        Num raced = variance.getValue(3);
+
+        assertTrue(terminalReads.get() >= 2, "the terminal edit must land between the moment legs");
+        EwmaVarianceIndicator fresh = new EwmaVarianceIndicator(series, 1, 0.5);
+        assertNumEquals(fresh.getValue(3), raced);
+        assertNumEquals(fresh.getMeanIndicator().getValue(3), variance.getMeanIndicator().getValue(3));
+
+        series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(5).add();
+        EwmaVarianceIndicator freshAfterAppend = new EwmaVarianceIndicator(series, 1, 0.5);
+        assertNumEquals(freshAfterAppend.getValue(4), variance.getValue(4));
+        assertNumEquals(freshAfterAppend.getMeanIndicator().getValue(4), variance.getMeanIndicator().getValue(4));
     }
 
     @Test
