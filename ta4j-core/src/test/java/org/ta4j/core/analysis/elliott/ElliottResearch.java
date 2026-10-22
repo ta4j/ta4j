@@ -1112,8 +1112,6 @@ final class ElliottResearch {
             final List<String> gaps = new ArrayList<>();
             if (first == null) {
                 gaps.add("no bars inside the requested window");
-            } else if (first.isAfter(from) || last.isBefore(to)) {
-                gaps.add("data cover " + first + ".." + last + ", narrower than requested " + from + ".." + to);
             }
             for (int partition = 0; first != null && partition < partitions.size(); partition++) {
                 final StudyRunner.Partition window = partitions.get(partition);

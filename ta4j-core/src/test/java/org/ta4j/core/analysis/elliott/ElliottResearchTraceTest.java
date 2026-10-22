@@ -449,6 +449,25 @@ class ElliottResearchTraceTest {
         }
     }
 
+    @Test
+    public void recordStatusesMustMatchTheirKindBeforeRetention() throws Exception {
+        for (final boolean selectedNull : List.of(false, true)) {
+            final Path file = coordinateTrace("statuses-" + selectedNull + ".jsonl", selectedNull);
+            final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            for (int index = 1; index < lines.size() - 1; index++) {
+                final JsonObject original = JsonParser.parseString(lines.get(index)).getAsJsonObject();
+                final boolean topology = "topology".equals(original.get("kind").getAsString());
+                for (final String status : List.of("bogus", "", topology ? "complete" : "COMPLETE")) {
+                    final JsonObject damaged = original.deepCopy();
+                    damaged.addProperty("status", status);
+                    final IllegalArgumentException error = assertMalformedAtLine(lines, damaged, index + 1,
+                            "status");
+                    assertTrue(error.getMessage().contains(damaged.get("status").toString()), error.getMessage());
+                }
+            }
+        }
+    }
+
     private Path coordinateTrace(final String name, final boolean selectedNull) throws IOException {
         final Path file = directory.resolve(name);
         final int blockLength = selectedNull ? 2 : -1;
@@ -491,6 +510,7 @@ class ElliottResearchTraceTest {
         assertMalformedAtLine2(lines, fractionalIndex, "asOfIndex");
         final JsonObject alternative = original.deepCopy();
         alternative.addProperty("kind", "alternative");
+        alternative.addProperty("status", "insufficient-history");
         alternative.remove("labels");
         assertMalformedAtLine2(lines, alternative, "labels");
 
@@ -531,6 +551,7 @@ class ElliottResearchTraceTest {
         assertMalformedAtLine2(lines, arrayDirection, "direction");
         final JsonObject objectLabel = original.deepCopy();
         objectLabel.addProperty("kind", "alternative");
+        objectLabel.addProperty("status", "insufficient-history");
         final JsonArray labels = new JsonArray();
         labels.add(new JsonObject());
         objectLabel.add("labels", labels);

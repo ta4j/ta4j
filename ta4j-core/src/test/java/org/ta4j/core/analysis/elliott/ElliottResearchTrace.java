@@ -77,6 +77,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
     private static final List<String> RECORD_TEXT_FIELDS = List.of("dataset", "section", "mode", "grammar", "detector",
             "partition", "asOfTime", "status");
 
+    private static final Set<String> ALTERNATIVE_STATUSES = Set.of("insufficient-history", "no-match", "forming",
+            "complete", "ambiguous");
+
     private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
 
     private final Path file;
@@ -494,6 +497,18 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         final String where = kind + " record field ";
         for (final String field : RECORD_TEXT_FIELDS) {
             requireText(path, lineNumber, record, field, where);
+        }
+        final String status = record.get("status").getAsString();
+        if ("topology".equals(kind)) {
+            try {
+                TopologyStatus.valueOf(status);
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber,
+                        where + "status " + record.get("status") + " is not a topology status");
+            }
+        } else if (!ALTERNATIVE_STATUSES.contains(status)) {
+            throw corrupt(path, lineNumber,
+                    where + "status " + record.get("status") + " is not an alternative status");
         }
         final int recordBlockLength = requireCoordinate(path, lineNumber, record, "nullBlockLength", where);
         final int recordMemberIndex = requireCoordinate(path, lineNumber, record, "nullMemberIndex", where);
