@@ -186,6 +186,8 @@ selected-member coordinates, and retained price-bar row counts must be exact
 conversion, never wrapped into another bar or member. Unknown topology statuses,
 alternative outcomes and nested rule-evidence states are rejected at the trace
 line that contains them instead of being presented as recorded evidence.
+Required stream identity labels and as-of timestamps must be nonblank, including
+on records outside the requested family; they cannot silently disappear from evidence.
 Candidate keys must match the recorded grammar, direction and ordered pivot
 placement; each version must bind that key to its exact ordered rule evidence.
 Edited or foreign identities are rejected with the trace line and candidate field.

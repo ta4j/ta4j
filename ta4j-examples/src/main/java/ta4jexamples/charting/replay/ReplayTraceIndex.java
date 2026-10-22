@@ -283,6 +283,9 @@ final class ReplayTraceIndex {
         for (final String field : List.of("dataset", "section", "mode", "grammar", "detector", "partition", "asOfTime",
                 "status")) {
             requireText(display, line, record, field, where);
+            if (record.get(field).getAsString().isBlank()) {
+                throw corrupt(display, line, where + field + " is blank");
+            }
         }
         if (!("topology".equals(kind) ? TOPOLOGY_STATUSES : ALTERNATIVE_STATUSES).contains(text(record, "status"))) {
             throw corrupt(display, line, where + "status " + record.get("status") + " is not a " + kind + " status");

@@ -403,6 +403,33 @@ class ReplayArtifactTest {
     }
 
     @Test
+    public void blankRecordIdentityFieldsAreRejectedBeforeFamilyFiltering() throws IOException {
+        int fixture = 0;
+        for (final String kind : List.of("topology", "alternative")) {
+            for (final String field : List.of("dataset", "section", "mode", "grammar", "detector", "partition",
+                    "asOfTime", "status")) {
+                for (final String blank : List.of("", " ", "\t\r\n")) {
+                    final Path run = ReplayFixture.write(temp.resolve("blank-identity-" + fixture++));
+                    final Path trace = run.resolve("traces/d1-real.jsonl");
+                    final List<String> lines = Files.readAllLines(trace);
+                    int line = 1;
+                    JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+                    while (!kind.equals(record.get("kind").getAsString())) {
+                        record = JsonParser.parseString(lines.get(++line)).getAsJsonObject();
+                    }
+                    record.addProperty(field, blank);
+                    lines.set(line, record.toString());
+                    Files.write(trace, lines, StandardCharsets.UTF_8);
+
+                    final String message = failureOf(run, ReplayFixture.RULES_KEY);
+                    assertTrue(message.contains(field + " is blank") && message.contains("line " + (line + 1))
+                            && message.contains("traces/d1-real.jsonl"), kind + "." + field + ": " + message);
+                }
+            }
+        }
+    }
+
+    @Test
     public void unknownTraceStatusesAndRuleStatesAreRejectedAtTheirLine() throws IOException {
         int fixture = 0;
         for (final String scope : List.of("topology", "alternative", "rule")) {
