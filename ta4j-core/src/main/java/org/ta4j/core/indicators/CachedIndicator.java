@@ -818,7 +818,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Selects the cache floor applied after the series head advanced, i.e. the
      * lowest cached index that stays valid once {@code removedThroughIndex} grew.
      * Entries below the floor are evicted and recomputed against the retained
-     * window on the next read; entries at or above it are kept.
+     * window on the next read; entries at or above it are kept. A subclass-retained
+     * predecessor below the head also survives same-head revisions unless the
+     * changed-index range invalidates it.
      *
      * <p>
      * Indicators with unbounded historical dependencies
