@@ -577,10 +577,11 @@ class ReplayArtifactTest {
 
     @Test
     public void malformedRunMetadataHasArtifactDiagnosticsInsteadOfUncheckedFailures() throws IOException {
+        int fixture = 0;
         for (final String field : List.of("artifactSchemaVersion", "status", "revision", "datasets", "dataset-entry",
                 "traces", "trace-entry", "coverage", "priceBars", "source", "id", "asset", "identity", "fingerprint",
                 "missing-identity", "missing-fingerprint", "empty-fingerprint", "number-fingerprint", "rows")) {
-            final Path run = ReplayFixture.write(temp.resolve("malformed-" + field));
+            final Path run = ReplayFixture.write(temp.resolve("malformed-" + fixture++));
             final Path metadata = run.resolve("run.json");
             final JsonObject json = JsonParser.parseString(Files.readString(metadata)).getAsJsonObject();
             final JsonObject dataset = json.getAsJsonArray("datasets").get(0).getAsJsonObject();
@@ -645,7 +646,7 @@ class ReplayArtifactTest {
 
     @Test
     public void malformedTraceIdentityContainersAndSourceDigestsHaveArtifactDiagnostics() throws IOException {
-        final Path selected = ReplayFixture.write(temp.resolve("bad-trace-config"), options -> {
+        final Path selected = ReplayFixture.write(temp.resolve("invalid-config"), options -> {
             options.nullTrace = true;
             return options;
         });
