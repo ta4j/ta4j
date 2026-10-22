@@ -8,6 +8,7 @@ import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
@@ -75,8 +76,6 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
 
     private static final List<String> RECORD_TEXT_FIELDS = List.of("dataset", "section", "mode", "grammar", "detector",
             "partition", "asOfTime", "status");
-    private static final List<String> RECORD_INTEGER_FIELDS = List.of("nullBlockLength", "nullMemberIndex",
-            "asOfIndex");
 
     private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
 
@@ -120,17 +119,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         Objects.requireNonNull(revision, "revision");
         Objects.requireNonNull(fingerprint, "fingerprint");
         Objects.requireNonNull(traceMode, "traceMode");
-        if (MODE_REAL.equals(traceMode)) {
-            if (nullBlockLength != -1 || nullMemberIndex != -1) {
-                throw new IllegalArgumentException("real traces carry no null block length or member index");
-            }
-        } else if (MODE_SELECTED_NULL_MEMBER.equals(traceMode)) {
-            if (nullBlockLength < 1 || nullMemberIndex < 0) {
-                throw new IllegalArgumentException("selected-null-member traces need a block length and member index");
-            }
-        } else {
-            throw new IllegalArgumentException("unsupported trace mode: " + traceMode);
-        }
+        validateTraceCoordinates(traceMode, nullBlockLength, nullMemberIndex);
         final Path parent = file.toAbsolutePath().getParent();
         if (parent != null) {
             Files.createDirectories(parent);
@@ -154,6 +143,21 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             throw e;
         }
         return trace;
+    }
+
+    private static void validateTraceCoordinates(final String traceMode, final int nullBlockLength,
+            final int nullMemberIndex) {
+        if (MODE_REAL.equals(traceMode)) {
+            if (nullBlockLength != -1 || nullMemberIndex != -1) {
+                throw new IllegalArgumentException("real traces carry no null block length or member index");
+            }
+        } else if (MODE_SELECTED_NULL_MEMBER.equals(traceMode)) {
+            if (nullBlockLength < 1 || nullMemberIndex < 0) {
+                throw new IllegalArgumentException("selected-null-member traces need a block length and member index");
+            }
+        } else {
+            throw new IllegalArgumentException("unsupported trace mode: " + traceMode);
+        }
     }
 
     /** @return observation records written so far, excluding header and footer */
@@ -363,8 +367,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
     }
 
     /**
-     * Streams a trace file line by line, validating every line but retaining only
-     * the records {@code retain} accepts, so memory is bounded by the retained
+     * Streams a trace file line by line, validating every line and binding each
+     * observation to the header's dataset and capture coordinates before retaining
+     * only the records {@code retain} accepts, so memory is bounded by the retained
      * records rather than the file size. A file without a footer, or whose final
      * unterminated line is a partial write before any footer, is returned with
      * {@code complete == false}; any content after a footer is corrupt.
@@ -388,6 +393,18 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             final JsonElement schema = header.get("schema");
             if (schema == null || !schema.isJsonPrimitive() || !SCHEMA.equals(schema.getAsString())) {
                 throw corrupt(path, 1, "unsupported schema " + schema);
+            }
+            requireText(path, 1, header, "dataset", "header field ");
+            requireText(path, 1, header, "traceMode", "header field ");
+            final String datasetId = header.get("dataset").getAsString();
+            final String traceMode = header.get("traceMode").getAsString();
+            final int nullBlockLength = requireCoordinate(path, 1, header, "nullBlockLength", "header field ");
+            final int nullMemberIndex = requireCoordinate(path, 1, header, "nullMemberIndex", "header field ");
+            try {
+                validateTraceCoordinates(traceMode, nullBlockLength, nullMemberIndex);
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, 1, "header " + e.getMessage() + ": traceMode=" + traceMode + ", nullBlockLength="
+                        + nullBlockLength + ", nullMemberIndex=" + nullMemberIndex);
             }
             final List<JsonObject> records = new ArrayList<>();
             long recordCount = 0;
@@ -424,7 +441,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                     }
                     complete = true;
                 } else if (object.has("kind")) {
-                    validateRecord(path, lineNumber, object);
+                    validateRecord(path, lineNumber, object, datasetId, traceMode, nullBlockLength, nullMemberIndex);
                     recordCount++;
                     if (retain.test(object)) {
                         records.add(object);
@@ -468,7 +485,8 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
      * label, so a hand-edited or foreign line cannot count toward the footer or
      * crash inspection that reads those elements.
      */
-    private static void validateRecord(final Path path, final long lineNumber, final JsonObject record) {
+    private static void validateRecord(final Path path, final long lineNumber, final JsonObject record,
+            final String datasetId, final String traceMode, final int nullBlockLength, final int nullMemberIndex) {
         final String kind = text(record, "kind");
         if (!"topology".equals(kind) && !"alternative".equals(kind)) {
             throw corrupt(path, lineNumber, "record kind " + record.get("kind") + " is not topology or alternative");
@@ -477,8 +495,19 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         for (final String field : RECORD_TEXT_FIELDS) {
             requireText(path, lineNumber, record, field, where);
         }
-        for (final String field : RECORD_INTEGER_FIELDS) {
-            requireInteger(path, lineNumber, record, field, where);
+        final int recordBlockLength = requireCoordinate(path, lineNumber, record, "nullBlockLength", where);
+        final int recordMemberIndex = requireCoordinate(path, lineNumber, record, "nullMemberIndex", where);
+        requireInteger(path, lineNumber, record, "asOfIndex", where);
+        if (!datasetId.equals(record.get("dataset").getAsString()) || recordBlockLength != nullBlockLength
+                || recordMemberIndex != nullMemberIndex) {
+            throw corrupt(path, lineNumber,
+                    "record coordinates dataset=" + record.get("dataset") + ", nullBlockLength=" + recordBlockLength
+                            + ", nullMemberIndex=" + recordMemberIndex + " do not match header dataset=" + datasetId
+                            + ", nullBlockLength=" + nullBlockLength + ", nullMemberIndex=" + nullMemberIndex);
+        }
+        if ("null".equals(record.get("section").getAsString()) != MODE_SELECTED_NULL_MEMBER.equals(traceMode)) {
+            throw corrupt(path, lineNumber,
+                    where + "section " + record.get("section") + " is inconsistent with header traceMode=" + traceMode);
         }
         final JsonElement direction = record.get("direction");
         if (direction == null || !direction.isJsonNull() && text(record, "direction") == null) {
@@ -565,12 +594,29 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         }
     }
 
-    private static void requireInteger(final Path path, final long lineNumber, final JsonObject owner,
+    private static BigDecimal requireInteger(final Path path, final long lineNumber, final JsonObject owner,
             final String field, final String where) {
         final JsonElement value = owner.get(field);
-        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()
-                || value.getAsBigDecimal().stripTrailingZeros().scale() > 0) {
-            throw corrupt(path, lineNumber, where + field + " is missing or not an integer");
+        try {
+            final BigDecimal integer = value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber()
+                    ? value.getAsBigDecimal()
+                    : null;
+            if (integer == null || integer.stripTrailingZeros().scale() > 0) {
+                throw corrupt(path, lineNumber, where + field + " is missing or not an integer");
+            }
+            return integer;
+        } catch (final ArithmeticException | NumberFormatException e) {
+            throw corrupt(path, lineNumber, where + field + " " + value + " is not a supported integer");
+        }
+    }
+
+    private static int requireCoordinate(final Path path, final long lineNumber, final JsonObject owner,
+            final String field, final String where) {
+        final BigDecimal coordinate = requireInteger(path, lineNumber, owner, field, where);
+        try {
+            return coordinate.intValueExact();
+        } catch (final ArithmeticException e) {
+            throw corrupt(path, lineNumber, where + field + " " + owner.get(field) + " is outside the integer range");
         }
     }
 

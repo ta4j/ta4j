@@ -179,7 +179,9 @@ Relative paths resolve against the directory you run Maven from, here the
 repository root. Recipes: `smoke` (synthetic,
 real-data trace on by default), `frozen-cf525` (the frozen study over the bundled
 datasets) and `explore --source candles.json --recipe recipe.json` (your own
-candles and study settings). `--trace off|real|selected-null-member` with
+daily candles and study settings). Candle starts must share a daily cadence;
+missing whole days are allowed, but intraday or duplicate starts are rejected.
+`--trace off|real|selected-null-member` with
 `--block L --member M` controls evidence capture; `--overwrite` reuses an existing
 run directory. `help` lists every option.
 
@@ -189,16 +191,22 @@ sources and status), `reports/` (one study report per dataset),
 `comparisons.csv` (one row per dataset, section, mode, detector, partition,
 metric and null block length), `coverage.csv`, `summary.md`, `traces/`
 (JSON lines per as-of bar) and `.run.lock`, which a run holds while it writes so
-a second run into the same directory is refused. Each comparison sets the observed value against a
+a second run into the same directory is refused. `summarize` takes the same lock
+before reading or replacing artifacts and refuses while a run is writing.
+Each comparison sets the observed value against a
 null reference band of member-level 2.5%-97.5% quantiles and an empirical
 reference rank; neither is a confidence interval or a p-value, and partitions
 are never pooled. `inspect` rebuilds a row's support from its trace and lists
-counterexamples and rule disagreements; when the trace is missing or truncated
-it exits with status 2 and prints the recapture command, quoted for a POSIX shell.
+counterexamples and rule disagreements. Every observation must match its trace
+header's dataset and null-member coordinates. When the trace is missing,
+truncated or corrupt, inspection exits with status 2 and prints the recapture
+command, quoted for a POSIX shell.
 The command carries `--expect-fingerprint` (and, for `explore`, `--expect-source-sha256`),
 so a recapture against a changed configuration or edited candles fails instead of
-tracing different data. Coverage marks a partition `partial` when it has no bars or
-a gap longer than seven bar periods. `summarize` and `inspect` read only files that
+tracing different data. Coverage marks a partition `partial` when it has no bars,
+an internal gap, or missing data at either partition boundary longer than seven
+bar periods; intentionally unrequested intervals between partitions do not count.
+`summarize` and `inspect` read only files that
 resolve inside the run directory: a trace name that is absolute or climbs out with
 `..`, or a run file or trace that is a link leaving the directory, is refused
 (`inspect` exits with status 2; `summarize` reports such a trace as not captured),
