@@ -66,15 +66,20 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
                 // Empty series: there is no bar to seed from or recurse to.
                 return NaN;
             }
-            // A removed-index alias must not establish a recurrence at a retained
-            // bar that has never been consumed. Only continue an existing chain;
-            // otherwise calculate the alias seed without caching that head.
+            Num value;
             if (index < beginIndex) {
-                return getCachedValueOrNull(beginIndex - 1) == null ? seed(beginIndex) : getValue(beginIndex);
+                // Preserve an already consumed head, including a terminal value, and a head
+                // that
+                // continues from a retained cached predecessor. Without either, a removed-index
+                // alias must not prefill later bars or move the fresh chain's warm-up anchor
+                // into removed history.
+                boolean consumedHead = beginIndex == getBarSeries().getEndIndex()
+                        || getCachedValueOrNull(beginIndex) != null || getCachedValueOrNull(beginIndex - 1) != null;
+                value = consumedHead ? getValue(beginIndex) : seed(beginIndex);
+            } else {
+                Num predecessor = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
+                value = predecessor == null ? seed(index) : continueChain(index, predecessor);
             }
-
-            Num predecessor = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
-            Num value = predecessor == null ? seed(index) : continueChain(index, predecessor);
             if (getBarSeries().getBeginIndex() == beginIndex) {
                 return value;
             }
@@ -121,19 +126,6 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
 
         // Standard EMA calculation
         return prevValue.plus(current.minus(prevValue).multipliedBy(multiplier));
-    }
-
-    /**
-     * Keeps the consumed predecessor even when the series retains only one bar.
-     *
-     * @param firstRetainedIndex the first bar still available from the series
-     * @return the inherited floor, extended by one predecessor when continuous
-     * @since 0.27.1
-     */
-    @Override
-    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        int inheritedFloor = super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
-        return inheritedFloor == Integer.MAX_VALUE ? inheritedFloor : Math.max(0, inheritedFloor - 1);
     }
 
     @Override
