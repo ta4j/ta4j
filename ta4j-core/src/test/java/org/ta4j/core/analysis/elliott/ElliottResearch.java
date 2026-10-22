@@ -532,6 +532,9 @@ final class ElliottResearch {
                     + MAX_DATASET_ID_LENGTH + " keeps every artifact file name within 255 bytes");
         }
         final String asset = text(required(root, "asset", "recipe"), "recipe.asset");
+        if ("=+-@\t\r".indexOf(asset.charAt(0)) >= 0) {
+            throw new IllegalArgumentException("recipe.asset must not start with a spreadsheet formula character");
+        }
         final List<StudyRunner.Partition> partitions = new ArrayList<>();
         final JsonArray partitionArray = arrayOf(required(root, "partitions", "recipe"), "recipe.partitions");
         for (int index = 0; index < partitionArray.size(); index++) {
@@ -707,10 +710,10 @@ final class ElliottResearch {
             throws IOException {
         final RunOptions options = parseRunOptions(args);
         final String revision = gitRevision();
-        if (options.expectRevision() != null && !options.expectRevision().equals(revision)) {
-            throw new IllegalArgumentException(
-                    "current revision is " + revision + ", not the recorded revision " + options.expectRevision()
-                            + "; check out the recorded revision in a separate worktree before recapturing");
+        // Sample before the run can dirty the checkout with its own output directory.
+        final String worktree = gitWorktreeState();
+        if (options.expectRevision() != null) {
+            requireRecordedRevision(options.expectRevision(), revision, worktree);
         }
         final Setup setup;
         final Recipe recipe;
@@ -793,9 +796,6 @@ final class ElliottResearch {
             requirePreservedInput(dir, realDir, options.source());
             requirePreservedInput(dir, realDir, options.recipeFile());
         }
-        // Probe provenance before claiming the directory: an output path inside the
-        // checkout would otherwise mark a clean worktree dirty with our own lock file.
-        final String worktree = gitWorktreeState();
         try (FileChannel lock = reserveRunDirectory(dir, options.overwrite())) {
             final Run run = new Run(dir, options, setup, recipe, revision, worktree);
             plan.execute(run);
@@ -1373,6 +1373,22 @@ final class ElliottResearch {
         return TRACES_DIR + "/" + datasetId + "-null-b" + block + "-m" + member + ".jsonl";
     }
 
+    static void requireRecordedRevision(final String expected, final String revision, final String worktree) {
+        if ("unknown".equals(expected) || "unknown".equals(revision)) {
+            throw new IllegalArgumentException("recorded revision cannot be verified"
+                    + "; check out the recorded revision in a separate worktree before recapturing");
+        }
+        if (!expected.equals(revision)) {
+            throw new IllegalArgumentException("current revision is " + revision + ", not the recorded revision "
+                    + expected + "; check out the recorded revision in a separate worktree before recapturing");
+        }
+        if (!"clean".equals(worktree)) {
+            throw new IllegalArgumentException(
+                    "revision-bound recapture requires a clean worktree, but this checkout is " + worktree
+                            + "; check out the recorded revision in a separate worktree before recapturing");
+        }
+    }
+
     private static String gitRevision() {
         final String output = git("rev-parse", "HEAD");
         return output != null && output.trim().matches("[0-9a-f]{40}") ? output.trim() : "unknown";
@@ -1856,7 +1872,8 @@ final class ElliottResearch {
             final JsonElement member = run.getAsJsonObject("trace").get("member");
             final View nullView = row.nullBlockLength() > 0 ? load("null", findTrace(nullMatcher()),
                     expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER,
-                            row.nullBlockLength(), member == null || member.isJsonNull() ? -1 : member.getAsInt()),
+                            row.nullBlockLength(),
+                            member == null || member.isJsonNull() ? -1 : integer(member, "run.trace.member")),
                     this::inNullScope, this::inNullScope, recaptureNull()) : null;
             if (real == null && nullView == null) {
                 throw new Diagnostic(
@@ -2144,7 +2161,7 @@ final class ElliottResearch {
 
         private int memberOrZero() {
             final JsonElement member = run.getAsJsonObject("trace").get("member");
-            return member == null || member.isJsonNull() ? 0 : member.getAsInt();
+            return member == null || member.isJsonNull() ? 0 : integer(member, "run.trace.member");
         }
 
         private View load(final String label, final String relative, final JsonObject expected,
