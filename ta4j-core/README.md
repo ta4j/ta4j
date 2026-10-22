@@ -191,8 +191,9 @@ sources and status), `reports/` (one study report per dataset),
 `comparisons.csv` (one row per dataset, section, mode, detector, partition,
 metric and null block length), `coverage.csv`, `summary.md`, `traces/`
 (JSON lines per as-of bar) and `.run.lock`, which a run holds while it writes so
-a second run into the same directory is refused. `summarize` takes the same lock
-before reading or replacing artifacts and refuses while a run is writing.
+a second run into the same directory is refused. `summarize` validates run metadata
+before creating a lock file, then holds the same lock while reading evidence and
+replacing artifacts, refusing while a run is writing.
 Each comparison sets the observed value against a
 null reference band of member-level 2.5%-97.5% quantiles and an empirical
 reference rank; neither is a confidence interval or a p-value, and partitions
