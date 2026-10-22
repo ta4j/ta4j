@@ -35,7 +35,7 @@ import org.ta4j.cli.performance.PerformanceExperimentRunner;
  * reporting timing deltas. A checksum mismatch fails the comparison because it
  * means the baseline and candidate did not exercise equivalent behavior.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 final class PerformanceComparison {
 
@@ -70,7 +70,7 @@ final class PerformanceComparison {
      *                                  aliases), or when the artifacts are
      *                                  incomparable (different experiment inputs,
      *                                  host, JVM options or result cells)
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static JsonObject compare(Path baseDir, Path candidateDir, Path outputDir, double maxRegressionPct)
             throws IOException {
@@ -235,8 +235,8 @@ final class PerformanceComparison {
     private static void validateArtifactShape(JsonObject artifact, Path file) {
         requireString(artifact, file, "experimentId");
         requireString(artifact, file, "gitRef");
-        requireNumber(artifact, file, "repetitions");
-        requireNumber(artifact, file, "warmups");
+        requireInteger(artifact, file, "repetitions", 1, Integer.MAX_VALUE);
+        requireInteger(artifact, file, "warmups", 0, Integer.MAX_VALUE);
         JsonArray barCounts = requireNonEmptyArray(artifact, file, "barCounts");
         for (int i = 0; i < barCounts.size(); i++) {
             if (!isPositiveInt(barCounts.get(i))) {
@@ -261,7 +261,7 @@ final class PerformanceComparison {
         requireString(host, file, "javaVersion");
         requireString(host, file, "jvmName");
         requireString(host, file, "jvmOptionsFingerprint");
-        requireNumber(host, file, "availableProcessors");
+        requireInteger(host, file, "availableProcessors", 1, Integer.MAX_VALUE);
         JsonArray results = requireNonEmptyArray(artifact, file, "results");
         for (int i = 0; i < results.size(); i++) {
             JsonElement element = results.get(i);
@@ -271,12 +271,12 @@ final class PerformanceComparison {
             }
             JsonObject result = element.getAsJsonObject();
             requireString(result, file, "scenarioId");
-            requireNumber(result, file, "barCount");
-            requireNumber(result, file, "checksum");
+            requireInteger(result, file, "barCount", 1, Integer.MAX_VALUE);
+            requireInteger(result, file, "checksum", Long.MIN_VALUE, Long.MAX_VALUE);
             requireBoolean(result, file, "checksumStable");
             JsonObject stats = requireObject(result, file, "stats");
-            requireNumber(stats, file, "medianNanos");
-            requireNumber(stats, file, "operationsPerSecond");
+            requireInteger(stats, file, "medianNanos", 0, Long.MAX_VALUE);
+            requireFiniteNonNegativeNumber(stats, file, "operationsPerSecond");
         }
     }
 
@@ -313,6 +313,36 @@ final class PerformanceComparison {
         if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
             throw new IllegalArgumentException(
                     "Invalid performance artifact " + file + ": field '" + field + "' must be a number.");
+        }
+    }
+
+    private static void requireInteger(JsonObject object, Path file, String field, long minimum, long maximum) {
+        requireNumber(object, file, field);
+        boolean valid;
+        try {
+            long value = new BigDecimal(object.get(field).getAsString()).longValueExact();
+            valid = value >= minimum && value <= maximum;
+        } catch (ArithmeticException | NumberFormatException ex) {
+            valid = false;
+        }
+        if (!valid) {
+            throw new IllegalArgumentException("Invalid performance artifact " + file + ": field '" + field
+                    + "' must be an integer between " + minimum + " and " + maximum + ".");
+        }
+    }
+
+    private static void requireFiniteNonNegativeNumber(JsonObject object, Path file, String field) {
+        requireNumber(object, file, field);
+        boolean valid;
+        try {
+            BigDecimal value = new BigDecimal(object.get(field).getAsString());
+            valid = value.signum() >= 0 && Double.isFinite(value.doubleValue());
+        } catch (NumberFormatException ex) {
+            valid = false;
+        }
+        if (!valid) {
+            throw new IllegalArgumentException("Invalid performance artifact " + file + ": field '" + field
+                    + "' must be a finite non-negative number.");
         }
     }
 

@@ -38,7 +38,7 @@ import com.google.gson.JsonObject;
  * machine-readable JSON, and emits a short Markdown summary that can be
  * compared across git refs by {@code PerformanceComparison}.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 public final class PerformanceExperimentRunner {
 
@@ -61,7 +61,7 @@ public final class PerformanceExperimentRunner {
      * @param request typed experiment request
      * @return run artifacts
      * @throws IOException when artifacts cannot be written
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public static RunArtifacts run(RunRequest request) throws IOException {
         PerformanceExperiment experiment = experiment(request.experimentId());
@@ -339,7 +339,7 @@ public final class PerformanceExperimentRunner {
      * @param outputDir       directory containing written artifacts
      * @param performanceJson immutable JSON representation of
      *                        {@code performance.json}
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public record RunArtifacts(Path outputDir, String performanceJson) {
     }
@@ -354,7 +354,7 @@ public final class PerformanceExperimentRunner {
      * @param warmups      warmup repetitions per cell
      * @param outputDir    optional artifact directory
      * @param profile      whether profiler hints should be emitted
-     * @since 0.26.1
+     * @since 0.27.1
      */
     public record RunRequest(String experimentId, List<Integer> barCounts, List<String> scenarioIds, int repetitions,
             int warmups, Optional<Path> outputDir, boolean profile) {
@@ -586,7 +586,7 @@ public final class PerformanceExperimentRunner {
 /**
  * Describes one reusable performance experiment and the scenarios it supports.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 interface PerformanceExperiment {
 
@@ -594,7 +594,7 @@ interface PerformanceExperiment {
      * Stable experiment identifier used by CLI arguments and benchmark artifacts.
      *
      * @return experiment identifier
-     * @since 0.26.1
+     * @since 0.27.1
      */
     String id();
 
@@ -602,7 +602,7 @@ interface PerformanceExperiment {
      * Human-readable experiment description.
      *
      * @return experiment description
-     * @since 0.26.1
+     * @since 0.27.1
      */
     String description();
 
@@ -610,7 +610,7 @@ interface PerformanceExperiment {
      * Scenarios that can be run for this experiment.
      *
      * @return supported scenarios
-     * @since 0.26.1
+     * @since 0.27.1
      */
     List<PerformanceScenario> scenarios();
 
@@ -618,7 +618,7 @@ interface PerformanceExperiment {
      * Default scenario identifiers used when the CLI omits {@code --scenarios}.
      *
      * @return default scenario identifiers
-     * @since 0.26.1
+     * @since 0.27.1
      */
     default List<String> defaultScenarioIds() {
         return scenarios().stream().map(PerformanceScenario::id).toList();

@@ -17,6 +17,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,8 +57,9 @@ import java.util.stream.Stream;
  * Scanned classes that fail validation are skipped with a debug log. Two
  * scanned classes sharing a simple name fail the scan with an
  * {@link IllegalStateException}, because a label could otherwise rebuild a
- * different class depending on classpath order; the failed package is scanned
- * again, and fails again, on the next initialization.
+ * different class depending on classpath order. A failed package adds no
+ * registrations and is scanned again on the next initialization; registrations
+ * from successful packages and explicit registrations are retained.
  * </p>
  *
  * @param <T> named component base type owned by this registry
@@ -130,13 +132,17 @@ public final class NamedComponentRegistry<T> {
     public void registerImplementation(Class<? extends T> type) {
         Objects.requireNonNull(type, "type");
         String key = buildLabel(type);
-        registry.compute(key, (name, existing) -> {
-            if (existing != null && existing != type) {
-                throw new IllegalStateException("Named " + componentNoun + " already registered for simple name " + name
-                        + ": " + existing.getName());
-            }
-            return type;
-        });
+        synchronized (initializationLock) {
+            checkConflict(key, registry.get(key), type);
+            registry.put(key, type);
+        }
+    }
+
+    private void checkConflict(String name, Class<? extends T> existing, Class<? extends T> type) {
+        if (existing != null && existing != type) {
+            throw new IllegalStateException("Named " + componentNoun + " already registered for simple name " + name
+                    + ": " + existing.getName());
+        }
     }
 
     /**
@@ -151,7 +157,9 @@ public final class NamedComponentRegistry<T> {
      */
     public boolean unregisterImplementation(Class<? extends T> type) {
         Objects.requireNonNull(type, "type");
-        return registry.remove(type.getSimpleName(), type);
+        synchronized (initializationLock) {
+            return registry.remove(type.getSimpleName(), type);
+        }
     }
 
     /**
@@ -247,8 +255,10 @@ public final class NamedComponentRegistry<T> {
      * @since 0.27.1
      */
     public void resetScanState() {
-        scannedPackages.clear();
-        defaultPackagesInitialized.set(false);
+        synchronized (initializationLock) {
+            scannedPackages.clear();
+            defaultPackagesInitialized.set(false);
+        }
     }
 
     private void ensureDefaultRegistryInitialized() {
@@ -275,7 +285,12 @@ public final class NamedComponentRegistry<T> {
                     continue;
                 }
                 try {
-                    scanPackage(normalized, loader);
+                    Map<String, Class<? extends T>> discovered = new LinkedHashMap<>();
+                    scanPackage(normalized, loader, discovered);
+                    for (Map.Entry<String, Class<? extends T>> entry : discovered.entrySet()) {
+                        checkConflict(entry.getKey(), registry.get(entry.getKey()), entry.getValue());
+                    }
+                    registry.putAll(discovered);
                 } catch (RuntimeException ex) {
                     scannedPackages.remove(normalized);
                     throw ex;
@@ -299,7 +314,7 @@ public final class NamedComponentRegistry<T> {
         return basePackage.trim().replace('/', '.');
     }
 
-    private void scanPackage(String basePackage, ClassLoader loader) {
+    private void scanPackage(String basePackage, ClassLoader loader, Map<String, Class<? extends T>> discovered) {
         String path = basePackage.replace('.', '/');
         try {
             Enumeration<URL> resources = loader.getResources(path);
@@ -308,9 +323,9 @@ public final class NamedComponentRegistry<T> {
                 try {
                     String protocol = url.getProtocol();
                     if ("file".equals(protocol)) {
-                        scanDirectory(basePackage, Paths.get(url.toURI()), loader);
+                        scanDirectory(basePackage, Paths.get(url.toURI()), loader, discovered);
                     } else if ("jar".equals(protocol)) {
-                        scanJar(basePackage, url, loader);
+                        scanJar(basePackage, url, loader, discovered);
                     }
                 } catch (URISyntaxException ex) {
                     LOGGER.debug("Invalid URI while scanning package {}", basePackage, ex);
@@ -323,7 +338,8 @@ public final class NamedComponentRegistry<T> {
         }
     }
 
-    private void scanDirectory(String basePackage, Path directory, ClassLoader loader) throws IOException {
+    private void scanDirectory(String basePackage, Path directory, ClassLoader loader,
+            Map<String, Class<? extends T>> discovered) throws IOException {
         if (!Files.isDirectory(directory)) {
             return;
         }
@@ -331,7 +347,7 @@ public final class NamedComponentRegistry<T> {
             stream.filter(path -> Files.isRegularFile(path) && path.getFileName().toString().endsWith(".class"))
                     .forEach(path -> {
                         String className = toClassName(basePackage, directory, path);
-                        loadComponent(className, loader);
+                        loadComponent(className, loader, discovered);
                     });
         }
     }
@@ -348,7 +364,8 @@ public final class NamedComponentRegistry<T> {
         return basePackage + '.' + name;
     }
 
-    private void scanJar(String basePackage, URL packageUrl, ClassLoader loader) throws IOException {
+    private void scanJar(String basePackage, URL packageUrl, ClassLoader loader,
+            Map<String, Class<? extends T>> discovered) throws IOException {
         java.net.URLConnection connection = packageUrl.openConnection();
         if (!(connection instanceof JarURLConnection jarConnection)) {
             return;
@@ -367,13 +384,13 @@ public final class NamedComponentRegistry<T> {
                     continue;
                 }
                 String className = name.substring(0, name.length() - 6).replace('/', '.');
-                loadComponent(className, loader);
+                loadComponent(className, loader, discovered);
             }
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void loadComponent(String className, ClassLoader loader) {
+    private void loadComponent(String className, ClassLoader loader, Map<String, Class<? extends T>> discovered) {
         if (className == null || className.isBlank()) {
             return;
         }
@@ -384,7 +401,10 @@ public final class NamedComponentRegistry<T> {
                 return;
             }
             if (componentType.isAssignableFrom(candidate)) {
-                registerImplementation((Class<? extends T>) candidate);
+                Class<? extends T> type = (Class<? extends T>) candidate;
+                String key = buildLabel(type);
+                checkConflict(key, discovered.get(key), type);
+                discovered.put(key, type);
             }
         } catch (ClassNotFoundException | LinkageError ex) {
             LOGGER.debug("Unable to inspect named {} class {}", componentNoun, className, ex);

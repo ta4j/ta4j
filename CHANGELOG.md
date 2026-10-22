@@ -25,6 +25,8 @@
 
 ### Fixed
 
+- **Reject impossible performance comparison numbers**: CLI comparisons reject invalid integer timing/count fields, non-integral or overflowing checksums, and non-finite or negative throughput before creating output. Zero timings, zero warmups, signed checksums and finite fractional throughput remain valid.
+- **Keep rejected named-component scans out of lookups**: Classes discovered in a package are committed only after the entire package passes simple-name conflict checks. A failed scan leaves existing registrations and successful packages intact, and retries cannot resolve an arbitrary conflicting class.
 - **Separate walk-forward test and holdout scores**: CLI walk-forward reports average the non-holdout folds for `outOfSampleAverage`, retain the holdout score separately, and evaluate each fold criterion only once.
 - **Bound performance artifact memory**: CLI performance runs reject experiments recording more than 10,000 measurements across all scenario/bar-count cells, even for tiny inputs. Comparisons reject `performance.json` inputs larger than 16 MiB while reading, before parsing or writing artifacts.
 - **Preserve CSV loading policies across CLI integration**: Example CSV loading continues to skip malformed data rows, while the CLI uses an explicit strict-loading overload to reject invalid input without silently running on a partial series.

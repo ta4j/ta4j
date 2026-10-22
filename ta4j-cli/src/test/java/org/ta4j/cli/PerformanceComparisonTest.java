@@ -511,6 +511,69 @@ class PerformanceComparisonTest {
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = { "repetitions=0", "repetitions=-1", "repetitions=0.5", "repetitions=2147483648",
+            "repetitions=1e309", "warmups=-1", "warmups=0.5", "warmups=2147483648", "barCount=0", "barCount=-1",
+            "barCount=16.5", "barCount=4294967312", "checksum=10.5", "checksum=18446744073709551626",
+            "medianNanos=-1", "medianNanos=0.5", "medianNanos=9223372036854775808", "medianNanos=1e309",
+            "operationsPerSecond=-1", "operationsPerSecond=-1e-400", "operationsPerSecond=1e309",
+            "operationsPerSecond=1e-2147483649", "availableProcessors=0",
+            "availableProcessors=1.5", "availableProcessors=2147483648" })
+    public void comparisonRejectsInvalidNumericInputsBeforeWritingOutput(String invalidNumber) throws Exception {
+        String[] parts = invalidNumber.split("=", 2);
+        String field = parts[0];
+        for (String side : List.of("base", "candidate")) {
+            Path caseDir = tempDir.resolve(side);
+            Path baseDir = caseDir.resolve("base");
+            Path candidateDir = caseDir.resolve("candidate");
+            Path outputDir = caseDir.resolve("comparison");
+            writePerformanceJson(baseDir, 10L, 1_000L);
+            writePerformanceJson(candidateDir, 10L, 900L);
+            Path invalidArtifact = caseDir.resolve(side).resolve("performance.json");
+            JsonObject artifact = JsonParser.parseString(Files.readString(invalidArtifact)).getAsJsonObject();
+            JsonObject result = artifact.getAsJsonArray("results").get(0).getAsJsonObject();
+            JsonObject target = switch (field) {
+            case "medianNanos", "operationsPerSecond" -> result.getAsJsonObject("stats");
+            case "barCount", "checksum" -> result;
+            case "availableProcessors" -> artifact.getAsJsonObject("host");
+            default -> artifact;
+            };
+            target.add(field, JsonParser.parseString(parts[1]));
+            Files.writeString(invalidArtifact, GSON.toJson(artifact), StandardCharsets.UTF_8);
+
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    () -> PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d));
+
+            assertTrue(exception.getMessage().contains(invalidArtifact.toString()), exception.getMessage());
+            assertTrue(exception.getMessage().contains("'" + field + "'"), exception.getMessage());
+            assertFalse(Files.exists(outputDir), "Invalid numeric input must not produce comparison artifacts");
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = { 0L, Long.MAX_VALUE })
+    public void comparisonAcceptsExactNumericBoundaries(long medianNanos) throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        Path outputDir = tempDir.resolve("comparison");
+        writePerformanceJson(baseDir, Integer.MAX_VALUE, Long.MIN_VALUE, medianNanos);
+        writePerformanceJson(candidateDir, Integer.MAX_VALUE, Long.MIN_VALUE, medianNanos);
+        for (Path dir : List.of(baseDir, candidateDir)) {
+            Path file = dir.resolve("performance.json");
+            JsonObject artifact = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+            artifact.addProperty("warmups", 0);
+            artifact.getAsJsonArray("results").get(0).getAsJsonObject().getAsJsonObject("stats")
+                    .addProperty("operationsPerSecond", 0.5d);
+            Files.writeString(file, GSON.toJson(artifact), StandardCharsets.UTF_8);
+        }
+
+        JsonObject comparison = PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d);
+
+        assertTrue(comparison.get("checksumMatch").getAsBoolean());
+        assertTrue(comparison.get("regressionWithinThreshold").getAsBoolean());
+        assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)));
+    }
+
     private record ResultFixture(int barCount, long medianNanos) {
     }
 }
