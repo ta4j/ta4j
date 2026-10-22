@@ -317,12 +317,17 @@ final class ReplayTraceIndex {
             }
         }
         final JsonArray pivots = requireArray(display, line, record, "pivots", where);
+        final List<BigDecimal> visiblePrices = new ArrayList<>(pivots.size());
         for (int i = 0; i < pivots.size(); i++) {
             final String at = where + "pivots[" + i + "]";
-            final JsonObject pivot = requirePlacement(display, line, pivots.get(i), at);
+            final JsonObject pivot = requireObject(display, line, pivots.get(i), at);
+            visiblePrices.add(requirePlacement(display, line, pivot, at));
             final int confirmation = requireInteger(display, line, pivot, "confirmationIndex", at + ".");
             if (confirmation < pivot.get("index").getAsInt()) {
                 throw corrupt(display, line, at + ".confirmationIndex must not precede index");
+            }
+            if (i > 0 && pivot.get("index").getAsInt() <= pivots.get(i - 1).getAsJsonObject().get("index").getAsInt()) {
+                throw corrupt(display, line, at + ".index must strictly increase in the visible pivot view");
             }
         }
         final JsonArray candidates = requireArray(display, line, record, "candidates", where);
@@ -341,8 +346,9 @@ final class ReplayTraceIndex {
                 requireText(display, line, candidate, field, at + ".");
             }
             final JsonArray placement = requireArray(display, line, candidate, "placement", at + ".");
+            final List<BigDecimal> placementPrices = new ArrayList<>(placement.size());
             for (int p = 0; p < placement.size(); p++) {
-                requirePlacement(display, line, placement.get(p), at + ".placement[" + p + "]");
+                placementPrices.add(requirePlacement(display, line, placement.get(p), at + ".placement[" + p + "]"));
             }
             final JsonArray rules = requireArray(display, line, candidate, "rules", at + ".");
             for (int r = 0; r < rules.size(); r++) {
@@ -421,6 +427,21 @@ final class ReplayTraceIndex {
                     throw corrupt(display, line, at + ".placement must have strictly ordered, alternating pivots");
                 }
             }
+            int visibleIndex = 0;
+            for (int p = 0; p < placement.size(); p++) {
+                final JsonObject placed = placement.get(p).getAsJsonObject();
+                final int index = placed.get("index").getAsInt();
+                while (visibleIndex < pivots.size()
+                        && pivots.get(visibleIndex).getAsJsonObject().get("index").getAsInt() < index) {
+                    visibleIndex++;
+                }
+                if (visibleIndex == pivots.size()
+                        || pivots.get(visibleIndex).getAsJsonObject().get("index").getAsInt() != index
+                        || !text(pivots.get(visibleIndex).getAsJsonObject(), "type").equals(text(placed, "type"))
+                        || visiblePrices.get(visibleIndex).compareTo(placementPrices.get(p)) != 0) {
+                    throw corrupt(display, line, at + ".placement[" + p + "] does not match a visible pivot");
+                }
+            }
         }
         if ("topology".equals(kind)) {
             if (requiredPivots == 0) {
@@ -454,7 +475,7 @@ final class ReplayTraceIndex {
         };
     }
 
-    private static JsonObject requirePlacement(final String display, final long line, final JsonElement element,
+    private static BigDecimal requirePlacement(final String display, final long line, final JsonElement element,
             final String at) {
         final JsonObject placement = requireObject(display, line, element, at);
         final int index = requireInteger(display, line, placement, "index", at + ".");
@@ -467,11 +488,10 @@ final class ReplayTraceIndex {
             throw corrupt(display, line, at + ".type must be HIGH or LOW");
         }
         try {
-            new BigDecimal(text(placement, "price"));
+            return new BigDecimal(text(placement, "price"));
         } catch (final NumberFormatException e) {
             throw corrupt(display, line, at + ".price must be a supported finite number");
         }
-        return placement;
     }
 
     private static JsonObject requireObject(final String display, final long line, final JsonElement element,

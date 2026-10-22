@@ -9,6 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
@@ -157,6 +160,30 @@ class ReplaySessionTest {
         assertEquals(1, frame.suppressedFuture());
         assertTrue(frame.pivots().stream().noneMatch(pivot -> pivot.index() == 30));
         assertTrue(ReplayEvidenceText.render(frame).contains("causality guard removed 1"));
+    }
+
+    @Test
+    public void guardAlsoDropsCandidatePlacementsConfirmedAfterTheCursor() throws IOException {
+        final Path run = ReplayFixture.write(temp.resolve("candidate-leak"));
+        final Path trace = run.resolve("traces/d1-real.jsonl");
+        final List<String> lines = Files.readAllLines(trace, StandardCharsets.UTF_8);
+        for (int line = 1; line < lines.size() - 1; line++) {
+            final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            if ("h2".equals(record.get("section").getAsString()) && record.get("asOfIndex").getAsInt() == 23) {
+                record.getAsJsonArray("pivots").get(0).getAsJsonObject().addProperty("confirmationIndex", 24);
+                lines.set(line, record.toString());
+            }
+        }
+        Files.write(trace, lines, StandardCharsets.UTF_8);
+
+        final ReplayFrame frame = open(run).seek(23);
+
+        assertEquals(2, frame.suppressedFuture());
+        assertTrue(frame.pivots().stream().noneMatch(pivot -> pivot.index() == 0));
+        assertEquals(1, frame.candidates().size());
+        assertEquals(5, frame.candidates().get(0).placement().size());
+        assertTrue(frame.candidates().get(0).placement().stream().noneMatch(point -> point.index() == 0));
+        assertTrue(ReplayEvidenceText.render(frame).contains("causality guard removed 2"));
     }
 
     @Test

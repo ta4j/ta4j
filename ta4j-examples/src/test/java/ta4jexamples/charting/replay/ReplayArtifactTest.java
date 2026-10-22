@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -676,8 +677,17 @@ class ReplayArtifactTest {
                         next.addProperty("index", previous.get("index").getAsInt() + 1);
                         next.addProperty("type", "HIGH".equals(previous.get("type").getAsString()) ? "LOW" : "HIGH");
                         placement.add(next);
+                        final JsonObject visible = next.deepCopy();
+                        visible.addProperty("confirmationIndex", visible.get("index").getAsInt());
+                        record.getAsJsonArray("pivots").add(visible);
                     }
                     placement.get(0).getAsJsonObject().addProperty("price", "-1e1000");
+                    for (final JsonElement visible : record.getAsJsonArray("pivots")) {
+                        final JsonObject pivot = visible.getAsJsonObject();
+                        if (pivot.get("index").equals(placement.get(0).getAsJsonObject().get("index"))) {
+                            pivot.addProperty("price", "-1e1000");
+                        }
+                    }
                     final JsonArray rules = candidate.getAsJsonArray("rules");
                     rules.get(0).getAsJsonObject().addProperty("score", 0);
                     rules.get(1).getAsJsonObject().addProperty("state", "PASS");
@@ -742,6 +752,77 @@ class ReplayArtifactTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void placementsMustMatchTheVisiblePivotViewBeforeFamilyFiltering() throws IOException {
+        for (final String mutation : List.of("missing-visible-pivot", "different-visible-index",
+                "different-visible-price", "different-visible-type", "duplicate-visible-index",
+                "unsorted-visible-indices", "price-beyond-default-precision")) {
+            final Path run = ReplayFixture.write(temp.resolve("visible-placement-" + mutation));
+            final Path trace = run.resolve("traces/d1-real.jsonl");
+            final List<String> lines = Files.readAllLines(trace);
+            final int line = firstRulesCandidateLine(lines);
+            final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            final JsonArray pivots = record.getAsJsonArray("pivots");
+            final JsonObject placed = record.getAsJsonArray("candidates").get(0).getAsJsonObject()
+                    .getAsJsonArray("placement").get(0).getAsJsonObject();
+            final JsonObject visible = pivots.get(0).getAsJsonObject();
+            final String field;
+            switch (mutation) {
+            case "missing-visible-pivot" -> {
+                pivots.remove(0);
+                field = "placement[0]";
+            }
+            case "different-visible-index" -> {
+                final JsonObject last = pivots.get(pivots.size() - 1).getAsJsonObject();
+                last.addProperty("index", last.get("index").getAsInt() + 1);
+                field = "placement[5]";
+            }
+            case "different-visible-price" -> {
+                visible.addProperty("price", visible.get("price").getAsString() + "1");
+                field = "placement[0]";
+            }
+            case "different-visible-type" -> {
+                visible.addProperty("type", "LOW");
+                field = "placement[0]";
+            }
+            case "duplicate-visible-index" -> {
+                pivots.get(1).getAsJsonObject().addProperty("index", 0);
+                field = "pivots[1].index";
+            }
+            case "unsorted-visible-indices" -> {
+                pivots.set(0, pivots.get(1));
+                pivots.set(1, visible);
+                field = "pivots[1].index";
+            }
+            case "price-beyond-default-precision" -> {
+                visible.addProperty("price", "10.0000000000000000000000000000000000000000");
+                placed.addProperty("price", "10.0000000000000000000000000000000000000001");
+                field = "placement[0]";
+            }
+            default -> throw new AssertionError(mutation);
+            }
+            ReplayFixture.refreshIdentity(record);
+            lines.set(line, record.toString());
+            Files.write(trace, lines, StandardCharsets.UTF_8);
+            for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
+                final String message = failureOf(run, key);
+                assertTrue(message.contains(field) && message.contains("line " + (line + 1))
+                        && message.contains("regenerate"), mutation + ": " + message);
+            }
+        }
+        final Path run = ReplayFixture.write(temp.resolve("equivalent-visible-price"));
+        final Path trace = run.resolve("traces/d1-real.jsonl");
+        final List<String> lines = Files.readAllLines(trace);
+        final int line = firstRulesCandidateLine(lines);
+        final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+        final JsonObject visible = record.getAsJsonArray("pivots").get(0).getAsJsonObject();
+        visible.addProperty("price", visible.get("price").getAsString() + ".0");
+        lines.set(line, record.toString());
+        Files.write(trace, lines, StandardCharsets.UTF_8);
+        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true));
+        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false));
     }
 
     private static int firstRulesCandidateLine(final List<String> lines) {

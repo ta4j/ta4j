@@ -196,8 +196,10 @@ are self-consistent. `COMPLETE` has one candidate with the same direction;
 `AMBIGUOUS` has 2-64 candidates and a null direction. All other topology states
 have no candidates; only `FORMING` carries a direction. Supported grammar placement
 sizes, ordered alternating pivots with nonnegative indices and finite prices,
-confirmation ordering, and null-or-PASS scores in `[0, 1]` are also checked before
-selecting a replay family.
+strictly ordered visible pivots, confirmation ordering, and null-or-PASS scores
+in `[0, 1]` are also checked before selecting a replay family. Every candidate
+placement must match the index, type and exact decimal price of a recorded pivot.
+Future-confirmed pivots remain inspectable but are prominently flagged as leaks.
 Malformed run metadata is also reported as an artifact diagnostic with the field
 to repair and regeneration guidance, rather than escaping as a Java stack trace.
 
