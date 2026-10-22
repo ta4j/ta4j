@@ -201,14 +201,16 @@ null reference band of member-level 2.5%-97.5% quantiles and an empirical
 reference rank; neither is a confidence interval or a p-value, and partitions
 are never pooled. `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements. Every observation must match its trace
-header's dataset and null-member coordinates. When the trace is missing,
+header's dataset and null-member coordinates and carry a status defined for its
+record kind. When the trace is missing,
 truncated or corrupt, inspection exits with status 2 and prints the recapture
 command, quoted for a POSIX shell.
 The command carries `--expect-fingerprint` (and, for `explore`, `--expect-source-sha256`),
 so a recapture against a changed configuration or edited candles fails instead of
 tracing different data. Coverage marks a partition `partial` when it has no bars,
 an internal gap, or missing data at either partition boundary longer than seven
-bar periods; intentionally unrequested intervals between partitions do not count.
+bar periods, including the outermost requested boundaries; intentionally unrequested
+intervals between partitions do not count.
 `summarize` and `inspect` read only files that
 resolve inside the run directory: a trace name that is absolute or climbs out with
 `..`, or a run file or trace that is a link leaving the directory, is refused

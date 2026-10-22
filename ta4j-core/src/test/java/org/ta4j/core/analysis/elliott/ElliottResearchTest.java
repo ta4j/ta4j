@@ -416,7 +416,7 @@ class ElliottResearchTest {
         assertEquals(2, run.getAsJsonObject("configuration").getAsJsonArray("activeRules").size());
         final String coverage = Files.readString(out.resolve("coverage.csv"));
         assertTrue(coverage.contains("partial"), coverage);
-        assertTrue(coverage.contains("narrower than requested"), coverage);
+        assertTrue(coverage.contains("partition holdout ends at"), coverage);
         assertFalse(Files.exists(out.resolve("traces/toy-real.jsonl")), "explore defaults to trace off");
         assertNotNull(run.getAsJsonObject("identity").get("fingerprint"));
         assertTrue(run.getAsJsonObject("identity").get("fingerprint").getAsString().startsWith("explore-"));
@@ -844,6 +844,34 @@ class ElliottResearchTest {
             assertEquals(index == 0 || index == 1, message.contains("partition validation starts at"), message);
             assertEquals(index == 0 || index == 2, message.contains("partition validation ends at"), message);
             assertFalse(message.contains("internal gap"), message);
+        }
+    }
+
+    @Test
+    public void exploreCoverageAppliesTheSameToleranceAtBothOuterBoundaries() throws Exception {
+        final Path recipe = work.resolve("outer-boundaries-recipe.json");
+        Files.writeString(recipe, toyRecipe("outer-boundaries"));
+        final LocalDate start = LocalDate.of(2020, 1, 1);
+        final LocalDate end = LocalDate.of(2020, 12, 31);
+        for (final int missingDays : List.of(1, 7, 8)) {
+            final LocalDate first = start.plusDays(missingDays);
+            final LocalDate last = end.minusDays(missingDays);
+            final Path candles = work.resolve("outer-boundaries-" + missingDays + ".json");
+            writeCandles(candles, start, 366, date -> !date.isBefore(first) && !date.isAfter(last));
+            final Path out = work.resolve("outer-boundaries-" + missingDays);
+            final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                    recipe.toString(), "--out", out.toString());
+            assertEquals(0, result.code(), result.err());
+            final JsonObject coverage = exploreCoverage(out);
+            final boolean partial = missingDays > 7;
+            assertEquals(partial ? "partial" : "complete", coverage.get("status").getAsString(),
+                    coverage.toString());
+            final String message = coverage.get("message").getAsString();
+            assertEquals(partial, message.contains("partition calibration starts at"), message);
+            assertEquals(partial, message.contains("partition holdout ends at"), message);
+            if (!partial) {
+                assertEquals("", message);
+            }
         }
     }
 
