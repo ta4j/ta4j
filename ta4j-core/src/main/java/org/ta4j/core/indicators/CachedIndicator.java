@@ -95,8 +95,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private final Indicator<?>[] sourceIndicators;
 
     /**
-     * Source lookback frontier, traversing recursive sources whose next input must
-     * remain available and stopping at non-recursive cached policy owners.
+     * Source lookback frontier, traversing recursive sources and non-cached
+     * delegates to their inputs, and stopping at non-recursive cached policy
+     * owners.
      */
     private final Indicator<?>[] sourceLookbackIndicators;
 
@@ -179,11 +180,18 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             if (!visited.add(source)) {
                 continue;
             }
-            frontier.add(source);
-            if (!(source instanceof CachedIndicator<?> cached) || cached.hasRecursiveDependencies()) {
-                for (Indicator<?> dependency : source.getDependencies()) {
-                    pending.addLast(dependency);
-                }
+            if (source instanceof CachedIndicator<?> cached && !cached.hasRecursiveDependencies()) {
+                frontier.add(source);
+                continue;
+            }
+            List<Indicator<?>> dependencies = source.getDependencies();
+            // Non-cached delegates have no retained window of their own. Their
+            // inherited warm-up counts must not override live recursive inputs.
+            if (source instanceof CachedIndicator<?> || dependencies.isEmpty()) {
+                frontier.add(source);
+            }
+            for (Indicator<?> dependency : dependencies) {
+                pending.addLast(dependency);
             }
         }
         return frontier.toArray(NO_SOURCES);

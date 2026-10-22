@@ -41,6 +41,8 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
 import org.ta4j.core.indicators.pivotpoints.PivotLevel;
 import org.ta4j.core.indicators.pivotpoints.PivotPointIndicator;
 import org.ta4j.core.indicators.pivotpoints.StandardReversalIndicator;
@@ -2933,6 +2935,34 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             unbounded.barBuilder().closePrice(close).add();
             assertNumEquals(expected.getValue(index), actual.getValue(index));
         }
+    }
+
+    @Test
+    public void transparentWrappersKeepRecursiveWarmupAcrossOneBarHeadAdvances() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        EMAIndicator boundedInner = new EMAIndicator(new ClosePriceIndicator(bounded), 3);
+        EMAIndicator unboundedInner = new EMAIndicator(new ClosePriceIndicator(unbounded), 3);
+        EMAIndicator actual = new EMAIndicator(NumericIndicator.of(UnaryOperationIndicator
+                .abs(BinaryOperationIndicator.sum(boundedInner, new ClosePriceIndicator(bounded)))), 3);
+        EMAIndicator expected = new EMAIndicator(NumericIndicator.of(UnaryOperationIndicator
+                .abs(BinaryOperationIndicator.sum(unboundedInner, new ClosePriceIndicator(unbounded)))), 3);
+        for (int index = 0; index < 12; index++) {
+            double close = index * 7 % 19 - 9;
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            // The inner recurrence is already live when the wrapped consumer reads it.
+            assertNumEquals(unboundedInner.getValue(index), boundedInner.getValue(index));
+            Num expectedValue = expected.getValue(index);
+            Num actualValue = actual.getValue(index);
+            if (Num.isFinite(expectedValue)) {
+                assertNumEquals(expectedValue, actualValue);
+            } else {
+                assertTrue(actualValue.isNaN());
+            }
+        }
+        assertFalse(actual.getValue(11).isNaN());
     }
 
     @Test
