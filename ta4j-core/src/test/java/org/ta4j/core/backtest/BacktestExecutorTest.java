@@ -3,13 +3,13 @@
  */
 package org.ta4j.core.backtest;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.lang.reflect.InvocationTargetException;
@@ -30,9 +30,9 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.logging.log4j.Level;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.Bar;
@@ -71,7 +71,7 @@ public class BacktestExecutorTest {
 
     private TraceTestLogger backtestLogger;
 
-    @Before
+    @BeforeEach
     public void suppressExpectedFailureLogs() {
         // Failure-ledger tests intentionally throw during strategy execution;
         // the executor records those failures at WARN with a stack trace. Keep
@@ -81,7 +81,7 @@ public class BacktestExecutorTest {
         backtestLogger.setLoggerLevel(BacktestExecutor.class, Level.OFF);
     }
 
-    @After
+    @AfterEach
     public void restoreLoggerLevels() {
         backtestLogger.close();
     }
@@ -336,17 +336,17 @@ public class BacktestExecutorTest {
             BacktestExecutionResult result = new BacktestExecutor(window, new TradeOnCurrentCloseModel())
                     .executeWithRuntimeReport(List.of(boundarySignals), numOf(1), Trade.TradeType.BUY, 1);
 
-            assertEquals(scenarios[scenario], begin, result.barSeries().getBeginIndex());
-            assertEquals(scenarios[scenario], end, result.barSeries().getEndIndex());
+            assertEquals(begin, result.barSeries().getBeginIndex(), scenarios[scenario]);
+            assertEquals(end, result.barSeries().getEndIndex(), scenarios[scenario]);
             List<Position> positions = result.tradingStatements().get(0).getTradingRecord().getPositions();
-            assertEquals(scenarios[scenario], 1, positions.size());
+            assertEquals(1, positions.size(), scenarios[scenario]);
             Position actual = positions.get(0);
-            assertEquals(scenarios[scenario], begin, actual.getEntry().getIndex());
-            assertEquals(scenarios[scenario], end, actual.getExit().getIndex());
-            assertEquals(scenarios[scenario], freshPosition.getEntry().getPricePerAsset(),
-                    actual.getEntry().getPricePerAsset());
-            assertEquals(scenarios[scenario], freshPosition.getExit().getPricePerAsset(),
-                    actual.getExit().getPricePerAsset());
+            assertEquals(begin, actual.getEntry().getIndex(), scenarios[scenario]);
+            assertEquals(end, actual.getExit().getIndex(), scenarios[scenario]);
+            assertEquals(freshPosition.getEntry().getPricePerAsset(), actual.getEntry().getPricePerAsset(),
+                    scenarios[scenario]);
+            assertEquals(freshPosition.getExit().getPricePerAsset(), actual.getExit().getPricePerAsset(),
+                    scenarios[scenario]);
         }
     }
 
@@ -366,7 +366,7 @@ public class BacktestExecutorTest {
 
         assertEquals(2, result.tradingStatements().size());
         assertFalse(runnerThreads.isEmpty());
-        assertFalse("bounded workers were bypassed", runnerThreads.contains(Thread.currentThread()));
+        assertFalse(runnerThreads.contains(Thread.currentThread()), "bounded workers were bypassed");
     }
 
     @Test
@@ -379,8 +379,8 @@ public class BacktestExecutorTest {
         BacktestExecutionResult result = new BacktestExecutor(series)
                 .executeWithRuntimeReport(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY);
 
-        assertEquals("the feed append must not fail a strategy: " + result.strategyFailures(), 2,
-                result.tradingStatements().size());
+        assertEquals(2, result.tradingStatements().size(),
+                "the feed append must not fail a strategy: " + result.strategyFailures());
         assertEquals(3, series.getEndIndex());
         assertEquals(0, result.barSeries().getBeginIndex());
         assertEquals(2, result.barSeries().getEndIndex());
@@ -389,8 +389,8 @@ public class BacktestExecutorTest {
             assertEquals(0, statement.getTradingRecord().getStartIndex().intValue());
             assertEquals(2, statement.getTradingRecord().getEndIndex().intValue());
             for (Position position : statement.getTradingRecord().getPositions()) {
-                assertTrue("a fill used a bar appended after the window was captured",
-                        position.getExit() == null || position.getExit().getIndex() <= 2);
+                assertTrue(position.getExit() == null || position.getExit().getIndex() <= 2,
+                        "a fill used a bar appended after the window was captured");
             }
         }
     }
@@ -406,7 +406,7 @@ public class BacktestExecutorTest {
                 () -> executor.executeAndKeepTopK(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY,
                         new NumberOfBarsCriterion(), 2, null));
 
-        assertTrue(failure.getMessage(), failure.getMessage().contains("bars before index 1 were evicted"));
+        assertTrue(failure.getMessage().contains("bars before index 1 were evicted"), failure.getMessage());
         assertEquals(1, series.getBeginIndex());
     }
 
@@ -543,11 +543,11 @@ public class BacktestExecutorTest {
         Num bars3 = criterion.calculate(series, statements.get(2).getTradingRecord());
 
         // Verify ascending order (best/lowest first) for lower-is-better criterion
-        assertTrue("First strategy should have lowest number of bars", bars1.isLessThanOrEqual(bars2));
-        assertTrue("Second strategy should have fewer bars than third", bars2.isLessThanOrEqual(bars3));
+        assertTrue(bars1.isLessThanOrEqual(bars2), "First strategy should have lowest number of bars");
+        assertTrue(bars2.isLessThanOrEqual(bars3), "Second strategy should have fewer bars than third");
 
         // Verify we got the actual top performers (lowest bars)
-        assertTrue("Top strategy should have <= 4 bars", bars1.isLessThanOrEqual(numOf(4)));
+        assertTrue(bars1.isLessThanOrEqual(numOf(4)), "Top strategy should have <= 4 bars");
     }
 
     @Test
@@ -590,11 +590,11 @@ public class BacktestExecutorTest {
         Num commissions2 = criterion.calculate(series, statements.get(1).getTradingRecord());
 
         // Verify ascending order (best/lowest first) for lower-is-better criterion
-        assertTrue("First strategy should have lowest commissions", commissions1.isLessThanOrEqual(commissions2));
+        assertTrue(commissions1.isLessThanOrEqual(commissions2), "First strategy should have lowest commissions");
 
         // Verify we got the actual top performers (lowest commissions)
         // Strategy 1 should have the lowest commissions (only 2 trades)
-        assertTrue("Top strategy should have lowest commissions", commissions1.isLessThanOrEqual(commissions2));
+        assertTrue(commissions1.isLessThanOrEqual(commissions2), "Top strategy should have lowest commissions");
     }
 
     @Test
@@ -651,11 +651,11 @@ public class BacktestExecutorTest {
         // Verify descending order (best first) - this is the key test for the fix
         // This verifies that criterion.betterThan() is used correctly for
         // higher-is-better criteria
-        assertFalse("First strategy should have executed trades", return1.isNaN());
+        assertFalse(return1.isNaN(), "First strategy should have executed trades");
         if (topK > 1) {
-            assertFalse("Second strategy should have executed trades", return2.isNaN());
-            assertTrue("First strategy should have highest return: " + return1 + " >= " + return2,
-                    return1.isGreaterThanOrEqual(return2));
+            assertFalse(return2.isNaN(), "Second strategy should have executed trades");
+            assertTrue(return1.isGreaterThanOrEqual(return2),
+                    "First strategy should have highest return: " + return1 + " >= " + return2);
         }
     }
 
@@ -877,13 +877,13 @@ public class BacktestExecutorTest {
             Future<BacktestExecutionResult> firstExecution = pool
                     .submit(() -> executor.executeWithRuntimeReport(strategies, numOf(1)));
 
-            assertTrue("first execution did not publish its failure ledger",
-                    ledgerPublished.await(10, TimeUnit.SECONDS));
+            assertTrue(ledgerPublished.await(10, TimeUnit.SECONDS),
+                    "first execution did not publish its failure ledger");
 
             // The first execution is now blocked after publishing: clearing the
             // shared ledger overlaps its result assembly by construction.
             executor.executeWithRuntimeReport(List.of(), numOf(1));
-            assertTrue("clearing execution did not clear the shared ledger", executor.getStrategyFailures().isEmpty());
+            assertTrue(executor.getStrategyFailures().isEmpty(), "clearing execution did not clear the shared ledger");
             ledgerCleared.countDown();
 
             BacktestExecutionResult result = firstExecution.get(10, TimeUnit.SECONDS);
@@ -976,7 +976,7 @@ public class BacktestExecutorTest {
         IllegalStateException failure = assertThrows(IllegalStateException.class, () -> new BacktestExecutor(series)
                 .executeWithRuntimeReport(List.of(mutating, stable), numOf(1), Trade.TradeType.BUY, 1));
 
-        assertTrue(failure.getMessage(), failure.getMessage().contains("end moved"));
+        assertTrue(failure.getMessage().contains("end moved"), failure.getMessage());
     }
 
     @Test
@@ -997,7 +997,7 @@ public class BacktestExecutorTest {
         IllegalStateException failure = assertThrows(IllegalStateException.class, () -> new BacktestExecutor(series)
                 .executeWithRuntimeReport(List.of(mutating, stable), numOf(1), Trade.TradeType.BUY, 1));
 
-        assertTrue(failure.getMessage(), failure.getMessage().contains("begin moved"));
+        assertTrue(failure.getMessage().contains("begin moved"), failure.getMessage());
     }
 
     private BarSeries withMutableLogicalBounds(BarSeries delegate, AtomicInteger beginIndex, AtomicInteger endIndex) {
@@ -1055,7 +1055,7 @@ public class BacktestExecutorTest {
                     Thread.currentThread().interrupt();
                     throw new IllegalStateException("Interrupted while waiting for the feed writer", e);
                 }
-                assertFalse("the feed writer was blocked by the running backtest", feed.isAlive());
+                assertFalse(feed.isAlive(), "the feed writer was blocked by the running backtest");
             }
             return index == 0;
         };

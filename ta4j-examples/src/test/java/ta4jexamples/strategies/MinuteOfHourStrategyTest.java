@@ -3,7 +3,7 @@
  */
 package ta4jexamples.strategies;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
@@ -16,7 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class MinuteOfHourStrategyTest {
 
@@ -70,49 +70,67 @@ public class MinuteOfHourStrategyTest {
         }
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithNullParams() {
-        new MinuteOfHourStrategy(SERIES, (String[]) null);
+        assertThrows(IllegalArgumentException.class, () -> {
+            new MinuteOfHourStrategy(SERIES, (String[]) null);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithEmptyParams() {
-        new MinuteOfHourStrategy(SERIES);
+        assertThrows(IllegalArgumentException.class, () -> {
+            new MinuteOfHourStrategy(SERIES);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithInsufficientParams() {
-        new MinuteOfHourStrategy(SERIES, "15");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new MinuteOfHourStrategy(SERIES, "15");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithInvalidEntryMinuteNegative() {
-        new MinuteOfHourStrategy(SERIES, "-1", "45");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new MinuteOfHourStrategy(SERIES, "-1", "45");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithInvalidEntryMinuteTooLarge() {
-        new MinuteOfHourStrategy(SERIES, "60", "45");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new MinuteOfHourStrategy(SERIES, "60", "45");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithInvalidExitMinuteNegative() {
-        new MinuteOfHourStrategy(SERIES, "15", "-1");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new MinuteOfHourStrategy(SERIES, "15", "-1");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithInvalidExitMinuteTooLarge() {
-        new MinuteOfHourStrategy(SERIES, "15", "60");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new MinuteOfHourStrategy(SERIES, "15", "60");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithSameEntryAndExitMinute() {
-        new MinuteOfHourStrategy(SERIES, 30, 30);
+        assertThrows(IllegalArgumentException.class, () -> {
+            new MinuteOfHourStrategy(SERIES, 30, 30);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithSameEntryAndExitMinuteString() {
-        new MinuteOfHourStrategy(SERIES, "30", "30");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new MinuteOfHourStrategy(SERIES, "30", "30");
+        });
     }
 
     @Test
@@ -187,7 +205,7 @@ public class MinuteOfHourStrategyTest {
             assertTrue(strategy.getName().startsWith("MinuteOfHourStrategy_"));
             String name = strategy.getName();
             String[] parts = name.split("_");
-            assertNotEquals("Strategy should not have same entry and exit minute: " + name, parts[1], parts[2]);
+            assertNotEquals(parts[1], parts[2], "Strategy should not have same entry and exit minute: " + name);
         }
     }
 
