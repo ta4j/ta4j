@@ -499,7 +499,7 @@ class ElliottResearchTraceTest {
         for (final String number : List.of("2.5", "18446744073709551618", "1e2147483648", "100e2147483647")) {
             final JsonObject damaged = original.deepCopy();
             damaged.add("records", JsonParser.parseString(number));
-            assertMalformedAtLine(lines, damaged, lines.size(), "records");
+            assertMalformedAtLine(lines, damaged, lines.size(), "record");
         }
     }
 
@@ -641,9 +641,10 @@ class ElliottResearchTraceTest {
         Files.write(copy, damagedLines, StandardCharsets.UTF_8);
         final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> ElliottResearchTrace.read(copy), field);
-        assertTrue(error.getMessage().contains(copy.toString()), error.getMessage());
-        assertTrue(error.getMessage().contains("line " + lineNumber), error.getMessage());
-        assertTrue(error.getMessage().contains(field), error.getMessage());
+        assertTrue(error.getMessage().startsWith(copy.toString()), error.getMessage());
+        final String reason = error.getMessage().substring(copy.toString().length());
+        assertTrue(reason.contains("line " + lineNumber), error.getMessage());
+        assertTrue(reason.contains(field), error.getMessage());
         final IllegalArgumentException filtered = assertThrows(IllegalArgumentException.class,
                 () -> ElliottResearchTrace.read(copy, record -> false), field);
         assertEquals(error.getMessage(), filtered.getMessage());
