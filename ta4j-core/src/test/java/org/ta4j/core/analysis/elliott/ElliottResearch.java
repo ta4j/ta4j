@@ -92,9 +92,9 @@ import com.google.gson.JsonPrimitive;
  * diagnostic (missing, truncated or corrupt trace, failed dataset) or
  * incomplete run (an outcome or calibration artifact that is missing, does not
  * hold the record count {@code run.json} declares for it, or has no declared
- * count). A run that declares {@code calibration} and has no captured trace is
- * still inspectable: {@code inspect} prints its calibration estimates with a
- * "real trace not captured" note and exits {@code 0}.
+ * count). With no captured trace, {@code inspect} may instead print applicable
+ * calibration estimates with a "real trace not captured" note and exit
+ * {@code 0}. Rows outside the fitted calibration scope still require a trace.
  * </p>
  *
  * @since 0.25.1
@@ -1980,10 +1980,13 @@ final class ElliottResearch {
                     expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER,
                             row.nullBlockLength(), member == null || member.isJsonNull() ? -1 : member.getAsInt()),
                     this::inNullScope, this::inNullScope, recaptureNull()) : null;
-            // A calibrated run may be inspected without traces, but a declared trace
-            // that is missing is still an incomplete capture.
+            // Only applicable calibration estimates can replace an uncaptured trace;
+            // a declared trace that is missing is still an incomplete capture.
             final boolean traceDeclared = realTrace != null || nullTrace != null;
-            if (real == null && nullView == null && (traceDeclared || !run.has("calibration"))) {
+            final boolean calibrationApplies = calibration != null
+                    && ElliottResearchCalibration.scopeMismatch(calibration.tables(), row.dataset(), row.section(),
+                            row.grammar(), row.detector()) == null;
+            if (real == null && nullView == null && (traceDeclared || !calibrationApplies)) {
                 throw new Diagnostic(
                         "no trace was captured for key " + row.key() + " in " + dir + ". Recapture with:\n  "
                                 + ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null)

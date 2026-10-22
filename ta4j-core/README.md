@@ -197,9 +197,10 @@ counterexamples and rule disagreements; when the trace is missing or truncated
 it exits with status 2 and prints the recapture command, quoted for a POSIX shell.
 The command carries `--expect-fingerprint` (and, for `explore`, `--expect-source-sha256`),
 so a recapture against a changed configuration or edited candles fails instead of
-tracing different data. A run that declares `calibration` but captured no trace is
-the exception: `inspect` prints the row's calibration estimates with a "real trace
-not captured" note and exits with status 0. Coverage marks a partition `partial`
+tracing different data. If no trace was captured and the calibration tables cover
+the requested row, `inspect` prints its calibration estimates with a "real trace
+not captured" note and exits with status 0. Other detector, H2 and competing rows
+still require a trace. Coverage marks a partition `partial`
 when it has no bars or a gap longer than seven bar periods. `summarize` and `inspect`
 read only files that resolve inside the run directory: a trace name that is absolute
 or climbs out with `..`, or a run file or trace that is a link leaving the directory,

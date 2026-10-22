@@ -932,7 +932,7 @@ class ElliottResearchTest {
     }
 
     @Test
-    void inspectShowsCalibrationOnlyForTheScopeTheTablesWereFitted() throws Exception {
+    void traceFreeInspectSucceedsOnlyForRowsCoveredByTheCalibrationTables() throws Exception {
         final String recipe = calibrationRecipe("cal", "{\"horizon\":5,\"minGroups\":1}").replace("\"momentum\"",
                 "\"robustnessDetectors\":[{\"name\":\"fractal-w5\",\"factory\":\"fractal\",\"params\":[5]}],\n"
                         + " \"momentum\"");
@@ -963,18 +963,19 @@ class ElliottResearchTest {
         }
         assertTrue(robustness != null, "the recipe must produce a robustness-detector row");
         final Result other = launch("inspect", run.toString(), robustness, "--limit", "2");
-        assertEquals(0, other.code(), other.err());
-        assertTrue(other.out().contains("not applicable to this scope"), other.out());
-        assertTrue(other.out().contains("section (h1 vs robustness)"), other.out());
-        assertTrue(other.out().contains("detector (fractal-w3 vs fractal-w5)"), other.out());
+        assertEquals(2, other.code(), other.out());
+        assertTrue(other.err().contains("--trace real"), other.err());
         assertFalse(other.out().contains("estimated event probability:"), other.out());
 
         final Result competing = launch("inspect", run.toString(), keyOfSection(run, "holdout", "competing"), "--limit",
                 "2");
-        assertEquals(0, competing.code(), competing.err());
-        assertTrue(competing.out().contains("not applicable to this scope"), competing.out());
-        assertTrue(competing.out().contains("section (h1 vs competing)"), competing.out());
+        assertEquals(2, competing.code(), competing.out());
+        assertTrue(competing.err().contains("--trace real"), competing.err());
         assertFalse(competing.out().contains("estimated event probability:"), competing.out());
+
+        final Result h2 = launch("inspect", run.toString(), keyOfSection(run, "holdout", "h2"));
+        assertEquals(2, h2.code(), h2.out());
+        assertTrue(h2.err().contains("--trace real"), h2.err());
     }
 
     private static String keyOfPartition(final Path run, final String partition) throws IOException {
