@@ -464,7 +464,10 @@ class ElliottResearchTraceTest {
                     final JsonObject damaged = original.deepCopy();
                     damaged.addProperty("status", status);
                     final IllegalArgumentException error = assertMalformedAtLine(lines, damaged, index + 1, "status");
-                    assertTrue(error.getMessage().contains(damaged.get("status").toString()), error.getMessage());
+                    assertTrue(
+                            error.getMessage()
+                                    .contains(status.isBlank() ? "status is blank" : damaged.get("status").toString()),
+                            error.getMessage());
                 }
             }
         }
@@ -524,6 +527,26 @@ class ElliottResearchTraceTest {
             }
         }
         return file;
+    }
+
+    @Test
+    public void blankRecordIdentityFieldsAreRejectedBeforeRetention() throws Exception {
+        for (final boolean selectedNull : List.of(false, true)) {
+            final Path file = coordinateTrace("blank-identities-" + selectedNull + ".jsonl", selectedNull);
+            final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            for (int index = 1; index < lines.size() - 1; index++) {
+                final JsonObject original = JsonParser.parseString(lines.get(index)).getAsJsonObject();
+                for (final String field : List.of("dataset", "section", "mode", "grammar", "detector", "partition",
+                        "asOfTime", "status")) {
+                    for (final String blank : List.of("", " ", "\t\r\n")) {
+                        final JsonObject damaged = original.deepCopy();
+                        damaged.addProperty(field, blank);
+                        final IllegalArgumentException error = assertMalformedAtLine(lines, damaged, index + 1, field);
+                        assertTrue(error.getMessage().contains(field + " is blank"), error.getMessage());
+                    }
+                }
+            }
+        }
     }
 
     @Test

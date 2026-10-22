@@ -209,7 +209,8 @@ reference rank; neither is a confidence interval or a p-value, and partitions
 are never pooled. `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements. Every observation must match its trace
 header's dataset and null-member coordinates and carry a status defined for its
-record kind; nested rules must carry a known rule-evidence state. Candidate keys
+record kind; required scope labels and as-of timestamps must be nonblank.
+Nested rules must carry a known rule-evidence state. Candidate keys
 must match the recorded grammar, direction and full placement, and evidence
 versions must match the candidate key and serialized rules. Trace capture
 shares the immutable evidence consumed by report metrics rather than reevaluating

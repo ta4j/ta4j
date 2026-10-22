@@ -510,6 +510,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         final String where = kind + " record field ";
         for (final String field : RECORD_TEXT_FIELDS) {
             requireText(path, lineNumber, record, field, where);
+            if (record.get(field).getAsString().isBlank()) {
+                throw corrupt(path, lineNumber, where + field + " is blank");
+            }
         }
         final String status = record.get("status").getAsString();
         if ("topology".equals(kind)) {
