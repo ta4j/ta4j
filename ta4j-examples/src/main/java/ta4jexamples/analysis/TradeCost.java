@@ -27,7 +27,14 @@ import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 
 /**
- * This class displays an example of the transaction cost calculation.
+ * This class displays transaction and borrowing costs. The legacy borrowing
+ * approximation uses entry value times index distance times the fee per index
+ * period. It does not infer elapsed calendar time or revalue the borrowed
+ * asset. Calendar/mark-based borrowing requires a separate cost model with
+ * explicitly qualified historical inputs in the same manager holding-cost slot.
+ * Do not interpret this example's coefficient as an annual or calendar rate.
+ * Fair-value marks exclude hypothetical liquidation fees; actual transaction
+ * fees and accrued borrowing remain separate costs.
  */
 public class TradeCost {
 
@@ -42,9 +49,9 @@ public class TradeCost {
 
         // Setting the trading cost models
         double feePerTrade = 0.0005;
-        double borrowingFee = 0.00001;
+        double borrowingFeePerIndexPeriod = 0.00001;
         CostModel transactionCostModel = new LinearTransactionCostModel(feePerTrade);
-        CostModel borrowingCostModel = new LinearBorrowingCostModel(borrowingFee);
+        CostModel borrowingCostModel = new LinearBorrowingCostModel(borrowingFeePerIndexPeriod);
 
         // Running the strategy
         BarSeriesManager seriesManager = new BarSeriesManager(series, transactionCostModel, borrowingCostModel);
@@ -54,7 +61,7 @@ public class TradeCost {
         DecimalFormat df = new DecimalFormat("##.##");
         LOG.debug("------------ Borrowing Costs ------------");
         tradingRecord.getPositions()
-                .forEach(position -> LOG.debug("Borrowing cost for {} periods is: {}",
+                .forEach(position -> LOG.debug("Borrowing cost for {} index periods is: {}",
                         df.format(position.getExit().getIndex() - position.getEntry().getIndex()),
                         df.format(position.getHoldingCost().doubleValue())));
         LOG.debug("------------ Transaction Costs ------------");

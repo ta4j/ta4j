@@ -64,15 +64,20 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
                 // Empty series: there is no bar to seed from or recurse to.
                 return NaN;
             }
-            // CachedIndicator maps unavailable history to calculate(0). Serve the
-            // first available bar's value: the retained recurrence when the chain
-            // continued past the head, otherwise its seed. calculate(beginIndex)
-            // never reads a predecessor, so this cannot recurse back here.
+            Num value;
             if (index < beginIndex) {
-                return getValue(beginIndex);
+                // Preserve an already consumed head, including a terminal value, and a head
+                // that
+                // continues from a retained cached predecessor. Without either, a removed-index
+                // alias must not prefill later bars or move the fresh chain's warm-up anchor
+                // into removed history.
+                boolean consumedHead = beginIndex == getBarSeries().getEndIndex()
+                        || getCachedValueOrNull(beginIndex) != null || getCachedValueOrNull(beginIndex - 1) != null;
+                value = consumedHead ? getValue(beginIndex) : seed(beginIndex);
+            } else {
+                Num predecessor = index == beginIndex ? getCachedValueOrNull(index - 1) : getValue(index - 1);
+                value = predecessor == null ? seed(index) : continueChain(index, predecessor);
             }
-
-            Num value = index == beginIndex ? seed(index) : continueChain(index);
             if (getBarSeries().getBeginIndex() == beginIndex) {
                 return value;
             }
@@ -95,11 +100,7 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
         return Num.isFinite(current) ? initialValue(index, current) : NaN;
     }
 
-    private Num continueChain(int index) {
-        // Resolve the predecessor first: when it is not cached the recursion walks
-        // back to the retained head and re-seeds there, which updates the chain
-        // start used by the warm-up check below.
-        Num prevValue = getValue(index - 1);
+    private Num continueChain(int index, Num prevValue) {
         if (index < (long) chainStartIndex + getCountOfUnstableBars()) {
             // Warm-up is counted from where the chain was seeded, not from the
             // current head: a chain carried across head advances keeps its
