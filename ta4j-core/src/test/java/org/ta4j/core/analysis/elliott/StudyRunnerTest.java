@@ -1001,6 +1001,60 @@ class StudyRunnerTest {
     }
 
     @Test
+    public void observerSharesImmutableRuleEvidenceWithMetricsWithoutReevaluation() {
+        final int[] evaluations = { 0 };
+        final RelationshipRule counted = new RelationshipRule() {
+            @Override
+            public String id() {
+                return "counted";
+            }
+
+            @Override
+            public RuleEvidence evaluate(final TopologyCandidate candidate) {
+                evaluations[0]++;
+                return RuleEvidence.pass(id(), List.of("synthetic"), "counted pass");
+            }
+        };
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), List.of(counted),
+                configuration(StudyRunner.Partitions.lockedDefault(), 1));
+        final BarSeries series = buildSeries(24);
+        final String withoutObserver = runner.evaluate("BTC", series, 0, 23).toJson();
+        final int withoutObserverEvaluations = evaluations[0];
+        evaluations[0] = 0;
+        final int[] observedEvidence = { 0, 0 };
+        final StudyObserver observer = new StudyObserver() {
+            @Override
+            public void topology(final Scope scope, final String partition, final int recordedIndex,
+                    final Instant asOfEnd, final List<ConfirmedPivot> visiblePivots, final TopologyAnalysis analysis,
+                    final List<List<RuleEvidence>> candidateEvidence) {
+                if (candidateEvidence.isEmpty()) {
+                    return;
+                }
+                assertThrows(UnsupportedOperationException.class, candidateEvidence::clear);
+                for (final List<RuleEvidence> evidence : candidateEvidence) {
+                    if (!evidence.isEmpty()) {
+                        assertThrows(UnsupportedOperationException.class, evidence::clear);
+                        observedEvidence[analysis.status() == TopologyStatus.COMPLETE ? 0 : 1] += evidence.size();
+                    }
+                }
+            }
+
+            @Override
+            public void alternative(final Scope scope, final String partition, final int recordedIndex,
+                    final Instant asOfEnd, final List<ConfirmedPivot> visiblePivots, final String outcome,
+                    final Set<String> labels) {
+                // This regression counts only relationship-rule evaluations.
+            }
+        };
+        final String withObserver = runner.evaluate("BTC", series, 0, 23, observer).toJson();
+
+        assertEquals(withoutObserver, withObserver);
+        assertTrue(observedEvidence[0] > 0, "fixture must include complete candidates with active rules");
+        assertEquals(withoutObserverEvaluations + observedEvidence[1], evaluations[0],
+                "complete-candidate evidence is consumed once by both observer and metrics");
+    }
+
+    @Test
     void replayedNullMemberMatchesItsFullEnsembleEntries() {
         // The single-bar calibration partition exercises the degenerate
         // one-bar null path alongside ordinary multi-bar prefixes.

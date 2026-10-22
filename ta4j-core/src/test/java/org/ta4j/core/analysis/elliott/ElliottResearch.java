@@ -777,10 +777,10 @@ final class ElliottResearch {
             throws IOException {
         final RunOptions options = parseRunOptions(args);
         final String revision = gitRevision();
-        if (options.expectRevision() != null && !options.expectRevision().equals(revision)) {
-            throw new IllegalArgumentException(
-                    "current revision is " + revision + ", not the recorded revision " + options.expectRevision()
-                            + "; check out the recorded revision in a separate worktree before recapturing");
+        // Sample before the run can dirty the checkout with its own output directory.
+        final String worktree = gitWorktreeState();
+        if (options.expectRevision() != null) {
+            requireRecordedRevision(options.expectRevision(), revision, worktree);
         }
         final Setup setup;
         final Recipe recipe;
@@ -863,9 +863,6 @@ final class ElliottResearch {
             requirePreservedInput(dir, realDir, options.source());
             requirePreservedInput(dir, realDir, options.recipeFile());
         }
-        // Probe provenance before claiming the directory: an output path inside the
-        // checkout would otherwise mark a clean worktree dirty with our own lock file.
-        final String worktree = gitWorktreeState();
         try (FileChannel lock = reserveRunDirectory(dir, options.overwrite())) {
             final Run run = new Run(dir, options, setup, recipe, revision, worktree);
             plan.execute(run);
@@ -1458,6 +1455,22 @@ final class ElliottResearch {
 
     private static String nullTraceName(final String datasetId, final int block, final int member) {
         return TRACES_DIR + "/" + datasetId + "-null-b" + block + "-m" + member + ".jsonl";
+    }
+
+    static void requireRecordedRevision(final String expected, final String revision, final String worktree) {
+        if ("unknown".equals(expected) || "unknown".equals(revision)) {
+            throw new IllegalArgumentException("recorded revision cannot be verified"
+                    + "; check out the recorded revision in a separate worktree before recapturing");
+        }
+        if (!expected.equals(revision)) {
+            throw new IllegalArgumentException("current revision is " + revision + ", not the recorded revision "
+                    + expected + "; check out the recorded revision in a separate worktree before recapturing");
+        }
+        if (!"clean".equals(worktree)) {
+            throw new IllegalArgumentException(
+                    "revision-bound recapture requires a clean worktree, but this checkout is " + worktree
+                            + "; check out the recorded revision in a separate worktree before recapturing");
+        }
     }
 
     private static String gitRevision() {
