@@ -41,7 +41,6 @@ final class EquityCurveTestSupport {
      * by seed. All fills carry linear costs.
      */
     static BaseTradingRecord record(BarSeries series, int positions, ExecutionMatchPolicy policy, long seed) {
-        NumFactory factory = series.numFactory();
         TradeType type = (seed & 1) == 0 ? TradeType.BUY : TradeType.SELL;
         BaseTradingRecord record = new BaseTradingRecord(type, policy, new LinearTransactionCostModel(0.001),
                 new LinearBorrowingCostModel(0.0001, LinearBorrowingCostModel.Applicability.BOTH), null, null);

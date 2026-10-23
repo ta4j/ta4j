@@ -63,25 +63,32 @@ class EquityCurveBenchmarkTest {
     void measuresCriteriaAndRanking() throws IOException {
         int warmups = Integer.getInteger("equity.benchmark.warmups", 2);
         boolean rankingOnly = Boolean.getBoolean("equity.benchmark.rankingOnly");
-        int repetitions = Integer.getInteger("equity.benchmark.repetitions", 3);
-        assertTrue(warmups > 0 && repetitions > 0, "warmups and repetitions must be positive");
+        int repetitions = Integer.getInteger("equity.benchmark.repetitions", 4);
+        assertTrue(warmups > 0, "warmups must be positive");
+        assertTrue(repetitions > 0 && repetitions % 2 == 0, "repetitions must be positive and even");
         com.sun.management.ThreadMXBean allocation = ManagementFactory
                 .getPlatformMXBean(com.sun.management.ThreadMXBean.class);
         assertTrue(allocation != null && allocation.isThreadAllocatedMemorySupported(),
                 "measurement requires JVM thread allocation accounting");
         allocation.setThreadAllocatedMemoryEnabled(true);
         List<String> rows = new ArrayList<>();
-        rows.add("factory,bars,positions,operation,repetition,nanoseconds,allocated_bytes");
+        rows.add("factory,bars,positions,operation,repetition,order,nanoseconds,allocated_bytes");
         Path output = Path.of("target", "equity-curve-benchmark.csv");
         Files.createDirectories(output.getParent());
         Files.write(output, rows);
+        String jvmArguments = ManagementFactory.getRuntimeMXBean()
+                .getInputArguments()
+                .toString()
+                .replace(System.getProperty("user.dir"), "<MODULE>")
+                .replace(System.getProperty("user.home"), "<HOME>");
         Files.writeString(Path.of("target", "equity-curve-benchmark-environment.txt"),
                 "seed=" + EquityCurveTestSupport.SEED + "\nwarmups=" + warmups + "\nrepetitions=" + repetitions
                         + "\nrankingOnly=" + rankingOnly + "\nmonteCarloIterations=32\nmonteCarloPathBlocks=16\njava="
                         + System.getProperty("java.runtime.version") + "\nvm=" + System.getProperty("java.vm.name")
                         + "\nos=" + System.getProperty("os.name") + " " + System.getProperty("os.version") + " "
-                        + System.getProperty("os.arch") + "\njvmArgs="
-                        + ManagementFactory.getRuntimeMXBean().getInputArguments() + "\nstarted=" + Instant.now()
+                        + System.getProperty("os.arch") + "\njvmArgs=" + jvmArguments
+                        + "\nrankingOrder=paired; even repetition: baseline,candidate; odd: candidate,baseline"
+                        + "\nwarmupOrder=paired alternating in the same way\nstarted=" + Instant.now()
                         + "\nsourceRevision=" + System.getProperty("equity.benchmark.revision", "unspecified")
                         + "\navailableProcessors=" + Runtime.getRuntime().availableProcessors() + "\nmaxHeapBytes="
                         + Runtime.getRuntime().maxMemory() + "\n");
@@ -114,8 +121,6 @@ class EquityCurveBenchmarkTest {
                         .map(criterion -> new WeightedCriterion(criterion, factory.one()))
                         .toList();
                 RankingProfile profile = RankingProfile.weighted(weights);
-                measure(rows, allocation, factory, bars, positions, "ranking20",
-                        () -> result.rankTradingStatements(profile), warmups, repetitions);
                 SharingPrototype prototype = new SharingPrototype(series, criteria);
                 RankingProfile candidateProfile = RankingProfile.weighted(prototype.criteria.stream()
                         .map(criterion -> new WeightedCriterion(criterion, factory.one()))
@@ -145,8 +150,23 @@ class EquityCurveBenchmarkTest {
                                 shared.normalizedScores().get(prototype.criteria.get(criterion)), "normalized score");
                     }
                 }
-                measure(rows, allocation, factory, bars, positions, "ranking20-shared-drawdowns", candidate, warmups,
-                        repetitions);
+                List<String> names = List.of("ranking20", "ranking20-shared-drawdowns");
+                List<Supplier<?>> actions = List.of(() -> result.rankTradingStatements(profile), candidate);
+                List<?> expectedValues = List.of(baselineRows, candidateRows);
+                for (int iteration = 0; iteration < warmups; iteration++) {
+                    for (int position = 0; position < 2; position++) {
+                        int operation = (iteration + position) % 2;
+                        consumed = actions.get(operation).get();
+                        assertEquals(expectedValues.get(operation), consumed, names.get(operation) + " warmup");
+                    }
+                }
+                for (int iteration = 0; iteration < repetitions; iteration++) {
+                    for (int position = 0; position < 2; position++) {
+                        int operation = (iteration + position) % 2;
+                        recordSample(rows, allocation, factory, bars, positions, names.get(operation),
+                                actions.get(operation), expectedValues.get(operation), iteration, position + 1);
+                    }
+                }
             }
         }
 
@@ -160,20 +180,27 @@ class EquityCurveBenchmarkTest {
             consumed = action.get();
             assertEquals(expected, consumed, operation + " warmup");
         }
-        long thread = Thread.currentThread().threadId();
         for (int iteration = 0; iteration < repetitions; iteration++) {
-            long allocatedBefore = allocation.getThreadAllocatedBytes(thread);
-            long started = System.nanoTime();
-            Object value = action.get();
-            long elapsed = System.nanoTime() - started;
-            long allocated = allocation.getThreadAllocatedBytes(thread) - allocatedBefore;
-            consumed = value;
-            assertEquals(expected, value, operation + " repetition " + iteration);
-            assertTrue(allocated >= 0, "allocation accounting became unavailable");
-            rows.add(factory.getClass().getSimpleName() + "," + bars + "," + positions + "," + operation + ","
-                    + iteration + "," + elapsed + "," + allocated);
-            Files.write(Path.of("target", "equity-curve-benchmark.csv"), rows);
+            recordSample(rows, allocation, factory, bars, positions, operation, action, expected, iteration, 1);
         }
+    }
+
+    /** Records one operation; assertions and CSV writes are outside measurement. */
+    private static void recordSample(List<String> rows, com.sun.management.ThreadMXBean allocation, NumFactory factory,
+            int bars, int positions, String operation, Supplier<?> action, Object expected, int iteration, int order)
+            throws IOException {
+        long thread = Thread.currentThread().threadId();
+        long allocatedBefore = allocation.getThreadAllocatedBytes(thread);
+        long started = System.nanoTime();
+        Object value = action.get();
+        long elapsed = System.nanoTime() - started;
+        long allocated = allocation.getThreadAllocatedBytes(thread) - allocatedBefore;
+        consumed = value;
+        assertEquals(expected, value, operation + " repetition " + iteration);
+        assertTrue(allocated >= 0, "allocation accounting became unavailable");
+        rows.add(factory.getClass().getSimpleName() + "," + bars + "," + positions + "," + operation + "," + iteration
+                + "," + order + "," + elapsed + "," + allocated);
+        Files.write(Path.of("target", "equity-curve-benchmark.csv"), rows);
     }
 
     /**

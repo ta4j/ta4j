@@ -63,7 +63,7 @@ the repository root:
 mvn -pl ta4j-core test -Dtest=CashFlowTest,CumulativePnLTest
 mvn -pl ta4j-core test -Dtest=EquityCurveBenchmarkTest \
   -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.test.forkCount=1 \
-  -Dequity.benchmark.warmups=2 -Dequity.benchmark.repetitions=3 \
+  -Dequity.benchmark.warmups=2 -Dequity.benchmark.repetitions=4 \
   -Dequity.benchmark.revision="$(git rev-parse HEAD)"
 ```
 
@@ -77,8 +77,12 @@ are needed. The test writes `ta4j-core/target/equity-curve-benchmark.csv` and
 The committed CSV retains every measured repetition; summarize with medians.
 
 Each operation has an untimed reference evaluation, two untimed warmups and
-three timed repetitions by default. Baseline ranking also runs untimed for
-comparison with the prototype. Setup and equality assertions are outside the
+four timed repetitions by default. Ranking warmups and measured repetitions
+execute as pairs: baseline first on even repetitions, candidate first on odd
+repetitions. A positive even repetition count gives both operations equal first
+and second positions. The CSV `order` column records position 1 or 2; individual
+criteria use position 1. The environment records the ordering policy. Ranking
+reference evaluations also provide the exact score comparison. Setup and equality assertions are outside the
 timed interval. Timing is `System.nanoTime()` elapsed wall time on the executing
 thread. Allocations use the HotSpot/OpenJDK ThreadMXBean counter for that thread,
 including returned values and ranking output, but excluding fixture setup,
@@ -98,7 +102,7 @@ production-contract design; it is not authorized by adding this harness.
 
 Production baseline: `7adc45bfdf78aae2c07f4008b8bb939eac0aea6b` (remote master
 verified on 2026-10-23). The original full run uses harness revision
-`650d8433640747b98586e48fd6cc65857fa91ede`; its unmodified samples and JVM
+`650d8433640747b98586e48fd6cc65857fa91ede`; its original samples and path-normalized JVM
 metadata are `initial-retaining20.csv` and `initial-environment.txt`.
 Its per-criterion measurements remain valid. Its prototype retained all 20
 statement curves through ranking, so its ranking comparison is preserved as a
@@ -120,7 +124,7 @@ not uninstrumented production-latency claims. The metadata records the actual
 arguments and heap; use those effective settings when comparing results.
 
 
-## Final result and next decision
+## Historical fixed-order result (superseded for the decision)
 
 The corrected per-statement ranking run is pinned to harness revision
 `54adfa8dc7ec86233988a05ed9878733f4ffcd40`; production remains identical to
@@ -134,7 +138,8 @@ the correction only changes the test-side ranking prototype's retention scope;
 no production criterion or fixture changed. Ranking baseline and candidate
 ratios below use the corrected run together, not timings mixed across JVM runs.
 
-**Decision:** the retained Phase-0 wall-time criterion is met by DoubleNum at
+**Historical fixed-order assessment (awaiting paired confirmation):** the retained
+Phase-0 wall-time criterion was met by DoubleNum at
 100,000 bars (1.718x). DecimalNum improves 1.433x but does not independently
 meet 1.5x, and neither factory reaches 40% allocation reduction. These results
 support proceeding to a separate Phase-1 design review. They do not authorize
@@ -144,15 +149,15 @@ is instrumented. Preserve the DecimalNum qualification and repeat measurements
 against any later default-branch/accounting changes, including the neighboring
 production work owned by PR #1636. No production caching is part of this patch.
 
-Independent review remains required before publication: the supported Codex
-fork operation failed before creating a reviewer (`unsupported app-server
-method: thread/fork`). The local preparation includes substantive self-review;
-it is not independent review. No publication, ownership or Linear lifecycle
-change was performed.
+Independent read-only review of the initial candidate completed before
+publication. Subsequent review requested paired execution ordering to reduce
+comparison bias; the final decision is being refreshed from that paired run.
+The full issue remains open for the separate production-cache decision.
 
 The first table reports each criterion's individual latency and allocation from
 the initial full run. Ranking tables report the corrected per-statement run.
-All figures are medians of three measured repetitions; MiB means 1,048,576 bytes.
+The following historical tables use medians of three measured repetitions;
+MiB means 1,048,576 bytes. The final paired tables below use four repetitions.
 
 ### Individual criteria
 
@@ -212,3 +217,19 @@ All figures are medians of three measured repetitions; MiB means 1,048,576 bytes
 | DoubleNumFactory | 100000 | 1.718x | 36.79% |
 | DecimalNumFactory | 1100 | 1.037x | 5.25% |
 | DecimalNumFactory | 100000 | 1.433x | 24.49% |
+
+
+## Review correction: paired ordering
+
+The two earlier CSVs retain their original measurement values and schema. Their
+ranking groups ran baseline before candidate, so their timing ratios are
+historical, not the final decision evidence. The revised harness alternates
+operation order within each warmup and measured repetition and records each
+operation's actual position. Four measured repetitions balance both orders.
+
+Committed environment metadata normalizes machine-specific directory prefixes
+to `<M2>`/`<WORKTREE>`; newly generated metadata uses `<HOME>`/`<MODULE>`. Only
+paths change: JaCoCo version, other JVM flags, effective heap and numeric samples
+are retained. The original absolute paths are unnecessary for reproduction.
+
+Paired-run results and the resulting go/no-go assessment are pending.
