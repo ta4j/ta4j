@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -127,5 +129,53 @@ class OrderBookTest {
         assertSame(owner, book.numFactory());
         assertSame(level.price(), book.getBestBid().orElseThrow().price());
         assertTrue(owner.produces(level.price()));
+    }
+
+    @Test
+    void overflowingSpreadIsUnavailableForFiniteSignedQuotes() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        Metadata metadata = new Metadata("V", "I", "base", null, TIME, null, State.SYNCHRONIZED, true, true);
+        OrderBookLevel bid = new OrderBookLevel(factory.numOf(-Double.MAX_VALUE), factory.one());
+        OrderBookLevel ask = new OrderBookLevel(factory.numOf(Double.MAX_VALUE), factory.one());
+        BaseOrderBook book = new BaseOrderBook(factory, metadata, List.of(bid), List.of(ask));
+        assertTrue(book.getSpread().isNaN());
+        assertTrue(book.getMidPrice().isZero());
+    }
+
+    @Test
+    void unlimitedDecimalImbalanceIsNaNOnlyWhenRatioCannotBeRepresented() {
+        NumFactory factory = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
+        Metadata metadata = new Metadata("V", "I", "base", null, TIME, null, State.SYNCHRONIZED, true, true);
+        BaseOrderBook nonterminating = new BaseOrderBook(factory, metadata,
+                List.of(new OrderBookLevel(factory.one(), factory.two())),
+                List.of(new OrderBookLevel(factory.two(), factory.one())));
+        assertTrue(nonterminating.getImbalance(1).isNaN());
+        BaseOrderBook terminating = new BaseOrderBook(factory, metadata,
+                List.of(new OrderBookLevel(factory.one(), factory.three())),
+                List.of(new OrderBookLevel(factory.two(), factory.one())));
+        assertNumEquals(factory.numOf("0.5"), terminating.getImbalance(1));
+        assertSame(factory, nonterminating.numFactory());
+    }
+
+    @Test
+    void exactDecimalContextsDoNotLeakUnrepresentableMeasurementExceptions() {
+        NumFactory factory = DecimalNumFactory.getInstance(new MathContext(1, RoundingMode.UNNECESSARY));
+        Metadata metadata = new Metadata("V", "I", "base", null, TIME, null, State.SYNCHRONIZED, true, true);
+        BaseOrderBook spread = new BaseOrderBook(factory, metadata,
+                List.of(new OrderBookLevel(factory.numOf("-0.9"), factory.one())),
+                List.of(new OrderBookLevel(factory.one(), factory.one())));
+        assertTrue(spread.getSpread().isNaN());
+        assertNumEquals(factory.numOf("0.05"), spread.getMidPrice());
+        BaseOrderBook midpoint = new BaseOrderBook(factory, metadata,
+                List.of(new OrderBookLevel(factory.one(), factory.two())),
+                List.of(new OrderBookLevel(factory.two(), factory.one())));
+        assertTrue(midpoint.getMidPrice().isNaN());
+        assertTrue(midpoint.getImbalance(1).isNaN());
+        BaseOrderBook depth = new BaseOrderBook(factory, metadata,
+                List.of(new OrderBookLevel(factory.zero(), factory.numOf(9)),
+                        new OrderBookLevel(factory.minusOne(), factory.two())),
+                List.of(new OrderBookLevel(factory.one(), factory.one())));
+        assertTrue(depth.getDepth(OrderBook.Side.BID, 2).isNaN());
+        assertTrue(depth.getImbalance(2).isNaN());
     }
 }

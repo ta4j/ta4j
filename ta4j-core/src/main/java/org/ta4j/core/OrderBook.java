@@ -17,7 +17,10 @@ import org.ta4j.core.num.NumFactory;
  * One immutable, coherent L2 observation for a venue, instrument and quantity
  * unit. Levels describe displayed aggregate quantity, not orders or guaranteed
  * fills. Implementations publish unique numeric prices, best first, using their
- * owning numeric factory. No bar series is required.
+ * owning numeric factory. No bar series is required. Derived measurements
+ * return NaN when a calculation cannot be completed in the active numeric
+ * context, including intermediate overflow or exact decimal arithmetic that
+ * would require rounding. They do not substitute another precision.
  *
  * @since 0.27.1
  */
@@ -144,16 +147,28 @@ public interface OrderBook extends Serializable {
     }
 
     /**
-     * @return ask minus bid, or NaN for unsynchronized, one-sided or crossed
-     *         quotes; locked quotes have zero spread
+     * @return ask minus bid, or NaN for unsynchronized, one-sided or crossed quotes
+     *         or a calculation that cannot complete in the numeric context; locked
+     *         quotes have zero spread
      * @since 0.27.1
      */
     default Num getSpread() {
-        return hasNormalQuotes() ? getAsks().getFirst().price().minus(getBids().getFirst().price()) : NaN.NaN;
+        if (!hasNormalQuotes()) {
+            return NaN.NaN;
+        }
+        Num ask = getAsks().getFirst().price();
+        Num bid = getBids().getFirst().price();
+        try {
+            Num spread = ask.minus(bid);
+            return Num.isFinite(spread) ? spread : NaN.NaN;
+        } catch (ArithmeticException unrepresentable) {
+            return NaN.NaN;
+        }
     }
 
     /**
-     * @return quote midpoint, or NaN under the same conditions as spread
+     * @return quote midpoint for synchronized, two-sided, noncrossed quotes, or NaN
+     *         otherwise or when calculation cannot complete in the numeric context
      * @since 0.27.1
      */
     default Num getMidPrice() {
@@ -162,17 +177,23 @@ public interface OrderBook extends Serializable {
         }
         Num ask = getAsks().getFirst().price();
         Num bid = getBids().getFirst().price();
-        Num sum = ask.plus(bid);
-        // Halve first only when the primitive-backed sum overflows.
-        return Num.isFinite(sum) ? sum.dividedBy(numFactory().two())
-                : ask.dividedBy(numFactory().two()).plus(bid.dividedBy(numFactory().two()));
+        Num two = numFactory().two();
+        try {
+            Num sum = ask.plus(bid);
+            // Halve first only when the primitive-backed sum overflows.
+            Num midpoint = Num.isFinite(sum) ? sum.dividedBy(two) : ask.dividedBy(two).plus(bid.dividedBy(two));
+            return Num.isFinite(midpoint) ? midpoint : NaN.NaN;
+        } catch (ArithmeticException unrepresentable) {
+            return NaN.NaN;
+        }
     }
 
     /**
      * @param side       required side
      * @param levelCount positive requested depth
      * @return displayed quantity up to N levels, zero for a complete empty side, or
-     *         NaN for unsynchronized/insufficient coverage
+     *         NaN for unsynchronized/insufficient coverage or a calculation that
+     *         cannot complete in the numeric context
      * @since 0.27.1
      */
     default Num getDepth(Side side, int levelCount) {
@@ -182,16 +203,21 @@ public interface OrderBook extends Serializable {
         }
         List<OrderBookLevel> levels = side == Side.BID ? getBids() : getAsks();
         Num depth = numFactory().zero();
-        for (int i = 0; i < Math.min(levelCount, levels.size()); i++) {
-            depth = depth.plus(levels.get(i).amount());
+        try {
+            for (int i = 0; i < Math.min(levelCount, levels.size()); i++) {
+                depth = depth.plus(levels.get(i).amount());
+            }
+            return Num.isFinite(depth) ? depth : NaN.NaN;
+        } catch (ArithmeticException unrepresentable) {
+            return NaN.NaN;
         }
-        return Num.isFinite(depth) ? depth : NaN.NaN;
     }
 
     /**
      * @param levelCount positive requested depth on both sides
      * @return (bid depth - ask depth) / total depth, or NaN without normal quotes,
-     *         sufficient coverage and finite positive total quantity; this is not a
+     *         sufficient coverage and finite positive total quantity, or when
+     *         calculation cannot complete in the numeric context; this is not a
      *         probability
      * @since 0.27.1
      */
@@ -201,8 +227,16 @@ public interface OrderBook extends Serializable {
         if (!hasNormalQuotes() || !Num.isFinite(bids) || !Num.isFinite(asks)) {
             return NaN.NaN;
         }
-        Num total = bids.plus(asks);
-        return Num.isFinite(total) && total.isPositive() ? bids.minus(asks).dividedBy(total) : NaN.NaN;
+        try {
+            Num total = bids.plus(asks);
+            if (!Num.isFinite(total) || !total.isPositive()) {
+                return NaN.NaN;
+            }
+            Num imbalance = bids.minus(asks).dividedBy(total);
+            return Num.isFinite(imbalance) ? imbalance : NaN.NaN;
+        } catch (ArithmeticException unrepresentable) {
+            return NaN.NaN;
+        }
     }
 
     private boolean hasNormalQuotes() {

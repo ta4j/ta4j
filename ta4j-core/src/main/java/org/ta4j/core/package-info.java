@@ -63,7 +63,11 @@
  * independently of synchronization. Spread/midpoint/imbalance require
  * synchronized, two-sided, noncrossed quotes; locked quotes are valid. Depth
  * needs synchronization and adequate coverage only on its requested side.
- * Expected unavailability is NaN.
+ * Expected unavailability is NaN, including calculations that overflow or
+ * cannot complete in the active numeric context (such as nonterminating
+ * unlimited-precision decimal division). Measurement methods preserve caller
+ * precision rather than inventing a fallback precision. Invalid side/depth
+ * configuration fails explicitly.
  * </p>
  *
  * <p>
