@@ -27,18 +27,22 @@ class OrderBookTest {
         List<OrderBookLevel> bids = new ArrayList<>(List.of(new OrderBookLevel(factory.numOf(99), factory.numOf(4))));
         List<OrderBookLevel> asks = new ArrayList<>(List.of(new OrderBookLevel(factory.numOf(101), factory.two())));
         OrderBook external = new OrderBook() {
+            @Override
             public NumFactory numFactory() {
                 return factory;
             }
 
+            @Override
             public Metadata getMetadata() {
                 return metadata;
             }
 
+            @Override
             public List<OrderBookLevel> getBids() {
                 return bids;
             }
 
+            @Override
             public List<OrderBookLevel> getAsks() {
                 return asks;
             }
