@@ -105,11 +105,14 @@ final class OssifiedElliottWaveSeriesLoader {
     }
 
     private static long startEpochSecond(final JsonObject candle) {
+        final JsonElement start = candle.get("start");
+        if (start == null || !start.isJsonPrimitive()) {
+            throw new IllegalArgumentException("daily candle start must be an integer epoch second: " + start);
+        }
         try {
-            return candle.get("start").getAsBigDecimal().longValueExact();
-        } catch (final ArithmeticException ex) {
-            throw new IllegalArgumentException(
-                    "daily candle start must be an integer epoch second: " + candle.get("start"), ex);
+            return start.getAsBigDecimal().longValueExact();
+        } catch (final ArithmeticException | NumberFormatException ex) {
+            throw new IllegalArgumentException("daily candle start must be an integer epoch second: " + start, ex);
         }
     }
 }
