@@ -42,6 +42,8 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 
+import org.ta4j.core.Bar;
+
 /**
  * Streaming JSONL witness of the observations a study run recorded.
  *
@@ -101,6 +103,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
     private final BufferedWriter writer;
     private long records;
     private boolean closed;
+    private JsonObject pendingBar;
 
     private ElliottResearchTrace(final Path file, final String datasetId, final int nullBlockLength,
             final int nullMemberIndex, final BufferedWriter writer) {
@@ -178,6 +181,20 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
     /** @return observation records written so far, excluding header and footer */
     long records() {
         return records;
+    }
+
+    @Override
+    public void nullBar(final Scope scope, final String partition, final int recordedIndex, final Bar bar) {
+        Objects.requireNonNull(bar, "bar");
+        final JsonObject json = new JsonObject();
+        json.addProperty("begin", bar.getBeginTime().toString());
+        json.addProperty("end", bar.getEndTime().toString());
+        json.addProperty("open", String.valueOf(bar.getOpenPrice()));
+        json.addProperty("high", String.valueOf(bar.getHighPrice()));
+        json.addProperty("low", String.valueOf(bar.getLowPrice()));
+        json.addProperty("close", String.valueOf(bar.getClosePrice()));
+        json.addProperty("volume", String.valueOf(bar.getVolume()));
+        pendingBar = json;
     }
 
     @Override
@@ -268,6 +285,10 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         record.addProperty("asOfTime", asOfEnd.toString());
         record.addProperty("kind", kind);
         record.addProperty("status", status);
+        if (pendingBar != null) {
+            record.add("bar", pendingBar);
+            pendingBar = null;
+        }
         return record;
     }
 
@@ -589,6 +610,13 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             throw corrupt(path, lineNumber, where + "direction must be null for an alternative outcome");
         }
         requireTexts(path, lineNumber, record, "activeRules", where);
+        final JsonElement bar = record.get("bar");
+        if (bar != null) {
+            final JsonObject barObject = requireObject(path, lineNumber, bar, where + "bar");
+            for (final String field : List.of("begin", "end", "open", "high", "low", "close", "volume")) {
+                requireText(path, lineNumber, barObject, field, where + "bar.");
+            }
+        }
         final JsonArray pivots = requireArray(path, lineNumber, record, "pivots", where);
         final List<ConfirmedPivot> visiblePivots = new ArrayList<>(pivots.size());
         for (int i = 0; i < pivots.size(); i++) {
