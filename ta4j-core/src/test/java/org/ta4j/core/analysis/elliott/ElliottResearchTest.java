@@ -874,13 +874,13 @@ class ElliottResearchTest {
         assertEquals(0, summary.code(), summary.err());
         assertTrue(Files.readString(run.resolve("summary.md")).contains("--trace real"));
 
-        // A genuine competing row has no captured null stream and must name that
-        // unavailable reason, not print a command the viewer refuses.
+        // A genuine competing row has no captured null stream: request a real
+        // recapture, not an unusable viewer command.
         final String competingKey = "smoke|competing|competing-3+3|fractal-w5|calibration|completeOccupancyRate|b-";
         final Result competing = launch("inspect", run.toString(), competingKey);
-        assertEquals(0, competing.code(), competing.err());
-        assertTrue(replayLine(competing.out()).startsWith("Replay: unavailable, this run retained only a selected"),
-                competing.out());
+        assertEquals(2, competing.code(), competing.err());
+        assertTrue(competing.err().contains("no trace was captured for key " + competingKey), competing.err());
+        assertTrue(competing.err().contains("--trace real"), competing.err());
     }
 
     @Test
