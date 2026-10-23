@@ -128,7 +128,11 @@ static void initializeMetal(void) {
         } else
 #endif
         {
+            // Required on pre-macOS 15 runtimes; the modern branch uses mathMode.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             options.fastMathEnabled = NO;
+#pragma clang diagnostic pop
         }
         NSError *error = nil;
         id<MTLLibrary> library = [device newLibraryWithSource:kernelSource options:options error:&error];
