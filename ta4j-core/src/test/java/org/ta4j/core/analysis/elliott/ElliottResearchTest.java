@@ -501,7 +501,8 @@ class ElliottResearchTest {
         final JsonObject run = readJson(runDir.resolve("run.json"));
         final List<ElliottResearchReport.Row> rows = ElliottResearchReport.readCsv(runDir.resolve("comparisons.csv"));
         final String key = rows.getFirst().key();
-        assertEquals(0, launch("summarize", runDir.toString()).code());
+        final Result initial = launch("summarize", runDir.toString());
+        assertEquals(0, initial.code(), initial.err());
         final Result noTrace = launch("inspect", runDir.toString(), key);
         assertEquals(2, noTrace.code(), noTrace.err());
         assertTrue(noTrace.err().contains("Recapture with:"), noTrace.err());
@@ -655,6 +656,8 @@ class ElliottResearchTest {
         run.getAsJsonObject("trace").addProperty("mode", "off");
         run.getAsJsonObject("identity").addProperty("fingerprint", protocol.fingerprintSha256());
         final JsonObject configuration = run.getAsJsonObject("configuration");
+        final ElliottResearchOutcomes.Settings outcomeSettings = ElliottResearch.frozenOutcomeSettings();
+        configuration.add("outcomes", outcomeSettings.toJson());
         final Gson gson = new Gson();
         final JsonArray partitionJson = new JsonArray();
         for (final StudyRunner.Partition partition : partitions.entries()) {
@@ -702,6 +705,12 @@ class ElliottResearchTest {
             datasets.add(dataset);
         }
         run.add("datasets", datasets);
+        final List<ElliottResearchOutcomes.Result> outcomes = List.of();
+        ElliottResearchOutcomes.writeEvents(dir.resolve(ElliottResearchOutcomes.EVENTS_FILE),
+                protocol.fingerprintSha256(), outcomeSettings, outcomes);
+        ElliottResearchOutcomes.writeOutcomes(dir.resolve(ElliottResearchOutcomes.OUTCOMES_FILE), outcomes);
+        ElliottResearchOutcomes.writeSummary(dir.resolve(ElliottResearchOutcomes.SUMMARY_FILE), outcomes);
+        run.getAsJsonObject("outcomes").add("records", ElliottResearchOutcomes.recordCounts(outcomes));
         writeBoundComparisons(dir, run, rows);
         return dir;
     }
