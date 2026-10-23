@@ -1812,8 +1812,13 @@ final class ElliottResearch {
         if (activeRules.isEmpty()) {
             throw new IllegalArgumentException(where + ".activeRules must not be empty");
         }
+        final JsonObject momentum = objectOf(required(configuration, "momentum", where), where + ".momentum");
+        final int momentumBarCount = integer(required(momentum, "barCount", where + ".momentum"),
+                where + ".momentum.barCount");
+        final Function<BarSeries, Indicator<Num>> momentumFactory = series -> new RSIIndicator(
+                new ClosePriceIndicator(series), momentumBarCount);
         final List<RelationshipRule> rules = configuredRules(activeRules,
-                ClassicalRelationshipRules.classicalRelationships());
+                ClassicalRelationshipRules.classicalRelationships(momentumFactory));
         final List<RuleAblation.Mode> modes = RECIPE_FROZEN.equals(recipeName) ? RuleAblation.frozenModes(rules)
                 : RuleAblation.modes(rules);
         final List<String> competing = strings(required(configuration, "competingModes", where),
