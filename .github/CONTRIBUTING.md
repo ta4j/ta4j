@@ -70,8 +70,8 @@ Open an issue to discuss the new indicator first. Every indicator must ship with
 Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
 Run tagged suites manually from GitHub Actions, or locally with:
 
-- `xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
-- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Djava.awt.headless=false -Dta4j.chart.disableDisplay=false`
+- `xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless`
+- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags=requires-cuda,requires-metal,requires-opencl -Djava.awt.headless=false -Dta4j.chart.disableDisplay=false`
 - `xvfb-run ./mvnw -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags= -Djava.awt.headless=false -Dta4j.chart.disableDisplay=false -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
 
 These examples match the Linux GitHub Actions runners; the build defaults tests to headless with chart display disabled, so display-dependent suites override both. On macOS, use XQuartz or

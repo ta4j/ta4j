@@ -419,6 +419,31 @@ ta4j lets you choose `DecimalNum` for precision-first workflows or `DoubleNum` f
 
 Measure changes on your own workload rather than relying on generic claims. Use the [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java), the [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html), and [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for repeatable comparisons.
 
+### Optional native acceleration
+
+`ta4j-acceleration` remains a module of this reactor and is versioned with `ta4j-core`. It supplies optional CUDA, OpenCL, and Metal providers for batched Monte Carlo price forecasts; it does not depend on the standalone CLI or executable examples.
+
+Add the platform classifier at the same ta4j version as your core dependency:
+
+```xml
+<dependency>
+    <groupId>org.ta4j</groupId>
+    <artifactId>ta4j-acceleration</artifactId>
+    <version>0.27.1-SNAPSHOT</version>
+    <classifier>metal-macos-aarch64</classifier>
+</dependency>
+```
+
+| Platform | Classifier / source-build profile |
+| --- | --- |
+| Apple silicon | `metal-macos-aarch64` |
+| CUDA on Linux or Windows x86-64 | `cuda-linux-x86_64`, `cuda-windows-x86_64` |
+| OpenCL on Linux | `opencl-linux-x86_64`, `opencl-linux-aarch64` |
+
+Classifier JARs contain provider classes and the matching native library, not `ta4j-core` or its dependencies. The unclassified JAR contains provider classes only. Build a classifier from the repository root with `./mvnw -pl ta4j-acceleration -am package -Pmetal-macos-aarch64`, substituting the profile for your platform; CUDA and OpenCL builds require their platform toolchains.
+
+Run the application with `-Dta4j.acceleration.enabled=auto`. Providers qualify the workload before selection; unavailable, unsupported, slower, or failing providers fall back to CPU execution. Inspect `AccelerationRuntime.lastDiagnostic()` for the decision. Exact execution is the default; `-Dta4j.acceleration.approximateTolerance=<tolerance>` explicitly permits a proven error bound. Set `ta4j.acceleration.<metal|cuda|opencl>.library` to load an explicitly managed native library instead of the bundled resource.
+
 ## Real-world examples
 
 The `ta4j-examples` module is organized as progressive learning tracks:
