@@ -13,6 +13,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -427,5 +433,66 @@ public class PositionTest {
         assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenPositionFinalBefore);
         assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalAfter);
         assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalBefore);
+    }
+
+    @Test
+    public void deserializationValidPositionRoundTrip() throws Exception {
+        Position position = new Position(Trade.buyAt(0, NaN, NaN), Trade.sellAt(1, NaN, NaN));
+        byte[] bytes = serialize(position);
+        Position restored = deserialize(bytes);
+        assertEquals(position, restored);
+    }
+
+    @Test
+    public void deserializationRejectsNullStartingType() throws Exception {
+        Position position = new Position();
+        setField(position, "startingType", null);
+        byte[] bytes = serialize(position);
+        assertThrows(InvalidObjectException.class, () -> deserialize(bytes));
+    }
+
+    @Test
+    public void deserializationRejectsExitWithoutEntry() throws Exception {
+        Position position = new Position();
+        setField(position, "exit", Trade.sellAt(1, NaN, NaN));
+        byte[] bytes = serialize(position);
+        assertThrows(InvalidObjectException.class, () -> deserialize(bytes));
+    }
+
+    @Test
+    public void deserializationRejectsMismatchedEntryType() throws Exception {
+        Position position = new Position(TradeType.BUY);
+        setField(position, "entry", Trade.sellAt(0, NaN, NaN));
+        byte[] bytes = serialize(position);
+        assertThrows(InvalidObjectException.class, () -> deserialize(bytes));
+    }
+
+    @Test
+    public void deserializationRejectsSameEntryAndExitType() throws Exception {
+        Position position = new Position(Trade.buyAt(0, NaN, NaN), Trade.sellAt(1, NaN, NaN));
+        setField(position, "exit", Trade.buyAt(1, NaN, NaN));
+        byte[] bytes = serialize(position);
+        assertThrows(InvalidObjectException.class, () -> deserialize(bytes));
+    }
+
+    private static void setField(Object obj, String fieldName, Object value) throws Exception {
+        Field field = obj.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(obj, value);
+    }
+
+    private static byte[] serialize(Object obj) throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(obj);
+        }
+        return baos.toByteArray();
+    }
+
+    private static Position deserialize(byte[] bytes) throws Exception {
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+                ObjectInputStream ois = new ObjectInputStream(bais)) {
+            return (Position) ois.readObject();
+        }
     }
 }
