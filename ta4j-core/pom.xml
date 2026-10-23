@@ -133,6 +133,16 @@
                     </bnd>
                 </configuration>
             </plugin>
+            <plugin>
+                <!-- Test-plane Elliott research launcher; see README "Run Elliott research recipes". -->
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <configuration>
+                    <skip>false</skip>
+                    <mainClass>org.ta4j.core.analysis.elliott.ElliottResearch</mainClass>
+                    <classpathScope>test</classpathScope>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

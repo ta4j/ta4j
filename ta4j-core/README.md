@@ -152,6 +152,181 @@ backtest-scored workflow and
 `ta4jexamples.research.RelationshipObjectiveSearchExample` for an
 event-synchronization (F1) workflow with a one-line grid/GA/PSO switch.
 
+## Run Elliott wave pattern research (maintainers)
+
+The experimental Elliott pattern study (test scope, not public API) has a
+launcher, `ElliottResearch`, that writes one relocatable run directory per run.
+Prerequisites: JDK 25, Maven, and dependencies already cached; the `smoke`
+recipe is offline and finishes in seconds. Run from the repository root.
+
+Unix shells:
+
+```bash
+mvn -q -pl ta4j-core test-compile exec:java -Dexec.args="run smoke --out target/elliott-research/smoke"
+mvn -q -pl ta4j-core test-compile exec:java -Dexec.args="summarize target/elliott-research/smoke"
+mvn -q -pl ta4j-core test-compile exec:java -Dexec.args="inspect target/elliott-research/smoke '<key from comparisons.csv>'"
+```
+
+PowerShell (quote the whole `-D` argument):
+
+```powershell
+mvn -q -pl ta4j-core test-compile exec:java "-Dexec.args=run smoke --out target/elliott-research/smoke"
+mvn -q -pl ta4j-core test-compile exec:java "-Dexec.args=summarize target/elliott-research/smoke"
+mvn -q -pl ta4j-core test-compile exec:java "-Dexec.args=inspect target/elliott-research/smoke '<key from comparisons.csv>'"
+```
+
+Relative paths resolve against the directory you run Maven from, here the
+repository root. Recipes: `smoke` (synthetic,
+real-data trace on by default), `frozen-cf525` (the frozen study over the bundled
+datasets) and `explore --source candles.json --recipe recipe.json` (your own
+daily candles and study settings). Candle starts must share a daily cadence;
+missing whole days are allowed, but intraday or duplicate starts are rejected.
+Recipe asset, partition and detector labels (including robustness detectors) must
+not begin with `=`, `+`, `-`, `@`, tab or carriage return; these prefixes would be
+interpreted as formulas by spreadsheet CSV readers. Control characters and line
+separators are rejected anywhere in these labels before artifacts are created.
+Recipes' `activeRules` order is preserved in execution, individual ablations,
+reports, comparisons and trace evidence.
+Explore partitions must name and chronologically order `calibration`, `validation`
+and `holdout`; permuting those phase names is rejected before creating artifacts.
+`--trace off|real|selected-null-member` with
+`--block L --member M` controls evidence capture; `--overwrite` reuses an existing
+run directory. For `explore --overwrite`, move the source candles and recipe outside
+managed artifact paths first, including paths reached through symbolic links; ordinary
+unmanaged files such as `candles.json` and `recipe.json` inside the run directory are preserved.
+`help` lists every option.
+
+A run directory holds `run.json` (revision and whether the worktree was dirty,
+recipe, configuration, dataset
+sources and status), `reports/` (one study report per dataset),
+`comparisons.csv` (one row per dataset, section, mode, detector, partition,
+metric and null block length), `coverage.csv`, `summary.md`, `traces/`
+(JSON lines per as-of bar) and `.run.lock`, which a run holds while it writes so
+a second run into the same directory is refused. `summarize` validates run metadata
+before creating a lock file, then holds the same lock while reading evidence and
+replacing artifacts, refusing while a run is writing.
+Metadata checkpoints and final `run.json` publication replace a completed sibling
+temporary file atomically, preserving the previous valid metadata on write failure.
+When a frozen-study dataset failure is handled and the run continues, any stale or partial
+report file for that dataset is removed; directories at report paths and other completed
+reports are preserved. Fail-fast calls retain checked I/O failures, while a failure in a
+post-write completion callback does not remove the newly completed report.
+Run and summary locks refuse symbolic links at `.run.lock`, including dangling links,
+without creating or locking their targets outside the run directory.
+Completed metadata binds `comparisons.csv` with `comparisonsSha256` and each listed trace
+with its dataset's `traceSha256` map (relative trace path to SHA-256). `summarize` and
+`inspect` verify the relevant digests before treating rows or traces as evidence:
+removing an observation, even from another scope with a repaired footer, cannot silently
+change support. Modified, mixed or older unbound bundles must be regenerated rather than
+paired with the recorded provenance.
+Comparison keys must also be unique: repeated keys are rejected even when their other
+cells agree, rather than letting inspection and summary rebuilding select different rows.
+Both commands require the complete comparison-key inventory derived from `run.json`:
+every completed dataset's configured modes, detectors, partitions, applicable metrics and
+null blocks, with no rows for failed or pending datasets. This check is independent of
+trace capture and precedes key selection; missing or invented rows are a corrupt bundle,
+not an unknown-key lookup. Asset, grammar, ordered rules, policy and requested null-member
+count must also match the recorded family configuration.
+Coverage bar totals and effective date bounds include only the configured partitions,
+never the unrequested intervals between them. If every requested partition is empty,
+coverage has zero bars and no effective dates even when the source has other bars.
+Each comparison sets the observed value against a
+null reference band of member-level 2.5%-97.5% quantiles and an empirical
+reference rank; neither is a confidence interval or a p-value, and partitions
+are never pooled. Rows validate nonnegative, reconciling member counts, finite ordered
+nearest-rank quantiles (including shared positions for small ensembles), the observed-minus-median
+difference, and an empirical rank on the `(valid + 1)` lattice consistent with those quantiles.
+Availability must agree with the observed value, null block and valid-member count;
+undefined observations and all-undefined ensembles remain explicitly unavailable.
+The five rate metrics require nonnegative count support with numerator no greater than
+denominator and an observed value exactly equal to their division. Only `0/0` represents
+an undefined rate; the confirmation-lag and label-stability metrics have no count support.
+`inspect` rebuilds a row's support from its trace and lists
+counterexamples and rule disagreements. Every observation must match its trace
+header's dataset and null-member coordinates and carry a status defined for its
+record kind; required scope labels and as-of timestamps must be nonblank. Kernel
+grammar scopes require topology records, and structural alternative grammar scopes
+require alternative records, so a kind change cannot bypass topology evidence checks.
+Observations
+must have unique, strictly increasing as-of indices within each section, mode, grammar,
+detector and partition; different scopes may be interleaved.
+Topology status, candidate count and direction must agree: `COMPLETE` has one
+candidate and its direction, `AMBIGUOUS` has 2-64 candidates and a null direction,
+and all other states have no candidates. `FORMING` requires a wave direction;
+the remaining states have a null direction.
+`INSUFFICIENT_HISTORY` means fewer than two visible pivots, and ambiguous candidates
+must have distinct keys. A forming span is a grammar-valid, contiguous trailing suffix
+of at least three but fewer than the grammar's full pivot count, ending at the newest
+visible pivot. A shorter valid suffix remains allowed after a disjoint completed window;
+readers do not rerun selection or insist on a different, longer forming span.
+Each candidate's rules must exactly match `activeRules` in order. Inspection also
+binds the selected mode, every real cross-mode disagreement and the selected null member
+to that mode's ordered rule list in `comparisons.csv`.
+Real and null scopes both include the row's detector; a foreign detector cannot contribute
+status tallies, metric values or supporting as-of bars, even when grammar and mode agree.
+Scores are null except for `PASS`, whose recorded score, if present, is in `[0, 1]`.
+Pivots require nonnegative, strictly increasing indices, finite prices and alternating
+high/low types, with confirmation no earlier than the pivot and no later than the
+observation's `asOfIndex`. Candidate placement must match a contiguous window of the
+visible pivot view by index, type and exact numeric price, have the grammar's required number of
+strictly ordered, alternating pivots, the expected origin type for its direction,
+and strictly positive or negative legs in the grammar's declared pattern.
+Candidate keys must
+match the recorded grammar, direction and full
+placement, and evidence versions must match the candidate key and serialized rules.
+Alternative records always have a null direction; change-point-baseline records have
+no visible pivots and bind their recorded status only to its corresponding label.
+All these checks precede scope filtering. Trace capture
+shares the immutable evidence consumed by report metrics rather than reevaluating
+the same candidates.
+Every observation also records the exact label set accumulated by the stability metric,
+including topology candidate spans, forming spans, invalidation reasons and empty sets.
+The reader reconstructs that set from the recorded outcome and candidate identities,
+explicit forming bounds or invalidation explanation; competing grammar labels must match
+their visible-pivot outcome. Duplicate or outcome-inconsistent labels are rejected before
+scope filtering, not merely compared by their resulting stability average.
+For `labelStabilityJaccard`, inspection recomputes the mean Jaccard similarity of adjacent
+label sets (two empty sets have similarity 1), reports the transition count and verifies
+the observed row rather than presenting only unrelated status tallies.
+For `confirmationLagBars`, inspection uses only complete topology candidates, finds their
+placed pivots in the captured visible pivots and averages each candidate's confirmation
+lags before averaging across candidates, matching the producer's weighting. It verifies
+the observed value, identifies the supporting as-of bars and reports a selected null
+member's own mean separately from the ensemble reference.
+For the occupancy, ambiguity and no-match rates, support is counted per as-of observation;
+for evidence pass rate it is counted per rule evaluation on complete candidates, and
+for joint pass rate per complete candidate with active rules. Inspection verifies each
+rate's numerator, denominator and observed value, including unavailable `0/0` rows,
+and refuses mismatches with the recapture diagnostic rather than displaying them as evidence.
+A selected null member reports its own counts and rate (including `0/0 = NaN`), never
+an asserted match against the real-data row or the ensemble reference.
+Rates with no contributing observations, confirmation lag with no complete topology
+candidates (including alternative grammars), and stability with no adjacent observations
+are explicitly unavailable, not numeric matches. A single selected null-member trace
+cannot reconstruct ensemble medians, bands or reference ranks; those remain the
+recorded report's non-inferential reference, not claims about that member's trace.
+All trace indices and coordinates must fit a signed 32-bit integer; the footer count must
+match exactly without numeric narrowing. When the trace is missing,
+truncated or corrupt, inspection exits with status 2 and prints the recapture
+command, quoted for a POSIX shell.
+The command carries `--expect-revision`, `--expect-fingerprint` and, for `explore`,
+`--expect-source-sha256`, so a recapture against different code, a changed configuration
+or edited candles fails instead of tracing different evidence. Revision-bound
+recapture also requires a known revision and clean worktree, so uncommitted changes
+or unverifiable provenance fail before inputs are read or artifacts created.
+Check out the recorded revision in a separate clean worktree before recapturing an archived run.
+Coverage marks a partition `partial` when it has no bars,
+an internal gap, or missing data at either partition boundary longer than seven
+bar periods, including the outermost requested boundaries; intentionally unrequested
+intervals between partitions do not count.
+`summarize` and `inspect` read only files that
+resolve inside the run directory: a trace name that is absolute or climbs out with
+`..`, or a run file or trace that is a link leaving the directory, is refused
+(`inspect` exits with status 2; `summarize` reports such a trace as not captured),
+and `summary.md` is replaced rather than written through, so a link planted at that
+name never redirects the write. A run directory received from someone else is still
+an untrusted local artifact; read it with the care you give any downloaded file.
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html
