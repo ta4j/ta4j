@@ -131,7 +131,8 @@ class ElliottReplayInspectorTest {
     void interactiveModeReadsCommandsAndReportsErrorsWithoutEnding() {
         final Path run = ReplayFixture.write(temp.resolve("run"));
 
-        final Result result = run("seek 36\nselect 9\nbogus\nhistory\nselect " + ReplayFixture.CANDIDATE_B + "\nclear\nquit\nseek 50\n",
+        final Result result = run(
+                "seek 36\nselect 9\nbogus\nhistory\nselect " + ReplayFixture.CANDIDATE_B + "\nclear\nquit\nseek 50\n",
                 run.toString(), "--key", ReplayFixture.RULES_KEY, "--interactive", "--out",
                 temp.resolve("unused").toString());
 

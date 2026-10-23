@@ -57,10 +57,10 @@ final class ReplayArtifact {
 
     private static final List<String> RATE_METRICS = List.of("completeOccupancyRate", "ambiguousRate", "noMatchRate",
             "evidencePassRate", "jointPassRate");
-    private static final List<String> TOPOLOGY_METRICS = List.of("completeOccupancyRate", "ambiguousRate", "noMatchRate",
-            "confirmationLagBars", "labelStabilityJaccard");
-    private static final List<String> COMPARISON_METRICS = List.of("completeOccupancyRate", "ambiguousRate", "noMatchRate",
-            "confirmationLagBars", "labelStabilityJaccard", "evidencePassRate", "jointPassRate");
+    private static final List<String> TOPOLOGY_METRICS = List.of("completeOccupancyRate", "ambiguousRate",
+            "noMatchRate", "confirmationLagBars", "labelStabilityJaccard");
+    private static final List<String> COMPARISON_METRICS = List.of("completeOccupancyRate", "ambiguousRate",
+            "noMatchRate", "confirmationLagBars", "labelStabilityJaccard", "evidencePassRate", "jointPassRate");
     private static final List<String> CLASSICAL_RULE_IDS = List.of("wave2-origin", "wave3-not-shortest",
             "wave4-nonoverlap", "wave5-divergence");
 
@@ -177,7 +177,8 @@ final class ReplayArtifact {
                 bars == null ? null : text(bars, "sha256"),
                 bars == null || !bars.has("rows") ? -1 : integer(bars, "rows"),
                 source == null || !source.has("sha256") || source.get("sha256").isJsonNull() ? null
-                        : text(source, "sha256"), Map.copyOf(traceSha256));
+                        : text(source, "sha256"),
+                Map.copyOf(traceSha256));
     }
 
     Path directory() {
@@ -521,10 +522,10 @@ final class ReplayArtifact {
             final String denominator = row.get(column.get("denominator"));
             try {
                 final ComparisonRow comparison = new ComparisonRow(row.get(column.get("key")),
-                        row.get(column.get("dataset")),
-                        row.get(column.get("asset")), row.get(column.get("section")), row.get(column.get("mode")),
-                        row.get(column.get("grammar")), rules.isEmpty() ? List.of() : List.of(rules.split(";")),
-                        row.get(column.get("detector")), row.get(column.get("partition")), row.get(column.get("metric")),
+                        row.get(column.get("dataset")), row.get(column.get("asset")), row.get(column.get("section")),
+                        row.get(column.get("mode")), row.get(column.get("grammar")),
+                        rules.isEmpty() ? List.of() : List.of(rules.split(";")), row.get(column.get("detector")),
+                        row.get(column.get("partition")), row.get(column.get("metric")),
                         nullBlockLength(row.get(column.get("nullBlockLength"))),
                         observed.isEmpty() ? Double.NaN : Double.parseDouble(observed),
                         numerator.isEmpty() ? null : Long.valueOf(numerator),
@@ -559,8 +560,8 @@ final class ReplayArtifact {
                 }
                 result.add(comparison);
             } catch (NumberFormatException e) {
-                throw new ReplayArtifactException(csv + " row " + (i + 1)
-                        + " has invalid numeric comparison fields. " + REGENERATE, e);
+                throw new ReplayArtifactException(
+                        csv + " row " + (i + 1) + " has invalid numeric comparison fields. " + REGENERATE, e);
             }
         }
         final Set<String> missing = new TreeSet<>(expected.keySet());
@@ -568,10 +569,10 @@ final class ReplayArtifact {
         final Set<String> unexpected = new TreeSet<>(keys);
         unexpected.removeAll(expected.keySet());
         if (!missing.isEmpty() || !unexpected.isEmpty()) {
-            throw new ReplayArtifactException(csv + " row-key inventory differs from run.json's recorded configuration: "
-                    + "missing " + missing.size() + " key(s) " + missing.stream().limit(5).toList()
-                    + "; unexpected " + unexpected.size() + " key(s) " + unexpected.stream().limit(5).toList()
-                    + ". " + REGENERATE);
+            throw new ReplayArtifactException(csv
+                    + " row-key inventory differs from run.json's recorded configuration: " + "missing "
+                    + missing.size() + " key(s) " + missing.stream().limit(5).toList() + "; unexpected "
+                    + unexpected.size() + " key(s) " + unexpected.stream().limit(5).toList() + ". " + REGENERATE);
         }
         return List.copyOf(result);
     }
@@ -582,7 +583,8 @@ final class ReplayArtifact {
         if (RATE_METRICS.contains(metric)) {
             final Long numerator = comparison.numerator();
             final Long denominator = comparison.denominator();
-            if (numerator == null || denominator == null || numerator < 0 || denominator < 0 || numerator > denominator) {
+            if (numerator == null || denominator == null || numerator < 0 || denominator < 0
+                    || numerator > denominator) {
                 throw new ReplayArtifactException(context
                         + "rate metrics require non-negative numerator and denominator with numerator <= denominator. "
                         + REGENERATE);
@@ -594,8 +596,8 @@ final class ReplayArtifact {
             }
         } else if (TOPOLOGY_METRICS.contains(metric)) {
             if (comparison.numerator() != null || comparison.denominator() != null) {
-                throw new ReplayArtifactException(context + "non-rate metrics cannot carry a numerator or denominator. "
-                        + REGENERATE);
+                throw new ReplayArtifactException(
+                        context + "non-rate metrics cannot carry a numerator or denominator. " + REGENERATE);
             }
         } else {
             throw new ReplayArtifactException(context + "unknown comparison metric. " + REGENERATE);
@@ -615,7 +617,8 @@ final class ReplayArtifact {
         final List<String> partitions = new ArrayList<>();
         for (final JsonElement entry : requiredArray(configuration, "partitions")) {
             if (!entry.isJsonObject()) {
-                throw new ReplayArtifactException("run.json.configuration.partitions entries must be objects. " + REGENERATE);
+                throw new ReplayArtifactException(
+                        "run.json.configuration.partitions entries must be objects. " + REGENERATE);
             }
             partitions.add(requiredText(entry.getAsJsonObject(), "name"));
         }
@@ -626,8 +629,8 @@ final class ReplayArtifact {
         final List<String> robustness = new ArrayList<>();
         for (final JsonElement entry : requiredArray(configuration, "robustnessDetectors")) {
             if (!entry.isJsonObject()) {
-                throw new ReplayArtifactException("run.json.configuration.robustnessDetectors entries must be objects. "
-                        + REGENERATE);
+                throw new ReplayArtifactException(
+                        "run.json.configuration.robustnessDetectors entries must be objects. " + REGENERATE);
             }
             robustness.add(requiredText(entry.getAsJsonObject(), "name"));
         }
@@ -652,7 +655,8 @@ final class ReplayArtifact {
             final int block = integer(value, "block");
             if (block <= 0 || blocks.contains(block)) {
                 throw new ReplayArtifactException(
-                        "run.json.configuration.null.blockLengths must contain distinct positive values. " + REGENERATE);
+                        "run.json.configuration.null.blockLengths must contain distinct positive values. "
+                                + REGENERATE);
             }
             blocks.add(block);
         }
@@ -682,9 +686,11 @@ final class ReplayArtifact {
                     new ComparisonFamily(asset, "CYCLE_5_3", List.of(), "kernel-topology", ensembleSize));
             for (final String rule : activeRules) {
                 addExpectedComparisons(expected, id, "h2", "+" + rule, primary, partitions, blocks,
-                        new ComparisonFamily(asset, "CYCLE_5_3", List.of(rule), "kernel-topology+evidence", ensembleSize));
+                        new ComparisonFamily(asset, "CYCLE_5_3", List.of(rule), "kernel-topology+evidence",
+                                ensembleSize));
             }
-            addExpectedComparisons(expected, id, "h2", frozen ? "classical-all" : "all-rules", primary, partitions, blocks,
+            addExpectedComparisons(expected, id, "h2", frozen ? "classical-all" : "all-rules", primary, partitions,
+                    blocks,
                     new ComparisonFamily(asset, "CYCLE_5_3", activeRules, "kernel-topology+evidence", ensembleSize));
             for (final String mode : competing) {
                 addExpectedComparisons(expected, id, "competing", "competing-" + mode, primary, partitions, List.of(0),
@@ -711,8 +717,8 @@ final class ReplayArtifact {
                     final String key = String.join("|", dataset, section, mode, detector, partition, metric,
                             block == 0 ? "b-" : "b" + block);
                     if (expected.putIfAbsent(key, family) != null) {
-                        throw new ReplayArtifactException("run.json configuration produces duplicate key '" + key + "'. "
-                                + REGENERATE);
+                        throw new ReplayArtifactException(
+                                "run.json configuration produces duplicate key '" + key + "'. " + REGENERATE);
                     }
                 }
             }
@@ -743,13 +749,14 @@ final class ReplayArtifact {
         return value;
     }
 
-    private static List<String> configuredStrings(final JsonObject owner, final String name, final List<String> allowed) {
+    private static List<String> configuredStrings(final JsonObject owner, final String name,
+            final List<String> allowed) {
         final List<String> result = new ArrayList<>();
         for (final JsonElement entry : requiredArray(owner, name)) {
             if (!entry.isJsonPrimitive() || !entry.getAsJsonPrimitive().isString()
                     || !allowed.contains(entry.getAsString()) || result.contains(entry.getAsString())) {
-                throw new ReplayArtifactException("run.json.configuration." + name
-                        + " requires distinct supported strings. " + REGENERATE);
+                throw new ReplayArtifactException(
+                        "run.json.configuration." + name + " requires distinct supported strings. " + REGENERATE);
             }
             result.add(entry.getAsString());
         }
@@ -784,7 +791,8 @@ final class ReplayArtifact {
         } else {
             if (!Double.isFinite(low) || !Double.isFinite(median) || !Double.isFinite(high) || low > median
                     || median > high) {
-                throw nullReferenceError(csv, line, "valid members require finite ordered nullLow <= nullMedian <= nullHigh");
+                throw nullReferenceError(csv, line,
+                        "valid members require finite ordered nullLow <= nullMedian <= nullHigh");
             }
             if ((nearestRankPosition(valid, 0.025d) == nearestRankPosition(valid, 0.5d)
                     && Double.compare(low, median) != 0)
@@ -806,7 +814,8 @@ final class ReplayArtifact {
         final String expected = comparable ? "available"
                 : block == 0 && Double.isFinite(observed) ? "not-comparable" : "unavailable";
         if (!expected.equals(row.get(column.get("availability")))) {
-            throw nullReferenceError(csv, line, "availability must be " + expected + " for the observed and null values");
+            throw nullReferenceError(csv, line,
+                    "availability must be " + expected + " for the observed and null values");
         }
         if (!comparable) {
             if (!Double.isNaN(difference) || !Double.isNaN(rank)) {
@@ -846,8 +855,8 @@ final class ReplayArtifact {
     }
 
     private static ReplayArtifactException nullReferenceError(final Path csv, final int line, final String detail) {
-        return new ReplayArtifactException(csv + " row " + line + " has inconsistent null reference: " + detail + ". "
-                + REGENERATE);
+        return new ReplayArtifactException(
+                csv + " row " + line + " has inconsistent null reference: " + detail + ". " + REGENERATE);
     }
 
     /** Parses RFC 4180 CSV (quoted fields, doubled quotes, embedded newlines). */
@@ -915,8 +924,8 @@ final class ReplayArtifact {
     void verifyTraceDigest(final Dataset dataset, final String relative) {
         final String expected = dataset.traceSha256().get(relative);
         if (expected == null || !expected.matches("[0-9a-f]{64}")) {
-            throw new ReplayArtifactException("trace " + relative
-                    + " has no valid recorded SHA-256 in run.json. " + REGENERATE);
+            throw new ReplayArtifactException(
+                    "trace " + relative + " has no valid recorded SHA-256 in run.json. " + REGENERATE);
         }
         try {
             if (!sha256(resolveInside(relative)).equals(expected)) {
@@ -924,8 +933,8 @@ final class ReplayArtifact {
                         + " SHA-256 differs from run.json; the artifact bundle was modified or mixed. " + REGENERATE);
             }
         } catch (IOException e) {
-            throw new ReplayArtifactException("cannot read trace " + relative + ": " + e.getMessage()
-                    + ". " + REGENERATE, e);
+            throw new ReplayArtifactException(
+                    "cannot read trace " + relative + ": " + e.getMessage() + ". " + REGENERATE, e);
         }
     }
 

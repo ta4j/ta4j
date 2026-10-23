@@ -355,7 +355,6 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
         return value.getAsJsonArray();
     }
 
-
     private static String text(final JsonObject object, final String name) {
         final JsonElement value = object.get(name);
         return value == null || value.isJsonNull() ? "" : value.getAsString();

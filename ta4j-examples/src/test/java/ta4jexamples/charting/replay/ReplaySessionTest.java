@@ -254,16 +254,19 @@ class ReplaySessionTest {
     void revisedCandidateKeepsEarlierVersionsReadable() {
         final ReplaySession session = open(ReplayFixture.write(temp.resolve("run")));
 
-        assertEquals(ReplayFixture.A_VERSION_1, session.seek(30).candidate(ReplayFixture.CANDIDATE_A).orElseThrow().version());
-        assertEquals(ReplayFixture.A_VERSION_2, session.seek(36).candidate(ReplayFixture.CANDIDATE_A).orElseThrow().version());
-        assertEquals(ReplayFixture.A_VERSION_1, session.seek(30).candidate(ReplayFixture.CANDIDATE_A).orElseThrow().version());
+        assertEquals(ReplayFixture.A_VERSION_1,
+                session.seek(30).candidate(ReplayFixture.CANDIDATE_A).orElseThrow().version());
+        assertEquals(ReplayFixture.A_VERSION_2,
+                session.seek(36).candidate(ReplayFixture.CANDIDATE_A).orElseThrow().version());
+        assertEquals(ReplayFixture.A_VERSION_1,
+                session.seek(30).candidate(ReplayFixture.CANDIDATE_A).orElseThrow().version());
         session.seek(45);
         final List<TimelineEntry> aTimeline = session.candidateTimeline(ReplayFixture.CANDIDATE_A);
         assertEquals(List.of(new TimelineEntry(23, ReplayFixture.A_VERSION_1, true),
                 new TimelineEntry(33, ReplayFixture.A_VERSION_2, true)), aTimeline);
         final List<TimelineEntry> bTimeline = session.candidateTimeline(ReplayFixture.CANDIDATE_B);
-        assertEquals(List.of(new TimelineEntry(33, ReplayFixture.B_VERSION_1, true),
-                new TimelineEntry(41, "", false)), bTimeline);
+        assertEquals(List.of(new TimelineEntry(33, ReplayFixture.B_VERSION_1, true), new TimelineEntry(41, "", false)),
+                bTimeline);
         assertTrue(session.candidateTimeline("missing").isEmpty());
     }
 
@@ -273,7 +276,8 @@ class ReplaySessionTest {
         final ReplaySession session = open(run);
         final Path trace = run.resolve("traces/d1-real.jsonl");
         final String original = java.nio.file.Files.readString(trace);
-        final String edited = original.replace(ReplayFixture.A_VERSION_2, "0".repeat(ReplayFixture.A_VERSION_2.length()));
+        final String edited = original.replace(ReplayFixture.A_VERSION_2,
+                "0".repeat(ReplayFixture.A_VERSION_2.length()));
         assertNotEquals(original, edited);
         assertEquals(original.length(), edited.length());
         java.nio.file.Files.writeString(trace, edited, java.nio.charset.StandardCharsets.UTF_8);
@@ -463,8 +467,9 @@ class ReplaySessionTest {
         final ReplaySession session = open(ReplayFixture.write(temp.resolve("run")));
         session.seek(40);
 
-        assertEquals(List.of(new TimelineEntry(23, ReplayFixture.A_VERSION_1, true),
-                new TimelineEntry(33, ReplayFixture.A_VERSION_2, true)),
+        assertEquals(
+                List.of(new TimelineEntry(23, ReplayFixture.A_VERSION_1, true),
+                        new TimelineEntry(33, ReplayFixture.A_VERSION_2, true)),
                 session.candidateTimeline(ReplayFixture.CANDIDATE_A));
         assertEquals(-1, session.timelineStartAsOf());
         assertEquals(List.of(), session.candidateTimeline(ReplayFixture.CANDIDATE_A, 3));
@@ -527,26 +532,15 @@ class ReplaySessionTest {
 
     @Test
     public void comparisonRowsRejectImpossibleNullReferenceSummariesBeforeSelection() throws IOException {
-        final List<Map<String, String>> corruptions = List.of(
-                Map.of("validNullMembers", "-1"),
-                Map.of("requestedNullMembers", "-1"),
-                Map.of("unavailableNullMembers", "-1"),
-                Map.of("requestedNullMembers", "6"),
-                Map.of("validNullMembers", "0", "unavailableNullMembers", "5"),
-                Map.of("nullLow", "0.9", "nullMedian", "0.5", "nullHigh", "0.1"),
-                Map.of("nullMedian", ""),
-                Map.of("nullHigh", "Infinity"),
-                Map.of("observed", "Infinity"),
-                Map.of("empiricalReferenceRank", "1.5"),
-                Map.of("empiricalReferenceRank", "-0.1"),
-                Map.of("empiricalReferenceRank", "0"),
-                Map.of("empiricalReferenceRank", "0.123456789"),
-                Map.of("empiricalReferenceRank", "0.5"),
-                Map.of("observedMinusNullMedian", "0.123456789"),
-                Map.of("availability", "unavailable"),
-                Map.of("availability", "not-comparable"),
-                Map.of("nullBlockLength", ""),
-                Map.of("nullBlockLength", "0"),
+        final List<Map<String, String>> corruptions = List.of(Map.of("validNullMembers", "-1"),
+                Map.of("requestedNullMembers", "-1"), Map.of("unavailableNullMembers", "-1"),
+                Map.of("requestedNullMembers", "6"), Map.of("validNullMembers", "0", "unavailableNullMembers", "5"),
+                Map.of("nullLow", "0.9", "nullMedian", "0.5", "nullHigh", "0.1"), Map.of("nullMedian", ""),
+                Map.of("nullHigh", "Infinity"), Map.of("observed", "Infinity"), Map.of("empiricalReferenceRank", "1.5"),
+                Map.of("empiricalReferenceRank", "-0.1"), Map.of("empiricalReferenceRank", "0"),
+                Map.of("empiricalReferenceRank", "0.123456789"), Map.of("empiricalReferenceRank", "0.5"),
+                Map.of("observedMinusNullMedian", "0.123456789"), Map.of("availability", "unavailable"),
+                Map.of("availability", "not-comparable"), Map.of("nullBlockLength", ""), Map.of("nullBlockLength", "0"),
                 Map.of("nullBlockLength", "-1"),
                 Map.of("validNullMembers", "1", "unavailableNullMembers", "4", "nullLow", "0.1", "nullHigh", "0.3",
                         "empiricalReferenceRank", "0.5"),
@@ -578,31 +572,30 @@ class ReplaySessionTest {
         final Path noValid = ReplayFixture.write(temp.resolve("no-valid-null-members"));
         comparisonFields(noValid, ReplayFixture.RULES_KEY,
                 Map.of("validNullMembers", "0", "unavailableNullMembers", "5", "nullMedian", "", "nullLow", "",
-                        "nullHigh", "", "observedMinusNullMedian", "", "empiricalReferenceRank", "",
-                        "availability", "unavailable"));
+                        "nullHigh", "", "observedMinusNullMedian", "", "empiricalReferenceRank", "", "availability",
+                        "unavailable"));
         assertDoesNotThrow(() -> ReplayArtifact.open(noValid));
         final Path undefined = ReplayFixture.write(temp.resolve("undefined-observed"));
         comparisonFields(undefined, ReplayFixture.RULES_KEY.replace("ambiguousRate", "confirmationLagBars"),
-                Map.of("observed", "", "observedMinusNullMedian", "", "empiricalReferenceRank", "",
-                        "availability", "unavailable"));
+                Map.of("observed", "", "observedMinusNullMedian", "", "empiricalReferenceRank", "", "availability",
+                        "unavailable"));
         assertDoesNotThrow(() -> ReplayArtifact.open(undefined));
         final ReplayArtifact blockless = ReplayArtifact.open(ReplayFixture.write(temp.resolve("no-null-reference")));
         assertEquals(0, blockless.comparison(ReplayFixture.COMPETING_KEY).nullBlockLength());
-        assertTrue(Double.isNaN(blockless.comparison(
-                ReplayFixture.COMPETING_KEY.replace("ambiguousRate", "confirmationLagBars")).observed()));
+        assertTrue(Double
+                .isNaN(blockless.comparison(ReplayFixture.COMPETING_KEY.replace("ambiguousRate", "confirmationLagBars"))
+                        .observed()));
     }
 
     @Test
     public void comparisonRatesRejectIncoherentSupportBeforeAnyTraceIsSelected() throws IOException {
-        final List<Map<String, String>> corruptions = List.of(
-                Map.of("numerator", ""), Map.of("denominator", ""),
-                Map.of("numerator", "-1"), Map.of("denominator", "-1"),
-                Map.of("numerator", "2", "denominator", "1"),
+        final List<Map<String, String>> corruptions = List.of(Map.of("numerator", ""), Map.of("denominator", ""),
+                Map.of("numerator", "-1"), Map.of("denominator", "-1"), Map.of("numerator", "2", "denominator", "1"),
                 Map.of("numerator", "1", "denominator", "0"),
-                Map.of("numerator", "0", "denominator", "0", "observed", "0"),
-                Map.of("observed", ""), Map.of("observed", "Infinity"));
-        for (final String metric : List.of("completeOccupancyRate", "ambiguousRate", "noMatchRate",
-                "evidencePassRate", "jointPassRate")) {
+                Map.of("numerator", "0", "denominator", "0", "observed", "0"), Map.of("observed", ""),
+                Map.of("observed", "Infinity"));
+        for (final String metric : List.of("completeOccupancyRate", "ambiguousRate", "noMatchRate", "evidencePassRate",
+                "jointPassRate")) {
             for (int index = 0; index <= corruptions.size(); index++) {
                 final Path run = ReplayFixture.write(temp.resolve(metric + "-support-" + index));
                 final Map<String, String> fields = index < corruptions.size() ? corruptions.get(index)
@@ -617,8 +610,8 @@ class ReplaySessionTest {
 
     @Test
     public void comparisonRatesPreserveExactLongAndUndefinedBoundaries() throws IOException {
-        for (final String metric : List.of("completeOccupancyRate", "ambiguousRate", "noMatchRate",
-                "evidencePassRate", "jointPassRate")) {
+        for (final String metric : List.of("completeOccupancyRate", "ambiguousRate", "noMatchRate", "evidencePassRate",
+                "jointPassRate")) {
             final long[][] supports = { { Long.MAX_VALUE, Long.MAX_VALUE }, { 1, Long.MAX_VALUE },
                     { 0, Long.MAX_VALUE }, { 0, 0 } };
             for (int index = 0; index < supports.length; index++) {
@@ -652,8 +645,8 @@ class ReplaySessionTest {
 
     @Test
     public void comparisonInventoryRejectsMissingRowsAtEveryConfiguredScope() throws IOException {
-        final List<String> omissions = List.of(ReplayFixture.RULES_KEY, "|all-rules|", "|h2|",
-                "|evidencePassRate|", "d1|");
+        final List<String> omissions = List.of(ReplayFixture.RULES_KEY, "|all-rules|", "|h2|", "|evidencePassRate|",
+                "d1|");
         for (int index = 0; index < omissions.size(); index++) {
             final Path run = ReplayFixture.write(temp.resolve("missing-scope-" + index));
             final Path csv = run.resolve("comparisons.csv");
@@ -675,9 +668,8 @@ class ReplaySessionTest {
 
     @Test
     public void comparisonInventoryRejectsInventedCoordinatesAndRecordedFamilyMismatches() throws IOException {
-        final List<Map<String, String>> changes = List.of(
-                Map.of("dataset", "foreign"), Map.of("section", "foreign"), Map.of("mode", "foreign"),
-                Map.of("detector", "foreign"), Map.of("partition", "foreign"),
+        final List<Map<String, String>> changes = List.of(Map.of("dataset", "foreign"), Map.of("section", "foreign"),
+                Map.of("mode", "foreign"), Map.of("detector", "foreign"), Map.of("partition", "foreign"),
                 Map.of("nullBlockLength", "30"), Map.of("asset", "foreign"), Map.of("grammar", "MOTIVE_5"),
                 Map.of("activeRules", "wave3-not-shortest;wave2-origin"), Map.of("policy", "kernel-topology"),
                 Map.of("requestedNullMembers", "6", "unavailableNullMembers", "1"));
@@ -701,8 +693,8 @@ class ReplaySessionTest {
 
     @Test
     public void comparisonInventoryPreservesConfiguredAndFrozenClassicalRuleOrder() throws IOException {
-        final List<String> classical = List.of("wave2-origin", "wave3-not-shortest",
-                "wave4-nonoverlap", "wave5-divergence");
+        final List<String> classical = List.of("wave2-origin", "wave3-not-shortest", "wave4-nonoverlap",
+                "wave5-divergence");
         final List<String> configured = classical.reversed();
         for (final String recipe : List.of("explore", "frozen-cf525")) {
             final Path directory = ReplayFixture.write(temp.resolve("rule-order-" + recipe));
@@ -723,7 +715,8 @@ class ReplaySessionTest {
                 final List<String> row = new ArrayList<>(table.get(index));
                 final String originalMode = row.get(header.indexOf("mode"));
                 if ("all-rules".equals(originalMode)) {
-                    row.set(header.indexOf("key"), row.get(header.indexOf("key")).replace("|all-rules|", "|" + mode + "|"));
+                    row.set(header.indexOf("key"),
+                            row.get(header.indexOf("key")).replace("|all-rules|", "|" + mode + "|"));
                     row.set(header.indexOf("mode"), mode);
                     row.set(header.indexOf("activeRules"), String.join(";", expected));
                     if ("evidencePassRate".equals(row.get(header.indexOf("metric")))) {
@@ -736,7 +729,8 @@ class ReplaySessionTest {
                 rewritten.append(String.join(",", row)).append('\n');
                 if ("+wave2-origin".equals(originalMode)) {
                     for (final String rule : List.of("wave4-nonoverlap", "wave5-divergence")) {
-                        rewritten.append(String.join(",", row).replace("+wave2-origin", "+" + rule)
+                        rewritten.append(String.join(",", row)
+                                .replace("+wave2-origin", "+" + rule)
                                 .replace(",wave2-origin,", "," + rule + ",")).append('\n');
                     }
                 }
@@ -746,15 +740,15 @@ class ReplaySessionTest {
 
             final ReplayArtifact artifact = assertDoesNotThrow(() -> ReplayArtifact.open(directory));
             assertEquals(50, artifact.comparisons().size());
-            assertEquals(expected, artifact.comparison(ReplayFixture.RULES_KEY
-                    .replace("|all-rules|", "|" + mode + "|")).activeRules());
+            assertEquals(expected, artifact.comparison(ReplayFixture.RULES_KEY.replace("|all-rules|", "|" + mode + "|"))
+                    .activeRules());
         }
     }
 
     @Test
     public void everyRealComparisonMetricMustMatchCapturedContributions() throws IOException {
-        for (final String metric : List.of("ambiguousRate", "completeOccupancyRate", "noMatchRate",
-                "evidencePassRate", "jointPassRate", "confirmationLagBars", "labelStabilityJaccard")) {
+        for (final String metric : List.of("ambiguousRate", "completeOccupancyRate", "noMatchRate", "evidencePassRate",
+                "jointPassRate", "confirmationLagBars", "labelStabilityJaccard")) {
             final Path run = ReplayFixture.write(temp.resolve(metric));
             final String key = comparisonMetric(run, ReplayFixture.RULES_KEY, metric, expectedValue(metric),
                     expectedNumerator(metric), expectedDenominator(metric));
@@ -767,8 +761,8 @@ class ReplaySessionTest {
             final double changed = numerator == null ? expectedValue(metric) + 0.125d
                     : changedNumerator / (double) denominator;
             comparisonMetric(run, key, metric, changed, changedNumerator, denominator);
-            final String failure = assertThrows(ReplayArtifactException.class,
-                    () -> open(run, key, 12, 1)).getMessage();
+            final String failure = assertThrows(ReplayArtifactException.class, () -> open(run, key, 12, 1))
+                    .getMessage();
             assertTrue(failure.contains(metric) && failure.contains("contributions")
                     && failure.contains("comparison row") && failure.contains("regenerate"), failure);
         }
@@ -776,15 +770,15 @@ class ReplaySessionTest {
 
     @Test
     public void ratioNumeratorsAndDenominatorsMustMatchEvenWhenTheObservedValueDoes() throws IOException {
-        for (final String metric : List.of("ambiguousRate", "completeOccupancyRate", "noMatchRate",
-                "evidencePassRate", "jointPassRate")) {
+        for (final String metric : List.of("ambiguousRate", "completeOccupancyRate", "noMatchRate", "evidencePassRate",
+                "jointPassRate")) {
             for (final boolean changeNumerator : List.of(false, true)) {
                 final Path run = ReplayFixture.write(temp.resolve(metric + changeNumerator));
                 final long factor = changeNumerator ? 2 : 3;
                 final String key = comparisonMetric(run, ReplayFixture.RULES_KEY, metric, expectedValue(metric),
                         expectedNumerator(metric) * factor, expectedDenominator(metric) * factor);
-                final String failure = assertThrows(ReplayArtifactException.class,
-                        () -> open(run, key, 120, 8)).getMessage();
+                final String failure = assertThrows(ReplayArtifactException.class, () -> open(run, key, 120, 8))
+                        .getMessage();
                 assertTrue(failure.contains(metric) && failure.contains("contributions"), failure);
             }
         }
@@ -792,8 +786,8 @@ class ReplaySessionTest {
 
     @Test
     public void selectedNullMetricsDescribeOnlyTheirOwnMemberNeverTheRealObservation() throws IOException {
-        for (final String metric : List.of("ambiguousRate", "completeOccupancyRate", "noMatchRate",
-                "evidencePassRate", "jointPassRate", "confirmationLagBars", "labelStabilityJaccard")) {
+        for (final String metric : List.of("ambiguousRate", "completeOccupancyRate", "noMatchRate", "evidencePassRate",
+                "jointPassRate", "confirmationLagBars", "labelStabilityJaccard")) {
             final Path run = nullRun(metric);
             final Long numerator = expectedNumerator(metric);
             final Long denominator = expectedDenominator(metric);
@@ -819,8 +813,8 @@ class ReplaySessionTest {
                     StandardCharsets.UTF_8);
             ReplayFixture.refreshTraceDigest(run, "traces/d1-real.jsonl");
             final boolean lag = "confirmationLagBars".equals(metric);
-            final String key = comparisonMetric(run, ReplayFixture.RULES_KEY, metric, Double.NaN,
-                    lag ? null : 0L, lag ? null : 0L);
+            final String key = comparisonMetric(run, ReplayFixture.RULES_KEY, metric, Double.NaN, lag ? null : 0L,
+                    lag ? null : 0L);
             final String evidence = open(run, key, 120, 8).comparisonEvidence();
             assertTrue(evidence.contains("unavailable (no contributions)"), evidence);
             assertFalse(evidence.contains("-> match"), evidence);
@@ -831,8 +825,8 @@ class ReplaySessionTest {
         Files.write(trace, List.of(lines.getFirst(), lines.get(1), "{\"complete\":true,\"records\":1}"),
                 StandardCharsets.UTF_8);
         ReplayFixture.refreshTraceDigest(run, "traces/d1-real.jsonl");
-        final String key = comparisonMetric(run, ReplayFixture.RULES_KEY, "labelStabilityJaccard", Double.NaN,
-                null, null);
+        final String key = comparisonMetric(run, ReplayFixture.RULES_KEY, "labelStabilityJaccard", Double.NaN, null,
+                null);
         final String evidence = open(run, key, 120, 8).comparisonEvidence();
         assertTrue(evidence.contains("unavailable (no contributions)"), evidence);
         assertFalse(evidence.contains("-> match"), evidence);
@@ -883,16 +877,15 @@ class ReplaySessionTest {
         parts[5] = metric;
         final String key = String.join("|", parts);
         final boolean hasNull = !"b-".equals(parts[6]);
-        return comparisonFields(run, key, Map.of(
-                "observed", value,
-                "numerator", numerator == null ? "" : numerator.toString(),
-                "denominator", denominator == null ? "" : denominator.toString(),
-                "nullMedian", hasNull ? Double.isFinite(observed) ? value : "0" : "",
-                "nullLow", hasNull ? Double.isFinite(observed) ? value : "0" : "",
-                "nullHigh", hasNull ? Double.isFinite(observed) ? value : "0" : "",
-                "observedMinusNullMedian", hasNull && Double.isFinite(observed) ? "0" : "",
-                "empiricalReferenceRank", hasNull && Double.isFinite(observed) ? "1" : "",
-                "availability", Double.isFinite(observed) ? hasNull ? "available" : "not-comparable" : "unavailable"));
+        return comparisonFields(run, key,
+                Map.of("observed", value, "numerator", numerator == null ? "" : numerator.toString(), "denominator",
+                        denominator == null ? "" : denominator.toString(), "nullMedian",
+                        hasNull ? Double.isFinite(observed) ? value : "0" : "", "nullLow",
+                        hasNull ? Double.isFinite(observed) ? value : "0" : "", "nullHigh",
+                        hasNull ? Double.isFinite(observed) ? value : "0" : "", "observedMinusNullMedian",
+                        hasNull && Double.isFinite(observed) ? "0" : "", "empiricalReferenceRank",
+                        hasNull && Double.isFinite(observed) ? "1" : "", "availability",
+                        Double.isFinite(observed) ? hasNull ? "available" : "not-comparable" : "unavailable"));
     }
 
     private static String comparisonFields(final Path run, final String originalKey, final Map<String, String> fields)
@@ -937,7 +930,8 @@ class ReplaySessionTest {
                 final boolean available = !value.isEmpty();
                 row.set(header.indexOf("validNullMembers"), available ? "1" : "0");
                 row.set(header.indexOf("requestedNullMembers"), Integer.toString(requested));
-                row.set(header.indexOf("unavailableNullMembers"), Integer.toString(available ? requested - 1 : requested));
+                row.set(header.indexOf("unavailableNullMembers"),
+                        Integer.toString(available ? requested - 1 : requested));
                 for (final String quantile : List.of("nullMedian", "nullLow", "nullHigh")) {
                     row.set(header.indexOf(quantile), value);
                 }

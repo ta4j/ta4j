@@ -350,8 +350,9 @@ class ReplayArtifactTest {
 
             final String message = assertThrows(ReplayArtifactException.class, () -> ReplayArtifact.open(run))
                     .getMessage();
-            assertTrue(message.startsWith(csv + " row " + duplicateLine + " has duplicate comparison key '"
-                    + ReplayFixture.RULES_KEY + "'."), message);
+            assertTrue(message.startsWith(
+                    csv + " row " + duplicateLine + " has duplicate comparison key '" + ReplayFixture.RULES_KEY + "'."),
+                    message);
         }
     }
 
@@ -398,8 +399,9 @@ class ReplayArtifactTest {
 
             final String message = assertThrows(ReplayArtifactException.class, () -> ReplayArtifact.open(run))
                     .getMessage();
-            assertTrue(message.startsWith(csv + " row " + mismatchLine + " key column '" + mismatchedKey
-                    + "' does not match row fields."), message);
+            assertTrue(message.startsWith(
+                    csv + " row " + mismatchLine + " key column '" + mismatchedKey + "' does not match row fields."),
+                    message);
             assertTrue(message.contains("Regenerate"), message);
         }
     }
@@ -618,8 +620,8 @@ class ReplayArtifactTest {
             case "grammar" -> record.addProperty("grammar", "CORRECTIVE_3");
             case "direction" -> candidate.addProperty("direction", "BEARISH");
             case "placement.index" -> point.addProperty("index", 6);
-            case "placement.type" -> point.addProperty("type",
-                    "HIGH".equals(point.get("type").getAsString()) ? "LOW" : "HIGH");
+            case "placement.type" ->
+                point.addProperty("type", "HIGH".equals(point.get("type").getAsString()) ? "LOW" : "HIGH");
             case "placement.price" -> point.addProperty("price", point.get("price").getAsString() + ".0");
             case "placement.order" -> {
                 final var first = placement.get(0);
@@ -641,7 +643,8 @@ class ReplayArtifactTest {
             Files.write(trace, lines, StandardCharsets.UTF_8);
             ReplayFixture.refreshTraceDigest(run, "traces/d1-real.jsonl");
 
-            final String expected = "version".equals(field) || field.startsWith("rules.") ? ".version" : ".candidateKey";
+            final String expected = "version".equals(field) || field.startsWith("rules.") ? ".version"
+                    : ".candidateKey";
             final String message = failureOf(run, ReplayFixture.RULES_KEY);
             assertTrue(message.contains("candidates[0]" + expected) && message.contains("line " + (line + 1))
                     && message.contains("traces/d1-real.jsonl"), field + ": " + message);
@@ -656,8 +659,8 @@ class ReplayArtifactTest {
                 "candidate-unknown-direction", "unknown-grammar", "placement-count", "placement-index-order",
                 "placement-type-order", "placement-negative-index", "placement-invalid-type",
                 "placement-nonfinite-price", "pivot-negative-index", "pivot-confirmation-before-index",
-                "pivot-invalid-type", "pivot-nonfinite-price", "score-on-fail", "score-below-zero",
-                "score-above-one", "score-extreme", "score-tiny-negative")) {
+                "pivot-invalid-type", "pivot-nonfinite-price", "score-on-fail", "score-below-zero", "score-above-one",
+                "score-extreme", "score-tiny-negative")) {
             final Path run = ReplayFixture.write(temp.resolve("domain-" + mutation));
             final Path trace = run.resolve("traces/d1-real.jsonl");
             final List<String> lines = Files.readAllLines(trace);
@@ -723,10 +726,10 @@ class ReplayArtifactTest {
                     "placement-invalid-type", "placement-nonfinite-price" -> {
                 switch (mutation) {
                 case "placement-count" -> placement.remove(placement.size() - 1);
-                case "placement-index-order" -> point.addProperty("index",
-                        placement.get(1).getAsJsonObject().get("index").getAsInt());
-                case "placement-type-order" -> point.addProperty("type",
-                        placement.get(1).getAsJsonObject().get("type").getAsString());
+                case "placement-index-order" ->
+                    point.addProperty("index", placement.get(1).getAsJsonObject().get("index").getAsInt());
+                case "placement-type-order" ->
+                    point.addProperty("type", placement.get(1).getAsJsonObject().get("type").getAsString());
                 case "placement-negative-index" -> point.addProperty("index", -1);
                 case "placement-invalid-type" -> point.addProperty("type", "CENTER");
                 case "placement-nonfinite-price" -> point.addProperty("price", "NaN");
@@ -764,8 +767,9 @@ class ReplayArtifactTest {
             ReplayFixture.refreshTraceDigest(run, "traces/d1-real.jsonl");
             for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
                 final String message = failureOf(run, key);
-                assertTrue(message.contains(field) && message.contains("line " + (line + 1))
-                        && message.contains("traces/d1-real.jsonl") && message.contains("regenerate"),
+                assertTrue(
+                        message.contains(field) && message.contains("line " + (line + 1))
+                                && message.contains("traces/d1-real.jsonl") && message.contains("regenerate"),
                         mutation + ": " + message);
             }
         }
@@ -794,8 +798,8 @@ class ReplayArtifactTest {
                     final Path boundary = singleRecordTrace("boundary-" + grammar + "-" + direction + count,
                             lines.getFirst(), record);
                     for (final boolean keep : List.of(false, true)) {
-                        assertNotNull(ReplayTraceIndex.scan(boundary, "boundary", family -> keep, Map.of(),
-                                "ambiguousRate"));
+                        assertNotNull(
+                                ReplayTraceIndex.scan(boundary, "boundary", family -> keep, Map.of(), "ambiguousRate"));
                     }
                 }
             }
@@ -819,7 +823,8 @@ class ReplayArtifactTest {
                     case "FORMING" -> direction != null;
                     default -> direction == null;
                     };
-                    final Path run = ReplayFixture.write(temp.resolve("state-" + status + "-" + count + "-" + direction));
+                    final Path run = ReplayFixture
+                            .write(temp.resolve("state-" + status + "-" + count + "-" + direction));
                     final Path trace = run.resolve("traces/d1-real.jsonl");
                     final List<String> lines = Files.readAllLines(trace);
                     final int line = firstRulesCandidateLine(lines);
@@ -851,14 +856,17 @@ class ReplayArtifactTest {
                         final Path valid = singleRecordTrace("state-" + status + "-" + count + "-" + direction,
                                 lines.getFirst(), record);
                         assertNotNull(ReplayTraceIndex.scan(valid, "state", family -> true, Map.of(), "ambiguousRate"));
-                        assertNotNull(ReplayTraceIndex.scan(valid, "state", family -> false, Map.of(), "ambiguousRate"));
+                        assertNotNull(
+                                ReplayTraceIndex.scan(valid, "state", family -> false, Map.of(), "ambiguousRate"));
                     } else {
-                        final String field = "FORMING".equals(status) && direction == null || validCount
-                                ? "direction" : "candidates";
+                        final String field = "FORMING".equals(status) && direction == null || validCount ? "direction"
+                                : "candidates";
                         for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
                             final String message = failureOf(run, key);
-                            assertTrue(message.contains(field) && message.contains("line " + (line + 1))
-                                    && message.contains("regenerate"), status + "/" + count + "/" + direction + ": " + message);
+                            assertTrue(
+                                    message.contains(field) && message.contains("line " + (line + 1))
+                                            && message.contains("regenerate"),
+                                    status + "/" + count + "/" + direction + ": " + message);
                         }
                     }
                 }
@@ -877,8 +885,12 @@ class ReplayArtifactTest {
             final int line = firstRulesCandidateLine(lines);
             final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
             final JsonArray pivots = record.getAsJsonArray("pivots");
-            final JsonObject placed = record.getAsJsonArray("candidates").get(0).getAsJsonObject()
-                    .getAsJsonArray("placement").get(0).getAsJsonObject();
+            final JsonObject placed = record.getAsJsonArray("candidates")
+                    .get(0)
+                    .getAsJsonObject()
+                    .getAsJsonArray("placement")
+                    .get(0)
+                    .getAsJsonObject();
             final JsonObject visible = pivots.get(0).getAsJsonObject();
             final String field;
             switch (mutation) {
@@ -974,7 +986,8 @@ class ReplayArtifactTest {
                 lines.set(line, record.toString());
                 Files.write(trace, lines, StandardCharsets.UTF_8);
                 ReplayFixture.refreshTraceDigest(run, traceFile);
-                final String traceMode = nullMember ? ReplayArtifact.TRACE_MODE_NULL_MEMBER : ReplayArtifact.TRACE_MODE_REAL;
+                final String traceMode = nullMember ? ReplayArtifact.TRACE_MODE_NULL_MEMBER
+                        : ReplayArtifact.TRACE_MODE_REAL;
                 for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
                     final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
                             () -> ReplaySession.open(ReplayArtifact.open(run), key, traceMode, 120, 8));
@@ -997,7 +1010,8 @@ class ReplayArtifactTest {
             final Path trace = run.resolve(traceFile);
             final List<String> lines = Files.readAllLines(trace);
             final JsonObject original = JsonParser.parseString(lines.get(2)).getAsJsonObject();
-            final String traceMode = nullMember ? ReplayArtifact.TRACE_MODE_NULL_MEMBER : ReplayArtifact.TRACE_MODE_REAL;
+            final String traceMode = nullMember ? ReplayArtifact.TRACE_MODE_NULL_MEMBER
+                    : ReplayArtifact.TRACE_MODE_REAL;
             for (final String grammar : List.of("MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3")) {
                 for (final String status : List.of("insufficient-history", "no-match", "forming", "complete",
                         "ambiguous")) {
@@ -1019,7 +1033,8 @@ class ReplayArtifactTest {
                     }
                     for (final boolean keep : List.of(false, true)) {
                         final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
-                                () -> ReplayTraceIndex.scan(trace, traceFile, family -> keep, Map.of(), "ambiguousRate"));
+                                () -> ReplayTraceIndex.scan(trace, traceFile, family -> keep, Map.of(),
+                                        "ambiguousRate"));
                         assertTrue(e.getMessage().contains("grammar") && e.getMessage().contains("line 3"),
                                 e.getMessage());
                     }
@@ -1041,15 +1056,17 @@ class ReplayArtifactTest {
             }
             lines.set(3, alternative.toString());
             Files.write(trace, lines, StandardCharsets.UTF_8);
-            assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true, Map.of(), "ambiguousRate"));
-            assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false, Map.of(), "ambiguousRate"));
+            assertNotNull(
+                    ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true, Map.of(), "ambiguousRate"));
+            assertNotNull(
+                    ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false, Map.of(), "ambiguousRate"));
             alternative.addProperty("kind", "topology");
             alternative.addProperty("status", "INSUFFICIENT_HISTORY");
             lines.set(3, alternative.toString());
             Files.write(trace, lines, StandardCharsets.UTF_8);
             for (final boolean keep : List.of(false, true)) {
-                final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
-                        () -> ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> keep, Map.of(), "ambiguousRate"));
+                final ReplayArtifactException e = assertThrows(ReplayArtifactException.class, () -> ReplayTraceIndex
+                        .scan(trace, "traces/d1-real.jsonl", family -> keep, Map.of(), "ambiguousRate"));
                 assertTrue(e.getMessage().contains("grammar") && e.getMessage().contains("line 4")
                         && e.getMessage().contains("regenerate"), e.getMessage());
             }
@@ -1067,7 +1084,8 @@ class ReplayArtifactTest {
             }
             for (final String direction : List.of("BULLISH", "BEARISH")) {
                 for (final String mutation : mutations) {
-                    final Path run = ReplayFixture.write(temp.resolve("shape-" + grammar + "-" + direction + "-" + mutation));
+                    final Path run = ReplayFixture
+                            .write(temp.resolve("shape-" + grammar + "-" + direction + "-" + mutation));
                     final Path trace = run.resolve("traces/d1-real.jsonl");
                     final List<String> lines = Files.readAllLines(trace);
                     final int line = firstRulesCandidateLine(lines);
@@ -1091,7 +1109,8 @@ class ReplayArtifactTest {
                         if (mutation.startsWith("flat")) {
                             pivot.add("price", previous.get("price").deepCopy());
                         } else {
-                            final boolean rising = pivot.get("price").getAsBigDecimal()
+                            final boolean rising = pivot.get("price")
+                                    .getAsBigDecimal()
                                     .compareTo(previous.get("price").getAsBigDecimal()) > 0;
                             pivot.addProperty("price", rising ? "-2e1000" : "2e1000");
                         }
@@ -1102,7 +1121,8 @@ class ReplayArtifactTest {
                     Files.write(trace, lines, StandardCharsets.UTF_8);
                     for (final boolean keep : List.of(false, true)) {
                         final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
-                                () -> ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> keep, Map.of(), "ambiguousRate"));
+                                () -> ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> keep, Map.of(),
+                                        "ambiguousRate"));
                         assertTrue(e.getMessage().contains("placement") && e.getMessage().contains("line " + (line + 1))
                                 && e.getMessage().contains("regenerate"), mutation + ": " + e.getMessage());
                     }
@@ -1136,11 +1156,13 @@ class ReplayArtifactTest {
                 ReplayFixture.refreshTraceDigest(run, "traces/d1-real.jsonl");
                 for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
                     final String message = failureOf(run, key);
-                    assertTrue(message.contains("asOfIndex") && message.contains("line " + failedLine)
-                            && message.contains("strictly increase") && message.contains("regenerate"), message);
+                    assertTrue(
+                            message.contains("asOfIndex") && message.contains("line " + failedLine)
+                                    && message.contains("strictly increase") && message.contains("regenerate"),
+                            message);
                 }
-                final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
-                        () -> ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false, Map.of(), "ambiguousRate"));
+                final ReplayArtifactException e = assertThrows(ReplayArtifactException.class, () -> ReplayTraceIndex
+                        .scan(trace, "traces/d1-real.jsonl", family -> false, Map.of(), "ambiguousRate"));
                 assertTrue(e.getMessage().contains("asOfIndex") && e.getMessage().contains("line " + failedLine),
                         e.getMessage());
             }
@@ -1156,8 +1178,10 @@ class ReplayArtifactTest {
             footer.addProperty("records", footer.get("records").getAsInt() + 1);
             lines.set(lines.size() - 1, footer.toString());
             Files.write(trace, lines, StandardCharsets.UTF_8);
-            assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true, Map.of(), "ambiguousRate"));
-            assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false, Map.of(), "ambiguousRate"));
+            assertNotNull(
+                    ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true, Map.of(), "ambiguousRate"));
+            assertNotNull(
+                    ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false, Map.of(), "ambiguousRate"));
         }
     }
 
@@ -1178,7 +1202,9 @@ class ReplayArtifactTest {
                     while (pivots.size() > length) {
                         pivots.remove(pivots.size() - 1);
                     }
-                    pivots.get(0).getAsJsonObject().addProperty("confirmationIndex", record.get("asOfIndex").getAsInt());
+                    pivots.get(0)
+                            .getAsJsonObject()
+                            .addProperty("confirmationIndex", record.get("asOfIndex").getAsInt());
                     record.addProperty("status", "FORMING");
                     record.addProperty("direction", direction);
                     record.add("candidates", new JsonArray());
@@ -1194,8 +1220,8 @@ class ReplayArtifactTest {
                         switch (mutation) {
                         case "not-newest" -> damaged.addProperty("formingEndBarIndex", length - 2);
                         case "two-pivot-suffix" -> damaged.addProperty("formingStartBarIndex", length - 2);
-                        case "wrong-direction" -> damaged.addProperty("direction",
-                                "BULLISH".equals(direction) ? "BEARISH" : "BULLISH");
+                        case "wrong-direction" ->
+                            damaged.addProperty("direction", "BULLISH".equals(direction) ? "BEARISH" : "BULLISH");
                         case "flat-leg" -> damaged.getAsJsonArray("pivots")
                                 .get(length - 1)
                                 .getAsJsonObject()
@@ -1210,10 +1236,13 @@ class ReplayArtifactTest {
                         singleRecordTrace(name, lines.getFirst(), damaged);
                         for (final boolean keep : List.of(false, true)) {
                             final ReplayArtifactException rejected = assertThrows(ReplayArtifactException.class,
-                                    () -> ReplayTraceIndex.scan(trace, name, family -> keep, Map.of(), "ambiguousRate"));
-                            assertTrue(rejected.getMessage().contains("forming")
-                                    && rejected.getMessage().contains("line 2")
-                                    && rejected.getMessage().contains("regenerate"), mutation + ": " + rejected.getMessage());
+                                    () -> ReplayTraceIndex.scan(trace, name, family -> keep, Map.of(),
+                                            "ambiguousRate"));
+                            assertTrue(
+                                    rejected.getMessage().contains("forming")
+                                            && rejected.getMessage().contains("line 2")
+                                            && rejected.getMessage().contains("regenerate"),
+                                    mutation + ": " + rejected.getMessage());
                         }
                     }
                 }
@@ -1292,24 +1321,27 @@ class ReplayArtifactTest {
         ReplayFixture.refreshIdentity(future);
         final Path futureTrace = singleRecordTrace("future-intervening-pivots", lines.getFirst(), future);
         assertSingleRecordReadable(futureTrace, "future-intervening-pivots", future);
-        final ReplayFrame suppressed = ReplayFrame.project(ReplayFixture.RULES_KEY,
-                ReplayTraceIndex.Family.of(future), activeRules, future, source.bars(), true, false, "", 120, 8, "", 0);
+        final ReplayFrame suppressed = ReplayFrame.project(ReplayFixture.RULES_KEY, ReplayTraceIndex.Family.of(future),
+                activeRules, future, source.bars(), true, false, "", 120, 8, "", 0);
         assertEquals(2, suppressed.suppressedFuture());
         assertEquals(original.getAsJsonArray("pivots").size(), suppressed.pivots().size());
         assertTrue(ReplayEvidenceText.render(suppressed).contains("causality guard removed 2"));
         final JsonObject placedFuture = original.deepCopy();
         retainDistinctCandidates(placedFuture, 1);
-        placedFuture.getAsJsonArray("pivots").get(2).getAsJsonObject().addProperty("confirmationIndex",
-                placedFuture.get("asOfIndex").getAsInt() + 1);
+        placedFuture.getAsJsonArray("pivots")
+                .get(2)
+                .getAsJsonObject()
+                .addProperty("confirmationIndex", placedFuture.get("asOfIndex").getAsInt() + 1);
         ReplayFixture.refreshIdentity(placedFuture);
         final Path placedTrace = singleRecordTrace("future-candidate-pivot", lines.getFirst(), placedFuture);
         assertSingleRecordReadable(placedTrace, "future-candidate-pivot", placedFuture);
         final ReplayFrame placedSuppressed = ReplayFrame.project(ReplayFixture.RULES_KEY,
-                ReplayTraceIndex.Family.of(placedFuture), activeRules, placedFuture, source.bars(), true, false, "", 120,
-                8, "", 0);
+                ReplayTraceIndex.Family.of(placedFuture), activeRules, placedFuture, source.bars(), true, false, "",
+                120, 8, "", 0);
         assertEquals(2, placedSuppressed.suppressedFuture());
         assertEquals(original.getAsJsonArray("pivots").size() - 1, placedSuppressed.pivots().size());
-        assertEquals(original.getAsJsonArray("candidates").get(0).getAsJsonObject().getAsJsonArray("placement").size() - 1,
+        assertEquals(
+                original.getAsJsonArray("candidates").get(0).getAsJsonObject().getAsJsonArray("placement").size() - 1,
                 placedSuppressed.candidates().getFirst().placement().size());
         assertTrue(ReplayEvidenceText.render(placedSuppressed).contains("causality guard removed 2"));
     }
@@ -1326,7 +1358,8 @@ class ReplayArtifactTest {
                 .stream()
                 .map(JsonElement::getAsString)
                 .toList();
-        for (final String status : List.of("COMPLETE", "AMBIGUOUS", "INSUFFICIENT_HISTORY", "NO_MATCH", "INVALIDATED")) {
+        for (final String status : List.of("COMPLETE", "AMBIGUOUS", "INSUFFICIENT_HISTORY", "NO_MATCH",
+                "INVALIDATED")) {
             for (final int confirmed : List.of(0, 1)) {
                 final JsonObject record = original.deepCopy();
                 retainDistinctCandidates(record, "AMBIGUOUS".equals(status) ? 2 : 1);
@@ -1350,8 +1383,9 @@ class ReplayArtifactTest {
                 int suppressedCount = pivots.size() - confirmed;
                 for (final JsonElement candidate : record.getAsJsonArray("candidates")) {
                     for (final JsonElement point : candidate.getAsJsonObject().getAsJsonArray("placement")) {
-                        if (confirmed == 0 || point.getAsJsonObject().get("index").getAsInt()
-                                != pivots.get(0).getAsJsonObject().get("index").getAsInt()) {
+                        if (confirmed == 0 || point.getAsJsonObject()
+                                .get("index")
+                                .getAsInt() != pivots.get(0).getAsJsonObject().get("index").getAsInt()) {
                             suppressedCount++;
                         }
                     }
@@ -1394,7 +1428,9 @@ class ReplayArtifactTest {
                 if ("forming-wrong-direction".equals(mutation)) {
                     record.addProperty("direction", "BEARISH");
                 } else if ("forming-flat-leg".equals(mutation)) {
-                    pivots.get(4).getAsJsonObject().add("price", pivots.get(3).getAsJsonObject().get("price").deepCopy());
+                    pivots.get(4)
+                            .getAsJsonObject()
+                            .add("price", pivots.get(3).getAsJsonObject().get("price").deepCopy());
                 }
                 field = "forming";
             } else {
@@ -1419,8 +1455,9 @@ class ReplayArtifactTest {
                     }
                 }
                 case "insufficient-with-visible-history", "no-match-with-one-pivot", "invalidated-with-one-pivot" -> {
-                    record.addProperty("status", "insufficient-with-visible-history".equals(mutation)
-                            ? "INSUFFICIENT_HISTORY" : "no-match-with-one-pivot".equals(mutation) ? "NO_MATCH" : "INVALIDATED");
+                    record.addProperty("status",
+                            "insufficient-with-visible-history".equals(mutation) ? "INSUFFICIENT_HISTORY"
+                                    : "no-match-with-one-pivot".equals(mutation) ? "NO_MATCH" : "INVALIDATED");
                     record.add("direction", JsonNull.INSTANCE);
                     record.add("candidates", new JsonArray());
                     if (!"insufficient-with-visible-history".equals(mutation)) {
@@ -1463,7 +1500,8 @@ class ReplayArtifactTest {
 
     private static void assertSingleRecordReadable(final Path trace, final String display, final JsonObject record) {
         for (final boolean keep : List.of(false, true)) {
-            final ReplayTraceIndex index = ReplayTraceIndex.scan(trace, display, family -> keep, Map.of(), "ambiguousRate");
+            final ReplayTraceIndex index = ReplayTraceIndex.scan(trace, display, family -> keep, Map.of(),
+                    "ambiguousRate");
             assertEquals(1, index.recordCount());
             final List<ReplayTraceIndex.Entry> entries = index.entries(ReplayTraceIndex.Family.of(record));
             assertEquals(keep ? 1 : 0, entries.size());
@@ -1564,7 +1602,9 @@ class ReplayArtifactTest {
     }
 
     private static void synchronizePlacement(final JsonObject record) {
-        for (final JsonElement element : record.getAsJsonArray("candidates").get(0).getAsJsonObject()
+        for (final JsonElement element : record.getAsJsonArray("candidates")
+                .get(0)
+                .getAsJsonObject()
                 .getAsJsonArray("placement")) {
             final JsonObject placed = element.getAsJsonObject();
             for (final JsonElement visible : record.getAsJsonArray("pivots")) {
@@ -1797,7 +1837,8 @@ class ReplayArtifactTest {
     @Test
     public void completeTraceBytesMustMatchMetadataEvenOutsideTheSelectedFamily() throws IOException {
         for (final boolean nullMember : List.of(false, true)) {
-            for (final String damage : List.of("selected-observation", "other-observation", "labels", "missing-digest")) {
+            for (final String damage : List.of("selected-observation", "other-observation", "labels",
+                    "missing-digest")) {
                 final Path run = ReplayFixture.write(temp.resolve("trace-digest-" + nullMember + "-" + damage),
                         options -> {
                             options.nullTrace = nullMember;
@@ -1812,8 +1853,8 @@ class ReplayArtifactTest {
                 } else {
                     final Path trace = run.resolve(relative);
                     final List<String> lines = new ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
-                    final String mode = "other-observation".equals(damage)
-                            ? nullMember ? "MOTIVE_5" : "topology-only" : "all-rules";
+                    final String mode = "other-observation".equals(damage) ? nullMember ? "MOTIVE_5" : "topology-only"
+                            : "all-rules";
                     for (int i = 1; i < lines.size() - 1; i++) {
                         final JsonObject record = JsonParser.parseString(lines.get(i)).getAsJsonObject();
                         if (!mode.equals(record.get("mode").getAsString())) {
@@ -1881,8 +1922,8 @@ class ReplayArtifactTest {
         for (final boolean nullMember : List.of(false, true)) {
             for (final String damage : List.of("empty-labels", "foreign-label", "duplicate-label", "wrong-span",
                     "missing-start", "missing-end", "fractional-start", "overflow-end", "missing-explanation",
-                    "null-explanation", "numeric-explanation", "nonforming-bounds", "negative-start",
-                    "reversed-bounds", "future-end", "invisible-start", "unconfirmed-end")) {
+                    "null-explanation", "numeric-explanation", "nonforming-bounds", "negative-start", "reversed-bounds",
+                    "future-end", "invisible-start", "unconfirmed-end")) {
                 final Path run = ReplayFixture.write(temp.resolve("outcome-labels-" + nullMember + "-" + damage),
                         options -> {
                             options.nullTrace = nullMember;
@@ -1893,8 +1934,8 @@ class ReplayArtifactTest {
                 final List<String> lines = Files.readAllLines(trace);
                 final int line = firstRulesCandidateLine(lines);
                 final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
-                if (List.of("negative-start", "reversed-bounds", "future-end", "invisible-start",
-                        "unconfirmed-end").contains(damage)) {
+                if (List.of("negative-start", "reversed-bounds", "future-end", "invisible-start", "unconfirmed-end")
+                        .contains(damage)) {
                     record.addProperty("status", "FORMING");
                     record.addProperty("direction", "BULLISH");
                     record.add("candidates", new JsonArray());
@@ -1908,8 +1949,8 @@ class ReplayArtifactTest {
                     yield "labels";
                 }
                 case "foreign-label", "wrong-span" -> {
-                    record.getAsJsonArray("labels").set(0, new JsonPrimitive(
-                            "wrong-span".equals(damage) ? "BULLISH:0-21" : "foreign"));
+                    record.getAsJsonArray("labels")
+                            .set(0, new JsonPrimitive("wrong-span".equals(damage) ? "BULLISH:0-21" : "foreign"));
                     yield "labels";
                 }
                 case "duplicate-label" -> {
@@ -1958,7 +1999,9 @@ class ReplayArtifactTest {
                     yield "forming";
                 }
                 case "unconfirmed-end" -> {
-                    record.getAsJsonArray("pivots").get(5).getAsJsonObject()
+                    record.getAsJsonArray("pivots")
+                            .get(5)
+                            .getAsJsonObject()
                             .addProperty("confirmationIndex", record.get("asOfIndex").getAsInt() + 1);
                     yield "forming";
                 }
@@ -1972,9 +2015,11 @@ class ReplayArtifactTest {
                 for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
                     final ReplayArtifactException rejected = assertThrows(ReplayArtifactException.class,
                             () -> ReplaySession.open(ReplayArtifact.open(run), key, traceMode, 120, 8));
-                    assertTrue(rejected.getMessage().contains(field)
-                            && rejected.getMessage().contains("line " + (line + 1))
-                            && rejected.getMessage().contains("regenerate"), damage + ": " + rejected.getMessage());
+                    assertTrue(
+                            rejected.getMessage().contains(field)
+                                    && rejected.getMessage().contains("line " + (line + 1))
+                                    && rejected.getMessage().contains("regenerate"),
+                            damage + ": " + rejected.getMessage());
                 }
                 for (final boolean keep : List.of(false, true)) {
                     final ReplayArtifactException rejected = assertThrows(ReplayArtifactException.class,
@@ -2026,14 +2071,13 @@ class ReplayArtifactTest {
                     final int[] prices = switch (shape) {
                     case "insufficient" -> new int[] { 0 };
                     case "no-match" -> new int[] { 0, 4 };
-                    case "forming" -> "3+3".equals(grammar) ? new int[] { 0, 4, 2, 6 }
-                            : new int[] { 0, 4, 2, 6, 3, 8 };
-                    case "flat-partial" -> "3+3".equals(grammar) ? new int[] { 0, 4, 2, 6, 6 }
-                            : new int[] { 0, 4, 2, 6, 3, 8, 8 };
+                    case "forming" -> "3+3".equals(grammar) ? new int[] { 0, 4, 2, 6 } : new int[] { 0, 4, 2, 6, 3, 8 };
+                    case "flat-partial" ->
+                        "3+3".equals(grammar) ? new int[] { 0, 4, 2, 6, 6 } : new int[] { 0, 4, 2, 6, 3, 8, 8 };
                     case "complete" -> "3+3".equals(grammar) ? new int[] { 0, 4, 2, 6, 1, 5, -1 }
                             : new int[] { 0, 4, 2, 6, 3, 8, 1, 7, 0, 6, -1 };
-                    case "ambiguous-partial" -> "3+3".equals(grammar) ? new int[] { 0, 4, 2, 6, 1 }
-                            : new int[] { 0, 4, 2, 6, 3, 8, 1 };
+                    case "ambiguous-partial" ->
+                        "3+3".equals(grammar) ? new int[] { 0, 4, 2, 6, 1 } : new int[] { 0, 4, 2, 6, 3, 8, 1 };
                     case "ambiguous-complete" -> "3+3".equals(grammar) ? new int[] { 0, 4, 2, 6, 1, 5, -1, 7 }
                             : new int[] { 0, 4, 2, 6, 3, 8, 1, 7, 0, 6, -1, 9 };
                     default -> throw new AssertionError(shape);
@@ -2087,11 +2131,11 @@ class ReplayArtifactTest {
                     final String name = grammar + "-" + bullish + "-" + shape;
                     final Path trace = singleRecordTrace(name, header, record);
                     for (final boolean keep : List.of(false, true)) {
-                        assertNotNull(ReplayTraceIndex.scan(trace, name, family -> keep, Map.of(),
-                                "labelStabilityJaccard"));
+                        assertNotNull(
+                                ReplayTraceIndex.scan(trace, name, family -> keep, Map.of(), "labelStabilityJaccard"));
                     }
-                    record.addProperty("status", "no-match".equals(record.get("status").getAsString())
-                            ? "complete" : "no-match");
+                    record.addProperty("status",
+                            "no-match".equals(record.get("status").getAsString()) ? "complete" : "no-match");
                     singleRecordTrace(name, header, record);
                     for (final boolean keep : List.of(false, true)) {
                         final ReplayArtifactException rejected = assertThrows(ReplayArtifactException.class,
@@ -2123,8 +2167,8 @@ class ReplayArtifactTest {
             record.add("labels", labels);
             final Path trace = singleRecordTrace("baseline-" + status, header, record);
             for (final boolean keep : List.of(false, true)) {
-                assertNotNull(ReplayTraceIndex.scan(trace, "baseline", family -> keep, Map.of(),
-                        "labelStabilityJaccard"));
+                assertNotNull(
+                        ReplayTraceIndex.scan(trace, "baseline", family -> keep, Map.of(), "labelStabilityJaccard"));
             }
             labels.add(labels.get(0));
             singleRecordTrace("baseline-" + status, header, record);
@@ -2142,8 +2186,7 @@ class ReplayArtifactTest {
             record.add("pivots", new JsonArray());
             final Path trace = singleRecordTrace("invalid-baseline-" + status, header, record);
             final ReplayArtifactException rejected = assertThrows(ReplayArtifactException.class,
-                    () -> ReplayTraceIndex.scan(trace, "baseline", family -> false, Map.of(),
-                            "labelStabilityJaccard"));
+                    () -> ReplayTraceIndex.scan(trace, "baseline", family -> false, Map.of(), "labelStabilityJaccard"));
             assertTrue(rejected.getMessage().contains("status"), rejected.getMessage());
         }
     }

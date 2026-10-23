@@ -131,11 +131,12 @@ final class ReplayTraceIndex {
     /**
      * Scans a trace and indexes the families accepted by {@code keep}.
      *
-     * @param file    the trace file
-     * @param display the artifact-relative name used in messages
-     * @param keep    families to index
+     * @param file          the trace file
+     * @param display       the artifact-relative name used in messages
+     * @param keep          families to index
      * @param expectedRules ordered rule IDs recorded for each compared family
-     * @param metric the selected comparison metric to reconstruct during the scan
+     * @param metric        the selected comparison metric to reconstruct during the
+     *                      scan
      * @return the index
      */
     static ReplayTraceIndex scan(final Path file, final String display, final Predicate<Family> keep,
@@ -319,8 +320,9 @@ final class ReplayTraceIndex {
                             while (visible.get(visibleIndex).getAsJsonObject().get("index").getAsInt() < index) {
                                 visibleIndex++;
                             }
-                            lag += Math.max(0, visible.get(visibleIndex).getAsJsonObject()
-                                    .get("confirmationIndex").getAsInt() - index);
+                            lag += Math.max(0,
+                                    visible.get(visibleIndex).getAsJsonObject().get("confirmationIndex").getAsInt()
+                                            - index);
                         }
                         sum += lag / placement.size();
                         denominator++;
@@ -346,8 +348,8 @@ final class ReplayTraceIndex {
                 }
                 previousLabels = current;
             }
-            default -> throw new ReplayArtifactException("unsupported comparison metric '" + metric
-                    + "'; regenerate the run with ElliottResearch");
+            default -> throw new ReplayArtifactException(
+                    "unsupported comparison metric '" + metric + "'; regenerate the run with ElliottResearch");
             }
         }
 
@@ -360,18 +362,19 @@ final class ReplayTraceIndex {
             final boolean ratio = !"confirmationLagBars".equals(metric) && !"labelStabilityJaccard".equals(metric);
             final double value = denominator == 0 ? Double.NaN : (ratio ? numerator : sum) / denominator;
             if (!nullMember && (Double.compare(value, row.observed()) != 0
-                    || ratio && (row.numerator() == null || row.numerator() != numerator
-                            || row.denominator() == null || row.denominator() != denominator))) {
-                throw new ReplayArtifactException("trace " + display + " " + metric
-                        + " contributions do not match the selected comparison row '" + row.key()
-                        + "'; regenerate the run with ElliottResearch");
+                    || ratio && (row.numerator() == null || row.numerator() != numerator || row.denominator() == null
+                            || row.denominator() != denominator))) {
+                throw new ReplayArtifactException(
+                        "trace " + display + " " + metric + " contributions do not match the selected comparison row '"
+                                + row.key() + "'; regenerate the run with ElliottResearch");
             }
             final String support = ratio ? numerator + "/" + denominator + " = " + value
-                    : value + " from " + denominator + ("confirmationLagBars".equals(metric)
-                            ? " complete candidate observations (candidate-pivot means)"
-                            : " adjacent label-set transitions");
-            return (nullMember ? "Selected null member " : "Captured real comparison scope ") + metric + ": "
-                    + support + (nullMember ? " (not compared with the real comparison row)"
+                    : value + " from " + denominator
+                            + ("confirmationLagBars".equals(metric)
+                                    ? " complete candidate observations (candidate-pivot means)"
+                                    : " adjacent label-set transitions");
+            return (nullMember ? "Selected null member " : "Captured real comparison scope ") + metric + ": " + support
+                    + (nullMember ? " (not compared with the real comparison row)"
                             : denominator == 0 ? " -> unavailable (no contributions)" : " -> match");
         }
     }
@@ -442,7 +445,8 @@ final class ReplayTraceIndex {
         }
         if ("topology".equals(kind) && (!direction.isJsonNull() && !isWaveDirection(direction.getAsString())
                 || direction.isJsonNull() && "FORMING".equals(status))) {
-            throw corrupt(display, line, where + "direction must be a wave direction, and must not be null for FORMING");
+            throw corrupt(display, line,
+                    where + "direction must be a wave direction, and must not be null for FORMING");
         }
         if ("alternative".equals(kind) && !direction.isJsonNull()) {
             throw corrupt(display, line, where + "direction must be null for an alternative outcome");
@@ -486,12 +490,11 @@ final class ReplayTraceIndex {
             }
         }
         final JsonArray candidates = requireArray(display, line, record, "candidates", where);
-        if ("topology".equals(kind) && (candidates.size() > 64
-                || "COMPLETE".equals(status) && candidates.size() != 1
+        if ("topology".equals(kind) && (candidates.size() > 64 || "COMPLETE".equals(status) && candidates.size() != 1
                 || "AMBIGUOUS".equals(status) && candidates.size() < 2
                 || !"COMPLETE".equals(status) && !"AMBIGUOUS".equals(status) && !candidates.isEmpty())) {
-            throw corrupt(display, line, where
-                    + "candidates must match status (COMPLETE: 1, AMBIGUOUS: 2-64, all other states: 0)");
+            throw corrupt(display, line,
+                    where + "candidates must match status (COMPLETE: 1, AMBIGUOUS: 2-64, all other states: 0)");
         }
         int requiredPivots = 0;
         final Set<String> candidateKeys = candidates.size() > 1 ? new HashSet<>(candidates.size()) : null;
@@ -561,8 +564,8 @@ final class ReplayTraceIndex {
                         final BigDecimal value = score.getAsBigDecimal();
                         if (!"PASS".equals(text(rule, "state")) || value.signum() < 0
                                 || value.compareTo(BigDecimal.ONE) > 0) {
-                            throw corrupt(display, line, ruleAt
-                                    + ".score must be null unless PASS and otherwise within [0, 1]");
+                            throw corrupt(display, line,
+                                    ruleAt + ".score must be null unless PASS and otherwise within [0, 1]");
                         }
                     } catch (final NumberFormatException | ArithmeticException e) {
                         throw corrupt(display, line, ruleAt + ".score is not a supported finite number");
@@ -597,8 +600,8 @@ final class ReplayTraceIndex {
                 final boolean rising = (corrective ? leg == 1 : leg % 2 == 0) == bullish;
                 final int change = placementPrices.get(p).compareTo(placementPrices.get(p - 1));
                 if (rising ? change <= 0 : change >= 0) {
-                    throw corrupt(display, line, at + ".placement[" + p
-                            + "] must move strictly in the expected direction for its grammar");
+                    throw corrupt(display, line,
+                            at + ".placement[" + p + "] must move strictly in the expected direction for its grammar");
                 }
             }
             int visibleIndex = 0;
@@ -610,8 +613,10 @@ final class ReplayTraceIndex {
                 }
                 while (visibleIndex < pivots.size()
                         && pivots.get(visibleIndex).getAsJsonObject().get("index").getAsInt() < index) {
-                    if (p > 0
-                            && pivots.get(visibleIndex).getAsJsonObject().get("confirmationIndex").getAsInt() <= asOfIndex) {
+                    if (p > 0 && pivots.get(visibleIndex)
+                            .getAsJsonObject()
+                            .get("confirmationIndex")
+                            .getAsInt() <= asOfIndex) {
                         throw corrupt(display, line,
                                 at + ".placement[" + p + "] must follow the preceding visible pivot contiguously");
                     }
@@ -633,12 +638,11 @@ final class ReplayTraceIndex {
             // Future entries may be leaked additions or recorded members with bad
             // confirmation times. Reject only a history contradiction either way.
             if (insufficient && confirmedPivotCount >= 2 || !insufficient && pivots.size() < 2) {
-                throw corrupt(display, line, where + "status " + status
-                        + " conflicts with the confirmed/captured pivot history");
+                throw corrupt(display, line,
+                        where + "status " + status + " conflicts with the confirmed/captured pivot history");
             }
             if ("COMPLETE".equals(status)) {
-                if (direction.isJsonNull()
-                        || !direction.equals(candidates.get(0).getAsJsonObject().get("direction"))) {
+                if (direction.isJsonNull() || !direction.equals(candidates.get(0).getAsJsonObject().get("direction"))) {
                     throw corrupt(display, line, where + "direction must match the COMPLETE candidate");
                 }
             } else if (!"FORMING".equals(status) && !direction.isJsonNull()) {
@@ -671,8 +675,8 @@ final class ReplayTraceIndex {
         if ("FORMING".equals(status)) {
             final int asOfIndex = record.get("asOfIndex").getAsInt();
             if (formingStart < 0 || formingEnd < formingStart || formingEnd > asOfIndex) {
-                throw corrupt(display, line, where
-                        + "formingStartBarIndex/formingEndBarIndex must be ordered within the as-of view");
+                throw corrupt(display, line,
+                        where + "formingStartBarIndex/formingEndBarIndex must be ordered within the as-of view");
             }
             int startPosition = -1;
             int endPosition = -1;
@@ -708,8 +712,7 @@ final class ReplayTraceIndex {
             }
             final boolean bullish = "BULLISH".equals(text(record, "direction"));
             final boolean corrective = "CORRECTIVE_3".equals(text(record, "grammar"));
-            if ((bullish != corrective)
-                    != "LOW".equals(text(pivots.get(startPosition).getAsJsonObject(), "type"))) {
+            if ((bullish != corrective) != "LOW".equals(text(pivots.get(startPosition).getAsJsonObject(), "type"))) {
                 throw corrupt(display, line, where + "forming suffix has the wrong origin type for its direction");
             }
             int previous = startPosition;
@@ -726,8 +729,8 @@ final class ReplayTraceIndex {
                 leg++;
             }
         } else if (formingStart != -1 || formingEnd != -1) {
-            throw corrupt(display, line, where
-                    + "formingStartBarIndex/formingEndBarIndex must both be -1 outside FORMING");
+            throw corrupt(display, line,
+                    where + "formingStartBarIndex/formingEndBarIndex must both be -1 outside FORMING");
         }
         return switch (status) {
         case "COMPLETE", "AMBIGUOUS" -> {
@@ -735,9 +738,9 @@ final class ReplayTraceIndex {
             for (final JsonElement element : candidates) {
                 final JsonObject candidate = element.getAsJsonObject();
                 final JsonArray placement = candidate.getAsJsonArray("placement");
-                labels.add(text(candidate, "direction") + ":"
-                        + placement.get(0).getAsJsonObject().get("index").getAsInt() + "-"
-                        + placement.get(placement.size() - 1).getAsJsonObject().get("index").getAsInt());
+                labels.add(
+                        text(candidate, "direction") + ":" + placement.get(0).getAsJsonObject().get("index").getAsInt()
+                                + "-" + placement.get(placement.size() - 1).getAsJsonObject().get("index").getAsInt());
             }
             yield labels;
         }
@@ -769,8 +772,8 @@ final class ReplayTraceIndex {
         final int segmentLegs = switch (grammar) {
         case "3+3" -> 3;
         case "5+5" -> 5;
-        case "MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3" -> throw corrupt(display, line,
-                where + "grammar is a topology grammar but kind is alternative");
+        case "MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3" ->
+            throw corrupt(display, line, where + "grammar is a topology grammar but kind is alternative");
         default -> throw corrupt(display, line, where + "grammar is not a supported alternative grammar");
         };
         final Set<String> labels = new HashSet<>();
@@ -795,7 +798,8 @@ final class ReplayTraceIndex {
                     final int start = pivots.size() - suffix;
                     if (matchesAlternative(pivots, prices, start, suffix, segmentLegs, false)) {
                         final String direction = "LOW".equals(text(pivots.get(start).getAsJsonObject(), "type"))
-                                ? "BULLISH" : "BEARISH";
+                                ? "BULLISH"
+                                : "BEARISH";
                         labels.add(direction + ":" + pivots.get(start).getAsJsonObject().get("index").getAsInt() + "-"
                                 + pivots.get(pivots.size() - 1).getAsJsonObject().get("index").getAsInt());
                     }
@@ -807,7 +811,8 @@ final class ReplayTraceIndex {
             }
         }
         if (!status.equals(expectedStatus)) {
-            throw corrupt(display, line, where + "status does not match the visible pivots: expected " + expectedStatus);
+            throw corrupt(display, line,
+                    where + "status does not match the visible pivots: expected " + expectedStatus);
         }
         return labels;
     }
@@ -908,8 +913,8 @@ final class ReplayTraceIndex {
         }
     }
 
-    private static int requireInteger(final String display, final long line, final JsonObject owner,
-            final String field, final String where) {
+    private static int requireInteger(final String display, final long line, final JsonObject owner, final String field,
+            final String where) {
         final JsonElement value = owner.get(field);
         if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
             throw corrupt(display, line, where + field + " is missing or not an integer");

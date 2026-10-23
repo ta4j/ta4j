@@ -30,12 +30,13 @@ import com.google.gson.JsonParser;
  * against the file contract and not against test classes of another module.
  *
  * <p>
- * The bundle holds {@value #BARS} daily bars, the complete configured row inventory
- * and its six recorded streams: motive topology, four cycle ablations and the
- * competing recognizer. All candidate pivots are strictly ordered, alternating
- * and confirmed before first appearance. Bullish cycle candidate A exists from
- * bar 23 and has revised rule evidence at bar 33; bearish candidate B exists on
- * bars 33 to 40. Their keys and versions follow the research writer protocol.
+ * The bundle holds {@value #BARS} daily bars, the complete configured row
+ * inventory and its six recorded streams: motive topology, four cycle ablations
+ * and the competing recognizer. All candidate pivots are strictly ordered,
+ * alternating and confirmed before first appearance. Bullish cycle candidate A
+ * exists from bar 23 and has revised rule evidence at bar 33; bearish candidate
+ * B exists on bars 33 to 40. Their keys and versions follow the research writer
+ * protocol.
  */
 final class ReplayFixture {
 
@@ -48,11 +49,10 @@ final class ReplayFixture {
     static final String COMPETING_KEY = "d1|competing|competing-3+3|fractal-w5|calibration|ambiguousRate|b-";
     static final Instant START = Instant.parse("2020-01-01T00:00:00Z");
 
-    private static final int[][] PIVOTS = { { 0, 0, 0 }, { 1, 1, 1 }, { 2, 0, 2 }, { 5, 1, 8 },
-            { 12, 0, 15 }, { 20, 1, 23 }, { 30, 0, 33 }, { 40, 1, 43 } };
-    private static final int[][] CYCLE_PIVOTS = { { 0, 0, 0 }, { 1, 1, 1 }, { 2, 0, 2 }, { 3, 1, 3 },
-            { 4, 0, 4 }, { 5, 1, 8 }, { 6, 0, 9 }, { 12, 1, 15 }, { 20, 0, 23 }, { 30, 1, 33 },
-            { 40, 0, 43 } };
+    private static final int[][] PIVOTS = { { 0, 0, 0 }, { 1, 1, 1 }, { 2, 0, 2 }, { 5, 1, 8 }, { 12, 0, 15 },
+            { 20, 1, 23 }, { 30, 0, 33 }, { 40, 1, 43 } };
+    private static final int[][] CYCLE_PIVOTS = { { 0, 0, 0 }, { 1, 1, 1 }, { 2, 0, 2 }, { 3, 1, 3 }, { 4, 0, 4 },
+            { 5, 1, 8 }, { 6, 0, 9 }, { 12, 1, 15 }, { 20, 0, 23 }, { 30, 1, 33 }, { 40, 0, 43 } };
     static final String CANDIDATE_A = candidate(0, false, true).get("candidateKey").getAsString();
     static final String CANDIDATE_B = candidate(1, false, true).get("candidateKey").getAsString();
     static final String A_VERSION_1 = candidate(0, false, true).get("version").getAsString();
@@ -215,7 +215,10 @@ final class ReplayFixture {
     static void refreshTraceDigest(final Path directory, final String relative) throws IOException {
         final Path metadata = directory.resolve("run.json");
         final JsonObject run = JsonParser.parseString(Files.readString(metadata)).getAsJsonObject();
-        run.getAsJsonArray("datasets").get(0).getAsJsonObject().getAsJsonObject("traceSha256")
+        run.getAsJsonArray("datasets")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("traceSha256")
                 .addProperty(relative, ReplayArtifact.sha256(Files.readAllBytes(directory.resolve(relative))));
         Files.writeString(metadata, run.toString(), StandardCharsets.UTF_8);
     }
@@ -227,8 +230,8 @@ final class ReplayFixture {
         csv.append(row("h2", "all-rules", List.of("wave2-origin", "wave3-not-shortest"), "ambiguousRate")).append('\n');
         csv.append(row("h1", "topology-only", List.of(), "ambiguousRate")).append('\n');
         csv.append(row("competing", "competing-3+3", List.of(), "ambiguousRate")).append('\n');
-        for (final String mode : List.of("all-rules", "h1", "competing-3+3", "topology-only",
-                "+wave2-origin", "+wave3-not-shortest")) {
+        for (final String mode : List.of("all-rules", "h1", "competing-3+3", "topology-only", "+wave2-origin",
+                "+wave3-not-shortest")) {
             final String section = "h1".equals(mode) ? "h1" : mode.startsWith("competing-") ? "competing" : "h2";
             final String recordedMode = "h1".equals(mode) ? "topology-only" : mode;
             final List<String> rules = mode.startsWith("+") ? List.of(mode.substring(1))
@@ -283,14 +286,12 @@ final class ReplayFixture {
         final String block = competing ? "" : "20";
         final String key = String.join("|", DATASET, section, mode, "fractal-w5", "calibration", metric,
                 competing ? "b-" : "b20");
-        return String.join(",", key, DATASET, "FIXTURE", section, mode, grammar, String.join(";", rules),
-                "fractal-w5", competing ? "unmatched-recognizer"
-                        : rules.isEmpty() ? "kernel-topology" : "kernel-topology+evidence",
+        return String.join(",", key, DATASET, "FIXTURE", section, mode, grammar, String.join(";", rules), "fractal-w5",
+                competing ? "unmatched-recognizer" : rules.isEmpty() ? "kernel-topology" : "kernel-topology+evidence",
                 "calibration", metric, block, value, rate ? Long.toString(numerator) : "",
                 rate ? Long.toString(denominator) : "", competing ? "0" : Double.isNaN(observed) ? "0" : "5",
-                competing ? "0" : "5", !competing && Double.isNaN(observed) ? "5" : "0",
-                competing ? "" : value, competing ? "" : value, competing ? "" : value,
-                competing || Double.isNaN(observed) ? "" : "0",
+                competing ? "0" : "5", !competing && Double.isNaN(observed) ? "5" : "0", competing ? "" : value,
+                competing ? "" : value, competing ? "" : value, competing || Double.isNaN(observed) ? "" : "0",
                 competing || Double.isNaN(observed) ? "" : "1",
                 Double.isNaN(observed) ? "unavailable" : competing ? "not-comparable" : "available");
     }
@@ -511,7 +512,8 @@ final class ReplayFixture {
                 observations.add("wave 2 evidence confirmed at bar 33");
             }
             rule.add("observations", observations);
-            rule.addProperty("explanation", "wave 2 may not retrace the whole of wave 1 (" + (skip == 0 ? "A" : "B") + ")");
+            rule.addProperty("explanation",
+                    "wave 2 may not retrace the whole of wave 1 (" + (skip == 0 ? "A" : "B") + ")");
             ruleArray.add(rule);
             final JsonObject second = new JsonObject();
             second.addProperty("id", "wave3-not-shortest");
@@ -574,8 +576,12 @@ final class ReplayFixture {
                 .append(candidate.get("direction").getAsString());
         for (final var point : candidate.getAsJsonArray("placement")) {
             final JsonObject pivot = point.getAsJsonObject();
-            identity.append('|').append(pivot.get("index").getAsInt()).append(':')
-                    .append(pivot.get("type").getAsString()).append(':').append(pivot.get("price").getAsString());
+            identity.append('|')
+                    .append(pivot.get("index").getAsInt())
+                    .append(':')
+                    .append(pivot.get("type").getAsString())
+                    .append(':')
+                    .append(pivot.get("price").getAsString());
         }
         candidate.addProperty("candidateKey", digest(identity.toString()));
         refreshVersion(candidate);
@@ -584,7 +590,8 @@ final class ReplayFixture {
     private static String digest(final String value) {
         try {
             return HexFormat.of()
-                    .formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)), 0, 16);
+                    .formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)), 0,
+                            16);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is mandatory on every Java platform", e);
         }
