@@ -78,8 +78,9 @@ final class FrozenProtocolStudy {
      * <p>
      * The listener may attach an observer and receives each completed report; it
      * can never change the protocol's analytical configuration. A dataset that
-     * fails to load or evaluate is handed to {@link DatasetListener#failed}; the
-     * default listener rethrows, preserving the fail-fast frozen path.
+     * fails during observation, loading, evaluation, or report writing is handed to
+     * {@link DatasetListener#failed}; the default listener rethrows, preserving the
+     * fail-fast frozen path and checked I/O failures.
      * </p>
      *
      * @param protocol  verified study protocol
@@ -210,13 +211,19 @@ final class FrozenProtocolStudy {
         }
 
         /**
-         * Receives one dataset that failed to load or evaluate.
+         * Receives one dataset that failed during observation, loading, evaluation, or
+         * report writing. The default listener rethrows I/O causes checked and leaves
+         * other runtime failures unchanged.
          *
          * @param datasetId protocol dataset id
-         * @param failure   load or evaluation failure
-         * @throws IOException when failure artifacts cannot be written
+         * @param failure   observation, load, evaluation, or report-writing failure
+         * @throws IOException when dataset I/O fails or failure artifacts cannot be
+         *                     written
          */
         default void failed(final String datasetId, final RuntimeException failure) throws IOException {
+            if (failure instanceof UncheckedIOException ioFailure) {
+                throw ioFailure.getCause();
+            }
             throw failure;
         }
     }

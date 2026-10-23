@@ -8,20 +8,31 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mockStatic;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import com.google.gson.JsonArray;
@@ -32,6 +43,7 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.MockedStatic;
 
 /**
  * Behavioural tests for the Elliott research launcher.
@@ -289,6 +301,93 @@ class ElliottResearchTest {
         assertEquals(0, result.code(), result.err());
         assertEquals(candles, Files.readString(source));
         assertEquals(definition, Files.readString(recipe));
+    }
+
+    @Test
+    public void metadataFailuresPreserveTheLastValidSnapshotAndCleanTemporaryFiles() throws Exception {
+        final Path candles = work.resolve("metadata-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 3, date -> true);
+        final Path recipe = work.resolve("metadata-recipe.json");
+        Files.writeString(recipe, toyRecipe("metadata"));
+        for (final int failingWrite : List.of(2, 3)) {
+            for (final String failurePoint : List.of("write", "replace", "unsupported-atomic")) {
+                final Path out = work.resolve("metadata-" + failingWrite + "-" + failurePoint);
+                final Path metadata = out.resolve("run.json");
+                final AtomicInteger writes = new AtomicInteger();
+                final AtomicInteger replacements = new AtomicInteger();
+                final AtomicReference<String> previous = new AtomicReference<>();
+                final Result result;
+                try (MockedStatic<Files> files = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+                    files.when(() -> Files.writeString(any(Path.class), any(CharSequence.class),
+                            eq(StandardCharsets.UTF_8), any(OpenOption[].class))).thenAnswer(invocation -> {
+                                final Path file = invocation.getArgument(0);
+                                if (out.equals(file.getParent()) && file.getFileName().toString().startsWith("run.json")
+                                        && writes.incrementAndGet() >= failingWrite && "write".equals(failurePoint)) {
+                                    if (previous.get() == null) {
+                                        previous.set(Files.readString(metadata, StandardCharsets.UTF_8));
+                                    }
+                                    try (OutputStream output = Files.newOutputStream(file, StandardOpenOption.WRITE,
+                                            StandardOpenOption.TRUNCATE_EXISTING)) {
+                                        output.write('{');
+                                    }
+                                    throw new IOException("injected partial metadata write");
+                                }
+                                return invocation.callRealMethod();
+                            });
+                    files.when(() -> Files.move(any(Path.class), eq(metadata), any(CopyOption[].class)))
+                            .thenAnswer(invocation -> {
+                                final Path temporary = invocation.getArgument(0);
+                                final CopyOption[] options = (CopyOption[]) invocation.getRawArguments()[2];
+                                assertTrue(List.of(options).contains(StandardCopyOption.ATOMIC_MOVE),
+                                        "metadata replacement must never fall back to a non-atomic move");
+                                if (replacements.incrementAndGet() >= failingWrite && !"write".equals(failurePoint)) {
+                                    if (previous.get() == null) {
+                                        previous.set(Files.readString(metadata, StandardCharsets.UTF_8));
+                                    }
+                                    assertEquals(ElliottResearch.SCHEMA,
+                                            readJson(temporary).get("artifactSchemaVersion").getAsString());
+                                    if ("unsupported-atomic".equals(failurePoint)) {
+                                        throw new AtomicMoveNotSupportedException(temporary.toString(),
+                                                metadata.toString(), "injected unsupported atomic replacement");
+                                    }
+                                    throw new IOException("injected metadata replacement failure");
+                                }
+                                return invocation.callRealMethod();
+                            });
+                    result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                            "--out", out.toString());
+                }
+                assertEquals(1, result.code(), result.err());
+                assertTrue(result.err().contains("injected"), result.err());
+                assertNotNull(previous.get(), "the failure must follow an already published valid snapshot");
+                assertEquals(previous.get(), Files.readString(metadata, StandardCharsets.UTF_8));
+                final JsonObject preserved = readJson(metadata);
+                assertEquals(ElliottResearch.SCHEMA, preserved.get("artifactSchemaVersion").getAsString());
+                assertEquals("running", preserved.get("status").getAsString());
+                assertEquals(failingWrite == 2 ? "pending" : "complete",
+                        preserved.getAsJsonArray("datasets").get(0).getAsJsonObject().get("status").getAsString());
+                assertNoMetadataTemporaryFiles(out);
+
+                final Result recovered = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                        recipe.toString(), "--out", out.toString(), "--overwrite");
+                assertEquals(0, recovered.code(), recovered.err());
+                final JsonObject complete = readJson(metadata);
+                assertEquals("complete", complete.get("status").getAsString());
+                assertEquals(
+                        HexFormat.of()
+                                .formatHex(MessageDigest.getInstance("SHA-256")
+                                        .digest(Files.readAllBytes(out.resolve("comparisons.csv")))),
+                        complete.get("comparisonsSha256").getAsString());
+                assertNoMetadataTemporaryFiles(out);
+            }
+        }
+    }
+
+    private static void assertNoMetadataTemporaryFiles(final Path dir) throws IOException {
+        try (Stream<Path> children = Files.list(dir)) {
+            assertEquals(List.of(),
+                    children.filter(child -> child.getFileName().toString().startsWith("run.json-")).toList());
+        }
     }
 
     @Test
@@ -609,6 +708,38 @@ class ElliottResearchTest {
         final JsonObject candleFile = new JsonObject();
         candleFile.add("candles", array);
         Files.writeString(file, candleFile.toString());
+    }
+
+    @Test
+    public void exploreRecipeRequiresSemanticPartitionOrderBeforeCreatingArtifacts() throws Exception {
+        final Path candles = work.resolve("partition-order-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 3, date -> true);
+        final Path recipe = work.resolve("partition-order-recipe.json");
+        final List<String> expectedOrder = List.of("calibration", "validation", "holdout");
+        int index = 0;
+        for (final List<String> order : List.of(expectedOrder, List.of("validation", "calibration", "holdout"),
+                List.of("calibration", "holdout", "validation"), List.of("holdout", "validation", "calibration"),
+                List.of("validation", "holdout", "calibration"), List.of("holdout", "calibration", "validation"))) {
+            final JsonObject definition = JsonParser.parseString(toyRecipe("partition-order")).getAsJsonObject();
+            final JsonArray partitions = definition.getAsJsonArray("partitions");
+            for (int partition = 0; partition < order.size(); partition++) {
+                partitions.get(partition).getAsJsonObject().addProperty("name", order.get(partition));
+            }
+            Files.writeString(recipe, definition.toString());
+            final Path out = work.resolve("partition-order-" + index++);
+            final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                    recipe.toString(), "--out", out.toString());
+            if (expectedOrder.equals(order)) {
+                assertEquals(0, result.code(), result.err());
+                assertEquals(partitions, readJson(out.resolve("run.json")).getAsJsonObject("configuration")
+                        .getAsJsonArray("partitions"));
+            } else {
+                assertEquals(1, result.code(), order + ": " + result.err());
+                assertTrue(result.err().contains("recipe.partitions invalid"), result.err());
+                assertTrue(result.err().contains("calibration -> validation -> holdout"), result.err());
+                assertFalse(Files.exists(out), order.toString());
+            }
+        }
     }
 
     @Test

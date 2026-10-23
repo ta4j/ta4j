@@ -17,6 +17,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
@@ -553,8 +554,13 @@ final class ElliottResearch {
         try {
             runnerPartitions = new StudyRunner.Partitions(partitions,
                     date(required(root, "forbiddenCalibrationStart", "recipe"), "recipe.forbiddenCalibrationStart"));
-            runnerPartitions.validation();
-            runnerPartitions.holdout();
+            final StudyRunner.Partition calibration = runnerPartitions.calibration();
+            final StudyRunner.Partition validation = runnerPartitions.validation();
+            final StudyRunner.Partition holdout = runnerPartitions.holdout();
+            if (!calibration.end().isBefore(validation.start()) || !validation.end().isBefore(holdout.start())) {
+                throw new IllegalArgumentException(
+                        "calibration -> validation -> holdout must be in chronological order");
+            }
             runnerPartitions.assertCalibrationConfiguration();
         } catch (final IllegalStateException | IllegalArgumentException e) {
             throw new IllegalArgumentException("recipe.partitions invalid: " + e.getMessage());
@@ -1025,7 +1031,7 @@ final class ElliottResearch {
         }
 
         void start() throws IOException {
-            writeRunJson();
+            writeRunJson(toJson());
         }
 
         StudyObserver observer(final String id) throws IOException {
@@ -1117,7 +1123,7 @@ final class ElliottResearch {
                 entry.report = relative(reportFile);
                 applyCoverage(entry, series);
                 entry.status = "complete";
-                writeRunJson();
+                writeRunJson(toJson());
             } catch (final IOException | RuntimeException failure) {
                 fail(id, failure);
             }
@@ -1249,7 +1255,7 @@ final class ElliottResearch {
             entry.coverageStatus = "failed";
             entry.coverageMessage = entry.message;
             try {
-                writeRunJson();
+                writeRunJson(toJson());
             } catch (final IOException e) {
                 throw new UncheckedIOException(e);
             }
@@ -1262,12 +1268,23 @@ final class ElliottResearch {
             final JsonObject json = toJson();
             json.addProperty("comparisonsSha256", sha256(Files.readAllBytes(dir.resolve(COMPARISONS_FILE))));
             ElliottResearchReport.writeCoverage(dir.resolve(COVERAGE_FILE), coverage(json));
-            Files.writeString(dir.resolve(RUN_FILE), GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
+            writeRunJson(json);
             writeSummary(dir, renderSummary(dir, json, rows));
         }
 
-        private void writeRunJson() throws IOException {
-            Files.writeString(dir.resolve(RUN_FILE), GSON.toJson(toJson()) + "\n", StandardCharsets.UTF_8);
+        /**
+         * Publishes only a complete metadata snapshot. If atomic replacement is
+         * unsupported or any write fails, the previous run file remains recoverable.
+         */
+        private void writeRunJson(final JsonObject json) throws IOException {
+            final Path temporary = Files.createTempFile(dir, RUN_FILE + "-", ".tmp");
+            try {
+                Files.writeString(temporary, GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
+                Files.move(temporary, dir.resolve(RUN_FILE), StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+            } finally {
+                Files.deleteIfExists(temporary);
+            }
         }
 
         private String relative(final Path path) {

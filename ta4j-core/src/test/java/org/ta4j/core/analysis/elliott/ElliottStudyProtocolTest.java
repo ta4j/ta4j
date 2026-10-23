@@ -8,15 +8,23 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.ta4j.core.analysis.elliott.swing.SwingDetector;
@@ -155,5 +163,65 @@ class ElliottStudyProtocolTest {
             }
             assertNotNull(detector, configuration.name());
         }
+    }
+
+    @Test
+    public void defaultDatasetListenerRethrowsReportWriteFailureAsChecked(@TempDir final Path directory)
+            throws IOException {
+        final String datasetId = PROTOCOL.datasets().get(0).id();
+        final Path target = Files.createDirectory(directory.resolve(datasetId + ".json"));
+        final IOException failure = assertThrows(IOException.class, () -> Files.writeString(target, "{}"));
+        final UncheckedIOException wrapped = new UncheckedIOException(
+                "cannot write study report " + target + ": " + failure.getMessage(), failure);
+
+        assertSame(failure, assertThrows(IOException.class,
+                () -> FrozenProtocolStudy.DatasetListener.NONE.failed(datasetId, wrapped)));
+    }
+
+    @Test
+    public void defaultDatasetListenerRethrowsObserverOpenFailureAsChecked(@TempDir final Path directory)
+            throws IOException {
+        final ElliottStudyProtocol.DatasetSpec dataset = PROTOCOL.datasets().get(0);
+        final Path target = Files.createDirectory(directory.resolve(dataset.id() + "-real.jsonl"));
+        final IOException failure = assertThrows(IOException.class,
+                () -> ElliottResearchTrace.open(target, dataset.id(), "test-revision", PROTOCOL.fingerprintSha256(),
+                        dataset.sha256(), ElliottResearchTrace.MODE_REAL, -1, -1));
+        final UncheckedIOException wrapped = new UncheckedIOException(
+                "cannot open study observer for " + dataset.id() + ": " + failure.getMessage(), failure);
+
+        assertSame(failure, assertThrows(IOException.class,
+                () -> FrozenProtocolStudy.DatasetListener.NONE.failed(dataset.id(), wrapped)));
+    }
+
+    @Test
+    public void defaultDatasetListenerRethrowsOtherRuntimeFailuresUnchanged() {
+        final IllegalStateException failure = new IllegalStateException("evaluation failed",
+                new IOException("not an unchecked I/O wrapper"));
+
+        assertSame(failure, assertThrows(IllegalStateException.class,
+                () -> FrozenProtocolStudy.DatasetListener.NONE.failed(PROTOCOL.datasets().get(0).id(), failure)));
+    }
+
+    @Test
+    public void customDatasetListenerReceivesUncheckedIoFailuresAndContinuesCallbacks() throws IOException {
+        final List<String> datasetIds = new ArrayList<>();
+        final List<RuntimeException> failures = new ArrayList<>();
+        final FrozenProtocolStudy.DatasetListener listener = new FrozenProtocolStudy.DatasetListener() {
+            @Override
+            public void failed(final String datasetId, final RuntimeException failure) {
+                datasetIds.add(datasetId);
+                failures.add(failure);
+            }
+        };
+        final UncheckedIOException reportFailure = new UncheckedIOException("cannot write study report",
+                new IOException("report target is a directory"));
+        final UncheckedIOException observerFailure = new UncheckedIOException("cannot open study observer",
+                new IOException("observer target is a directory"));
+
+        listener.failed(PROTOCOL.datasets().get(0).id(), reportFailure);
+        listener.failed(PROTOCOL.datasets().get(1).id(), observerFailure);
+
+        assertEquals(List.of("primary", "transfer-portability"), datasetIds);
+        assertEquals(List.of(reportFailure, observerFailure), failures);
     }
 }

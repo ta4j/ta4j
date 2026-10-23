@@ -187,6 +187,8 @@ interpreted as formulas by spreadsheet CSV readers. Control characters and line
 separators are rejected anywhere in these labels before artifacts are created.
 Recipes' `activeRules` order is preserved in execution, individual ablations,
 reports, comparisons and trace evidence.
+Explore partitions must name and chronologically order `calibration`, `validation`
+and `holdout`; permuting those phase names is rejected before creating artifacts.
 `--trace off|real|selected-null-member` with
 `--block L --member M` controls evidence capture; `--overwrite` reuses an existing
 run directory. For `explore --overwrite`, move the source candles and recipe outside
@@ -203,6 +205,8 @@ metric and null block length), `coverage.csv`, `summary.md`, `traces/`
 a second run into the same directory is refused. `summarize` validates run metadata
 before creating a lock file, then holds the same lock while reading evidence and
 replacing artifacts, refusing while a run is writing.
+Metadata checkpoints and final `run.json` publication replace a completed sibling
+temporary file atomically, preserving the previous valid metadata on write failure.
 Run and summary locks refuse symbolic links at `.run.lock`, including dangling links,
 without creating or locking their targets outside the run directory.
 Completed metadata binds `comparisons.csv` with `comparisonsSha256` and each listed trace
