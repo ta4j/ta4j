@@ -256,6 +256,18 @@ placed pivots in the captured visible pivots and averages each candidate's confi
 lags before averaging across candidates, matching the producer's weighting. It verifies
 the observed value, identifies the supporting as-of bars and reports a selected null
 member's own mean separately from the ensemble reference.
+For the occupancy, ambiguity and no-match rates, support is counted per as-of observation;
+for evidence pass rate it is counted per rule evaluation on complete candidates, and
+for joint pass rate per complete candidate with active rules. Inspection verifies each
+rate's numerator, denominator and observed value, including unavailable `0/0` rows,
+and refuses mismatches with the recapture diagnostic rather than displaying them as evidence.
+A selected null member reports its own counts and rate (including `0/0 = NaN`), never
+an asserted match against the real-data row or the ensemble reference.
+Rates with no contributing observations, confirmation lag with no complete topology
+candidates (including alternative grammars), and stability with no adjacent observations
+are explicitly unavailable, not numeric matches. A single selected null-member trace
+cannot reconstruct ensemble medians, bands or reference ranks; those remain the
+recorded report's non-inferential reference, not claims about that member's trace.
 All trace indices and coordinates must fit a signed 32-bit integer; the footer count must
 match exactly without numeric narrowing. When the trace is missing,
 truncated or corrupt, inspection exits with status 2 and prints the recapture

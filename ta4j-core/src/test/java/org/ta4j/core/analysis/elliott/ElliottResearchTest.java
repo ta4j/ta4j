@@ -1439,6 +1439,119 @@ class ElliottResearchTest {
                 && mismatch.err().contains("Recapture with:"), mismatch.err());
     }
 
+    @Test
+    public void inspectChecksEveryRatioValueAndCountIncludingUnavailableRows() throws Exception {
+        final List<ElliottResearchReport.Row> rows = ElliottResearchReport.readCsv(smokeRun.resolve("comparisons.csv"));
+        for (final String scopeMetric : List.of("calibration|completeOccupancyRate", "calibration|ambiguousRate",
+                "calibration|noMatchRate", "calibration|evidencePassRate", "calibration|jointPassRate",
+                "validation|evidencePassRate", "validation|jointPassRate")) {
+            final String key = "smoke|h2|all-rules|fractal-w5|" + scopeMetric + "|b20";
+            final Result valid = launch("inspect", smokeRun.toString(), key);
+            assertEquals(0, valid.code(), valid.err());
+            assertTrue(valid.out().contains(scopeMetric.startsWith("validation|") ? "-> unavailable" : "-> match"),
+                    valid.out());
+            final Path copy = work.resolve("ratio-" + scopeMetric.replace('|', '-'));
+            copyTree(smokeRun, copy);
+            for (final String changed : List.of("observed", "numerator", "denominator")) {
+                final List<ElliottResearchReport.Row> mutated = new ArrayList<>(rows.size());
+                for (final ElliottResearchReport.Row row : rows) {
+                    if (!key.equals(row.key())) {
+                        mutated.add(row);
+                        continue;
+                    }
+                    final double observed = "observed".equals(changed)
+                            ? (Double.isFinite(row.observed()) ? row.observed() : 0.0d) + 0.125d
+                            : row.observed();
+                    mutated.add(new ElliottResearchReport.Row(row.dataset(), row.asset(), row.section(), row.mode(),
+                            row.grammar(), row.activeRules(), row.detector(), row.policy(), row.partition(),
+                            row.metric(), row.nullBlockLength(), observed,
+                            row.numerator() + ("numerator".equals(changed) ? 1 : 0),
+                            row.denominator() + ("denominator".equals(changed) ? 1 : 0), row.validNullMembers(),
+                            row.requestedNullMembers(), row.unavailableNullMembers(), row.nullMedian(), row.nullLow(),
+                            row.nullHigh(), row.observedMinusNullMedian(), row.empiricalReferenceRank(),
+                            row.availability()));
+                }
+                final Path csv = copy.resolve("comparisons.csv");
+                ElliottResearchReport.writeCsv(csv, mutated);
+                final JsonObject run = readJson(copy.resolve("run.json"));
+                run.addProperty("comparisonsSha256",
+                        HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(csv))));
+                Files.writeString(copy.resolve("run.json"), run.toString());
+                final Result rejected = launch("inspect", copy.toString(), key);
+                assertEquals(2, rejected.code(), changed + ": " + rejected.out() + rejected.err());
+                assertTrue(rejected.err().contains("contributions do not match")
+                        && rejected.err().contains("Recapture with:"), rejected.err());
+            }
+        }
+    }
+
+    @Test
+    public void inspectRefusesEveryRatioWhenRecordedCompleteObservationIsMissing() throws Exception {
+        final Path copy = work.resolve("ratios-missing-complete-observation");
+        copyTree(smokeRun, copy);
+        final String relative = "traces/smoke-real.jsonl";
+        final Path trace = copy.resolve(relative);
+        final List<String> lines = new ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
+        boolean removed = false;
+        for (int i = 1; i < lines.size() - 1; i++) {
+            final JsonObject record = JsonParser.parseString(lines.get(i)).getAsJsonObject();
+            if ("h2".equals(record.get("section").getAsString()) && "all-rules".equals(record.get("mode").getAsString())
+                    && "calibration".equals(record.get("partition").getAsString())
+                    && "COMPLETE".equals(record.get("status").getAsString())) {
+                lines.remove(i);
+                removed = true;
+                break;
+            }
+        }
+        assertTrue(removed, "the fixture must omit a completed observation");
+        final JsonObject footer = JsonParser.parseString(lines.getLast()).getAsJsonObject();
+        footer.addProperty("records", footer.get("records").getAsLong() - 1);
+        lines.set(lines.size() - 1, footer.toString());
+        Files.write(trace, lines, StandardCharsets.UTF_8);
+        final JsonObject run = readJson(copy.resolve("run.json"));
+        run.getAsJsonArray("datasets")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("traceSha256")
+                .addProperty(relative, HexFormat.of()
+                        .formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(trace))));
+        Files.writeString(copy.resolve("run.json"), run.toString());
+        for (final String metric : List.of("completeOccupancyRate", "ambiguousRate", "noMatchRate", "evidencePassRate",
+                "jointPassRate")) {
+            final Result rejected = launch("inspect", copy.toString(),
+                    "smoke|h2|all-rules|fractal-w5|calibration|" + metric + "|b20");
+            assertEquals(2, rejected.code(), rejected.out() + rejected.err());
+            assertTrue(rejected.err().contains("trace " + metric + " contributions do not match")
+                    && rejected.err().contains("Recapture with:"), rejected.err());
+        }
+    }
+
+    @Test
+    public void selectedNullMemberShowsItsOwnUnavailableRatioContributions() {
+        final Path nullSource = work.resolve("ratios-empty-null");
+        final Result captured = launch("run", "smoke", "--trace", "selected-null-member", "--block", "20", "--member",
+                "3", "--out", nullSource.toString());
+        assertEquals(0, captured.code(), captured.err());
+        for (final String metric : List.of("evidencePassRate", "jointPassRate")) {
+            final Result result = launch("inspect", nullSource.toString(),
+                    "smoke|h2|all-rules|fractal-w5|validation|" + metric + "|b20");
+            assertEquals(0, result.code(), result.err());
+            assertTrue(result.out().contains("Null member " + metric + ": 0/0 = NaN"), result.out());
+            assertFalse(result.out().contains("-> match"), result.out());
+        }
+    }
+
+    @Test
+    public void inspectIdentifiesUnavailableConfirmationLagWithoutClaimingANumericMatch() {
+        for (final String key : List.of("smoke|competing|competing-3+3|fractal-w5|calibration|confirmationLagBars|b-",
+                "smoke|h2|all-rules|fractal-w5|validation|confirmationLagBars|b20")) {
+            final Result result = launch("inspect", smokeRun.toString(), key);
+            assertEquals(0, result.code(), result.err());
+            assertTrue(result.out().contains("unavailable (no complete topology candidates)"), result.out());
+            assertFalse(result.out().contains("-> match"), result.out());
+        }
+    }
+
     private void assertModeRuleBinding(final Path source, final String traceName, final boolean nullMember)
             throws Exception {
         for (final boolean reorder : List.of(false, true)) {

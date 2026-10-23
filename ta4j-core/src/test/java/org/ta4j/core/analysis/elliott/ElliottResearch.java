@@ -1956,7 +1956,7 @@ final class ElliottResearch {
                 }
                 out.println("Support check: adjacent label-set Jaccard mean=" + number(mean) + " from "
                         + Math.max(0, real.scope().size() - 1) + " transitions vs row " + number(row.observed())
-                        + " -> match");
+                        + " -> " + (Double.isNaN(mean) ? "unavailable (no adjacent label-set transitions)" : "match"));
             } else if ("confirmationLagBars".equals(row.metric())) {
                 final ConfirmationLag lag = confirmationLag(real.scope());
                 if (Double.compare(lag.mean(), row.observed()) != 0) {
@@ -1965,8 +1965,8 @@ final class ElliottResearch {
                             + ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
                 }
                 out.println("Support check: mean candidate-pivot confirmation lag=" + number(lag.mean()) + " bars from "
-                        + lag.count() + " complete candidate observations vs row " + number(row.observed())
-                        + " -> match");
+                        + lag.count() + " complete candidate observations vs row " + number(row.observed()) + " -> "
+                        + (Double.isNaN(lag.mean()) ? "unavailable (no complete topology candidates)" : "match"));
                 out.println("Supporting as-of indices (" + lag.indices().size() + "): " + limited(lag.indices()));
             } else if (attribution == null) {
                 out.println("Support check: " + row.metric()
@@ -1976,10 +1976,20 @@ final class ElliottResearch {
                         || "jointPassRate".equals(row.metric());
                 final String expected = (evidence ? "recomputed " : "records ") + attribution.numerator + "/"
                         + attribution.denominator;
+                final double observed = attribution.denominator == 0 ? Double.NaN
+                        : attribution.numerator / (double) attribution.denominator;
                 final boolean matches = row.denominator() != null && row.denominator() == attribution.denominator
-                        && row.numerator() != null && row.numerator() == attribution.numerator;
+                        && row.numerator() != null && row.numerator() == attribution.numerator
+                        && Double.compare(observed, row.observed()) == 0;
+                if (!matches) {
+                    throw new Diagnostic(
+                            "trace " + row.metric() + " contributions do not match the selected comparison row: "
+                                    + expected + " = " + number(observed) + " vs row " + row.numerator() + "/"
+                                    + row.denominator() + " = " + number(row.observed()) + ". Recapture with:\n  "
+                                    + ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
+                }
                 out.println("Support check: " + expected + " vs row " + row.numerator() + "/" + row.denominator()
-                        + " -> " + (matches ? "match" : "DIFFERS"));
+                        + " -> " + (attribution.denominator == 0 ? "unavailable (no contributions)" : "match"));
                 out.println("Supportive as-of indices (" + attribution.supportive.size() + "): "
                         + limited(attribution.supportive));
                 out.println("Counterexample as-of indices (" + attribution.counter.size() + "): "
@@ -2006,9 +2016,11 @@ final class ElliottResearch {
                         + limited(lag.indices()));
             }
             final Attribution attribution = attribute(nullView.scope());
-            if (attribution != null && attribution.denominator > 0) {
+            if (attribution != null) {
+                final double observed = attribution.denominator == 0 ? Double.NaN
+                        : attribution.numerator / (double) attribution.denominator;
                 out.println("Null member " + row.metric() + ": " + attribution.numerator + "/" + attribution.denominator
-                        + " = " + number((double) attribution.numerator / attribution.denominator));
+                        + " = " + number(observed));
             }
         }
 
