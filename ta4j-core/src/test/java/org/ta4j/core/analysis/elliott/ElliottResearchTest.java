@@ -1303,6 +1303,69 @@ class ElliottResearchTest {
         assertModeRuleBinding(source, "smoke-null-b20-m3.jsonl", true);
     }
 
+    @Test
+    public void completeTraceBytesAreBoundToMetadataBeforeAnyScopeIsEvidence() throws Exception {
+        final Path nullSource = work.resolve("trace-digest-null-source");
+        final Result captured = launch("run", "smoke", "--trace", "selected-null-member", "--block", "20", "--member",
+                "3", "--out", nullSource.toString());
+        assertEquals(0, captured.code(), captured.err());
+        for (final boolean nullMember : List.of(false, true)) {
+            for (final String damage : List.of("selected-observation", "other-observation", "labels",
+                    "missing-digest")) {
+                final Path copy = work.resolve("trace-digest-" + nullMember + "-" + damage);
+                copyTree(nullMember ? nullSource : smokeRun, copy);
+                final String relative = nullMember ? "traces/smoke-null-b20-m3.jsonl" : "traces/smoke-real.jsonl";
+                final Path trace = copy.resolve(relative);
+                if ("missing-digest".equals(damage)) {
+                    final JsonObject run = readJson(copy.resolve("run.json"));
+                    run.getAsJsonArray("datasets").get(0).getAsJsonObject().remove("traceSha256");
+                    Files.writeString(copy.resolve("run.json"), run.toString());
+                } else {
+                    final List<String> lines = new ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
+                    final String grammar = "other-observation".equals(damage) ? "MOTIVE_5" : "CYCLE_5_3";
+                    for (int i = 1; i < lines.size() - 1; i++) {
+                        final JsonObject observation = JsonParser.parseString(lines.get(i)).getAsJsonObject();
+                        if (!grammar.equals(observation.get("grammar").getAsString())
+                                || !nullMember && !"topology-only".equals(observation.get("mode").getAsString())) {
+                            continue;
+                        }
+                        if ("labels".equals(damage)) {
+                            observation.getAsJsonArray("labels").add("foreign-label");
+                            lines.set(i, observation.toString());
+                        } else {
+                            lines.remove(i);
+                            final JsonObject footer = JsonParser.parseString(lines.getLast()).getAsJsonObject();
+                            footer.addProperty("records", footer.get("records").getAsLong() - 1);
+                            lines.set(lines.size() - 1, footer.toString());
+                        }
+                        break;
+                    }
+                    Files.write(trace, lines, StandardCharsets.UTF_8);
+                }
+                final Result rejected = launch("inspect", copy.toString(),
+                        "smoke|h2|topology-only|fractal-w5|calibration|completeOccupancyRate|b20");
+                assertEquals(2, rejected.code(), rejected.out() + rejected.err());
+                assertTrue(rejected.err().contains("SHA-256") && rejected.err().contains("Recapture"), rejected.err());
+                final Result summary = launch("summarize", copy.toString());
+                assertEquals(0, summary.code(), summary.err());
+                assertFalse(Files.readString(copy.resolve("summary.md")).contains("trace captured"));
+            }
+        }
+    }
+
+    @Test
+    public void inspectReconstructsLabelStabilityFromAdjacentRecordedLabelSets() {
+        for (final String sectionMode : List.of("h1|topology-only", "h2|topology-only", "h2|all-rules")) {
+            final Result result = launch("inspect", smokeRun.toString(),
+                    "smoke|" + sectionMode + "|fractal-w5|calibration|labelStabilityJaccard|b20");
+            assertEquals(0, result.code(), result.err());
+            assertTrue(result.out().contains("adjacent label-set Jaccard mean="), result.out());
+            assertTrue(result.out().contains("from 365 transitions") && result.out().contains("-> match"),
+                    result.out());
+            assertFalse(result.out().contains("not attributable"), result.out());
+        }
+    }
+
     private void assertModeRuleBinding(final Path source, final String traceName, final boolean nullMember)
             throws Exception {
         for (final boolean reorder : List.of(false, true)) {

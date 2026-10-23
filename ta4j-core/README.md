@@ -205,9 +205,12 @@ before creating a lock file, then holds the same lock while reading evidence and
 replacing artifacts, refusing while a run is writing.
 Run and summary locks refuse symbolic links at `.run.lock`, including dangling links,
 without creating or locking their targets outside the run directory.
-Completed metadata binds `comparisons.csv` with `comparisonsSha256`; `summarize` and
-`inspect` verify that digest before reading rows. Modified, mixed or older unbound
-bundles must be regenerated rather than paired with the recorded provenance.
+Completed metadata binds `comparisons.csv` with `comparisonsSha256` and each listed trace
+with its dataset's `traceSha256` map (relative trace path to SHA-256). `summarize` and
+`inspect` verify the relevant digests before treating rows or traces as evidence:
+removing an observation, even from another scope with a repaired footer, cannot silently
+change support. Modified, mixed or older unbound bundles must be regenerated rather than
+paired with the recorded provenance.
 Coverage bar totals and effective date bounds include only the configured partitions,
 never the unrequested intervals between them. If every requested partition is empty,
 coverage has zero bars and no effective dates even when the source has other bars.
@@ -242,8 +245,14 @@ match the recorded grammar, direction and full
 placement, and evidence versions must match the candidate key and serialized rules.
 All these checks precede scope filtering. Trace capture
 shares the immutable evidence consumed by report metrics rather than reevaluating
-the same candidates. All trace indices and coordinates must fit a signed 32-bit integer;
-the footer count must match exactly without numeric narrowing. When the trace is missing,
+the same candidates.
+Every observation also records the exact label set accumulated by the stability metric,
+including topology candidate spans, forming spans, invalidation reasons and empty sets.
+For `labelStabilityJaccard`, inspection recomputes the mean Jaccard similarity of adjacent
+label sets (two empty sets have similarity 1), reports the transition count and verifies
+the observed row rather than presenting only unrelated status tallies.
+All trace indices and coordinates must fit a signed 32-bit integer; the footer count must
+match exactly without numeric narrowing. When the trace is missing,
 truncated or corrupt, inspection exits with status 2 and prints the recapture
 command, quoted for a POSIX shell.
 The command carries `--expect-revision`, `--expect-fingerprint` and, for `explore`,

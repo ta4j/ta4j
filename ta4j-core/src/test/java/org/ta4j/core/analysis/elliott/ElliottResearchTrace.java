@@ -195,6 +195,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             candidates.add(candidateJson(analysis.candidates().get(i), candidateEvidence.get(i)));
         }
         record.add("candidates", candidates);
+        record.add("labels", labelsJson(StudyRunner.topologyStabilityLabels(analysis)));
         emit(record);
     }
 
@@ -207,10 +208,14 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         record.add("direction", null);
         record.add("pivots", pivotsJson(visiblePivots));
         record.add("candidates", new JsonArray());
-        final JsonArray labelArray = new JsonArray();
-        new TreeSet<>(labels).forEach(labelArray::add);
-        record.add("labels", labelArray);
+        record.add("labels", labelsJson(labels));
         emit(record);
+    }
+
+    private static JsonArray labelsJson(final Set<String> labels) {
+        final JsonArray array = new JsonArray();
+        new TreeSet<>(labels).forEach(array::add);
+        return array;
     }
 
     /** Writes the footer and releases the file; further observations fail. */
@@ -701,8 +706,8 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                 throw corrupt(path, lineNumber, where + "direction: " + e.getMessage());
             }
         }
+        requireTexts(path, lineNumber, record, "labels", where);
         if ("alternative".equals(kind)) {
-            requireTexts(path, lineNumber, record, "labels", where);
             switch (record.get("grammar").getAsString()) {
             case "MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3" ->
                 throw corrupt(path, lineNumber, where + "grammar is a topology grammar but kind is alternative");

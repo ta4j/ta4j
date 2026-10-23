@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis.elliott;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
@@ -985,6 +987,7 @@ final class ElliottResearch {
         private int bars;
         private String report;
         private final List<String> traces = new ArrayList<>();
+        private final Map<String, String> traceSha256 = new LinkedHashMap<>();
 
         DatasetEntry(final String id, final String asset, final JsonObject source) {
             this.id = id;
@@ -1096,6 +1099,8 @@ final class ElliottResearch {
                 if (real != null) {
                     real.close();
                     entry.traces.add(relative(dir.resolve(realTraceName(id))));
+                    entry.traceSha256.put(relative(dir.resolve(realTraceName(id))),
+                            sha256(dir.resolve(realTraceName(id))));
                 }
                 if (ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER.equals(options.trace())) {
                     final Path file = dir.resolve(nullTraceName(id, options.block(), options.member()));
@@ -1106,6 +1111,7 @@ final class ElliottResearch {
                                 options.member(), trace);
                     }
                     entry.traces.add(relative(file));
+                    entry.traceSha256.put(relative(file), sha256(file));
                 }
                 rows.addAll(ElliottResearchReport.comparisons(id, report));
                 entry.report = relative(reportFile);
@@ -1233,6 +1239,7 @@ final class ElliottResearch {
             }
             rows.removeIf(row -> row.dataset().equals(id));
             entry.traces.clear();
+            entry.traceSha256.clear();
             entry.report = null;
             entry.bars = 0;
             entry.effectiveFrom = null;
@@ -1317,6 +1324,9 @@ final class ElliottResearch {
                 dataset.add("coverage", coverage);
                 dataset.add("report", entry.report == null ? JsonNull.INSTANCE : new JsonPrimitive(entry.report));
                 dataset.add("traces", stringArray(entry.traces));
+                final JsonObject traceSha256 = new JsonObject();
+                entry.traceSha256.forEach(traceSha256::addProperty);
+                dataset.add("traceSha256", traceSha256);
                 datasets.add(dataset);
             }
             json.add("datasets", datasets);
@@ -1408,6 +1418,33 @@ final class ElliottResearch {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
         } catch (final NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
+    private static String sha256(final Path path) throws IOException {
+        try {
+            final MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            try (DigestInputStream input = new DigestInputStream(Files.newInputStream(path), digest)) {
+                input.transferTo(OutputStream.nullOutputStream());
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (final NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
+    private static void verifyTraceDigest(final Path file, final JsonObject dataset, final String relative)
+            throws IOException {
+        final JsonElement digests = dataset.get("traceSha256");
+        final JsonElement digest = digests != null && digests.isJsonObject() ? digests.getAsJsonObject().get(relative)
+                : null;
+        if (digest == null || !digest.isJsonPrimitive() || !digest.getAsJsonPrimitive().isString()
+                || !digest.getAsString().matches("[0-9a-f]{64}")) {
+            throw new IllegalArgumentException("trace " + relative + " has no valid recorded SHA-256 in run.json");
+        }
+        if (!sha256(file).equals(digest.getAsString())) {
+            throw new IllegalArgumentException(
+                    "trace " + relative + " SHA-256 differs from run.json; the artifact bundle was modified or mixed");
         }
     }
 
@@ -1547,6 +1584,7 @@ final class ElliottResearch {
                 }
                 final ElliottResearchTrace.TraceFile parsed = ElliottResearchTrace.read(file, record -> false);
                 if (parsed.complete() && headerMismatch(parsed.header(), expected) == null) {
+                    verifyTraceDigest(file, dataset, name);
                     traced.add(id);
                 }
             } catch (final IOException | IllegalArgumentException unreadable) {
@@ -1909,7 +1947,17 @@ final class ElliottResearch {
                     + real.scope().size() + " in this row's scope)");
             out.println("Status tallies: " + tally(real.scope()));
             final Attribution attribution = attribute(real.scope());
-            if (attribution == null) {
+            if ("labelStabilityJaccard".equals(row.metric())) {
+                final double mean = stability(real.scope());
+                if (Double.compare(mean, row.observed()) != 0) {
+                    throw new Diagnostic("trace label-stability transitions do not match the selected comparison row."
+                            + " Recapture with:\n  "
+                            + ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
+                }
+                out.println("Support check: adjacent label-set Jaccard mean=" + number(mean) + " from "
+                        + Math.max(0, real.scope().size() - 1) + " transitions vs row " + number(row.observed())
+                        + " -> match");
+            } else if (attribution == null) {
                 out.println("Support check: " + row.metric()
                         + " is not attributable to single as-of records; tallies only.");
             } else {
@@ -1935,6 +1983,11 @@ final class ElliottResearch {
                     + nullView.file().header().get("nullMemberIndex").getAsInt() + ", " + nullView.file().recordCount()
                     + " records, " + nullView.scope().size() + " in this row's scope)");
             out.println("Null member status tallies: " + tally(nullView.scope()));
+            if ("labelStabilityJaccard".equals(row.metric())) {
+                out.println("Null member labelStabilityJaccard: adjacent label-set Jaccard mean="
+                        + number(stability(nullView.scope())) + " from " + Math.max(0, nullView.scope().size() - 1)
+                        + " transitions");
+            }
             final Attribution attribution = attribute(nullView.scope());
             if (attribution != null && attribution.denominator > 0) {
                 out.println("Null member " + row.metric() + ": " + attribution.numerator + "/" + attribution.denominator
@@ -2169,6 +2222,11 @@ final class ElliottResearch {
                         + trace.header().get(mismatch) + ", not this run's " + expected.get(mismatch)
                         + ". Recapture with:\n  " + recapture);
             }
+            try {
+                verifyTraceDigest(file, dataset, relative);
+            } catch (final IllegalArgumentException corrupt) {
+                throw new Diagnostic(corrupt.getMessage() + ". Recapture with:\n  " + recapture);
+            }
             return new View(label, relative, trace, trace.records().stream().filter(scope).toList());
         }
 
@@ -2179,6 +2237,29 @@ final class ElliottResearch {
             private long denominator;
             private final List<Integer> supportive = new ArrayList<>();
             private final List<Integer> counter = new ArrayList<>();
+        }
+
+        private static double stability(final List<JsonObject> records) {
+            Set<String> previous = null;
+            double sum = 0.0d;
+            long transitions = 0;
+            for (final JsonObject record : records) {
+                final Set<String> current = new HashSet<>();
+                record.getAsJsonArray("labels").forEach(label -> current.add(label.getAsString()));
+                if (previous != null) {
+                    int intersection = 0;
+                    for (final String label : current) {
+                        if (previous.contains(label)) {
+                            intersection++;
+                        }
+                    }
+                    final int union = previous.size() + current.size() - intersection;
+                    sum += union == 0 ? 1.0d : intersection / (double) union;
+                    transitions++;
+                }
+                previous = current;
+            }
+            return transitions == 0 ? Double.NaN : sum / transitions;
         }
 
         private Attribution attribute(final List<JsonObject> records) {
