@@ -342,6 +342,63 @@ class ElliottResearchCalibrationTest {
     }
 
     @Test
+    public void tablesRejectMalformedOrNarrowedIntegersBeforeUsingStoredEstimates(@TempDir final Path directory)
+            throws IOException {
+        final List<Row> rows = new ArrayList<>();
+        for (int index = 0; index < 6; index++) {
+            rows.add(labeled(index, "k" + index, 2, 1, index % 2 == 0 ? Outcome.SUCCESS : Outcome.FAILURE));
+        }
+        final Calibrator baseline = Calibrator.fit("evaluation", IDENTITY, PROVENANCE, 2, rows,
+                List.of("calibration"), 100);
+        final JsonObject valid = baseline.toJson();
+        assertTrue(valid.getAsJsonArray("masks").size() > 0, "the fixture must exercise persisted bin counts");
+        final JsonArray held = new JsonArray();
+        held.add(valid);
+        final JsonObject file = new JsonObject();
+        file.addProperty("schema", ElliottResearchCalibration.SCHEMA);
+        file.add("tables", held);
+        final Path path = directory.resolve(ElliottResearchCalibration.TABLES_FILE);
+        for (final String field : List.of("identity.horizon", "policy.minGroups", "fit.firstIndex", "fit.cutoffIndex",
+                "base.groups", "base.successes", "base.failures", "masks.bins.groups", "masks.bins.successes",
+                "masks.bins.failures")) {
+            for (final String value : List.of("null", "true", "\"5\"", "[]", "{}", "missing", "5.5",
+                    "2147483647.0000000001", "2147483648", "-2147483649", "4294967316", "1e1000")) {
+                final JsonObject damaged = valid.deepCopy();
+                final JsonObject owner = field.startsWith("masks.")
+                        ? damaged.getAsJsonArray("masks").get(0).getAsJsonObject().getAsJsonArray("bins").get(0)
+                                .getAsJsonObject()
+                        : damaged.getAsJsonObject(field.substring(0, field.indexOf('.')));
+                final String name = field.substring(field.lastIndexOf('.') + 1);
+                if (value.equals("missing")) {
+                    owner.remove(name);
+                } else {
+                    owner.add(name, JsonParser.parseString(value));
+                }
+                held.set(0, damaged);
+                Files.writeString(path, file.toString(), StandardCharsets.UTF_8);
+                final IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                        () -> ElliottResearchCalibration.readTables(path), field + "=" + value);
+                assertTrue(failure.getMessage().contains(path + " is not a calibration table file"),
+                        failure.getMessage());
+                assertTrue(failure.getMessage().contains(field + " must be an integer"), failure.getMessage());
+            }
+            for (final String suffix : List.of(".0", "e0")) {
+                final JsonObject integral = valid.deepCopy();
+                final JsonObject owner = field.startsWith("masks.")
+                        ? integral.getAsJsonArray("masks").get(0).getAsJsonObject().getAsJsonArray("bins").get(0)
+                                .getAsJsonObject()
+                        : integral.getAsJsonObject(field.substring(0, field.indexOf('.')));
+                final String name = field.substring(field.lastIndexOf('.') + 1);
+                owner.add(name, JsonParser.parseString(owner.get(name).getAsString() + suffix));
+                assertEquals(baseline, Calibrator.fromJson(integral), field + suffix);
+            }
+        }
+        held.set(0, valid);
+        Files.writeString(path, file.toString(), StandardCharsets.UTF_8);
+        assertEquals(List.of(baseline), ElliottResearchCalibration.readTables(path));
+    }
+
+    @Test
     void settingsParseRequiresAHorizonOfTheRecipeAndChronologicalPartitions() {
         final ElliottResearchOutcomes.Settings outcomes = ElliottResearchOutcomes.Settings.defaults();
         final List<StudyRunner.Partition> partitions = List.of(

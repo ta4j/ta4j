@@ -181,14 +181,15 @@ final class ElliottResearchCalibration {
                         "calibration.horizon is required: the event is declared at one outcome horizon of "
                                 + outcomes.horizons());
             }
-            final int horizon = integer(json, "horizon");
+            final int horizon = requiredInteger(json.get("horizon"), "calibration.horizon");
             if (!outcomes.horizons().contains(horizon)) {
                 throw new IllegalArgumentException(
                         "calibration.horizon " + horizon + " must be one of outcomes.horizons " + outcomes.horizons());
             }
             final Settings settings = new Settings(horizon, text(json, "fit", DEFAULT_FIT),
                     text(json, "validation", DEFAULT_VALIDATION), text(json, "evaluation", DEFAULT_EVALUATION),
-                    json.has("minGroups") ? integer(json, "minGroups") : DEFAULT_MIN_GROUPS);
+                    json.has("minGroups") ? requiredInteger(json.get("minGroups"), "calibration.minGroups")
+                            : DEFAULT_MIN_GROUPS);
             final Map<String, StudyRunner.Partition> byName = new LinkedHashMap<>();
             partitions.forEach(partition -> byName.put(partition.name(), partition));
             final List<StudyRunner.Partition> ordered = new ArrayList<>();
@@ -222,16 +223,6 @@ final class ElliottResearchCalibration {
             return json;
         }
 
-        private static int integer(final JsonObject json, final String field) {
-            final JsonElement element = json.get(field);
-            if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()
-                    || element.getAsDouble() != Math.rint(element.getAsDouble())
-                    || Math.abs(element.getAsDouble()) > Integer.MAX_VALUE) {
-                throw new IllegalArgumentException("calibration." + field + " must be an integer");
-            }
-            return element.getAsInt();
-        }
-
         private static String text(final JsonObject json, final String field, final String fallback) {
             if (!json.has(field)) {
                 return fallback;
@@ -246,6 +237,18 @@ final class ElliottResearchCalibration {
             throw new IllegalArgumentException(field + " must be a non-blank string");
         }
         return element.getAsString();
+    }
+
+    private static int requiredInteger(final JsonElement element, final String field) {
+        if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) {
+            throw new IllegalArgumentException(field + " must be an integer");
+        }
+        try {
+            return element.getAsBigDecimal().intValueExact();
+        } catch (final ArithmeticException | NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    field + " must be an integer in [" + Integer.MIN_VALUE + ", " + Integer.MAX_VALUE + "]", e);
+        }
     }
 
     // ------------------------------------------------------------- identity
@@ -330,7 +333,8 @@ final class ElliottResearchCalibration {
                     requiredText(json.get("invalidation"), "identity.invalidation"), rules,
                     requiredText(json.get("momentum"), "identity.momentum"),
                     requiredText(json.get("target"), "identity.target"),
-                    requiredText(json.get("feature"), "identity.feature"), json.get("horizon").getAsInt());
+                    requiredText(json.get("feature"), "identity.feature"),
+                    requiredInteger(json.get("horizon"), "identity.horizon"));
         }
 
         /** @return the names of the fields that differ from {@code other} */
@@ -880,7 +884,7 @@ final class ElliottResearchCalibration {
          *
          * @param json serialized table
          * @return the table
-         * @throws IllegalArgumentException when the schema or bin policy differs
+         * @throws IllegalArgumentException when the schema, bin policy or a required field is invalid
          * @since 0.26.1
          */
         static Calibrator fromJson(final JsonObject json) {
@@ -906,7 +910,7 @@ final class ElliottResearchCalibration {
                 final JsonObject entry = element.getAsJsonObject();
                 final List<BinFit> bins = new ArrayList<>();
                 for (final JsonElement bin : entry.getAsJsonArray("bins")) {
-                    bins.add(binFit(bin.getAsJsonObject()));
+                    bins.add(binFit(bin.getAsJsonObject(), "masks.bins"));
                 }
                 if (bins.size() != BINS) {
                     throw new IllegalArgumentException("calibration table mask '" + entry.get("mask").getAsString()
@@ -918,13 +922,17 @@ final class ElliottResearchCalibration {
                     Identity.fromJson(json.getAsJsonObject("identity")),
                     new Provenance(provenance.get("fingerprint").getAsString(),
                             provenance.get("revision").getAsString()),
-                    policy.get("minGroups").getAsInt(), partitions, fit.get("firstIndex").getAsInt(),
-                    fit.get("cutoffIndex").getAsInt(), binFit(json.getAsJsonObject("base")), masks);
+                    requiredInteger(policy.get("minGroups"), "policy.minGroups"), partitions,
+                    requiredInteger(fit.get("firstIndex"), "fit.firstIndex"),
+                    requiredInteger(fit.get("cutoffIndex"), "fit.cutoffIndex"),
+                    binFit(json.getAsJsonObject("base"), "base"), masks);
         }
 
-        private static BinFit binFit(final JsonObject json) {
+        private static BinFit binFit(final JsonObject json, final String field) {
             return new BinFit(json.get("weight").getAsDouble(), json.get("successWeight").getAsDouble(),
-                    json.get("groups").getAsInt(), json.get("successes").getAsInt(), json.get("failures").getAsInt());
+                    requiredInteger(json.get("groups"), field + ".groups"),
+                    requiredInteger(json.get("successes"), field + ".successes"),
+                    requiredInteger(json.get("failures"), field + ".failures"));
         }
     }
 

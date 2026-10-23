@@ -27,6 +27,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -1427,6 +1428,28 @@ class ElliottResearchTest {
                             text -> damaged, " row 1 has blank " + field + " identity"));
                 }
             }
+        }
+    }
+
+    @Test
+    public void summarizeAndInspectRefuseNarrowedCalibrationIntegers() throws IOException {
+        for (final String field : List.of("identity.horizon", "policy.minGroups", "fit.firstIndex", "fit.cutoffIndex",
+                "base.groups", "base.successes", "base.failures", "masks.bins.groups", "masks.bins.successes",
+                "masks.bins.failures")) {
+            assertRefusedBySummarizeAndInspect(ElliottResearchCalibration.TABLES_FILE,
+                    new Damage("narrowed-" + field.replace('.', '-'), text -> {
+                        final JsonObject file = JsonParser.parseString(text).getAsJsonObject();
+                        for (final JsonElement element : file.getAsJsonArray("tables")) {
+                            final JsonObject table = element.getAsJsonObject();
+                            final JsonObject owner = field.startsWith("masks.")
+                                    ? table.getAsJsonArray("masks").get(0).getAsJsonObject().getAsJsonArray("bins").get(0)
+                                            .getAsJsonObject()
+                                    : table.getAsJsonObject(field.substring(0, field.indexOf('.')));
+                            final String name = field.substring(field.lastIndexOf('.') + 1);
+                            owner.addProperty(name, owner.get(name).getAsLong() + 4294967296L);
+                        }
+                        return file.toString();
+                    }, field + " must be an integer"));
         }
     }
 
