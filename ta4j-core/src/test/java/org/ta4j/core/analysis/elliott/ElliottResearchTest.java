@@ -1557,14 +1557,20 @@ class ElliottResearchTest {
                     final double observed = "observed".equals(changed)
                             ? (Double.isFinite(row.observed()) ? row.observed() : 0.0d) + 0.125d
                             : row.observed();
+                    final boolean replacedNullReference = "observed".equals(changed) && row.validNullMembers() > 0
+                            && Double.isFinite(observed);
                     mutated.add(new ElliottResearchReport.Row(row.dataset(), row.asset(), row.section(), row.mode(),
                             row.grammar(), row.activeRules(), row.detector(), row.policy(), row.partition(),
                             row.metric(), row.nullBlockLength(), observed,
                             row.numerator() + ("numerator".equals(changed) ? 1 : 0),
                             row.denominator() + ("denominator".equals(changed) ? 1 : 0), row.validNullMembers(),
-                            row.requestedNullMembers(), row.unavailableNullMembers(), row.nullMedian(), row.nullLow(),
-                            row.nullHigh(), row.observedMinusNullMedian(), row.empiricalReferenceRank(),
-                            row.availability()));
+                            row.requestedNullMembers(), row.unavailableNullMembers(),
+                            replacedNullReference ? observed : row.nullMedian(),
+                            replacedNullReference ? observed : row.nullLow(),
+                            replacedNullReference ? observed : row.nullHigh(),
+                            replacedNullReference ? 0.0d : row.observedMinusNullMedian(),
+                            replacedNullReference ? 1.0d : row.empiricalReferenceRank(),
+                            replacedNullReference ? ElliottResearchReport.AVAILABLE : row.availability()));
                 }
                 final Path csv = copy.resolve("comparisons.csv");
                 ElliottResearchReport.writeCsv(csv, mutated);
@@ -1618,6 +1624,55 @@ class ElliottResearchTest {
             assertEquals(2, rejected.code(), rejected.out() + rejected.err());
             assertTrue(rejected.err().contains("trace " + metric + " contributions do not match")
                     && rejected.err().contains("Recapture with:"), rejected.err());
+        }
+    }
+
+    @Test
+    public void selectedNullMemberScopesEveryGrammarAndModeToTheRowsDetector() throws Exception {
+        for (final boolean allForeign : List.of(false, true)) {
+            final Path copy = work.resolve("null-detector-" + allForeign);
+            copyTree(nullMemberRun, copy);
+            final String relative = "traces/smoke-null-b20-m3.jsonl";
+            final Path trace = copy.resolve(relative);
+            final List<String> lines = new ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
+            int changed = 0;
+            for (int i = 1; i < lines.size() - 1; i++) {
+                final JsonObject record = JsonParser.parseString(lines.get(i)).getAsJsonObject();
+                if (allForeign || changed == 0 && "all-rules".equals(record.get("mode").getAsString())
+                        && "CYCLE_5_3".equals(record.get("grammar").getAsString())
+                        && "calibration".equals(record.get("partition").getAsString())) {
+                    record.addProperty("detector", "foreign-detector");
+                    lines.set(i, record.toString());
+                    changed++;
+                }
+            }
+            assertTrue(changed > 0, "the fixture must contain selected null observations");
+            Files.write(trace, lines, StandardCharsets.UTF_8);
+            final JsonObject run = readJson(copy.resolve("run.json"));
+            run.getAsJsonArray("datasets")
+                    .get(0)
+                    .getAsJsonObject()
+                    .getAsJsonObject("traceSha256")
+                    .addProperty(relative, HexFormat.of()
+                            .formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(trace))));
+            Files.writeString(copy.resolve("run.json"), run.toString());
+            for (final String sectionMode : List.of("h1|topology-only", "h2|topology-only", "h2|all-rules")) {
+                final String key = "smoke|" + sectionMode + "|fractal-w5|calibration|ambiguousRate|b20";
+                final Result valid = launch("inspect", nullMemberRun.toString(), key);
+                assertEquals(0, valid.code(), valid.err());
+                assertTrue(valid.out().contains("366 in this row's scope"), valid.out());
+                final Result scoped = launch("inspect", copy.toString(), key);
+                assertEquals(0, scoped.code(), scoped.err());
+                final int expected = allForeign ? 0 : "h2|all-rules".equals(sectionMode) ? 365 : 366;
+                assertTrue(scoped.out().contains(expected + " in this row's scope"), scoped.out());
+                if (allForeign) {
+                    assertTrue(scoped.out().contains("Null member ambiguousRate: 0/0 = NaN"), scoped.out());
+                    assertTrue(scoped.out().contains("Null member status tallies: {}"), scoped.out());
+                } else if (!"h2|all-rules".equals(sectionMode)) {
+                    assertEquals(valid.out().substring(valid.out().indexOf("Null member status tallies:")),
+                            scoped.out().substring(scoped.out().indexOf("Null member status tallies:")));
+                }
+            }
         }
     }
 

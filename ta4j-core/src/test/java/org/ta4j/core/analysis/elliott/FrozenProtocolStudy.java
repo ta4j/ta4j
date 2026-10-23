@@ -80,17 +80,25 @@ final class FrozenProtocolStudy {
      * can never change the protocol's analytical configuration. A dataset that
      * fails during observation, loading, evaluation, or report writing is handed to
      * {@link DatasetListener#failed}; the default listener rethrows, preserving the
-     * fail-fast frozen path and checked I/O failures.
+     * fail-fast frozen path and checked I/O failures. When a listener handles a
+     * failure, any stale or partial report file is removed before proceeding to the
+     * next dataset; directories at report paths are left untouched.
      * </p>
      *
      * @param protocol  verified study protocol
      * @param reportDir directory receiving {@code <dataset>.json} reports
      * @param listener  dataset outcome listener
-     * @throws IOException when reports cannot be written
+     * @throws IOException when reports cannot be written or a failed report cannot
+     *                     be removed
      * @since 0.25.1
      */
     static void run(final ElliottStudyProtocol protocol, final Path reportDir, final DatasetListener listener)
             throws IOException {
+        run(protocol, reportDir, listener, DatasetExecution.DEFAULT);
+    }
+
+    static void run(final ElliottStudyProtocol protocol, final Path reportDir, final DatasetListener listener,
+            final DatasetExecution execution) throws IOException {
         validateExecutableProtocol(protocol);
         Supplier<SwingDetector> primaryDetector = resolveDetector(protocol, protocol.primaryDetector());
         List<DetectorRobustnessMatrix.DetectorSpec> robustness = new ArrayList<>();
@@ -123,11 +131,13 @@ final class FrozenProtocolStudy {
                         "evaluating dataset {} ({}): study design {}, ensemble {} members per block length {}, competing modes {}",
                         dataset.id(), dataset.asset(), protocol.studyDesign(), protocol.nullEnsemble().ensembleSize(),
                         protocol.nullEnsemble().blockLengths(), competingModes);
-                report = runner.evaluate(dataset.asset(), series, series.getBeginIndex(), series.getEndIndex(),
-                        observer);
-                writeReport(target, report);
+                report = execution.evaluate(runner, dataset.asset(), series, observer);
+                writeReport(target, report, execution);
             } catch (RuntimeException failure) {
                 listener.failed(dataset.id(), failure);
+                if (!Files.isDirectory(target)) {
+                    Files.deleteIfExists(target);
+                }
                 continue;
             }
             LOG.info("wrote study report {} for {}", target, dataset.asset());
@@ -151,11 +161,28 @@ final class FrozenProtocolStudy {
      * Writes one dataset's report, rethrowing an I/O failure unchecked so it fails
      * only that dataset.
      */
-    private static void writeReport(final Path target, final StudyReport report) {
+    private static void writeReport(final Path target, final StudyReport report, final DatasetExecution execution) {
         try {
-            Files.writeString(target, report.toJson());
+            execution.write(target, report.toJson());
         } catch (IOException e) {
             throw new UncheckedIOException("cannot write study report " + target + ": " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Real dataset execution, replaceable only to bound lifecycle and I/O tests.
+     */
+    interface DatasetExecution {
+        DatasetExecution DEFAULT = new DatasetExecution() {
+        };
+
+        default StudyReport evaluate(final StudyRunner runner, final String assetId, final BarSeries series,
+                final StudyObserver observer) {
+            return runner.evaluate(assetId, series, series.getBeginIndex(), series.getEndIndex(), observer);
+        }
+
+        default void write(final Path target, final String contents) throws IOException {
+            Files.writeString(target, contents);
         }
     }
 

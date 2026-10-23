@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -127,7 +128,7 @@ class ElliottResearchReportTest {
         final List<Row> rows = List.of(
                 new Row("btc,\"daily\"", "BTC", "h2", "all-rules", "CYCLE_5_3", List.of("first", "+second"), "primary",
                         "kernel-topology+evidence", "holdout", "evidencePassRate", 8, 0.1234567890123d, 3L, 7L, 6, 8, 2,
-                        0.5d, 0.0000123d, 1.0d, 0.1234567890123d - 0.5d, 3.0d / 7.0d, ElliottResearchReport.AVAILABLE),
+                        0.5d, 0.0000123d, 1.0d, 0.1234567890123d - 0.5d, 5.0d / 7.0d, ElliottResearchReport.AVAILABLE),
                 new Row("btc,\"daily\"", "BTC", "h2", "all-rules", "CYCLE_5_3", List.of("first", "+second"), "primary",
                         "kernel-topology+evidence", "validation", "jointPassRate", 8, Double.NaN, 0L, 0L, 0, 8, 8,
                         Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, ElliottResearchReport.UNAVAILABLE),
@@ -167,6 +168,81 @@ class ElliottResearchReportTest {
         Files.writeString(file, "wrong,header\r\n", StandardCharsets.UTF_8);
         assertTrue(assertThrows(IllegalArgumentException.class, () -> ElliottResearchReport.readCsv(file)).getMessage()
                 .contains(file + ":1"));
+    }
+
+    @Test
+    public void nullReferenceRejectsImpossibleCountsAndNearestRankQuantiles() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new NullReference(-1, 0, -1, Double.NaN, Double.NaN, Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> new NullReference(1, -1, 2, 0, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new NullReference(1, 2, -1, 0, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new NullReference(2, 1, 0, 0, 0, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new NullReference(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, 0, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new NullReference(1, 0, 1, 0, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new NullReference(1, 1, 0, Double.NaN, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new NullReference(1, 1, 0, 0, 0, Double.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class, () -> new NullReference(3, 3, 0, 0.5, 0.9, 0.1));
+        assertThrows(IllegalArgumentException.class, () -> new NullReference(1, 1, 0, 0.5, 0.1, 0.9));
+        assertThrows(IllegalArgumentException.class, () -> new NullReference(2, 2, 0, 0.5, 0.1, 0.9));
+        assertEquals(new NullReference(Integer.MAX_VALUE, 1, Integer.MAX_VALUE - 1, 0, 0, 0),
+                ElliottResearchReport.summarize(new double[] { 0 }, Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void readCsvRejectsInconsistentNullReferenceFieldsWithRowContext(@TempDir final Path directory)
+            throws IOException {
+        final Row valid = new Row("d", "A", "h2", "all-rules", "MOTIVE_5", List.of("rule"), "p", "kernel-topology",
+                "calibration", "completeOccupancyRate", 20, 0.5d, 1L, 2L, 3, 3, 0, 0.25d, 0.2d, 0.3d, 0.25d, 0.25d,
+                ElliottResearchReport.AVAILABLE);
+        final Path file = directory.resolve("comparisons.csv");
+        ElliottResearchReport.writeCsv(file, List.of(valid));
+        final String[] lines = read(file).split("\\r\\n");
+        final List<String> columns = List.of(lines[0].split(",", -1));
+        final List<Map<String, String>> corruptions = List.of(Map.of("validNullMembers", "-1"),
+                Map.of("requestedNullMembers", "-1"), Map.of("unavailableNullMembers", "-1"),
+                Map.of("requestedNullMembers", "4"), Map.of("validNullMembers", "0", "unavailableNullMembers", "3"),
+                Map.of("nullLow", "0.9", "nullMedian", "0.5", "nullHigh", "0.1"), Map.of("nullMedian", ""),
+                Map.of("nullHigh", "Infinity"), Map.of("observed", "Infinity"), Map.of("empiricalReferenceRank", "1.5"),
+                Map.of("empiricalReferenceRank", "-0.1"), Map.of("empiricalReferenceRank", "0"),
+                Map.of("empiricalReferenceRank", "0.123456789"), Map.of("empiricalReferenceRank", "1"),
+                Map.of("observedMinusNullMedian", "0.123456789"), Map.of("availability", "unavailable"),
+                Map.of("availability", "not-comparable"), Map.of("nullBlockLength", ""),
+                Map.of("validNullMembers", "1", "unavailableNullMembers", "2", "empiricalReferenceRank", "0.5"),
+                Map.of("validNullMembers", "2", "unavailableNullMembers", "1", "empiricalReferenceRank",
+                        "0.3333333333333333"));
+        for (final Map<String, String> corruption : corruptions) {
+            final String[] cells = lines[1].split(",", -1);
+            corruption.forEach((column, value) -> cells[columns.indexOf(column)] = value);
+            Files.writeString(file, lines[0] + "\r\n" + String.join(",", cells) + "\r\n", StandardCharsets.UTF_8);
+            final IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                    () -> ElliottResearchReport.readCsv(file), corruption.toString());
+            assertTrue(rejected.getMessage().startsWith(file + ":2: "), rejected.getMessage());
+        }
+    }
+
+    @Test
+    public void csvRoundTripPreservesNullReferenceBoundaryCases(@TempDir final Path directory) {
+        final List<Row> rows = List.of(
+                new Row("d", "A", "h2", "all-rules", "MOTIVE_5", List.of("rule"), "p", "kernel-topology", "one",
+                        "completeOccupancyRate", 20, 0, 0L, 1L, 1, 1, 0, 0, 0, 0, 0, 1,
+                        ElliottResearchReport.AVAILABLE),
+                new Row("d", "A", "h2", "all-rules", "MOTIVE_5", List.of("rule"), "p", "kernel-topology", "upper",
+                        "completeOccupancyRate", 20, 1, 1L, 1L, 1, Integer.MAX_VALUE, Integer.MAX_VALUE - 1, 0, 0, 0, 1,
+                        0.5d, ElliottResearchReport.AVAILABLE),
+                new Row("d", "A", "h2", "all-rules", "MOTIVE_5", List.of("rule"), "p", "kernel-topology", "undefined",
+                        "completeOccupancyRate", 20, 0, 0L, 1L, 0, 1, 1, Double.NaN, Double.NaN, Double.NaN, Double.NaN,
+                        Double.NaN, ElliottResearchReport.UNAVAILABLE),
+                new Row("d", "A", "h2", "all-rules", "MOTIVE_5", List.of("rule"), "p", "kernel-topology",
+                        "observed-undefined", "completeOccupancyRate", 20, Double.NaN, 0L, 0L, 1, 1, 0, 0, 0, 0,
+                        Double.NaN, Double.NaN, ElliottResearchReport.UNAVAILABLE),
+                comparisonRow("no-null", 0.5d, List.of()),
+                new Row("d", "A", "robustness", "primary", "MOTIVE_5", List.of(), "p", "detector", "no-null-undefined",
+                        "confirmationLagBars", -1, Double.NaN, null, null, 0, 0, 0, Double.NaN, Double.NaN, Double.NaN,
+                        Double.NaN, Double.NaN, ElliottResearchReport.UNAVAILABLE));
+        final Path file = directory.resolve("comparisons.csv");
+        ElliottResearchReport.writeCsv(file, rows);
+        assertEquals(rows, ElliottResearchReport.readCsv(file));
     }
 
     @Test
@@ -312,7 +388,7 @@ class ElliottResearchReportTest {
     @Test
     void summaryNotesMissingEvidenceAndListsRecaptureCommand() {
         final Row available = new Row("d1", "A", "h1", "topology-only", "MOTIVE_5", List.of(), "p", "kernel-topology",
-                "cal", "completeOccupancyRate", 2, 0.5d, 5L, 10L, 2, 2, 0, 0.25d, 0.2d, 0.3d, 0.25d, 1.0d / 3.0d,
+                "cal", "completeOccupancyRate", 2, 0.5d, 5L, 10L, 2, 2, 0, 0.25d, 0.25d, 0.3d, 0.25d, 1.0d / 3.0d,
                 ElliottResearchReport.AVAILABLE);
         final Row omitted = new Row("d1", "A", "h1", "topology-only", "MOTIVE_5", List.of(), "p", "kernel-topology",
                 "cal", "noMatchRate", -1, 0.5d, 5L, 10L, 0, 0, 0, Double.NaN, Double.NaN, Double.NaN, Double.NaN,
@@ -321,7 +397,7 @@ class ElliottResearchReportTest {
                 "2020-12-30", 364, "partial", "gap | missing"));
 
         final Row otherDataset = new Row("d2", "B", "h1", "topology-only", "MOTIVE_5", List.of(), "p",
-                "kernel-topology", "cal", "completeOccupancyRate", 2, 0.5d, 5L, 10L, 2, 2, 0, 0.25d, 0.2d, 0.3d, 0.25d,
+                "kernel-topology", "cal", "completeOccupancyRate", 2, 0.5d, 5L, 10L, 2, 2, 0, 0.25d, 0.25d, 0.3d, 0.25d,
                 1.0d / 3.0d, ElliottResearchReport.AVAILABLE);
         final List<Row> rows = List.of(available, omitted, otherDataset);
 

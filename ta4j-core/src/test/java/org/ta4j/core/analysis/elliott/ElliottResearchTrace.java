@@ -585,6 +585,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             throw corrupt(path, lineNumber,
                     where + "direction must be BULLISH or BEARISH for FORMING, otherwise null or a wave direction");
         }
+        if ("alternative".equals(kind) && !direction.isJsonNull()) {
+            throw corrupt(path, lineNumber, where + "direction must be null for an alternative outcome");
+        }
         requireTexts(path, lineNumber, record, "activeRules", where);
         final JsonArray pivots = requireArray(path, lineNumber, record, "pivots", where);
         final List<ConfirmedPivot> visiblePivots = new ArrayList<>(pivots.size());
@@ -596,6 +599,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             }
             if (i > 0 && pivot.pivotIndex() <= visiblePivots.get(i - 1).pivotIndex()) {
                 throw corrupt(path, lineNumber, at + ".index must strictly increase in the visible pivot view");
+            }
+            if (i > 0 && pivot.type() == visiblePivots.get(i - 1).type()) {
+                throw corrupt(path, lineNumber, at + ".type must alternate in the visible pivot view");
             }
             visiblePivots.add(pivot);
         }
@@ -610,6 +616,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         TopologyGrammar grammar = null;
         WaveDirection candidateDirection = null;
         final List<TopologyCandidate> topologyCandidates = new ArrayList<>(candidates.size());
+        final Set<String> candidateKeys = candidates.size() > 1 ? new HashSet<>(candidates.size()) : null;
         for (int i = 0; i < candidates.size(); i++) {
             final String at = where + "candidates[" + i + "]";
             final JsonObject candidate = requireObject(path, lineNumber, candidates.get(i), at);
@@ -647,6 +654,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             if (!key.equals(candidate.get("candidateKey").getAsString())) {
                 throw corrupt(path, lineNumber,
                         at + ".candidateKey does not match grammar, direction and full placement");
+            }
+            if (candidateKeys != null && !candidateKeys.add(key)) {
+                throw corrupt(path, lineNumber, at + ".candidateKey duplicates a retained candidate");
             }
             if (!(key + "@" + digest(rules.toString())).equals(candidate.get("version").getAsString())) {
                 throw corrupt(path, lineNumber, at + ".version does not match the candidate key and rule evidence");
@@ -693,18 +703,27 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                 throw corrupt(path, lineNumber,
                         at + ".placement does not match its grammar, direction and strict leg-price shape");
             }
+            final int visibleStart = Collections.binarySearch(visiblePivots, candidatePivots.getFirst(),
+                    PIVOT_INDEX_ORDER);
             for (int p = 0; p < candidatePivots.size(); p++) {
                 final ConfirmedPivot placed = candidatePivots.get(p);
-                final int visibleIndex = Collections.binarySearch(visiblePivots, placed, PIVOT_INDEX_ORDER);
-                if (visibleIndex < 0 || visiblePivots.get(visibleIndex).type() != placed.type()
+                final int visibleIndex = visibleStart + p;
+                if (visibleStart < 0 || visibleIndex >= visiblePivots.size()
+                        || visiblePivots.get(visibleIndex).pivotIndex() != placed.pivotIndex()
+                        || visiblePivots.get(visibleIndex).type() != placed.type()
                         || !visiblePivots.get(visibleIndex).price().isEqual(placed.price())) {
-                    throw corrupt(path, lineNumber, at + ".placement[" + p + "] does not match a visible pivot");
+                    throw corrupt(path, lineNumber,
+                            at + ".placement[" + p + "] does not match a visible pivot in its contiguous window");
                 }
             }
         }
         if (topologyStatus != null) {
             if (grammar == null) {
-                requireGrammar(path, lineNumber, record, where);
+                grammar = requireGrammar(path, lineNumber, record, where);
+            }
+            if ((visiblePivots.size() < 2) != (topologyStatus == TopologyStatus.INSUFFICIENT_HISTORY)) {
+                throw corrupt(path, lineNumber,
+                        where + "status must be INSUFFICIENT_HISTORY exactly when fewer than two pivots are visible");
             }
             try {
                 TopologyAnalysis.validateDirection(topologyStatus,
@@ -740,15 +759,24 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                     throw corrupt(path, lineNumber,
                             where + "formingEndBarIndex must not exceed asOfIndex " + asOfIndex);
                 }
-                boolean startVisible = false;
-                boolean endVisible = false;
-                for (final ConfirmedPivot pivot : visiblePivots) {
-                    startVisible |= pivot.pivotIndex() == formingStart;
-                    endVisible |= pivot.pivotIndex() == formingEnd;
+                int startPosition = visiblePivots.size() - 1;
+                while (startPosition >= 0 && visiblePivots.get(startPosition).pivotIndex() > formingStart) {
+                    startPosition--;
                 }
-                if (!startVisible || !endVisible) {
-                    throw corrupt(path, lineNumber,
-                            where + "formingStartBarIndex/formingEndBarIndex must identify visible pivots");
+                final int suffixSize = visiblePivots.size() - startPosition;
+                if (startPosition < 0 || visiblePivots.get(startPosition).pivotIndex() != formingStart
+                        || visiblePivots.getLast().pivotIndex() != formingEnd || suffixSize < 3
+                        || suffixSize >= grammar.requiredPivots()) {
+                    throw corrupt(path, lineNumber, where
+                            + "formingStartBarIndex/formingEndBarIndex must identify a contiguous trailing suffix "
+                            + "of 3 to " + (grammar.requiredPivots() - 1)
+                            + " visible pivots ending at the newest pivot");
+                }
+                final List<ConfirmedPivot> suffix = visiblePivots.subList(startPosition, visiblePivots.size());
+                if (!TopologyAnalyzer.startsInExpectedDirection(grammar, analysis.direction(), suffix)
+                        || !TopologyAnalyzer.matchesShape(grammar, analysis.direction(), suffix)) {
+                    throw corrupt(path, lineNumber, where
+                            + "formingStartBarIndex/formingEndBarIndex suffix must match its grammar and direction");
                 }
             }
             expectedLabels = StudyRunner.topologyStabilityLabels(analysis);
@@ -766,6 +794,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         final String status = record.get("status").getAsString();
         final String grammarName = record.get("grammar").getAsString();
         if ("change-point-baseline".equals(grammarName)) {
+            if (!visiblePivots.isEmpty()) {
+                throw corrupt(path, lineNumber, where + "pivots must be empty for change-point-baseline");
+            }
             // The trace does not capture closes: bind labels to the recorded outcome,
             // not to a new price-based classification.
             return switch (status) {

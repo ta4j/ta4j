@@ -207,6 +207,10 @@ before creating a lock file, then holds the same lock while reading evidence and
 replacing artifacts, refusing while a run is writing.
 Metadata checkpoints and final `run.json` publication replace a completed sibling
 temporary file atomically, preserving the previous valid metadata on write failure.
+When a frozen-study dataset failure is handled and the run continues, any stale or partial
+report file for that dataset is removed; directories at report paths and other completed
+reports are preserved. Fail-fast calls retain checked I/O failures, while a failure in a
+post-write completion callback does not remove the newly completed report.
 Run and summary locks refuse symbolic links at `.run.lock`, including dangling links,
 without creating or locking their targets outside the run directory.
 Completed metadata binds `comparisons.csv` with `comparisonsSha256` and each listed trace
@@ -223,7 +227,12 @@ coverage has zero bars and no effective dates even when the source has other bar
 Each comparison sets the observed value against a
 null reference band of member-level 2.5%-97.5% quantiles and an empirical
 reference rank; neither is a confidence interval or a p-value, and partitions
-are never pooled. `inspect` rebuilds a row's support from its trace and lists
+are never pooled. Rows validate nonnegative, reconciling member counts, finite ordered
+nearest-rank quantiles (including shared positions for small ensembles), the observed-minus-median
+difference, and an empirical rank on the `(valid + 1)` lattice consistent with those quantiles.
+Availability must agree with the observed value, null block and valid-member count;
+undefined observations and all-undefined ensembles remain explicitly unavailable.
+`inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements. Every observation must match its trace
 header's dataset and null-member coordinates and carry a status defined for its
 record kind; required scope labels and as-of timestamps must be nonblank. Kernel
@@ -236,19 +245,28 @@ Topology status, candidate count and direction must agree: `COMPLETE` has one
 candidate and its direction, `AMBIGUOUS` has 2-64 candidates and a null direction,
 and all other states have no candidates. `FORMING` requires a wave direction;
 the remaining states have a null direction.
+`INSUFFICIENT_HISTORY` means fewer than two visible pivots, and ambiguous candidates
+must have distinct keys. A forming span is a grammar-valid, contiguous trailing suffix
+of at least three but fewer than the grammar's full pivot count, ending at the newest
+visible pivot. A shorter valid suffix remains allowed after a disjoint completed window;
+readers do not rerun selection or insist on a different, longer forming span.
 Each candidate's rules must exactly match `activeRules` in order. Inspection also
 binds the selected mode, every real cross-mode disagreement and the selected null member
 to that mode's ordered rule list in `comparisons.csv`.
+Real and null scopes both include the row's detector; a foreign detector cannot contribute
+status tallies, metric values or supporting as-of bars, even when grammar and mode agree.
 Scores are null except for `PASS`, whose recorded score, if present, is in `[0, 1]`.
-Pivots require nonnegative, strictly increasing indices, finite prices and valid
+Pivots require nonnegative, strictly increasing indices, finite prices and alternating
 high/low types, with confirmation no earlier than the pivot and no later than the
-observation's `asOfIndex`. Candidate placement must match the visible pivot view
-by index, type and exact numeric price, have the grammar's required number of
+observation's `asOfIndex`. Candidate placement must match a contiguous window of the
+visible pivot view by index, type and exact numeric price, have the grammar's required number of
 strictly ordered, alternating pivots, the expected origin type for its direction,
 and strictly positive or negative legs in the grammar's declared pattern.
 Candidate keys must
 match the recorded grammar, direction and full
 placement, and evidence versions must match the candidate key and serialized rules.
+Alternative records always have a null direction; change-point-baseline records have
+no visible pivots and bind their recorded status only to its corresponding label.
 All these checks precede scope filtering. Trace capture
 shares the immutable evidence consumed by report metrics rather than reevaluating
 the same candidates.

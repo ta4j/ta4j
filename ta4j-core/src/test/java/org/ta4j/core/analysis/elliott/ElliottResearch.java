@@ -2197,6 +2197,7 @@ final class ElliottResearch {
         private boolean inNullScope(final JsonObject record) {
             final String nullMode = "h2".equals(row.section()) ? row.mode() : row.grammar();
             return "null".equals(textOf(record, "section")) && row.grammar().equals(textOf(record, "grammar"))
+                    && row.detector().equals(textOf(record, "detector"))
                     && row.partition().equals(textOf(record, "partition")) && nullMode.equals(textOf(record, "mode"));
         }
 

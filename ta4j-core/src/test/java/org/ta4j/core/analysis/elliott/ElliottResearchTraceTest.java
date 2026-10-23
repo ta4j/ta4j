@@ -847,12 +847,8 @@ class ElliottResearchTraceTest {
                     final JsonObject candidate = firstCandidate(record);
                     candidate.getAsJsonArray("rules").get(0).getAsJsonObject().addProperty("score", 0);
                     candidate.getAsJsonArray("rules").get(1).getAsJsonObject().addProperty("score", 1);
-                    final JsonArray candidates = record.getAsJsonArray("candidates");
-                    while (candidates.size() < count) {
-                        candidates.add(candidate.deepCopy());
-                    }
+                    retainDistinctCandidates(record, count);
                     refreshIdentity(record);
-                    record.add("labels", labelArray(direction + ":0-" + (grammar.requiredPivots() - 1)));
                     final List<String> changed = new ArrayList<>(lines);
                     changed.set(1, record.toString());
                     final Path copy = directory.resolve("valid-" + grammar + "-" + direction + "-" + count + ".jsonl");
@@ -886,16 +882,26 @@ class ElliottResearchTraceTest {
                     };
                     final List<TopologyCandidate> modelCandidates = Collections.nCopies(count, modelCandidate);
                     final int start = status == TopologyStatus.FORMING ? 0 : -1;
-                    final int end = status == TopologyStatus.FORMING ? 8 : -1;
+                    final int end = status == TopologyStatus.FORMING ? 2 : -1;
                     final JsonObject record = original.deepCopy();
                     record.addProperty("status", status.name());
                     record.add("direction",
                             direction == null ? JsonNull.INSTANCE : new JsonPrimitive(direction.name()));
-                    final JsonArray candidates = new JsonArray();
-                    for (int i = 0; i < count; i++) {
-                        candidates.add(firstCandidate(original).deepCopy());
+                    if (status == TopologyStatus.FORMING && direction == WaveDirection.BEARISH) {
+                        orientGrammarShape(record, TopologyGrammar.CYCLE_5_3, direction);
                     }
-                    record.add("candidates", candidates);
+                    if (count > 0) {
+                        retainDistinctCandidates(record, count);
+                        refreshIdentity(record);
+                    } else {
+                        record.add("candidates", new JsonArray());
+                    }
+                    final JsonArray pivots = record.getAsJsonArray("pivots");
+                    final int visibleCount = status == TopologyStatus.INSUFFICIENT_HISTORY ? 1
+                            : status == TopologyStatus.FORMING ? 3 : pivots.size();
+                    while (pivots.size() > visibleCount) {
+                        pivots.remove(pivots.size() - 1);
+                    }
                     record.addProperty("formingStartBarIndex", start);
                     record.addProperty("formingEndBarIndex", end);
                     record.addProperty("explanation", "");
@@ -903,8 +909,10 @@ class ElliottResearchTraceTest {
                         final TopologyAnalysis analysis = new TopologyAnalysis(status, direction, modelCandidates, "",
                                 start, end);
                         assertEquals(direction, analysis.direction());
-                        record.add("labels",
-                                labelArray(StudyRunner.topologyStabilityLabels(analysis).toArray(String[]::new)));
+                        if (count == 0) {
+                            record.add("labels",
+                                    labelArray(StudyRunner.topologyStabilityLabels(analysis).toArray(String[]::new)));
+                        }
                         final List<String> changed = new ArrayList<>(lines);
                         changed.set(1, record.toString());
                         final Path copy = directory
@@ -954,7 +962,7 @@ class ElliottResearchTraceTest {
             }
             case "different-visible-type" -> {
                 visible.addProperty("type", "HIGH");
-                field = "placement[0]";
+                field = "pivots[1].type";
             }
             case "future-confirmation" -> {
                 visible.addProperty("confirmationIndex", damaged.get("asOfIndex").getAsInt() + 1);
@@ -1113,17 +1121,18 @@ class ElliottResearchTraceTest {
     @Test
     public void formingRangeModelBoundaryIsAcceptedAtTheAsOfIndex() throws Exception {
         final Path file = directory.resolve("forming-range-boundary.jsonl");
-        final List<ConfirmedPivot> visible = alternating(10);
-        final TopologyAnalysis analysis = TopologyAnalysis.forming(WaveDirection.BULLISH, 0, 0, "");
+        final List<ConfirmedPivot> visible = alternating(10, 20, 14);
+        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5, visible);
+        assertEquals(TopologyStatus.FORMING, analysis.status());
         try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
                 ElliottResearchTrace.MODE_REAL, -1, -1)) {
             trace.topology(StudyObserver.Scope.real("h1", "topology-only", "MOTIVE_5", List.of(), "d"), "calibration",
-                    0, Instant.parse("2018-01-01T00:00:00Z"), visible, analysis, List.of());
+                    2, Instant.parse("2018-01-03T00:00:00Z"), visible, analysis, List.of());
         }
         final JsonObject record = ElliottResearchTrace.read(file).records().getFirst();
         assertEquals(0, record.get("formingStartBarIndex").getAsInt());
-        assertEquals(0, record.get("formingEndBarIndex").getAsInt());
-        assertEquals(labelArray("forming:BULLISH:0-0"), record.get("labels"));
+        assertEquals(2, record.get("formingEndBarIndex").getAsInt());
+        assertEquals(labelArray("forming:BULLISH:0-2"), record.get("labels"));
     }
 
     @Test
@@ -1284,6 +1293,9 @@ class ElliottResearchTraceTest {
                 assertFalse(record.has("formingStartBarIndex"));
                 assertFalse(record.has("formingEndBarIndex"));
                 assertFalse(record.has("explanation"));
+                final JsonObject directed = record.deepCopy();
+                directed.addProperty("direction", "BULLISH");
+                assertMalformedAtLine2(lines, directed, "direction");
                 for (final String outcome : Set.of("insufficient-history", "no-match", "forming", "complete",
                         "ambiguous")) {
                     if (!outcome.equals(outcomes.get(i))) {
@@ -1331,6 +1343,14 @@ class ElliottResearchTraceTest {
                 final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
                 final JsonObject record = ElliottResearchTrace.read(file).records().getFirst();
                 assertEquals(labelArray(label), record.get("labels"));
+                final JsonObject nonemptyPivots = record.deepCopy();
+                final JsonObject pivot = new JsonObject();
+                pivot.addProperty("index", 0);
+                pivot.addProperty("confirmationIndex", 0);
+                pivot.addProperty("type", "LOW");
+                pivot.addProperty("price", "0");
+                nonemptyPivots.getAsJsonArray("pivots").add(pivot);
+                assertMalformedAtLine2(lines, nonemptyPivots, "pivots");
                 for (final String forgedLabel : List.of("arbitrary", "change@" + (asOfIndex - 1))) {
                     final JsonObject forged = record.deepCopy();
                     forged.add("labels", labelArray(forgedLabel));
@@ -1419,6 +1439,168 @@ class ElliottResearchTraceTest {
         return file;
     }
 
+    @Test
+    public void formingSuffixesMatchTheirGrammarAndEndAtTheNewestVisiblePivotBeforeRetention() throws Exception {
+        final List<String> lines = Files.readAllLines(domainTrace("forming-suffix-contract.jsonl"),
+                StandardCharsets.UTF_8);
+        final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        for (final TopologyGrammar grammar : TopologyGrammar.values()) {
+            for (final WaveDirection direction : WaveDirection.values()) {
+                for (int length = 3; length < grammar.requiredPivots(); length++) {
+                    final JsonObject record = original.deepCopy();
+                    orientGrammarShape(record, grammar, direction);
+                    retainDistinctCandidates(record, 1);
+                    final JsonArray completePivots = record.getAsJsonArray("pivots").deepCopy();
+                    final JsonArray pivots = record.getAsJsonArray("pivots");
+                    while (pivots.size() > length) {
+                        pivots.remove(pivots.size() - 1);
+                    }
+                    // Confirmation order is not pivot order; every pivot is causal.
+                    pivots.get(0)
+                            .getAsJsonObject()
+                            .addProperty("confirmationIndex", record.get("asOfIndex").getAsInt());
+                    record.add("candidates", new JsonArray());
+                    record.addProperty("status", "FORMING");
+                    record.addProperty("direction", direction.name());
+                    record.addProperty("formingStartBarIndex", 0);
+                    record.addProperty("formingEndBarIndex", length - 1);
+                    record.add("labels", labelArray("forming:" + direction + ":0-" + (length - 1)));
+                    final List<String> valid = new ArrayList<>(lines);
+                    valid.set(1, record.toString());
+                    final Path trace = directory
+                            .resolve("forming-" + grammar + "-" + direction + "-" + length + ".jsonl");
+                    Files.write(trace, valid, StandardCharsets.UTF_8);
+                    assertEquals(record, ElliottResearchTrace.read(trace).records().getFirst());
+                    assertTrue(ElliottResearchTrace.read(trace, ignored -> false).records().isEmpty());
+
+                    for (final String mutation : List.of("not-newest", "two-pivot-suffix", "wrong-direction",
+                            "flat-leg", "complete-length")) {
+                        final JsonObject damaged = record.deepCopy();
+                        switch (mutation) {
+                        case "not-newest" -> damaged.addProperty("formingEndBarIndex", length - 2);
+                        case "two-pivot-suffix" -> damaged.addProperty("formingStartBarIndex", length - 2);
+                        case "wrong-direction" -> damaged.addProperty("direction",
+                                direction == WaveDirection.BULLISH ? "BEARISH" : "BULLISH");
+                        case "flat-leg" -> damaged.getAsJsonArray("pivots")
+                                .get(length - 1)
+                                .getAsJsonObject()
+                                .add("price", pivots.get(length - 2).getAsJsonObject().get("price").deepCopy());
+                        case "complete-length" -> {
+                            damaged.add("pivots", completePivots.deepCopy());
+                            damaged.addProperty("formingEndBarIndex", grammar.requiredPivots() - 1);
+                        }
+                        default -> throw new AssertionError(mutation);
+                        }
+                        damaged.add("labels",
+                                labelArray("forming:" + damaged.get("direction").getAsString() + ":"
+                                        + damaged.get("formingStartBarIndex").getAsInt() + "-"
+                                        + damaged.get("formingEndBarIndex").getAsInt()));
+                        assertMalformedAtLine2(valid, damaged, "forming");
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void disjointCompletionBoundariesMaySelectAShorterValidFormingSuffix() throws Exception {
+        for (final TopologyGrammar grammar : TopologyGrammar.values()) {
+            for (final WaveDirection direction : WaveDirection.values()) {
+                final List<ConfirmedPivot> visible = new ArrayList<>();
+                final boolean startsLow = (direction == WaveDirection.BULLISH) != (grammar == TopologyGrammar.CORRECTIVE_3);
+                for (int p = 0; p < grammar.requiredPivots() + 3; p++) {
+                    final boolean low = (p % 2 == 0) == startsLow;
+                    visible.add(new ConfirmedPivot(p, p, DoubleNum.valueOf(low ? 10 : 20),
+                            low ? SwingPivotType.LOW : SwingPivotType.HIGH));
+                }
+                final TopologyAnalysis analysis = new TopologyAnalyzer().detectForming(grammar, visible,
+                        grammar.requiredPivots() - 1);
+                assertEquals(TopologyStatus.FORMING, analysis.status());
+                assertEquals(grammar.requiredPivots(), analysis.formingStartBarIndex());
+                assertEquals(visible.size() - 1, analysis.formingEndBarIndex());
+                final Path file = directory.resolve("disjoint-forming-" + grammar + "-" + direction + ".jsonl");
+                try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
+                        ElliottResearchTrace.MODE_REAL, -1, -1)) {
+                    trace.topology(StudyObserver.Scope.real("h1", "topology-only", grammar.name(), List.of(), "d"),
+                            "calibration", visible.size() - 1, Instant.parse("2018-02-01T00:00:00Z"), visible, analysis,
+                            List.of());
+                }
+                assertEquals(analysis.formingStartBarIndex(),
+                        ElliottResearchTrace.read(file).records().getFirst().get("formingStartBarIndex").getAsInt());
+                assertTrue(ElliottResearchTrace.read(file, ignored -> false).records().isEmpty());
+            }
+        }
+    }
+
+    @Test
+    public void capturedPivotViewsAndRetainedCandidatesCannotContradictTheirStatesBeforeRetention() throws Exception {
+        final List<String> lines = Files.readAllLines(domainTrace("captured-state-contract.jsonl"),
+                StandardCharsets.UTF_8);
+        final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        for (final String mutation : List.of("nonalternating", "insufficient-with-visible-history",
+                "no-match-with-one-pivot", "invalidated-with-one-pivot", "duplicate-candidate", "gapped-candidate")) {
+            final JsonObject damaged = original.deepCopy();
+            final JsonArray pivots = damaged.getAsJsonArray("pivots");
+            final String field;
+            switch (mutation) {
+            case "nonalternating" -> {
+                pivots.get(1).getAsJsonObject().add("type", pivots.get(0).getAsJsonObject().get("type").deepCopy());
+                field = "pivots[1].type";
+            }
+            case "insufficient-with-visible-history", "no-match-with-one-pivot", "invalidated-with-one-pivot" -> {
+                final String status = "insufficient-with-visible-history".equals(mutation) ? "INSUFFICIENT_HISTORY"
+                        : "no-match-with-one-pivot".equals(mutation) ? "NO_MATCH" : "INVALIDATED";
+                damaged.addProperty("status", status);
+                damaged.add("direction", JsonNull.INSTANCE);
+                damaged.add("candidates", new JsonArray());
+                if (!"INSUFFICIENT_HISTORY".equals(status)) {
+                    while (pivots.size() > 1) {
+                        pivots.remove(pivots.size() - 1);
+                    }
+                }
+                damaged.add("labels", "INSUFFICIENT_HISTORY".equals(status) ? labelArray("insufficient-history")
+                        : "INVALIDATED".equals(status) ? labelArray("invalidated:complete") : labelArray());
+                field = "status";
+            }
+            case "duplicate-candidate" -> {
+                damaged.addProperty("status", "AMBIGUOUS");
+                damaged.add("direction", JsonNull.INSTANCE);
+                damaged.getAsJsonArray("candidates").add(firstCandidate(damaged).deepCopy());
+                field = "candidateKey";
+            }
+            case "gapped-candidate" -> {
+                final JsonArray expanded = new JsonArray();
+                for (int p = 0; p < pivots.size(); p++) {
+                    if (p == 1) {
+                        for (int inserted = 1; inserted <= 2; inserted++) {
+                            final JsonObject extra = pivots.get(inserted % 2).getAsJsonObject().deepCopy();
+                            extra.addProperty("index", inserted);
+                            extra.addProperty("confirmationIndex", inserted);
+                            expanded.add(extra);
+                        }
+                    }
+                    final JsonObject pivot = pivots.get(p).getAsJsonObject().deepCopy();
+                    pivot.addProperty("index", p == 0 ? 0 : p + 2);
+                    pivot.addProperty("confirmationIndex", p == 0 ? 0 : p + 2);
+                    expanded.add(pivot);
+                }
+                damaged.add("pivots", expanded);
+                final JsonObject candidate = firstCandidate(damaged);
+                final JsonArray placement = candidate.getAsJsonArray("placement");
+                for (int p = 1; p < placement.size(); p++) {
+                    placement.get(p).getAsJsonObject().addProperty("index", p + 2);
+                }
+                candidate.addProperty("endBarIndex", 10);
+                damaged.addProperty("asOfIndex", 10);
+                refreshIdentity(damaged);
+                field = "placement[1]";
+            }
+            default -> throw new AssertionError(mutation);
+            }
+            assertMalformedAtLine2(lines, damaged, field);
+        }
+    }
+
     private static void orientGrammarShape(final JsonObject record, final TopologyGrammar grammar,
             final WaveDirection direction) {
         record.addProperty("grammar", grammar.name());
@@ -1441,6 +1623,40 @@ class ElliottResearchTraceTest {
                 placed.addProperty("price", low ? "-1e400" : "1e400");
             }
         }
+    }
+
+    private static void retainDistinctCandidates(final JsonObject record, final int count) {
+        final JsonObject template = firstCandidate(record).deepCopy();
+        final JsonArray original = template.getAsJsonArray("placement");
+        final int required = original.size();
+        final JsonArray pivots = new JsonArray();
+        for (int p = 0; p < required + 2 * (count - 1); p++) {
+            final JsonObject pivot = original.get(p % 2).getAsJsonObject().deepCopy();
+            pivot.addProperty("index", p);
+            pivot.addProperty("confirmationIndex", p);
+            pivots.add(pivot);
+        }
+        final JsonArray candidates = new JsonArray();
+        final JsonArray labels = new JsonArray();
+        for (int i = 0; i < count; i++) {
+            final int start = 2 * i;
+            final JsonArray placement = new JsonArray();
+            for (int p = start; p < start + required; p++) {
+                final JsonObject pivot = pivots.get(p).getAsJsonObject().deepCopy();
+                pivot.remove("confirmationIndex");
+                placement.add(pivot);
+            }
+            final JsonObject candidate = template.deepCopy();
+            candidate.add("placement", placement);
+            candidate.addProperty("startBarIndex", start);
+            candidate.addProperty("endBarIndex", start + required - 1);
+            candidates.add(candidate);
+            labels.add(candidate.get("direction").getAsString() + ":" + start + "-" + (start + required - 1));
+        }
+        record.add("pivots", pivots);
+        record.add("candidates", candidates);
+        record.add("labels", labels);
+        record.addProperty("asOfIndex", Math.max(record.get("asOfIndex").getAsInt(), pivots.size() - 1));
     }
 
     private Path domainTrace(final String name) throws IOException {
