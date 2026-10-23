@@ -316,9 +316,7 @@ class ElliottResearchCalibrationTest {
                 }
                 final JsonObject damaged = baseline.toJson();
                 if (field.equals("fit.partitions")) {
-                    damaged.getAsJsonObject("fit")
-                            .getAsJsonArray("partitions")
-                            .set(0, JsonParser.parseString(value));
+                    damaged.getAsJsonObject("fit").getAsJsonArray("partitions").set(0, JsonParser.parseString(value));
                 } else {
                     final JsonObject location = field.equals("stage") ? damaged : damaged.getAsJsonObject("identity");
                     if (value.equals("missing")) {
@@ -348,8 +346,8 @@ class ElliottResearchCalibrationTest {
         for (int index = 0; index < 6; index++) {
             rows.add(labeled(index, "k" + index, 2, 1, index % 2 == 0 ? Outcome.SUCCESS : Outcome.FAILURE));
         }
-        final Calibrator baseline = Calibrator.fit("evaluation", IDENTITY, PROVENANCE, 2, rows,
-                List.of("calibration"), 100);
+        final Calibrator baseline = Calibrator.fit("evaluation", IDENTITY, PROVENANCE, 2, rows, List.of("calibration"),
+                100);
         final JsonObject valid = baseline.toJson();
         assertTrue(valid.getAsJsonArray("masks").size() > 0, "the fixture must exercise persisted bin counts");
         final JsonArray held = new JsonArray();
@@ -365,7 +363,11 @@ class ElliottResearchCalibrationTest {
                     "2147483647.0000000001", "2147483648", "-2147483649", "4294967316", "1e1000")) {
                 final JsonObject damaged = valid.deepCopy();
                 final JsonObject owner = field.startsWith("masks.")
-                        ? damaged.getAsJsonArray("masks").get(0).getAsJsonObject().getAsJsonArray("bins").get(0)
+                        ? damaged.getAsJsonArray("masks")
+                                .get(0)
+                                .getAsJsonObject()
+                                .getAsJsonArray("bins")
+                                .get(0)
                                 .getAsJsonObject()
                         : damaged.getAsJsonObject(field.substring(0, field.indexOf('.')));
                 final String name = field.substring(field.lastIndexOf('.') + 1);
@@ -385,7 +387,11 @@ class ElliottResearchCalibrationTest {
             for (final String suffix : List.of(".0", "e0")) {
                 final JsonObject integral = valid.deepCopy();
                 final JsonObject owner = field.startsWith("masks.")
-                        ? integral.getAsJsonArray("masks").get(0).getAsJsonObject().getAsJsonArray("bins").get(0)
+                        ? integral.getAsJsonArray("masks")
+                                .get(0)
+                                .getAsJsonObject()
+                                .getAsJsonArray("bins")
+                                .get(0)
                                 .getAsJsonObject()
                         : integral.getAsJsonObject(field.substring(0, field.indexOf('.')));
                 final String name = field.substring(field.lastIndexOf('.') + 1);

@@ -188,8 +188,7 @@ final class ElliottResearchCalibration {
             }
             final Settings settings = new Settings(horizon, text(json, "fit", DEFAULT_FIT),
                     text(json, "validation", DEFAULT_VALIDATION), text(json, "evaluation", DEFAULT_EVALUATION),
-                    json.has("minGroups") ? requiredInteger(json, "minGroups", "calibration.")
-                            : DEFAULT_MIN_GROUPS);
+                    json.has("minGroups") ? requiredInteger(json, "minGroups", "calibration.") : DEFAULT_MIN_GROUPS);
             final Map<String, StudyRunner.Partition> byName = new LinkedHashMap<>();
             partitions.forEach(partition -> byName.put(partition.name(), partition));
             final List<StudyRunner.Partition> ordered = new ArrayList<>();
@@ -885,7 +884,8 @@ final class ElliottResearchCalibration {
          *
          * @param json serialized table
          * @return the table
-         * @throws IllegalArgumentException when the schema, bin policy or a required field is invalid
+         * @throws IllegalArgumentException when the schema, bin policy or a required
+         *                                  field is invalid
          * @since 0.26.1
          */
         static Calibrator fromJson(final JsonObject json) {
@@ -904,7 +904,8 @@ final class ElliottResearchCalibration {
             }
             final JsonObject fit = json.getAsJsonObject("fit");
             final List<String> partitions = new ArrayList<>();
-            fit.getAsJsonArray("partitions").forEach(element -> partitions.add(requiredText(element, "fit.partitions")));
+            fit.getAsJsonArray("partitions")
+                    .forEach(element -> partitions.add(requiredText(element, "fit.partitions")));
             final JsonObject provenance = json.getAsJsonObject("provenance");
             final Map<String, List<BinFit>> masks = new TreeMap<>();
             for (final JsonElement element : json.getAsJsonArray("masks")) {
@@ -924,15 +925,13 @@ final class ElliottResearchCalibration {
                     new Provenance(provenance.get("fingerprint").getAsString(),
                             provenance.get("revision").getAsString()),
                     requiredInteger(policy, "minGroups", "policy."), partitions,
-                    requiredInteger(fit, "firstIndex", "fit."),
-                    requiredInteger(fit, "cutoffIndex", "fit."),
+                    requiredInteger(fit, "firstIndex", "fit."), requiredInteger(fit, "cutoffIndex", "fit."),
                     binFit(json.getAsJsonObject("base"), "base."), masks);
         }
 
         private static BinFit binFit(final JsonObject json, final String where) {
             return new BinFit(json.get("weight").getAsDouble(), json.get("successWeight").getAsDouble(),
-                    requiredInteger(json, "groups", where),
-                    requiredInteger(json, "successes", where),
+                    requiredInteger(json, "groups", where), requiredInteger(json, "successes", where),
                     requiredInteger(json, "failures", where));
         }
     }

@@ -1143,7 +1143,8 @@ final class ElliottResearchOutcomes {
     /**
      * Checks the published artifacts against the counts the run declared for them.
      * A header-only file, a prefix of whole rows, a cut through the last row, or a
-     * blank required identity is rejected before a reader presents partial evidence.
+     * blank required identity is rejected before a reader presents partial
+     * evidence.
      *
      * @param events   {@code events.jsonl}
      * @param outcomes {@code outcomes.csv}

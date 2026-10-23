@@ -980,6 +980,30 @@ final class StudyRunner {
         }
     }
 
+    /**
+     * Exact labels accumulated by the topology stability metric and evidence trace.
+     */
+    static Set<String> topologyStabilityLabels(final TopologyAnalysis analysis) {
+        return switch (analysis.status()) {
+        case COMPLETE -> {
+            final TopologyCandidate candidate = analysis.candidates().get(0);
+            yield Set.of(candidate.direction() + ":" + candidate.startBarIndex() + "-" + candidate.endBarIndex());
+        }
+        case AMBIGUOUS -> {
+            final Set<String> labels = new HashSet<>();
+            for (final TopologyCandidate candidate : analysis.candidates()) {
+                labels.add(candidate.direction() + ":" + candidate.startBarIndex() + "-" + candidate.endBarIndex());
+            }
+            yield labels;
+        }
+        case FORMING -> Set.of("forming:" + analysis.direction() + ":" + analysis.formingStartBarIndex() + "-"
+                + analysis.formingEndBarIndex());
+        case INVALIDATED -> Set.of("invalidated:" + analysis.explanation());
+        case INSUFFICIENT_HISTORY -> Set.of("insufficient-history");
+        case NO_MATCH -> Set.of();
+        };
+    }
+
     private static final class MetricAccumulator {
         private final List<RuleCounter> ruleCounters;
         private final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence;
@@ -1022,13 +1046,11 @@ final class StudyRunner {
             evaluationCount++;
             firstIndex = Math.min(firstIndex, index);
             lastIndex = Math.max(lastIndex, index);
+            updateStability(topologyStabilityLabels(analysis));
             switch (analysis.status()) {
             case COMPLETE -> {
                 completeCount++;
                 final TopologyCandidate candidate = analysis.candidates().get(0);
-                final Set<String> labels = Set
-                        .of(candidate.direction() + ":" + candidate.startBarIndex() + "-" + candidate.endBarIndex());
-                updateStability(labels);
                 double lag = 0.0d;
                 for (final ConfirmedPivot pivot : candidate.pivots()) {
                     lag += Math.max(0, pivot.confirmationIndex() - pivot.pivotIndex());
@@ -1040,16 +1062,9 @@ final class StudyRunner {
             }
             case FORMING -> {
                 formingCount++;
-                updateStability(Set.of("forming:" + analysis.direction() + ":" + analysis.formingStartBarIndex() + "-"
-                        + analysis.formingEndBarIndex()));
             }
             case AMBIGUOUS -> {
                 ambiguousCount++;
-                final Set<String> labels = new HashSet<>();
-                for (final TopologyCandidate candidate : analysis.candidates()) {
-                    labels.add(candidate.direction() + ":" + candidate.startBarIndex() + "-" + candidate.endBarIndex());
-                }
-                updateStability(labels);
                 if (ambiguousCandidateEvidence != null) {
                     for (int candidateIndex = 0; candidateIndex < analysis.candidates().size(); candidateIndex++) {
                         final TopologyCandidate candidate = analysis.candidates().get(candidateIndex);
@@ -1061,15 +1076,12 @@ final class StudyRunner {
             }
             case NO_MATCH -> {
                 noMatchCount++;
-                updateStability(Set.of());
             }
             case INVALIDATED -> {
                 invalidatedCount++;
-                updateStability(Set.of("invalidated:" + analysis.explanation()));
             }
             case INSUFFICIENT_HISTORY -> {
                 insufficientHistoryCount++;
-                updateStability(Set.of("insufficient-history"));
             }
             default -> throw new IllegalStateException("unhandled topology status " + analysis.status());
             }

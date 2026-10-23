@@ -58,7 +58,8 @@ class ElliottResearchOutcomesTest {
         ElliottResearchOutcomes.writeEvents(events, "fingerprint", SETTINGS, results);
         ElliottResearchOutcomes.writeOutcomes(outcomes, results);
         ElliottResearchOutcomes.writeSummary(summary, results);
-        ElliottResearchOutcomes.verifyArtifacts(events, outcomes, summary, ElliottResearchOutcomes.recordCounts(results));
+        ElliottResearchOutcomes.verifyArtifacts(events, outcomes, summary,
+                ElliottResearchOutcomes.recordCounts(results));
 
         for (final Path artifact : List.of(outcomes, summary)) {
             final List<List<String>> table = ElliottResearchReport.parseCsv(artifact);
@@ -80,7 +81,8 @@ class ElliottResearchOutcomesTest {
             }
             ElliottResearchReport.writeTable(artifact, header, table.subList(1, table.size()));
         }
-        ElliottResearchOutcomes.verifyArtifacts(events, outcomes, summary, ElliottResearchOutcomes.recordCounts(results));
+        ElliottResearchOutcomes.verifyArtifacts(events, outcomes, summary,
+                ElliottResearchOutcomes.recordCounts(results));
     }
 
     // ------------------------------------------------------------ structural

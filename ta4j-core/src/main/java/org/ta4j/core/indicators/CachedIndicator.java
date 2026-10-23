@@ -8,6 +8,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -38,6 +39,15 @@ import org.ta4j.core.num.Num;
  * This implementation uses a ring buffer for O(1) eviction when
  * {@code maximumBarCount} is set, and read-optimized locking for better
  * concurrency on cache hits.
+ *
+ * <p>
+ * When the current series capacity is smaller than
+ * {@link #getCountOfUnstableBars()}, the next value read logs an advisory
+ * warning once per instance and distinct capacity, including capacities
+ * configured after construction. Equality does not warn. The warning does not
+ * block continued values, change warm-up results or reconstruct discarded raw
+ * inputs. Recursive indicators must be read continuously while their required
+ * inputs are available to preserve their seeded history.
  *
  * <h2>Thread Safety</h2>
  * <p>
@@ -138,6 +148,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private volatile int firstBarCachedRemovedBarsCount = -1;
     private volatile boolean firstBarHasCachedResult;
     private volatile T firstBarCachedResult;
+
+    /** Diagnostic state, unrelated to the indicator's serialized configuration. */
+    private transient Set<Integer> warnedMaximumBarCounts;
+    private transient volatile int lastWarnedMaximumBarCount;
 
     private static boolean equalsNum(Num left, Num right) {
         return left == right || (left != null && left.equals(right));
@@ -439,6 +453,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     public T getValue(int index) {
         BarSeries series = getBarSeries();
         BarSeriesChangeSnapshot snapshot = synchronizeCacheWithSeries(series);
+        warnIfWindowIsShorterThanUnstablePeriod(snapshot.maximumBarCount());
         final int removedBarsCount = snapshot.removedThroughIndex() + 1;
         final int endIndex = snapshot.endIndex();
 
@@ -465,6 +480,28 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             log.trace("{}({}): {}", this, index, result);
         }
         return result;
+    }
+
+    private void warnIfWindowIsShorterThanUnstablePeriod(int maximumBarCount) {
+        if (maximumBarCount == Integer.MAX_VALUE || maximumBarCount == lastWarnedMaximumBarCount
+                || !log.isWarnEnabled()) {
+            return;
+        }
+        int unstableBars = getCountOfUnstableBars();
+        if (maximumBarCount >= unstableBars) {
+            return;
+        }
+        synchronized (firstBarLock) {
+            if (warnedMaximumBarCounts == null) {
+                warnedMaximumBarCounts = new HashSet<>();
+            }
+            lastWarnedMaximumBarCount = maximumBarCount;
+            if (!warnedMaximumBarCounts.add(maximumBarCount)) {
+                return;
+            }
+        }
+        log.warn("{}: maximumBarCount {} is smaller than unstable bars {}; continued values are not blocked",
+                getClass().getName(), maximumBarCount, unstableBars);
     }
 
     /**

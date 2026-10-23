@@ -9,7 +9,9 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Indicator that returns {@link NaN#NaN NaN} in unstable bars.
+ * Indicator that returns {@link NaN#NaN NaN} in unstable bars. The source is
+ * evaluated during warm-up so a recursive source can retain its seed on a
+ * bounded series; only this indicator's output is masked.
  */
 public class UnstableIndicator extends CachedIndicator<Num> {
 
@@ -30,10 +32,11 @@ public class UnstableIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        Num value = indicator.getValue(index);
         if (index < unstableBars) {
             return NaN.NaN;
         }
-        return indicator.getValue(index);
+        return value;
     }
 
     /** @return {@link #unstableBars} */

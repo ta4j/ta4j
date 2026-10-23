@@ -19,6 +19,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.averages.EMAIndicator;
@@ -45,6 +46,48 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
     @BeforeEach
     public void setUp() {
         this.series = buildOscillatingSeries(120);
+    }
+
+    @Test
+    public void primesAveragesBeforeWarmupOnShortMovingWindow() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries bounded = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+            BarSeries unbounded = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+            bounded.setMaximumBarCount(2);
+            var actual = new VolatilityNormalizedMACDIndicator(bounded, 3, 5, 2);
+            var reference = new VolatilityNormalizedMACDIndicator(unbounded, 3, 5, 2);
+            for (int i = 0; i < 24; i++) {
+                int close = 100 + i * (i % 2 == 0 ? 1 : -1);
+                bounded.barBuilder()
+                        .timePeriod(PERIOD)
+                        .endTime(START.plus(PERIOD.multipliedBy(i + 1L)))
+                        .closePrice(close)
+                        .highPrice(close + 2)
+                        .lowPrice(close - 1)
+                        .volume(10 + i)
+                        .add();
+                unbounded.barBuilder()
+                        .timePeriod(PERIOD)
+                        .endTime(START.plus(PERIOD.multipliedBy(i + 1L)))
+                        .closePrice(close)
+                        .highPrice(close + 2)
+                        .lowPrice(close - 1)
+                        .volume(10 + i)
+                        .add();
+                Num expected = reference.getValue(i);
+                Num value = actual.getValue(i);
+                if (i < actual.getCountOfUnstableBars()) {
+                    assertThat(value.isNaN()).isTrue();
+                } else {
+                    assertThat(expected.isNaN()).isFalse();
+                    assertThat(value).isEqualByComparingTo(expected);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test
