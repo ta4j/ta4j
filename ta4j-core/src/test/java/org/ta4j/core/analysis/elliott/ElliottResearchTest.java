@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -24,6 +25,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 import org.ta4j.core.BarSeries;
@@ -137,6 +139,17 @@ class ElliottResearchTest {
         assertEquals(0, inspect.code(), inspect.err());
         assertTrue(inspect.out().contains(denominator + " in this row's scope"), inspect.out());
         assertTrue(inspect.out().contains("-> match"), inspect.out());
+
+        for (final String artifact : List.of("events.jsonl", "outcomes.csv", "outcomes-summary.csv")) {
+            assertTrue(Files.isRegularFile(smokeRun.resolve(artifact)), artifact);
+        }
+        final List<String> eventLines = Files.readAllLines(smokeRun.resolve("events.jsonl"));
+        assertTrue(eventLines.get(0).contains("ta4j-elliott-research-events/1"), eventLines.get(0));
+        assertTrue(eventLines.get(eventLines.size() - 1).contains("\"complete\":true"), "events footer");
+        assertEquals("events.jsonl", run.getAsJsonObject("outcomes").get("events").getAsString());
+        assertTrue(summary.contains("Forward outcomes"), summary);
+        assertTrue(Files.readString(smokeRun.resolve("outcomes.csv")).contains(",correction-completed,"),
+                "the default structural mode must match the H2 mode the research runner evaluates");
     }
 
     @Test
@@ -169,6 +182,135 @@ class ElliottResearchTest {
         assertEquals(0, summarize.code(), summarize.err());
         assertTrue(Files.readString(copy.resolve("summary.md")).contains("Elliott research run: smoke"));
         assertEquals(0, launch("inspect", copy.toString(), OCCUPANCY_KEY).code());
+    }
+
+    @Test
+    void summarizeDiagnosesAMissingOutcomesSummaryThatTheRunDeclares() throws Exception {
+        final Path copy = work.resolve("no-outcomes-summary");
+        copyTree(smokeRun, copy);
+        Files.delete(copy.resolve("outcomes-summary.csv"));
+        Files.delete(copy.resolve("summary.md"));
+
+        final Result result = launch("summarize", copy.toString());
+
+        assertEquals(2, result.code());
+        assertTrue(result.err().contains("outcomes-summary.csv is declared by run.json but missing"), result.err());
+        assertFalse(Files.exists(copy.resolve("summary.md")), "an incomplete run must not get a summary");
+    }
+
+    @Test
+    void runJsonDeclaresTheRecordCountsOfTheOutcomeArtifactsItVouchesFor() throws Exception {
+        final JsonObject records = readJson(smokeRun.resolve("run.json")).getAsJsonObject("outcomes")
+                .getAsJsonObject("records");
+
+        assertTrue(records.get("events").getAsLong() > 0, "the smoke run must exercise the counts");
+        assertEquals(Files.readAllLines(smokeRun.resolve("events.jsonl")).size() - 2L,
+                records.get("events").getAsLong());
+        assertEquals(csvRows("outcomes.csv"), records.get("outcomes").getAsLong());
+        assertEquals(csvRows("outcomes-summary.csv"), records.get("summary").getAsLong());
+    }
+
+    @Test
+    void summarizeRejectsAnEventsFileThatHoldsOnlyItsHeader() throws Exception {
+        final Result result = summarizeAfterEditing("events-header-only", "events.jsonl",
+                text -> text.substring(0, text.indexOf('\n') + 1));
+
+        assertIncomplete(result, "events.jsonl has no completion footer");
+    }
+
+    @Test
+    void summarizeRejectsAnEventsFileWithoutItsFooter() throws Exception {
+        final Result result = summarizeAfterEditing("events-no-footer", "events.jsonl",
+                text -> text.substring(0, text.lastIndexOf('\n', text.length() - 2) + 1));
+
+        assertIncomplete(result, "events.jsonl has no completion footer");
+    }
+
+    @Test
+    void summarizeRejectsAnEventsFileThatLostARowBeforeItsFooter() throws Exception {
+        final Result result = summarizeAfterEditing("events-lost-row", "events.jsonl", text -> {
+            final int first = text.indexOf('\n') + 1;
+            return text.substring(0, first) + text.substring(text.indexOf('\n', first) + 1);
+        });
+
+        assertIncomplete(result, "its footer counts");
+    }
+
+    @Test
+    void summarizeRejectsAnOutcomesFileCutInsideItsLastRow() throws Exception {
+        final Result result = summarizeAfterEditing("outcomes-cut", "outcomes.csv",
+                text -> text.substring(0, text.lastIndexOf("\r\n", text.length() - 3) + 2 + 10));
+
+        assertIncomplete(result, "cells, expected 22");
+    }
+
+    @Test
+    void summarizeRejectsAnOutcomesFileThatLostItsLastRow() throws Exception {
+        final Result result = summarizeAfterEditing("outcomes-prefix", "outcomes.csv",
+                text -> text.substring(0, text.lastIndexOf("\r\n", text.length() - 3) + 2));
+
+        assertIncomplete(result, "outcomes.csv holds ");
+        assertTrue(result.err().contains(" rows but the run recorded "), result.err());
+    }
+
+    @Test
+    void summarizeRejectsAHeaderOnlyOutcomesSummary() throws Exception {
+        final Result result = summarizeAfterEditing("summary-header-only", "outcomes-summary.csv",
+                text -> text.substring(0, text.indexOf("\r\n") + 2));
+
+        assertIncomplete(result, "outcomes-summary.csv holds 0 rows but the run recorded ");
+    }
+
+    @Test
+    void summarizeRejectsARunThatNeverDeclaredItsOutcomeRecordCounts() throws Exception {
+        // A run interrupted while publishing keeps the checkpoint run.json: status
+        // "running" and no record counts, beside artifacts that may look complete.
+        final Path copy = work.resolve("no-records");
+        copyTree(smokeRun, copy);
+        Files.delete(copy.resolve("summary.md"));
+        final JsonObject run = readJson(copy.resolve("run.json"));
+        run.addProperty("status", "running");
+        run.getAsJsonObject("outcomes").remove("records");
+        Files.writeString(copy.resolve("run.json"), run.toString());
+
+        final Result result = launch("summarize", copy.toString());
+
+        assertEquals(2, result.code(), result.err());
+        assertTrue(result.err().contains("without their record counts"), result.err());
+        assertFalse(Files.exists(copy.resolve("summary.md")), "an incomplete run must not get a summary");
+    }
+
+    @Test
+    void summarizeRefusesAnOutcomeArtifactThatLinksOutsideTheRunDirectory() throws Exception {
+        final Path copy = work.resolve("linked-outcomes");
+        copyTree(smokeRun, copy);
+        Files.delete(copy.resolve("summary.md"));
+        final Path outside = work.resolve("outside-events.jsonl");
+        Files.move(copy.resolve("events.jsonl"), outside);
+        symlinkOrSkip(copy.resolve("events.jsonl"), outside);
+
+        final Result result = launch("summarize", copy.toString());
+
+        assertEquals(2, result.code(), result.err());
+        assertTrue(result.err().contains("refusing to read it"), result.err());
+        assertFalse(Files.exists(copy.resolve("summary.md")), "an incomplete run must not get a summary");
+    }
+
+    @Test
+    void summarizeStaysCleanForARunWrittenBeforeOutcomesExisted() throws Exception {
+        final Path copy = work.resolve("legacy-run");
+        copyTree(smokeRun, copy);
+        final JsonObject run = readJson(copy.resolve("run.json"));
+        run.remove("outcomes");
+        Files.writeString(copy.resolve("run.json"), run.toString());
+        for (final String artifact : List.of("events.jsonl", "outcomes.csv", "outcomes-summary.csv")) {
+            Files.delete(copy.resolve(artifact));
+        }
+
+        final Result result = launch("summarize", copy.toString());
+
+        assertEquals(0, result.code(), result.err());
+        assertFalse(Files.readString(copy.resolve("summary.md")).contains("Forward outcomes"));
     }
 
     @Test
@@ -359,7 +501,8 @@ class ElliottResearchTest {
         final JsonObject run = readJson(runDir.resolve("run.json"));
         final List<ElliottResearchReport.Row> rows = ElliottResearchReport.readCsv(runDir.resolve("comparisons.csv"));
         final String key = rows.getFirst().key();
-        assertEquals(0, launch("summarize", runDir.toString()).code());
+        final Result initial = launch("summarize", runDir.toString());
+        assertEquals(0, initial.code(), initial.err());
         final Result noTrace = launch("inspect", runDir.toString(), key);
         assertEquals(2, noTrace.code(), noTrace.err());
         assertTrue(noTrace.err().contains("Recapture with:"), noTrace.err());
@@ -513,6 +656,8 @@ class ElliottResearchTest {
         run.getAsJsonObject("trace").addProperty("mode", "off");
         run.getAsJsonObject("identity").addProperty("fingerprint", protocol.fingerprintSha256());
         final JsonObject configuration = run.getAsJsonObject("configuration");
+        final ElliottResearchOutcomes.Settings outcomeSettings = ElliottResearch.frozenOutcomeSettings();
+        configuration.add("outcomes", outcomeSettings.toJson());
         final Gson gson = new Gson();
         final JsonArray partitionJson = new JsonArray();
         for (final StudyRunner.Partition partition : partitions.entries()) {
@@ -560,6 +705,12 @@ class ElliottResearchTest {
             datasets.add(dataset);
         }
         run.add("datasets", datasets);
+        final List<ElliottResearchOutcomes.Result> outcomes = List.of();
+        ElliottResearchOutcomes.writeEvents(dir.resolve(ElliottResearchOutcomes.EVENTS_FILE),
+                protocol.fingerprintSha256(), outcomeSettings, outcomes);
+        ElliottResearchOutcomes.writeOutcomes(dir.resolve(ElliottResearchOutcomes.OUTCOMES_FILE), outcomes);
+        ElliottResearchOutcomes.writeSummary(dir.resolve(ElliottResearchOutcomes.SUMMARY_FILE), outcomes);
+        run.getAsJsonObject("outcomes").add("records", ElliottResearchOutcomes.recordCounts(outcomes));
         writeBoundComparisons(dir, run, rows);
         return dir;
     }
@@ -572,7 +723,9 @@ class ElliottResearchTest {
         Files.writeString(recipe, toyRecipe("overwrite"));
         final String recordedRun = Files.readString(smokeRun.resolve("run.json"));
         int caseIndex = 0;
-        for (final String artifact : List.of("traces/input.json", "reports/input.json", "summary.md")) {
+        for (final String artifact : List.of("traces/input.json", "reports/input.json", "summary.md",
+                ElliottResearchOutcomes.EVENTS_FILE, ElliottResearchOutcomes.OUTCOMES_FILE,
+                ElliottResearchOutcomes.SUMMARY_FILE)) {
             for (final boolean recipeInput : List.of(false, true)) {
                 for (final boolean symlink : List.of(false, true)) {
                     final Path out = work.resolve("overwrite-managed-" + caseIndex++);
@@ -1044,6 +1197,26 @@ class ElliottResearchTest {
                 "--out", out.toString());
         assertEquals(1, result.code());
         assertTrue(result.err().contains("unknown field recipe.unexpected"), result.err());
+        assertFalse(Files.exists(out));
+    }
+
+    @Test
+    void exploreRecipeRejectsStructuralModeTheRunDoesNotEvaluate() throws Exception {
+        final Path candles = work.resolve("mode-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve("mode-recipe.json");
+        Files.writeString(recipe, toyRecipe("mode").replace("\"null\":", """
+                "activeRules":["wave2-origin"],
+                "outcomes":{"structuralMode":"+wave3-not-shortest"},
+                "null\":"""));
+        final Path out = work.resolve("explore-mode");
+        final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--out", out.toString());
+        assertEquals(1, result.code(), result.err());
+        assertTrue(
+                result.err().contains("outcomes.structuralMode '+wave3-not-shortest' is not a mode this run evaluates"),
+                result.err());
+        assertTrue(result.err().contains("+wave2-origin"), result.err());
         assertFalse(Files.exists(out));
     }
 
@@ -2113,5 +2286,35 @@ class ElliottResearchTest {
         } catch (final IOException e) {
             throw new java.io.UncheckedIOException(e);
         }
+    }
+
+    private static void symlinkOrSkip(final Path link, final Path target) {
+        try {
+            Files.createSymbolicLink(link, target);
+        } catch (final UnsupportedOperationException | IOException unsupported) {
+            assumeTrue(false, "symbolic links are unavailable: " + unsupported);
+        }
+    }
+
+    private Result summarizeAfterEditing(final String name, final String artifact, final UnaryOperator<String> edit)
+            throws IOException {
+        final Path copy = work.resolve(name);
+        copyTree(smokeRun, copy);
+        Files.delete(copy.resolve("summary.md"));
+        Files.writeString(copy.resolve(artifact), edit.apply(Files.readString(copy.resolve(artifact))),
+                StandardCharsets.UTF_8);
+        final Result result = launch("summarize", copy.toString());
+        assertFalse(Files.exists(copy.resolve("summary.md")), "an incomplete run must not get a summary");
+        return result;
+    }
+
+    private static void assertIncomplete(final Result result, final String reason) {
+        assertEquals(2, result.code(), result.err());
+        assertTrue(result.err().contains(reason), result.err());
+        assertTrue(result.err().contains("the run is incomplete, rerun the recipe"), result.err());
+    }
+
+    private static long csvRows(final String name) {
+        return ElliottResearchReport.parseCsv(smokeRun.resolve(name)).size() - 1L;
     }
 }
