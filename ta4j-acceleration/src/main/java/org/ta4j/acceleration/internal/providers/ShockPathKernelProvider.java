@@ -96,6 +96,11 @@ abstract class ShockPathKernelProvider implements Provider {
         this.qualification = Objects.requireNonNull(qualification, "qualification must not be null");
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public final Assessment assess(KernelRequest request) {
         RequestValidation validation = validateRequest(request);
@@ -121,6 +126,11 @@ abstract class ShockPathKernelProvider implements Provider {
         return Assessment.supported(backend, deviceId(), predicted, peak, exact ? exactCapable : approximateCapable);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public final KernelResult execute(KernelRequest request) {
         RequestValidation validation = validateRequest(request);

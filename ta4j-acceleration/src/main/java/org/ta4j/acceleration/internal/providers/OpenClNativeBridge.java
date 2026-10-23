@@ -25,6 +25,12 @@ record OpenClEvaluationResult(double totalMicros, double transferMicros, double 
         logReturns = Arrays.copyOf(logReturns, logReturns.length);
     }
 
+    /**
+     * Returns an owned copy of the native samples.
+     *
+     * @return copied log-return samples
+     * @since 0.27.1
+     */
     @Override
     public double[] logReturns() {
         return Arrays.copyOf(logReturns, logReturns.length);
@@ -35,6 +41,11 @@ final class JniOpenClNativeBridge implements OpenClNativeBridge {
 
     private static final int HEADER_LENGTH = 4;
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public OpenClProbeResult probe() {
         return parseProbePayload(nativeProbe(ABI_VERSION));
@@ -71,6 +82,11 @@ final class JniOpenClNativeBridge implements OpenClNativeBridge {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public OpenClEvaluationResult evaluate(NativeForecastRequest request) {
         double[] payload = nativeEvaluate(ABI_VERSION, request.fromInclusive(), request.decisionCount(),

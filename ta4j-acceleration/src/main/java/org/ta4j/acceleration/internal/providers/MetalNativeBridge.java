@@ -24,6 +24,11 @@ final class JniMetalNativeBridge implements MetalNativeBridge {
 
     private static final int HEADER_LENGTH = 3;
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public MetalProbeResult probe() {
         return parseProbePayload(nativeProbe(ABI_VERSION));
@@ -51,6 +56,11 @@ final class JniMetalNativeBridge implements MetalNativeBridge {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public MetalEvaluationResult evaluate(NativeForecastRequest request) {
         long[] timings = new long[HEADER_LENGTH];

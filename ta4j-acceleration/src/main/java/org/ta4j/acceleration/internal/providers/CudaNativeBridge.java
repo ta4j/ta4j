@@ -26,6 +26,11 @@ final class JniCudaNativeBridge implements CudaNativeBridge {
 
     private static final int HEADER_LENGTH = 4;
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public CudaProbeResult probe() {
         String payload = nativeProbe(ABI_VERSION);
@@ -57,6 +62,11 @@ final class JniCudaNativeBridge implements CudaNativeBridge {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public CudaEvaluationResult evaluate(NativeForecastRequest request) {
         double[] payload = nativeEvaluate(ABI_VERSION, request.fromInclusive(), request.decisionCount(),
