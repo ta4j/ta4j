@@ -371,6 +371,47 @@ class ElliottResearchRelationsTest {
     }
 
     @Test
+    public void footerStatisticsCannotWrapOrCoerce() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        final int line = lines.size() - 1;
+        final JsonObject footer = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+        for (final String field : List.of("events", "truncatedFrames", "incompleteFrames", "peakRetainedEdges")) {
+            final JsonElement original = footer.get(field);
+            final boolean intField = "peakRetainedEdges".equals(field);
+            for (final String invalid : List.of(intField ? "4294967296" : "18446744073709551616",
+                    intField ? "-2147483649" : "-9223372036854775809", "1.5", "\"1\"", "true", "null", "[]", "{}")) {
+                footer.add(field, JsonParser.parseString(invalid));
+                lines.set(line, footer.toString());
+                Files.write(file, lines, StandardCharsets.UTF_8);
+                final String message = assertThrows(IllegalArgumentException.class,
+                        () -> ElliottResearchRelations.read(file, ignored -> {
+                        })).getMessage();
+                assertTrue(message.startsWith(file + ": line " + (line + 1) + ": malformed footer: " + field + " "),
+                        message);
+            }
+            footer.add(field, original);
+        }
+        footer.addProperty("events", Long.MAX_VALUE);
+        footer.addProperty("truncatedFrames", Long.MAX_VALUE);
+        footer.addProperty("incompleteFrames", Long.MAX_VALUE);
+        footer.addProperty("peakRetainedEdges", Integer.MAX_VALUE);
+        lines.set(line, footer.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        final ElliottResearchRelations.Meta meta = ElliottResearchRelations.read(file, ignored -> {
+        });
+        assertTrue(meta.complete());
+        assertEquals(Long.MAX_VALUE, meta.footer().get("events").getAsLong());
+        assertEquals(Integer.MAX_VALUE, meta.footer().get("peakRetainedEdges").getAsInt());
+        for (final String field : List.of("events", "truncatedFrames", "incompleteFrames", "peakRetainedEdges")) {
+            footer.add(field, JsonParser.parseString("5.0"));
+        }
+        lines.set(line, footer.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        assertTrue(ElliottResearchRelations.read(file, ignored -> {
+        }).complete());
+    }
+
+    @Test
     public void headerEdgeCapsCannotWrap() throws IOException {
         final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
         final JsonObject header = JsonParser.parseString(lines.get(0)).getAsJsonObject();

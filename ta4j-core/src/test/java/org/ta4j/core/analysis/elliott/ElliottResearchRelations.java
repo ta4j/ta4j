@@ -369,6 +369,10 @@ final class ElliottResearchRelations {
                     final long count;
                     try {
                         count = requireLong(object, "frames");
+                        requireLong(object, "events");
+                        requireLong(object, "truncatedFrames");
+                        requireLong(object, "incompleteFrames");
+                        requireInt(object, "peakRetainedEdges");
                     } catch (final IllegalArgumentException e) {
                         throw corrupt(path, lineNumber, "malformed footer: " + e.getMessage());
                     }
