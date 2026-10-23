@@ -217,7 +217,10 @@ reference rank; neither is a confidence interval or a p-value, and partitions
 are never pooled. `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements. Every observation must match its trace
 header's dataset and null-member coordinates and carry a status defined for its
-record kind; required scope labels and as-of timestamps must be nonblank. Observations
+record kind; required scope labels and as-of timestamps must be nonblank. Kernel
+grammar scopes require topology records, and structural alternative grammar scopes
+require alternative records, so a kind change cannot bypass topology evidence checks.
+Observations
 must have unique, strictly increasing as-of indices within each section, mode, grammar,
 detector and partition; different scopes may be interleaved.
 Topology status, candidate count and direction must agree: `COMPLETE` has one

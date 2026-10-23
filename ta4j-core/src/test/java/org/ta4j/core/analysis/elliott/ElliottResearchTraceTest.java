@@ -988,6 +988,47 @@ class ElliottResearchTraceTest {
     }
 
     @Test
+    public void recordKindMustMatchItsGrammarBeforeRetention() throws Exception {
+        for (final boolean selectedNull : List.of(false, true)) {
+            final List<String> lines = Files.readAllLines(
+                    coordinateTrace("kind-grammar-" + selectedNull + ".jsonl", selectedNull), StandardCharsets.UTF_8);
+            final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+            for (final TopologyGrammar grammar : TopologyGrammar.values()) {
+                for (final String status : List.of("insufficient-history", "no-match", "forming", "complete",
+                        "ambiguous")) {
+                    final JsonObject alternative = original.deepCopy();
+                    alternative.addProperty("kind", "alternative");
+                    alternative.addProperty("grammar", grammar.name());
+                    alternative.addProperty("status", status);
+                    alternative.add("labels", new JsonArray());
+                    assertMalformedAtLine2(lines, alternative, "grammar");
+                }
+            }
+            for (final String grammar : List.of("3+3", "5+5", "change-point-baseline")) {
+                final JsonObject alternative = original.deepCopy();
+                alternative.addProperty("kind", "alternative");
+                alternative.addProperty("grammar", grammar);
+                alternative.addProperty("status", "complete");
+                alternative.add("labels", new JsonArray());
+                if (!selectedNull) {
+                    alternative.addProperty("section", "competing");
+                    alternative.addProperty("mode", "competing-" + grammar);
+                    final List<String> changed = new ArrayList<>(lines);
+                    changed.set(1, alternative.toString());
+                    final Path copy = directory.resolve("valid-alternative-" + grammar + ".jsonl");
+                    Files.write(copy, changed, StandardCharsets.UTF_8);
+                    assertEquals(alternative, ElliottResearchTrace.read(copy).records().get(0));
+                    assertTrue(ElliottResearchTrace.read(copy, ignored -> false).records().isEmpty());
+                }
+                final JsonObject topology = alternative.deepCopy();
+                topology.addProperty("kind", "topology");
+                topology.addProperty("status", "INSUFFICIENT_HISTORY");
+                assertMalformedAtLine2(lines, topology, "grammar");
+            }
+        }
+    }
+
+    @Test
     public void grammarDirectionOriginAndStrictLegShapeAreCheckedBeforeRetention() throws Exception {
         final List<String> lines = Files.readAllLines(domainTrace("grammar-shape.jsonl"), StandardCharsets.UTF_8);
         final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();

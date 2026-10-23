@@ -703,6 +703,12 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         }
         if ("alternative".equals(kind)) {
             requireTexts(path, lineNumber, record, "labels", where);
+            switch (record.get("grammar").getAsString()) {
+            case "MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3" ->
+                throw corrupt(path, lineNumber, where + "grammar is a topology grammar but kind is alternative");
+            default -> {
+            }
+            }
         }
     }
 
