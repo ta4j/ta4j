@@ -287,6 +287,51 @@ class ReplayArtifactTest {
     }
 
     @Test
+    public void nonBootstrapRowsRejectNullReferenceCellsBeforeSelection() throws IOException {
+        for (final String field : List.of("validNullMembers", "requestedNullMembers", "unavailableNullMembers",
+                "nullMedian", "nullLow", "nullHigh", "observedMinusNullMedian", "empiricalReferenceRank")) {
+            for (final String value : List.of("0", "NaN")) {
+                final Path run = ReplayFixture.write(temp.resolve("non-bootstrap-" + field + "-" + value));
+                final Path csv = run.resolve("comparisons.csv");
+                final List<String> rows = Files.readAllLines(csv, StandardCharsets.UTF_8);
+                final List<String> columns = List.of(rows.getFirst().split(",", -1));
+                int target = 1;
+                while (!rows.get(target).startsWith(ReplayFixture.COMPETING_KEY + ",")) {
+                    target++;
+                }
+                final String[] cells = rows.get(target).split(",", -1);
+                cells[columns.indexOf(field)] = value;
+                rows.set(target, String.join(",", cells));
+                Files.write(csv, rows, StandardCharsets.UTF_8);
+                ReplayFixture.refreshComparisonsDigest(run);
+
+                final String message = failureOf(run, ReplayFixture.RULES_KEY);
+                assertTrue(message.contains(field) && message.contains("without a bootstrap null")
+                        && message.contains("empty") && message.contains("Regenerate"), message);
+            }
+        }
+    }
+
+    @Test
+    public void bootstrapRowsCannotOmitRecordedNullMemberCounts() throws IOException {
+        for (final String field : List.of("validNullMembers", "requestedNullMembers", "unavailableNullMembers")) {
+            final Path run = ReplayFixture.write(temp.resolve("bootstrap-missing-" + field));
+            final Path csv = run.resolve("comparisons.csv");
+            final List<String> rows = Files.readAllLines(csv, StandardCharsets.UTF_8);
+            final List<String> columns = List.of(rows.getFirst().split(",", -1));
+            final String[] cells = rows.get(1).split(",", -1);
+            cells[columns.indexOf(field)] = "";
+            rows.set(1, String.join(",", cells));
+            Files.write(csv, rows, StandardCharsets.UTF_8);
+            ReplayFixture.refreshComparisonsDigest(run);
+
+            final String message = failureOf(run, ReplayFixture.TOPOLOGY_KEY);
+            assertTrue(message.contains("row 2") && message.contains("invalid numeric comparison fields")
+                    && message.contains("Regenerate"), message);
+        }
+    }
+
+    @Test
     public void comparisonRowsRequireTheRecordedContentDigest() throws IOException {
         for (final String corruption : List.of("foreign-comparisons", "missing-digest")) {
             final Path run = ReplayFixture.write(temp.resolve(corruption));

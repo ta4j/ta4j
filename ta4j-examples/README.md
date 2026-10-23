@@ -225,6 +225,8 @@ member counts, finite ordered nearest-rank quantiles, the observed-minus-median 
 and the `(valid + 1)` empirical rank lattice and its quantile bounds before selection.
 The null block, valid-member count and observation determine availability; valid small
 ensembles, ties, undefined observations and all-undefined ensembles remain supported.
+Competing and robustness controls without a bootstrap null retain empty null-reference
+count, quantile, difference and rank cells.
 Trace label arrays are duplicate-free and must describe the recorded outcome:
 topology candidate spans, forming bounds, invalidation explanation or empty/no-history
 state; structural `3+3` and `5+5` labels and outcomes must match their captured pivot

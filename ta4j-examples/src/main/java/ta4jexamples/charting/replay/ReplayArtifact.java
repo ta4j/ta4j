@@ -63,6 +63,9 @@ final class ReplayArtifact {
             "noMatchRate", "confirmationLagBars", "labelStabilityJaccard", "evidencePassRate", "jointPassRate");
     private static final List<String> CLASSICAL_RULE_IDS = List.of("wave2-origin", "wave3-not-shortest",
             "wave4-nonoverlap", "wave5-divergence");
+    private static final List<String> NULL_REFERENCE_COLUMNS = List.of("validNullMembers", "requestedNullMembers",
+            "unavailableNullMembers", "nullMedian", "nullLow", "nullHigh", "observedMinusNullMedian",
+            "empiricalReferenceRank");
 
     private static final String REGENERATE = "Regenerate the run with ElliottResearch (see the Elliott research section of ta4j-core/README.md), e.g. `run smoke --out <dir> --overwrite` or the original recipe with --trace real.";
 
@@ -542,17 +545,16 @@ final class ReplayArtifact {
                             csv + " row " + (i + 1) + " has duplicate comparison key '" + key + "'. " + REGENERATE);
                 }
                 validateMetricSupport(csv, i + 1, comparison);
-                validateNullComparison(csv, i + 1, row, column, comparison);
+                final int requestedNullMembers = validateNullComparison(csv, i + 1, row, column, comparison);
                 final ComparisonFamily family = expected.get(key);
                 if (family != null) {
                     final String mismatch = !family.asset().equals(comparison.asset()) ? "asset"
                             : !family.grammar().equals(comparison.grammar()) ? "grammar"
                                     : !family.activeRules().equals(comparison.activeRules()) ? "activeRules"
                                             : !family.policy().equals(row.get(column.get("policy"))) ? "policy"
-                                                    : family.requestedNullMembers() != Integer
-                                                            .parseInt(row.get(column.get("requestedNullMembers")))
-                                                                    ? "requestedNullMembers"
-                                                                    : null;
+                                                    : family.requestedNullMembers() != requestedNullMembers
+                                                            ? "requestedNullMembers"
+                                                            : null;
                     if (mismatch != null) {
                         throw new ReplayArtifactException(csv + " row " + (i + 1) + " family metadata " + mismatch
                                 + " differs from run.json's recorded configuration. " + REGENERATE);
@@ -770,11 +772,19 @@ final class ReplayArtifact {
         return value.isEmpty() ? 0 : Integer.parseInt(value);
     }
 
-    private static void validateNullComparison(final Path csv, final int line, final List<String> row,
+    private static int validateNullComparison(final Path csv, final int line, final List<String> row,
             final Map<String, Integer> column, final ComparisonRow comparison) {
-        final int valid = Integer.parseInt(row.get(column.get("validNullMembers")));
-        final int requested = Integer.parseInt(row.get(column.get("requestedNullMembers")));
-        final int unavailable = Integer.parseInt(row.get(column.get("unavailableNullMembers")));
+        final int block = comparison.nullBlockLength();
+        if (block == 0) {
+            for (final String field : NULL_REFERENCE_COLUMNS) {
+                if (!row.get(column.get(field)).isEmpty()) {
+                    throw nullReferenceError(csv, line, "rows without a bootstrap null must leave " + field + " empty");
+                }
+            }
+        }
+        final int valid = block == 0 ? 0 : Integer.parseInt(row.get(column.get("validNullMembers")));
+        final int requested = block == 0 ? 0 : Integer.parseInt(row.get(column.get("requestedNullMembers")));
+        final int unavailable = block == 0 ? 0 : Integer.parseInt(row.get(column.get("unavailableNullMembers")));
         final double median = optionalNumber(row.get(column.get("nullMedian")));
         final double low = optionalNumber(row.get(column.get("nullLow")));
         final double high = optionalNumber(row.get(column.get("nullHigh")));
@@ -805,7 +815,6 @@ final class ReplayArtifact {
         if (Double.isInfinite(observed)) {
             throw nullReferenceError(csv, line, "observed must be finite or unavailable");
         }
-        final int block = comparison.nullBlockLength();
         if (block < 0 || (block == 0 && !row.get(column.get("nullBlockLength")).isEmpty())
                 || (block == 0 ? requested != 0 : requested == 0)) {
             throw nullReferenceError(csv, line, "null block length and requested member count are inconsistent");
@@ -821,7 +830,7 @@ final class ReplayArtifact {
             if (!Double.isNaN(difference) || !Double.isNaN(rank)) {
                 throw nullReferenceError(csv, line, "unavailable comparisons cannot carry a difference or rank");
             }
-            return;
+            return requested;
         }
         if (!Double.isFinite(difference) || Double.compare(difference, observed - median) != 0) {
             throw nullReferenceError(csv, line, "observedMinusNullMedian must equal observed - nullMedian");
@@ -838,6 +847,7 @@ final class ReplayArtifact {
                 || !matchesQuantileRank(observed, high, nearestRankPosition(valid, 0.975d), valid, atLeast)) {
             throw nullReferenceError(csv, line, "empiricalReferenceRank contradicts the null nearest-rank quantiles");
         }
+        return requested;
     }
 
     private static double optionalNumber(final String value) {

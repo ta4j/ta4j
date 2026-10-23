@@ -289,8 +289,8 @@ final class ReplayFixture {
         return String.join(",", key, DATASET, "FIXTURE", section, mode, grammar, String.join(";", rules), "fractal-w5",
                 competing ? "unmatched-recognizer" : rules.isEmpty() ? "kernel-topology" : "kernel-topology+evidence",
                 "calibration", metric, block, value, rate ? Long.toString(numerator) : "",
-                rate ? Long.toString(denominator) : "", competing ? "0" : Double.isNaN(observed) ? "0" : "5",
-                competing ? "0" : "5", !competing && Double.isNaN(observed) ? "5" : "0", competing ? "" : value,
+                rate ? Long.toString(denominator) : "", competing ? "" : Double.isNaN(observed) ? "0" : "5",
+                competing ? "" : "5", competing ? "" : Double.isNaN(observed) ? "5" : "0", competing ? "" : value,
                 competing ? "" : value, competing ? "" : value, competing || Double.isNaN(observed) ? "" : "0",
                 competing || Double.isNaN(observed) ? "" : "1",
                 Double.isNaN(observed) ? "unavailable" : competing ? "not-comparable" : "available");
