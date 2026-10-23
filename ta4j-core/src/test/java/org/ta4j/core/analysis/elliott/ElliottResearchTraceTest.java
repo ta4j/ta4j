@@ -1023,8 +1023,8 @@ class ElliottResearchTraceTest {
                 if (!selectedNull) {
                     alternative.addProperty("section", "competing");
                     alternative.addProperty("mode", "competing-" + grammar);
-                    final List<String> changed = new ArrayList<>(lines);
-                    changed.set(1, alternative.toString());
+                    final List<String> changed = List.of(lines.getFirst(), alternative.toString(),
+                            "{\"complete\":true,\"records\":1}");
                     final Path copy = directory.resolve("valid-alternative-" + grammar + ".jsonl");
                     Files.write(copy, changed, StandardCharsets.UTF_8);
                     assertEquals(alternative, ElliottResearchTrace.read(copy).records().get(0));
