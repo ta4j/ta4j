@@ -314,6 +314,26 @@ final class TopologyAnalyzer {
         }
     }
 
+    /**
+     * Builds the candidate a complete ordered pivot list forms under one grammar
+     * and direction, without searching or snapping.
+     *
+     * @param grammar   grammar to satisfy
+     * @param direction declared trend direction
+     * @param pivots    exactly {@link TopologyGrammar#requiredPivots()} ordered
+     *                  pivots
+     * @return the candidate, or {@code null} when the list does not alternate,
+     *         start on the grammar's origin pivot type, or follow its leg signs
+     */
+    TopologyCandidate shapedCandidate(final TopologyGrammar grammar, final WaveDirection direction,
+            final List<ConfirmedPivot> pivots) {
+        if (pivots.size() != grammar.requiredPivots()) {
+            return null;
+        }
+        final TopologyCandidate candidate = buildCandidate(grammar, direction, pivots, 0);
+        return candidate != null && matchesShape(grammar, direction, candidate.pivots()) ? candidate : null;
+    }
+
     static boolean startsInExpectedDirection(final TopologyGrammar grammar, final WaveDirection direction,
             final List<ConfirmedPivot> pivots) {
         final boolean firstLegPositive = expectedLegPositive(grammar, 0);
@@ -339,7 +359,7 @@ final class TopologyAnalyzer {
         return true;
     }
 
-    private boolean matchesPartialShape(final TopologyGrammar grammar, final WaveDirection direction,
+    boolean matchesPartialShape(final TopologyGrammar grammar, final WaveDirection direction,
             final List<ConfirmedPivot> segment) {
         final int legs = segment.size() - 1;
         if (legs < 1 || legs >= grammar.legCount() || !startsInExpectedDirection(grammar, direction, segment)) {
