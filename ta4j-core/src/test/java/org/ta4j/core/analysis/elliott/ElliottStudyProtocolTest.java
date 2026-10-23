@@ -18,7 +18,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -203,25 +205,45 @@ class ElliottStudyProtocolTest {
     }
 
     @Test
-    public void customDatasetListenerReceivesUncheckedIoFailuresAndContinuesCallbacks() throws IOException {
+    public void customDatasetListenerReceivesUncheckedIoFailuresAndContinuesCallbacks(@TempDir final Path directory)
+            throws IOException {
+        final Map<String, ElliottStudyProtocol.DatasetSpec> datasets = new HashMap<>();
+        for (final ElliottStudyProtocol.DatasetSpec dataset : PROTOCOL.datasets()) {
+            datasets.put(dataset.id(), dataset);
+            Files.createDirectory(directory.resolve(dataset.id() + "-real.jsonl"));
+        }
         final List<String> datasetIds = new ArrayList<>();
         final List<RuntimeException> failures = new ArrayList<>();
         final FrozenProtocolStudy.DatasetListener listener = new FrozenProtocolStudy.DatasetListener() {
+            @Override
+            public StudyObserver observer(final String datasetId) throws IOException {
+                final ElliottStudyProtocol.DatasetSpec dataset = datasets.get(datasetId);
+                return ElliottResearchTrace.open(directory.resolve(datasetId + "-real.jsonl"), datasetId,
+                        "test-revision", PROTOCOL.fingerprintSha256(), dataset.sha256(), ElliottResearchTrace.MODE_REAL,
+                        -1, -1);
+            }
+
             @Override
             public void failed(final String datasetId, final RuntimeException failure) {
                 datasetIds.add(datasetId);
                 failures.add(failure);
             }
         };
-        final UncheckedIOException reportFailure = new UncheckedIOException("cannot write study report",
-                new IOException("report target is a directory"));
-        final UncheckedIOException observerFailure = new UncheckedIOException("cannot open study observer",
-                new IOException("observer target is a directory"));
-
-        listener.failed(PROTOCOL.datasets().get(0).id(), reportFailure);
-        listener.failed(PROTOCOL.datasets().get(1).id(), observerFailure);
+        FrozenProtocolStudy.run(PROTOCOL, directory, listener);
 
         assertEquals(List.of("primary", "transfer-portability"), datasetIds);
-        assertEquals(List.of(reportFailure, observerFailure), failures);
+        assertEquals(datasetIds.size(), failures.size());
+        for (int index = 0; index < datasetIds.size(); index++) {
+            final String datasetId = datasetIds.get(index);
+            final RuntimeException failure = failures.get(index);
+            assertTrue(failure instanceof UncheckedIOException, failure.toString());
+            assertTrue(failure.getCause() instanceof IOException, failure.toString());
+            assertTrue(failure.getMessage().contains(datasetId), failure.getMessage());
+            assertTrue(Files.isDirectory(directory.resolve(datasetId + "-real.jsonl")));
+            assertFalse(Files.exists(directory.resolve(datasetId + ".json")));
+        }
+        try (var entries = Files.list(directory)) {
+            assertEquals(2L, entries.count());
+        }
     }
 }
