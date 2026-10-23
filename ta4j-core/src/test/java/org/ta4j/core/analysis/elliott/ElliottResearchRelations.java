@@ -485,8 +485,8 @@ final class ElliottResearchRelations {
                 : null;
         if (version == null || version.length() != 65 || version.charAt(32) != '@' || !version.startsWith(key)
                 || !isDigest(version, 33)) {
-            throw new IllegalArgumentException(versionField + " must be " + keyField
-                    + " followed by @ and a 32-digit lowercase hex digest");
+            throw new IllegalArgumentException(
+                    versionField + " must be " + keyField + " followed by @ and a 32-digit lowercase hex digest");
         }
     }
 

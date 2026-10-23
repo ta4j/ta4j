@@ -331,7 +331,7 @@ final class TopologyAnalyzer {
             return null;
         }
         final TopologyCandidate candidate = buildCandidate(grammar, direction, pivots, 0);
-        return candidate != null && matchesShape(candidate) ? candidate : null;
+        return candidate != null && matchesShape(grammar, direction, candidate.pivots()) ? candidate : null;
     }
 
     static boolean startsInExpectedDirection(final TopologyGrammar grammar, final WaveDirection direction,

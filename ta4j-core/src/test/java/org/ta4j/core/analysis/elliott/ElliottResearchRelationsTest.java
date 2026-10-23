@@ -323,8 +323,8 @@ class ElliottResearchRelationsTest {
                 new String[] { "parentCandidateKey", "parentVersion" })) {
             final JsonElement originalKey = edge.get(fields[0]);
             final JsonElement originalVersion = edge.get(fields[1]);
-            for (final String invalid : List.of("null", "42", "true", "\"\"", "\"short\"",
-                    "\"" + "A".repeat(32) + "\"", "\"" + "0".repeat(64) + "\"")) {
+            for (final String invalid : List.of("null", "42", "true", "\"\"", "\"short\"", "\"" + "A".repeat(32) + "\"",
+                    "\"" + "0".repeat(64) + "\"")) {
                 edge.add(fields[0], JsonParser.parseString(invalid));
                 assertIdentityRejected(lines, line, frame, fields[0]);
             }
