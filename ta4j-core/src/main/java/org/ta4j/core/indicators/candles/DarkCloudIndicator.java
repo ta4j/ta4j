@@ -59,6 +59,8 @@ public class DarkCloudIndicator extends CachedIndicator<Boolean> {
 
     @Override
     protected Boolean calculate(int index) {
+        // Confirmation state advances on every bar, not only when a pattern matches.
+        boolean upTrend = trendIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return false;
         }
@@ -75,7 +77,7 @@ public class DarkCloudIndicator extends CachedIndicator<Boolean> {
         return firstBar.isBullish() && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.isBearish() && secondBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.getOpenPrice().isGreaterThan(firstBar.getClosePrice())
-                && secondBar.getClosePrice().isLessThan(firstBarMiddlePoint) && this.trendIndicator.getValue(index);
+                && secondBar.getClosePrice().isLessThan(firstBarMiddlePoint) && upTrend;
     }
 
     @Override

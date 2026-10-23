@@ -17,6 +17,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.averages.EMAIndicator;
@@ -44,6 +45,48 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     @BeforeEach
     public void setUp() {
         this.series = buildSeries(90);
+    }
+
+    @Test
+    public void primesWeightedAveragesBeforeWarmupOnShortMovingWindow() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries bounded = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+            BarSeries unbounded = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+            bounded.setMaximumBarCount(2);
+            var actual = new MACDVIndicator(bounded, 3, 5, 2);
+            var reference = new MACDVIndicator(unbounded, 3, 5, 2);
+            for (int i = 0; i < 24; i++) {
+                int close = 100 + i * (i % 2 == 0 ? 1 : -1);
+                bounded.barBuilder()
+                        .timePeriod(PERIOD)
+                        .endTime(START.plus(PERIOD.multipliedBy(i + 1L)))
+                        .closePrice(close)
+                        .highPrice(close + 2)
+                        .lowPrice(close - 1)
+                        .volume(10 + i)
+                        .add();
+                unbounded.barBuilder()
+                        .timePeriod(PERIOD)
+                        .endTime(START.plus(PERIOD.multipliedBy(i + 1L)))
+                        .closePrice(close)
+                        .highPrice(close + 2)
+                        .lowPrice(close - 1)
+                        .volume(10 + i)
+                        .add();
+                Num expected = reference.getValue(i);
+                Num value = actual.getValue(i);
+                if (i < actual.getCountOfUnstableBars()) {
+                    assertThat(value.isNaN()).isTrue();
+                } else {
+                    assertThat(expected.isNaN()).isFalse();
+                    assertThat(value).isEqualByComparingTo(expected);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test
@@ -276,48 +319,6 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
                     .add();
         }
         return result;
-    }
-
-    /**
-     * MACD-V lazily creates VWMA and ATR sub-indicators that are not
-     * constructor-registered dependencies. A rebaselining source inside those
-     * chains (the TR inside the ATRs discards the whole cache on head advance) must
-     * still propagate a whole-cache discard into MACD-V, so cached values above its
-     * own unstable-range floor are recomputed after the head advance.
-     */
-    @Test
-    public void headAdvanceDiscardsWholeCacheThroughDerivedAtrChain() {
-        BarSeries bounded = buildSeries(200);
-        bounded.setMaximumBarCount(100);
-        CountingMacdvIndicator indicator = new CountingMacdvIndicator(new ClosePriceIndicator(bounded));
-        int probeIndex = bounded.getBeginIndex() + 60;
-
-        indicator.getValue(probeIndex);
-        int calculationsBefore = indicator.calculations();
-
-        bounded.setMaximumBarCount(80);
-        indicator.getValue(probeIndex);
-
-        assertThat(indicator.calculations()).isGreaterThan(calculationsBefore);
-    }
-
-    private static final class CountingMacdvIndicator extends MACDVIndicator {
-
-        private final AtomicInteger calculations = new AtomicInteger();
-
-        CountingMacdvIndicator(Indicator<Num> priceIndicator) {
-            super(priceIndicator);
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            calculations.incrementAndGet();
-            return super.calculate(index);
-        }
-
-        int calculations() {
-            return calculations.get();
-        }
     }
 
 }

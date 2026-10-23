@@ -58,9 +58,6 @@ class CorrentropyKalmanResidualIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
         int effectiveIndex = Math.max(index, getBarSeries().getBeginIndex());
-        if (effectiveIndex < getCountOfUnstableBars()) {
-            return NaN.NaN;
-        }
         return filter.residualAt(effectiveIndex);
     }
 

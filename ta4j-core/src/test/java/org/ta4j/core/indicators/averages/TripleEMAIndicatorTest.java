@@ -7,6 +7,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.TestUtils;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -42,6 +45,29 @@ public class TripleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
         for (int i = unstableBars; i < closePrice.getBarSeries().getBarCount(); i++) {
             assertThat(Num.isNaNOrNull(tripleEma.getValue(i))).isFalse();
+        }
+    }
+
+    @Test
+    public void primesAllStagesWhileItsPublicValueIsUnstable() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(2);
+        TripleEMAIndicator indicator = new TripleEMAIndicator(new ClosePriceIndicator(moving), 3);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index <= 9; index++) {
+                moving.barBuilder().closePrice(10 + index).add();
+                Num actual = indicator.getValue(index);
+                if (index < 9) {
+                    assertThat(actual.isNaN()).isTrue();
+                } else {
+                    // Exact stages: 1153/64, 1093/64 and 4153/256; TEMA = 4873/256.
+                    TestUtils.assertNumEquals(19.03515625, actual);
+                }
+            }
+        } finally {
+            capture.close();
         }
     }
 }
