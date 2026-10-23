@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.ta4j.core.analysis.elliott.StudyReport.PartitionMetrics;
 
@@ -51,6 +52,8 @@ final class ElliottResearchReport {
     private static final MathContext DISPLAY_PRECISION = new MathContext(4);
     private static final String EVIDENCE_NOT_CAPTURED = "evidence not captured";
     private static final Set<String> AVAILABILITIES = Set.of(AVAILABLE, UNAVAILABLE, NOT_COMPARABLE);
+    private static final Map<String, Metric> METRICS_BY_ID = Arrays.stream(Metric.values())
+            .collect(Collectors.toUnmodifiableMap(Metric::id, Function.identity()));
     private static final List<String> ROW_HEADER = List.of("key", "dataset", "asset", "section", "mode", "grammar",
             "activeRules", "detector", "policy", "partition", "metric", "nullBlockLength", "observed", "numerator",
             "denominator", "validNullMembers", "requestedNullMembers", "unavailableNullMembers", "nullMedian",
@@ -166,7 +169,31 @@ final class ElliottResearchReport {
             if (!AVAILABILITIES.contains(availability)) {
                 throw new IllegalArgumentException("unknown availability: " + availability);
             }
+            validateNullComparison(nullBlockLength, observed, validNullMembers, requestedNullMembers,
+                    unavailableNullMembers, nullMedian, nullLow, nullHigh, observedMinusNullMedian,
+                    empiricalReferenceRank, availability);
             new Key(dataset, section, mode, detector, partition, metric, nullBlockLength);
+            final Metric definition = METRICS_BY_ID.get(metric);
+            if (definition == null) {
+                throw new IllegalArgumentException("unknown metric: " + metric);
+            }
+            if (definition.numerator == null) {
+                if (numerator != null || denominator != null) {
+                    throw new IllegalArgumentException(
+                            "non-rate metrics must not carry numerator or denominator: " + metric);
+                }
+            } else {
+                if (numerator == null || denominator == null || numerator < 0 || denominator < 0
+                        || numerator > denominator) {
+                    throw new IllegalArgumentException(
+                            "rate metrics require non-null non-negative numerator <= denominator: " + metric);
+                }
+                final double expected = denominator == 0 ? Double.NaN : numerator / (double) denominator;
+                if (Double.compare(observed, expected) != 0) {
+                    throw new IllegalArgumentException(
+                            "observed must equal numerator / denominator for rate metric: " + metric);
+                }
+            }
         }
 
         /** @return stable inspection key of this row */
@@ -216,8 +243,80 @@ final class ElliottResearchReport {
      */
     record NullReference(int requested, int valid, int unavailable, double median, double low, double high) {
 
+        NullReference {
+            validateNullSummary(requested, valid, unavailable, median, low, high);
+        }
+
         boolean available() {
             return valid > 0;
+        }
+    }
+
+    private static void validateNullSummary(final int requested, final int valid, final int unavailable,
+            final double median, final double low, final double high) {
+        if (requested < 0 || valid < 0 || unavailable < 0 || (long) valid + unavailable != requested) {
+            throw new IllegalArgumentException(
+                    "null member counts must be non-negative and valid + unavailable must equal requested");
+        }
+        if (valid == 0) {
+            if (!Double.isNaN(median) || !Double.isNaN(low) || !Double.isNaN(high)) {
+                throw new IllegalArgumentException("null quantiles must be unavailable when no member is valid");
+            }
+        } else if (!Double.isFinite(low) || !Double.isFinite(median) || !Double.isFinite(high) || low > median
+                || median > high) {
+            throw new IllegalArgumentException(
+                    "valid null members require finite ordered nullLow <= nullMedian <= nullHigh");
+        }
+        if (valid > 0 && ((nearestRankPosition(valid, LOW_QUANTILE) == nearestRankPosition(valid, MEDIAN_QUANTILE)
+                && Double.compare(low, median) != 0)
+                || (nearestRankPosition(valid, MEDIAN_QUANTILE) == nearestRankPosition(valid, HIGH_QUANTILE)
+                        && Double.compare(median, high) != 0))) {
+            throw new IllegalArgumentException("null quantiles at the same nearest-rank position must agree");
+        }
+    }
+
+    private static void validateNullComparison(final int blockLength, final double observed, final int valid,
+            final int requested, final int unavailable, final double median, final double low, final double high,
+            final double difference, final double rank, final String availability) {
+        validateNullSummary(requested, valid, unavailable, median, low, high);
+        if (Double.isInfinite(observed)) {
+            throw new IllegalArgumentException("observed must be finite or unavailable");
+        }
+        if (blockLength == 0 || blockLength < -1 || (blockLength < 0 ? requested != 0 : requested == 0)) {
+            throw new IllegalArgumentException("null block length and requested member count are inconsistent");
+        }
+        final boolean comparable = blockLength > 0 && valid > 0 && Double.isFinite(observed);
+        final String expected = comparable ? AVAILABLE
+                : blockLength < 0 && Double.isFinite(observed) ? NOT_COMPARABLE : UNAVAILABLE;
+        if (!expected.equals(availability)) {
+            throw new IllegalArgumentException(
+                    "availability must be " + expected + " for the observed and null values");
+        }
+        if (!comparable) {
+            if (!Double.isNaN(difference) || !Double.isNaN(rank)) {
+                throw new IllegalArgumentException("unavailable null comparisons cannot carry a difference or rank");
+            }
+            return;
+        }
+        if (!Double.isFinite(difference) || Double.compare(difference, observed - median) != 0) {
+            throw new IllegalArgumentException("observedMinusNullMedian must equal observed - nullMedian");
+        }
+        final double denominator = valid + 1.0d;
+        if (!Double.isFinite(rank) || rank <= 0.0d || rank > 1.0d
+                || Double.compare(rank, Math.rint(rank * denominator) / denominator) != 0) {
+            throw new IllegalArgumentException(
+                    "empiricalReferenceRank must be k / (validNullMembers + 1), for 1 <= k <= validNullMembers + 1");
+        }
+        final long atLeast = Math.round(rank * denominator) - 1L;
+        validateQuantileRank(observed, low, nearestRankPosition(valid, LOW_QUANTILE), valid, atLeast);
+        validateQuantileRank(observed, median, nearestRankPosition(valid, MEDIAN_QUANTILE), valid, atLeast);
+        validateQuantileRank(observed, high, nearestRankPosition(valid, HIGH_QUANTILE), valid, atLeast);
+    }
+
+    private static void validateQuantileRank(final double observed, final double quantile, final int position,
+            final int valid, final long atLeast) {
+        if (observed <= quantile ? atLeast < (long) valid - position + 1 : atLeast > (long) valid - position) {
+            throw new IllegalArgumentException("empiricalReferenceRank contradicts the null nearest-rank quantiles");
         }
     }
 
@@ -442,8 +541,12 @@ final class ElliottResearchReport {
     }
 
     private static double nearestRank(final double[] sorted, final double quantile) {
-        final int rank = (int) Math.ceil(quantile * sorted.length - RANK_EPSILON);
-        return sorted[Math.min(sorted.length, Math.max(1, rank)) - 1];
+        return sorted[nearestRankPosition(sorted.length, quantile) - 1];
+    }
+
+    private static int nearestRankPosition(final int count, final double quantile) {
+        final int rank = (int) Math.ceil(quantile * count - RANK_EPSILON);
+        return Math.min(count, Math.max(1, rank));
     }
 
     /**
@@ -535,6 +638,7 @@ final class ElliottResearchReport {
             throw new IllegalArgumentException(path + ":1: unexpected header, expected " + ROW_HEADER);
         }
         final List<Row> rows = new ArrayList<>(table.size() - 1);
+        final Set<String> keys = new HashSet<>();
         for (int line = 1; line < table.size(); line++) {
             final List<String> cells = table.get(line);
             final String where = path + ":" + (line + 1);
@@ -554,8 +658,12 @@ final class ElliottResearchReport {
                         Integer.parseInt(cells.get(17).isEmpty() ? "0" : cells.get(17)), number(cells.get(18)),
                         number(cells.get(19)), number(cells.get(20)), number(cells.get(21)), number(cells.get(22)),
                         cells.get(23));
-                if (!row.key().equals(cells.get(0))) {
+                final String key = row.key();
+                if (!key.equals(cells.get(0))) {
                     throw new IllegalArgumentException("key column '" + cells.get(0) + "' does not match row fields");
+                }
+                if (!keys.add(key)) {
+                    throw new IllegalArgumentException("Duplicate comparison key: " + key);
                 }
                 rows.add(row);
             } catch (final IllegalArgumentException exception) {

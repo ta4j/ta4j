@@ -399,10 +399,14 @@ final class ElliottResearchRelations {
         }
         try {
             requireInt(frame, "asOfIndex");
+            requireLabel(frame, "dataset");
+            requireLabel(frame, "partition");
             requireCoverage(frame.getAsJsonObject("coverage"));
             for (final JsonElement event : frame.getAsJsonArray("events")) {
                 final JsonObject object = event.getAsJsonObject();
                 final JsonObject edge = object.getAsJsonObject("edge");
+                requireLabel(edge, "parentScale");
+                requireLabel(edge, "childScale");
                 requireIdentity(edge, "key", "version");
                 requireIdentity(edge, "parentCandidateKey", "parentVersion");
                 requireOptionalIdentity(edge, "childCandidateKey", "childVersion");
@@ -462,6 +466,14 @@ final class ElliottResearchRelations {
             return integer;
         } catch (final ArithmeticException | NumberFormatException e) {
             throw new IllegalArgumentException(field + " " + value + " is not a supported integer");
+        }
+    }
+
+    static void requireLabel(final JsonObject owner, final String field) {
+        final JsonElement value = owner.get(field);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()
+                || value.getAsString().isBlank()) {
+            throw new IllegalArgumentException(field + " must be a nonblank JSON string");
         }
     }
 

@@ -190,12 +190,18 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
+        Num currentValue = indicator.getValue(index);
+        Indicator<Num> sourceForPrevious = previousIndicator != null ? previousIndicator : indicator;
+        Num previousValue = null;
+        if (percentageThreshold.isZero() && index > beginIndex) {
+            previousValue = sourceForPrevious.getValue(index - 1);
+        }
+
         // Return NaN during unstable period
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
 
-        Num currentValue = indicator.getValue(index);
         if (Num.isNaNOrNull(currentValue) || currentValue.isZero()) {
             return NaN;
         }
@@ -217,9 +223,9 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
 
         // Simple case: compare with previous bar
 
-        // Determine which indicator to use for previous value
-        Indicator<Num> sourceForPrevious = (previousIndicator != null) ? previousIndicator : indicator;
-        Num previousValue = sourceForPrevious.getValue(index - 1);
+        if (previousValue == null) {
+            previousValue = sourceForPrevious.getValue(index - 1);
+        }
 
         // Check for NaN or zero previous value (division by zero)
         if (Num.isNaNOrNull(previousValue) || previousValue.isZero()) {

@@ -13,7 +13,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.OpenPriceIndicator;
@@ -41,11 +43,47 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
-    public void defaultPreviousSourceRegistersOnlyCurrentIndicator() {
-        Indicator<Num> source = new ClosePriceIndicator(barSeries);
-        PercentageChangeIndicator indicator = new PercentageChangeIndicator(source);
+    public void startsCurrentAndLaggedRecursiveSourcesBeforeWarmUpEnds() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (boolean laggedSource : new boolean[] { false, true }) {
+                BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+                series.setMaximumBarCount(2);
+                ClosePriceIndicator close = new ClosePriceIndicator(series);
+                EMAIndicator average = new EMAIndicator(close, 3);
+                PercentageChangeIndicator change = laggedSource ? new PercentageChangeIndicator(close, average)
+                        : new PercentageChangeIndicator(average);
+                for (int index = 0; index < 12; index++) {
+                    series.barBuilder().closePrice(10).add();
+                    Num value = change.getValue(index);
+                    if (index < 4) {
+                        assertThat(value.isNaN()).isTrue();
+                    } else {
+                        assertNumEquals(0, value);
+                    }
+                }
+            }
+        } finally {
+            capture.close();
+        }
+    }
 
-        assertThat(indicator.getDependencies()).containsExactly(source);
+    @Test
+    public void preservesPreviousBarAliasAtRetainedHead() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(1);
+        PercentageChangeIndicator change = new PercentageChangeIndicator(new ClosePriceIndicator(series));
+        for (int index = 0; index < 3; index++) {
+            series.barBuilder().closePrice(10 * (index + 1)).add();
+            Num value = change.getValue(index);
+            if (index == 0) {
+                assertThat(value.isNaN()).isTrue();
+            } else {
+                // A removed previous bar keeps the existing retained-head alias.
+                assertNumEquals(0, value);
+            }
+        }
     }
 
     @Test

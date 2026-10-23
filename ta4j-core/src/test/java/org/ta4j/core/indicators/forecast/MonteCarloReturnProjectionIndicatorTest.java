@@ -280,7 +280,7 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
-    public void preservesLegacySeededShockPathForecasts() {
+    public void pinsSeededShockPathForecasts() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 101, 99, 105, 104, 108, 106, 111)
                 .build();
@@ -295,11 +295,11 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
                 .quantiles(0.05, 0.5, 0.95)
                 .build()
                 .getValue(6);
-        assertNumEquals("0.03483255181444142", empiricalEwma.mean());
+        assertNumEquals("0.034929094325458335", empiricalEwma.mean());
         assertNumEquals("0.03892637788195455", empiricalEwma.median());
-        assertNumEquals("0.04708855100981354", empiricalEwma.standardDeviation());
-        assertNumEquals("-0.0369318650958033", empiricalEwma.quantile(0.05));
-        assertNumEquals("0.11951942174290628", empiricalEwma.quantile(0.95));
+        assertNumEquals("0.043154958726089855", empiricalEwma.standardDeviation());
+        assertNumEquals("-0.028452479444203635", empiricalEwma.quantile(0.05));
+        assertNumEquals("0.09773370481851677", empiricalEwma.quantile(0.95));
 
         Forecast normalConstant = MonteCarloReturnProjectionIndicator.builder(state(series))
                 .horizon(2)
@@ -311,11 +311,11 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
                 .quantiles(0.05, 0.5, 0.95)
                 .build()
                 .getValue(6);
-        assertNumEquals("0.011102619447215032", normalConstant.mean());
-        assertNumEquals("0.01397158272752366", normalConstant.median());
-        assertNumEquals("0.05563425016603179", normalConstant.standardDeviation());
-        assertNumEquals("-0.08046700229217973", normalConstant.quantile(0.05));
-        assertNumEquals("0.10387657963270557", normalConstant.quantile(0.95));
+        assertNumEquals("1.0848413103435562E-5", normalConstant.mean());
+        assertNumEquals("0.0033764802573538937", normalConstant.median());
+        assertNumEquals("0.05372834836953416", normalConstant.standardDeviation());
+        assertNumEquals("-0.09301755164618217", normalConstant.quantile(0.05));
+        assertNumEquals("0.07914837942714022", normalConstant.quantile(0.95));
         Forecast bootstrapEwma = MonteCarloReturnProjectionIndicator.builder(state(series))
                 .horizon(2)
                 .iterationCount(200)
@@ -326,11 +326,11 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
                 .quantiles(0.05, 0.5, 0.95)
                 .build()
                 .getValue(6);
-        assertNumEquals("0.03488116431995178", bootstrapEwma.mean());
+        assertNumEquals("0.035028864788999", bootstrapEwma.mean());
         assertNumEquals("0.040148367010780873", bootstrapEwma.median());
-        assertNumEquals("0.046971829055689786", bootstrapEwma.standardDeviation());
-        assertNumEquals("-0.03738426602430504", bootstrapEwma.quantile(0.05));
-        assertNumEquals("0.11768100004586679", bootstrapEwma.quantile(0.95));
+        assertNumEquals("0.04303910458091771", bootstrapEwma.standardDeviation());
+        assertNumEquals("-0.028717718128103274", bootstrapEwma.quantile(0.05));
+        assertNumEquals("0.09658082800578051", bootstrapEwma.quantile(0.95));
     }
 
     @Test

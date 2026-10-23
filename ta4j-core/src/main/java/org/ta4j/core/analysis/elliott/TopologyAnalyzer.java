@@ -98,7 +98,7 @@ final class TopologyAnalyzer {
         for (final WaveDirection direction : WaveDirection.values()) {
             for (int start = 0; start + grammar.requiredPivots() <= window.size(); start++) {
                 final TopologyCandidate candidate = buildCandidate(grammar, direction, window, start);
-                if (candidate == null || !matchesShape(candidate)) {
+                if (candidate == null || !matchesShape(grammar, direction, candidate.pivots())) {
                     continue;
                 }
                 if (isBreachedByAnyLaterPivot(candidate, window)) {
@@ -334,7 +334,7 @@ final class TopologyAnalyzer {
         return candidate != null && matchesShape(candidate) ? candidate : null;
     }
 
-    private boolean startsInExpectedDirection(final TopologyGrammar grammar, final WaveDirection direction,
+    static boolean startsInExpectedDirection(final TopologyGrammar grammar, final WaveDirection direction,
             final List<ConfirmedPivot> pivots) {
         final boolean firstLegPositive = expectedLegPositive(grammar, 0);
         final SwingPivotType expectedOrigin;
@@ -346,11 +346,13 @@ final class TopologyAnalyzer {
         return pivots.get(0).type() == expectedOrigin;
     }
 
-    private boolean matchesShape(final TopologyCandidate candidate) {
-        for (int leg = 0; leg < candidate.pivots().size() - 1; leg++) {
-            final Num size = candidate.legSize(leg);
-            final boolean positiveExpected = expectedLegPositive(candidate.grammar(), leg);
-            if (positiveExpected ? !size.isPositive() : !size.isNegative()) {
+    static boolean matchesShape(final TopologyGrammar grammar, final WaveDirection direction,
+            final List<ConfirmedPivot> pivots) {
+        for (int leg = 0; leg < pivots.size() - 1; leg++) {
+            final Num start = pivots.get(leg).price();
+            final Num end = pivots.get(leg + 1).price();
+            final int signed = direction == WaveDirection.BULLISH ? end.compareTo(start) : start.compareTo(end);
+            if (expectedLegPositive(grammar, leg) ? signed <= 0 : signed >= 0) {
                 return false;
             }
         }
@@ -367,18 +369,11 @@ final class TopologyAnalyzer {
             if (segment.get(leg).type() == segment.get(leg + 1).type()) {
                 return false;
             }
-            final Num startPrice = segment.get(leg).price();
-            final Num endPrice = segment.get(leg + 1).price();
-            final Num signed = direction == WaveDirection.BULLISH ? endPrice.minus(startPrice)
-                    : startPrice.minus(endPrice);
-            if (expectedLegPositive(grammar, leg) ? !signed.isPositive() : !signed.isNegative()) {
-                return false;
-            }
         }
-        return true;
+        return matchesShape(grammar, direction, segment);
     }
 
-    private boolean expectedLegPositive(final TopologyGrammar grammar, final int leg) {
+    private static boolean expectedLegPositive(final TopologyGrammar grammar, final int leg) {
         return switch (grammar) {
         case MOTIVE_5 -> leg % 2 == 0;
         // A corrective block moves against the declared trend: its

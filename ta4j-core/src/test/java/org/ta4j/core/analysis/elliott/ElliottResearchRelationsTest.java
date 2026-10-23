@@ -281,6 +281,35 @@ class ElliottResearchRelationsTest {
     }
 
     @Test
+    public void frameAndScaleScopeLabelsMustBeNonblankStrings() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        int line = 1;
+        while (line < lines.size() - 1 && !lines.get(line).contains("\"parentStart\"")) {
+            line++;
+        }
+        assertTrue(line < lines.size() - 1, "fixture must contain an edge");
+        final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+        final JsonObject edge = frame.getAsJsonArray("events").get(0).getAsJsonObject().getAsJsonObject("edge");
+        for (final JsonObject owner : List.of(frame, edge)) {
+            for (final String field : owner == frame ? List.of("dataset", "partition")
+                    : List.of("parentScale", "childScale")) {
+                final JsonElement original = owner.get(field);
+                for (final String invalid : List.of("null", "\"\"", "\" \\t\"", "1", "true", "[]", "{}")) {
+                    owner.add(field, JsonParser.parseString(invalid));
+                    assertScopeRejected(lines, line, frame, field);
+                }
+                owner.remove(field);
+                assertScopeRejected(lines, line, frame, field);
+                owner.add(field, original);
+            }
+        }
+        lines.set(line, frame.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        assertTrue(ElliottResearchRelations.read(file, ignored -> {
+        }).complete());
+    }
+
+    @Test
     public void edgeAndParentIdentitiesRejectMalformedKeysAndVersions() throws IOException {
         final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
         int line = 1;
@@ -474,6 +503,18 @@ class ElliottResearchRelationsTest {
         final IllegalArgumentException mismatch = assertThrows(IllegalArgumentException.class,
                 () -> hourly.validateSeries("toy", ScaleRelationFixtures.series(5)));
         assertTrue(mismatch.getMessage().contains("not resampled or aligned"), mismatch.getMessage());
+    }
+
+    private void assertScopeRejected(final List<String> lines, final int line, final JsonObject frame,
+            final String field) throws IOException {
+        lines.set(line, frame.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        final String message = assertThrows(IllegalArgumentException.class,
+                () -> ElliottResearchRelations.read(file, ignored -> {
+                })).getMessage();
+        final String prefix = file + ": line " + (line + 1) + ": ";
+        assertTrue(message.startsWith(prefix + "malformed frame: " + field + " ")
+                || message.equals(prefix + "frame lacks " + field), message);
     }
 
     private void assertIdentityRejected(final List<String> lines, final int line, final JsonObject frame,

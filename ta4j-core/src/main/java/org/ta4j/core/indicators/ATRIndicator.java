@@ -66,15 +66,25 @@ public class ATRIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        Num averageTrueRange = averageTrueRangeIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
-        return averageTrueRangeIndicator.getValue(index);
+        return averageTrueRange;
     }
 
     @Override
     public int getCountOfUnstableBars() {
         return trueRangeUnstableBars + getBarCount();
+    }
+
+    /**
+     * @return {@code true}, because the Wilder average retains full-history state
+     * @since 0.27.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     /** @return a true range indicator for this indicator's bar series */

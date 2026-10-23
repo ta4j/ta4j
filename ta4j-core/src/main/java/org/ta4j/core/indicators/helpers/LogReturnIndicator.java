@@ -97,10 +97,10 @@ public final class LogReturnIndicator extends CachedIndicator<Num> implements Re
 
     @Override
     protected Num calculate(int index) {
+        Num current = indicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-        Num current = indicator.getValue(index);
         Num previous = indicator.getValue(index - barCount);
         if (!Num.isFinite(current) || !Num.isFinite(previous) || !current.isPositive() || !previous.isPositive()) {
             return NaN.NaN;
