@@ -153,7 +153,7 @@ final class ElliottResearchEventsTest {
                 StudyObserver.Scope.real("h2", RuleAblation.frozenModeNames().getLast(), "CYCLE_5_3", List.of(),
                         "synthetic"),
                 "calibration", 12, AS_OF, pivots,
-                new TopologyAnalysis(TopologyStatus.COMPLETE, null, List.of(cycle), "cycle", -1, -1),
+                new TopologyAnalysis(TopologyStatus.COMPLETE, cycle.direction(), List.of(cycle), "cycle", -1, -1),
                 List.of(List.of()));
 
         final Event event = soleEvent(recorder);
@@ -195,7 +195,7 @@ final class ElliottResearchEventsTest {
                 visible.subList(0, 6));
         recorder.topology(StudyObserver.Scope.real("h1", "all-rules", "MOTIVE_5", List.of(), "synthetic"),
                 "calibration", index, AS_OF, visible,
-                new TopologyAnalysis(TopologyStatus.COMPLETE, null, List.of(motive), "motive", -1, -1),
+                new TopologyAnalysis(TopologyStatus.COMPLETE, motive.direction(), List.of(motive), "motive", -1, -1),
                 List.of(List.of()));
     }
 
@@ -211,7 +211,7 @@ final class ElliottResearchEventsTest {
                 visible);
         recorder.topology(StudyObserver.Scope.real("h2", "all-rules", "CYCLE_5_3", List.of(), "synthetic"),
                 "calibration", index, AS_OF, visible,
-                new TopologyAnalysis(TopologyStatus.COMPLETE, null, List.of(cycle), "cycle", -1, -1),
+                new TopologyAnalysis(TopologyStatus.COMPLETE, cycle.direction(), List.of(cycle), "cycle", -1, -1),
                 List.of(List.of()));
     }
 
