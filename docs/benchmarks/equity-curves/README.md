@@ -118,3 +118,97 @@ processors. Maven's JaCoCo configuration overrode the requested
 and a 32,178,700,288-byte maximum heap. These are instrumented measurements,
 not uninstrumented production-latency claims. The metadata records the actual
 arguments and heap; use those effective settings when comparing results.
+
+
+## Final result and next decision
+
+The corrected per-statement ranking run is pinned to harness revision
+`54adfa8dc7ec86233988a05ed9878733f4ffcd40`; production remains identical to
+baseline `7adc45bfdf78aae2c07f4008b8bb939eac0aea6b`. Its raw samples and effective
+JVM metadata are `per-statement-ranking.csv` and
+`per-statement-environment.txt`. It ran with `-Dequity.benchmark.rankingOnly=true`
+and the same two warmups / three measured repetitions. The full command is the
+reproduction command above plus that property and the pinned revision value.
+The rerun took 20m09s. Initial individual-criterion samples are reused because
+the correction only changes the test-side ranking prototype's retention scope;
+no production criterion or fixture changed. Ranking baseline and candidate
+ratios below use the corrected run together, not timings mixed across JVM runs.
+
+**Decision:** the retained Phase-0 wall-time criterion is met by DoubleNum at
+100,000 bars (1.718x). DecimalNum improves 1.433x but does not independently
+meet 1.5x, and neither factory reaches 40% allocation reduction. These results
+support proceeding to a separate Phase-1 design review. They do not authorize
+production cache shipment: the prototype shares only four consumers, immutable
+fixtures do not prove mutation/revision/read-only contracts, and the benchmark
+is instrumented. Preserve the DecimalNum qualification and repeat measurements
+against any later default-branch/accounting changes, including the neighboring
+production work owned by PR #1636. No production caching is part of this patch.
+
+Independent review remains required before publication: the supported Codex
+fork operation failed before creating a reviewer (`unsupported app-server
+method: thread/fork`). The local preparation includes substantive self-review;
+it is not independent review. No publication, ownership or Linear lifecycle
+change was performed.
+
+The first table reports each criterion's individual latency and allocation from
+the initial full run. Ranking tables report the corrected per-statement run.
+All figures are medians of three measured repetitions; MiB means 1,048,576 bytes.
+
+### Individual criteria
+
+| Factory | Bars | Operation | Median ms | Median allocated MiB |
+| -- | --: | -- | --: | --: |
+| DoubleNumFactory | 1100 | MaximumDrawdownCriterion | 0.521 | 0.263 |
+| DoubleNumFactory | 1100 | MaximumAbsoluteDrawdownCriterion | 0.440 | 0.238 |
+| DoubleNumFactory | 1100 | MaximumDrawdownBarLengthCriterion | 0.424 | 0.263 |
+| DoubleNumFactory | 1100 | MonteCarloMaximumDrawdownCriterion | 0.666 | 1.913 |
+| DoubleNumFactory | 1100 | ReturnOverMaxDrawdownCriterion | 0.265 | 0.263 |
+| DoubleNumFactory | 1100 | CalmarRatioCriterion | 0.238 | 0.267 |
+| DoubleNumFactory | 1100 | SharpeRatioCriterion | 0.598 | 1.395 |
+| DoubleNumFactory | 1100 | SortinoRatioCriterion | 0.533 | 1.299 |
+| DoubleNumFactory | 100000 | MaximumDrawdownCriterion | 127.727 | 593.864 |
+| DoubleNumFactory | 100000 | MaximumAbsoluteDrawdownCriterion | 86.978 | 593.864 |
+| DoubleNumFactory | 100000 | MaximumDrawdownBarLengthCriterion | 111.420 | 593.864 |
+| DoubleNumFactory | 100000 | MonteCarloMaximumDrawdownCriterion | 111.973 | 595.732 |
+| DoubleNumFactory | 100000 | ReturnOverMaxDrawdownCriterion | 112.960 | 593.864 |
+| DoubleNumFactory | 100000 | CalmarRatioCriterion | 112.418 | 594.245 |
+| DoubleNumFactory | 100000 | SharpeRatioCriterion | 120.663 | 628.947 |
+| DoubleNumFactory | 100000 | SortinoRatioCriterion | 126.916 | 629.880 |
+| DecimalNumFactory | 1100 | MaximumDrawdownCriterion | 1.499 | 0.958 |
+| DecimalNumFactory | 1100 | MaximumAbsoluteDrawdownCriterion | 0.799 | 1.790 |
+| DecimalNumFactory | 1100 | MaximumDrawdownBarLengthCriterion | 0.943 | 0.958 |
+| DecimalNumFactory | 1100 | MonteCarloMaximumDrawdownCriterion | 8.499 | 14.027 |
+| DecimalNumFactory | 1100 | ReturnOverMaxDrawdownCriterion | 0.842 | 0.957 |
+| DecimalNumFactory | 1100 | CalmarRatioCriterion | 0.785 | 0.972 |
+| DecimalNumFactory | 1100 | SharpeRatioCriterion | 6.632 | 7.546 |
+| DecimalNumFactory | 1100 | SortinoRatioCriterion | 5.639 | 7.584 |
+| DecimalNumFactory | 100000 | MaximumDrawdownCriterion | 384.095 | 1627.916 |
+| DecimalNumFactory | 100000 | MaximumAbsoluteDrawdownCriterion | 1062.850 | 6944.308 |
+| DecimalNumFactory | 100000 | MaximumDrawdownBarLengthCriterion | 382.685 | 1627.916 |
+| DecimalNumFactory | 100000 | MonteCarloMaximumDrawdownCriterion | 388.584 | 1644.571 |
+| DecimalNumFactory | 100000 | ReturnOverMaxDrawdownCriterion | 382.171 | 1627.917 |
+| DecimalNumFactory | 100000 | CalmarRatioCriterion | 384.158 | 1628.305 |
+| DecimalNumFactory | 100000 | SharpeRatioCriterion | 509.306 | 2267.966 |
+| DecimalNumFactory | 100000 | SortinoRatioCriterion | 517.109 | 2280.292 |
+
+### Per-statement ranking
+
+| Factory | Bars | Operation | Median ms | Median allocated MiB |
+| -- | --: | -- | --: | --: |
+| DoubleNumFactory | 1100 | ranking20 | 27.941 | 67.395 |
+| DoubleNumFactory | 1100 | ranking20-shared-drawdowns | 13.929 | 53.837 |
+| DoubleNumFactory | 100000 | ranking20 | 19281.041 | 96496.431 |
+| DoubleNumFactory | 100000 | ranking20-shared-drawdowns | 11223.252 | 60991.639 |
+| DecimalNumFactory | 1100 | ranking20 | 121.135 | 643.357 |
+| DecimalNumFactory | 1100 | ranking20-shared-drawdowns | 116.847 | 609.578 |
+| DecimalNumFactory | 100000 | ranking20 | 82731.818 | 394114.145 |
+| DecimalNumFactory | 100000 | ranking20-shared-drawdowns | 57713.198 | 297582.556 |
+
+### Relative ranking result
+
+| Factory | Bars | Speedup | Allocation reduction |
+| -- | --: | --: | --: |
+| DoubleNumFactory | 1100 | 2.006x | 20.12% |
+| DoubleNumFactory | 100000 | 1.718x | 36.79% |
+| DecimalNumFactory | 1100 | 1.037x | 5.25% |
+| DecimalNumFactory | 100000 | 1.433x | 24.49% |
