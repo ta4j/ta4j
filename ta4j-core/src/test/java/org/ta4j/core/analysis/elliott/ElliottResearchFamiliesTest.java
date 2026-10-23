@@ -327,8 +327,8 @@ class ElliottResearchFamiliesTest {
             lines.set(line, footer.toString());
             Files.write(file, lines, StandardCharsets.UTF_8);
             final String message = rejection();
-            assertTrue(message.startsWith(
-                    file + ": line " + (line + 1) + ": malformed footer: truncatedCompositions "), message);
+            assertTrue(message.startsWith(file + ": line " + (line + 1) + ": malformed footer: truncatedCompositions "),
+                    message);
         }
         footer.addProperty("truncatedCompositions", Long.MAX_VALUE);
         lines.set(line, footer.toString());
@@ -435,7 +435,8 @@ class ElliottResearchFamiliesTest {
                 final JsonObject coverage = frame.getAsJsonArray("coverage").get(0).getAsJsonObject();
                 for (final JsonObject owner : List.of(frame, coverage, verdict)) {
                     final List<String> fields = owner == frame ? List.of("dataset", "partition")
-                            : owner == coverage ? List.of("group") : List.of("profile", "profileVersion", "parentScale");
+                            : owner == coverage ? List.of("group")
+                                    : List.of("profile", "profileVersion", "parentScale");
                     for (final String field : fields) {
                         final JsonElement original = owner.get(field);
                         for (final String invalid : List.of("null", "\"\"", "\" \\t\"", "1", "true", "[]", "{}")) {
