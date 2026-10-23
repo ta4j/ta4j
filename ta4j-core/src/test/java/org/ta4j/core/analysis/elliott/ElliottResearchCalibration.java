@@ -181,14 +181,14 @@ final class ElliottResearchCalibration {
                         "calibration.horizon is required: the event is declared at one outcome horizon of "
                                 + outcomes.horizons());
             }
-            final int horizon = requiredInteger(json.get("horizon"), "calibration.horizon");
+            final int horizon = requiredInteger(json, "horizon", "calibration.");
             if (!outcomes.horizons().contains(horizon)) {
                 throw new IllegalArgumentException(
                         "calibration.horizon " + horizon + " must be one of outcomes.horizons " + outcomes.horizons());
             }
             final Settings settings = new Settings(horizon, text(json, "fit", DEFAULT_FIT),
                     text(json, "validation", DEFAULT_VALIDATION), text(json, "evaluation", DEFAULT_EVALUATION),
-                    json.has("minGroups") ? requiredInteger(json.get("minGroups"), "calibration.minGroups")
+                    json.has("minGroups") ? requiredInteger(json, "minGroups", "calibration.")
                             : DEFAULT_MIN_GROUPS);
             final Map<String, StudyRunner.Partition> byName = new LinkedHashMap<>();
             partitions.forEach(partition -> byName.put(partition.name(), partition));
@@ -239,15 +239,16 @@ final class ElliottResearchCalibration {
         return element.getAsString();
     }
 
-    private static int requiredInteger(final JsonElement element, final String field) {
+    private static int requiredInteger(final JsonObject json, final String field, final String where) {
+        final JsonElement element = json.get(field);
         if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) {
-            throw new IllegalArgumentException(field + " must be an integer");
+            throw new IllegalArgumentException(where + field + " must be an integer");
         }
         try {
             return element.getAsBigDecimal().intValueExact();
         } catch (final ArithmeticException | NumberFormatException e) {
             throw new IllegalArgumentException(
-                    field + " must be an integer in [" + Integer.MIN_VALUE + ", " + Integer.MAX_VALUE + "]", e);
+                    where + field + " must be an integer in [" + Integer.MIN_VALUE + ", " + Integer.MAX_VALUE + "]", e);
         }
     }
 
@@ -334,7 +335,7 @@ final class ElliottResearchCalibration {
                     requiredText(json.get("momentum"), "identity.momentum"),
                     requiredText(json.get("target"), "identity.target"),
                     requiredText(json.get("feature"), "identity.feature"),
-                    requiredInteger(json.get("horizon"), "identity.horizon"));
+                    requiredInteger(json, "horizon", "identity."));
         }
 
         /** @return the names of the fields that differ from {@code other} */
@@ -910,7 +911,7 @@ final class ElliottResearchCalibration {
                 final JsonObject entry = element.getAsJsonObject();
                 final List<BinFit> bins = new ArrayList<>();
                 for (final JsonElement bin : entry.getAsJsonArray("bins")) {
-                    bins.add(binFit(bin.getAsJsonObject(), "masks.bins"));
+                    bins.add(binFit(bin.getAsJsonObject(), "masks.bins."));
                 }
                 if (bins.size() != BINS) {
                     throw new IllegalArgumentException("calibration table mask '" + entry.get("mask").getAsString()
@@ -922,17 +923,17 @@ final class ElliottResearchCalibration {
                     Identity.fromJson(json.getAsJsonObject("identity")),
                     new Provenance(provenance.get("fingerprint").getAsString(),
                             provenance.get("revision").getAsString()),
-                    requiredInteger(policy.get("minGroups"), "policy.minGroups"), partitions,
-                    requiredInteger(fit.get("firstIndex"), "fit.firstIndex"),
-                    requiredInteger(fit.get("cutoffIndex"), "fit.cutoffIndex"),
-                    binFit(json.getAsJsonObject("base"), "base"), masks);
+                    requiredInteger(policy, "minGroups", "policy."), partitions,
+                    requiredInteger(fit, "firstIndex", "fit."),
+                    requiredInteger(fit, "cutoffIndex", "fit."),
+                    binFit(json.getAsJsonObject("base"), "base."), masks);
         }
 
-        private static BinFit binFit(final JsonObject json, final String field) {
+        private static BinFit binFit(final JsonObject json, final String where) {
             return new BinFit(json.get("weight").getAsDouble(), json.get("successWeight").getAsDouble(),
-                    requiredInteger(json.get("groups"), field + ".groups"),
-                    requiredInteger(json.get("successes"), field + ".successes"),
-                    requiredInteger(json.get("failures"), field + ".failures"));
+                    requiredInteger(json, "groups", where),
+                    requiredInteger(json, "successes", where),
+                    requiredInteger(json, "failures", where));
         }
     }
 
