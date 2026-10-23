@@ -43,7 +43,7 @@ import ta4jexamples.charting.replay.ReplayTraceIndex.Family;
  * @param windowStart       first visible bar index
  * @param pivots            confirmed pivots, oldest first
  * @param candidates        every retained alternative in recorded order
- * @param labels            recorded alternative labels
+ * @param labels            recorded observation labels
  * @param overlayCap        maximum simultaneous overlays
  * @param overlayed         number of candidates drawn
  * @param truncated         number of candidates not drawn because of the cap
@@ -182,7 +182,7 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
                     List.copyOf(placement), List.copyOf(rules), overlay, key.equals(selected)));
         }
         final List<String> labels = new ArrayList<>();
-        optionalArray(record, "labels").forEach(label -> labels.add(label.getAsString()));
+        array(record, "labels").forEach(label -> labels.add(label.getAsString()));
         final int overlayed = overlaySlots.size();
         return new ReplayFrame(comparisonKey, family, activeRules, cursor, text(record, "asOfTime"),
                 text(record, "kind"), text(record, "status"), text(record, "direction"), windowStart, pivots,
@@ -355,11 +355,6 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
         return value.getAsJsonArray();
     }
 
-    /** Labels exist only on alternative records; a topology record carries none. */
-    private static JsonArray optionalArray(final JsonObject object, final String name) {
-        final JsonElement value = object.get(name);
-        return value != null && value.isJsonArray() ? value.getAsJsonArray() : new JsonArray();
-    }
 
     private static String text(final JsonObject object, final String name) {
         final JsonElement value = object.get(name);

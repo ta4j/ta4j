@@ -178,7 +178,7 @@ Finite extreme endpoint innovations are whitened before subtraction, so
 
 `ElliottReplayInspector` replays what a research run (`ta4j-core/README.md`,
 "Run Elliott wave pattern research") knew at each bar. It reads only the run
-directory: it never recomputes a count, fetches data, or writes into the run, and
+directory: it never recomputes a wave count from bars, fetches data, or writes into the run, and
 it rejects a trace whose dataset, run revision, fingerprint, source digest or
 null block/member coordinates differ from `run.json`. Trace indices, header and
 selected-member coordinates, and retained price-bar row counts must be exact
@@ -190,6 +190,10 @@ Required stream identity labels and as-of timestamps must be nonblank, including
 on records outside the requested family; they cannot silently disappear from evidence.
 Kernel grammar scopes require topology records, while structural alternative scopes
 require alternative records; changing the kind cannot bypass topology evidence checks.
+Each listed trace must also match its entry in the dataset's `traceSha256` map before
+the viewer opens. A rewritten status, label set or observation stream, including a
+removed record in an unselected family with a repaired footer, is not the recorded
+bundle. Regenerate older unbound runs rather than replaying different support.
 Candidate keys must match the recorded grammar, direction and ordered pivot
 placement; each version must bind that key to its exact ordered rule evidence.
 Edited or foreign identities are rejected with the trace line and candidate field.
@@ -201,14 +205,53 @@ has one candidate with the same direction;
 have no candidates; only `FORMING` carries a direction. Supported grammar placement
 sizes, the grammar/direction-specific origin type and strict price move of every
 leg, ordered alternating pivots with nonnegative indices and finite prices,
-strictly ordered visible pivots, confirmation ordering, and null-or-PASS scores
-in `[0, 1]` are also checked before selecting a replay family. Within each full
+strictly ordered visible pivots with alternating confirmed neighbors, confirmations no earlier
+than their pivot indices (not a monotonic sequence), and null-or-PASS scores in `[0, 1]`
+are also checked before selecting a replay family. Within each full
 section/mode/grammar/detector/partition scope, as-of indices must be unique and
 strictly increasing even on unselected streams; different scopes may interleave.
-Every candidate placement must match the index, type and exact decimal price of a recorded pivot.
-Future-confirmed pivots remain inspectable but are prominently flagged as leaks.
+Comparison keys must be unique and equal the producer's seven-part identity from
+their row fields, so duplicate or relabeled rows cannot change selection semantics.
+Before selection, the complete key inventory must match the recorded recipe, completed
+datasets, detector scopes, partitions, rule modes, metrics and null blocks in `run.json`.
+Each row must also match its asset, grammar, ordered active rules, policy and requested
+ensemble size; missing and invented families cannot masquerade as a partial comparison.
+The five rate metrics require nonnegative integer support with numerator no larger than
+denominator, and their observation must exactly equal that ratio (`0/0` is unavailable).
+The two non-rate metrics carry no numerator or denominator; unknown metric IDs are rejected.
+CSV header names must be unique and every row must have exactly the header's cell count.
+Every comparison row retains the producer's full CSV schema and validates null-reference
+member counts, finite ordered nearest-rank quantiles, the observed-minus-median difference,
+and the `(valid + 1)` empirical rank lattice and its quantile bounds before selection.
+The null block, valid-member count and observation determine availability; valid small
+ensembles, ties, undefined observations and all-undefined ensembles remain supported.
+Trace label arrays are duplicate-free and must describe the recorded outcome:
+topology candidate spans, forming bounds, invalidation explanation or empty/no-history
+state; structural `3+3` and `5+5` labels and outcomes must match their captured pivot
+windows. Change-point labels bind only the recorded outcome, not a new close-price
+classification. Alternative directions must be null and change-point-baseline pivots empty.
+Every topology record includes its explanation and exact forming bounds, which are `-1`
+outside `FORMING`. A forming span must be a grammar-valid contiguous suffix of at least
+three but fewer than the full grammar's pivot count, ending at the newest pivot except for
+trailing future-confirmed entries. Shorter valid suffixes after disjoint completions remain valid.
+Candidate placements must match recorded pivots by index, type and exact decimal price,
+without skipping confirmed pivots, and retained candidate keys must be distinct.
+Future-confirmed pivots and candidate points remain inspectable but are suppressed from
+the as-of projection and prominently flagged as leaks, not silently reclassified.
 Malformed run metadata is also reported as an artifact diagnostic with the field
 to repair and regeneration guidance, rather than escaping as a Java stack trace.
+
+Before opening the selected family, replay reconstructs its comparison metric
+from the captured records: complete, ambiguous and no-match occupancy; individual
+and joint rule-pass rates; mean candidate-pivot confirmation lag; or adjacent
+label-set Jaccard stability. Real observations must match exactly, including the
+numerator and denominator for rate metrics. Evidence-pass denominators count
+every rule on complete candidates; joint-pass denominators count those candidates
+with rules. Lag averages each complete candidate's pivot lags before averaging
+candidates, while stability averages adjacent label-set intersections over unions.
+Undefined metrics are explicitly unavailable, not successful support checks.
+A selected null member reports only its own contributions: it is never compared
+with the real observation or presented as the unrecorded null ensemble.
 
 Reproducible smoke walkthrough (synthetic data, no network):
 

@@ -58,6 +58,7 @@ final class ReplaySession {
     private final int window;
     private final int overlayCap;
     private final String ruleEvidenceHint;
+    private final String comparisonEvidence;
     private final Map<String, ReplayFrame> cache = new LinkedHashMap<>(16, 0.75f, true) {
         private static final long serialVersionUID = 1L;
 
@@ -73,7 +74,7 @@ final class ReplaySession {
     private ReplaySession(final ReplayArtifact artifact, final ComparisonRow row, final Dataset dataset,
             final List<PriceBar> bars, final int firstBar, final ReplayTraceIndex trace, final String traceFile,
             final Family family, final List<Entry> entries, final int window, final int overlayCap,
-            final String ruleEvidenceHint) {
+            final String ruleEvidenceHint, final String comparisonEvidence) {
         this.artifact = artifact;
         this.row = row;
         this.dataset = dataset;
@@ -86,6 +87,7 @@ final class ReplaySession {
         this.window = window;
         this.overlayCap = overlayCap;
         this.ruleEvidenceHint = ruleEvidenceHint;
+        this.comparisonEvidence = comparisonEvidence;
     }
 
     /**
@@ -115,7 +117,7 @@ final class ReplaySession {
         final boolean nullMember = ReplayArtifact.TRACE_MODE_NULL_MEMBER.equals(traceMode);
         final Family family = nullMember ? nullFamily(row) : row.family();
         final ReplayTraceIndex trace = ReplayTraceIndex.scan(artifact.resolveInside(traceFile), traceFile,
-                family::equals, rulesByFamily(artifact, row.dataset(), nullMember));
+                family::equals, rulesByFamily(artifact, row.dataset(), nullMember), row.metric());
         if (nullMember) {
             requireBlockLength(row, trace, traceFile);
         }
@@ -127,10 +129,12 @@ final class ReplaySession {
                             : ReplayArtifact.TRACE_MODE_REAL));
         }
         final List<PriceBar> bars = nullMember ? recordedBars(entries, traceFile) : artifact.bars(dataset);
+        artifact.verifyTraceDigest(dataset, traceFile);
+        final String comparisonEvidence = trace.comparisonEvidence(family, row, nullMember);
         final int firstBar = nullMember ? entries.getFirst().asOfIndex() : 0;
         final String hint = hint(artifact, row);
         final ReplaySession session = new ReplaySession(artifact, row, dataset, bars, firstBar, trace, traceFile,
-                family, entries, window, overlayCap, hint);
+                family, entries, window, overlayCap, hint, comparisonEvidence);
         session.position = session.defaultPosition();
         return session;
     }
@@ -239,6 +243,10 @@ final class ReplaySession {
 
     ComparisonRow row() {
         return row;
+    }
+
+    String comparisonEvidence() {
+        return comparisonEvidence;
     }
 
     Dataset dataset() {

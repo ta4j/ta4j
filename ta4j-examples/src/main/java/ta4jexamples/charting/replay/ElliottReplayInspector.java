@@ -137,6 +137,7 @@ public final class ElliottReplayInspector {
                 + session.recordCount() + "  as-of " + session.firstAsOf() + ".." + session.lastAsOf());
         out.println("  dataset " + session.dataset().id() + " (" + session.dataset().asset() + ")  window "
                 + session.window() + " bars  overlay cap " + session.overlayCap());
+        out.println("  " + session.comparisonEvidence());
         if (options.at != null) {
             current = isNumber(options.at) ? session.seek(Integer.parseInt(options.at))
                     : session.seek(parseInstant(options.at));

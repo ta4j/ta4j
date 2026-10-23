@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -82,14 +83,16 @@ final class ReplayTraceIndex {
     private final JsonObject header;
     private final long recordCount;
     private final Map<Family, List<Entry>> entries;
+    private final Map<Family, MetricContribution> contributions;
 
     private ReplayTraceIndex(final Path file, final String display, final JsonObject header, final long recordCount,
-            final Map<Family, List<Entry>> entries) {
+            final Map<Family, List<Entry>> entries, final Map<Family, MetricContribution> contributions) {
         this.file = file;
         this.display = display;
         this.header = header;
         this.recordCount = recordCount;
         this.entries = entries;
+        this.contributions = contributions;
     }
 
     /**
@@ -132,13 +135,15 @@ final class ReplayTraceIndex {
      * @param display the artifact-relative name used in messages
      * @param keep    families to index
      * @param expectedRules ordered rule IDs recorded for each compared family
+     * @param metric the selected comparison metric to reconstruct during the scan
      * @return the index
      */
     static ReplayTraceIndex scan(final Path file, final String display, final Predicate<Family> keep,
-            final Map<Family, List<String>> expectedRules) {
+            final Map<Family, List<String>> expectedRules, final String metric) {
         Objects.requireNonNull(keep, "keep");
         Objects.requireNonNull(expectedRules, "expectedRules");
-        final Scan scan = new Scan(display, keep, expectedRules);
+        Objects.requireNonNull(metric, "metric");
+        final Scan scan = new Scan(display, keep, expectedRules, metric);
         try (InputStream in = Files.newInputStream(file)) {
             final byte[] buffer = new byte[1 << 16];
             final ByteArrayOutputStream line = new ByteArrayOutputStream();
@@ -172,6 +177,8 @@ final class ReplayTraceIndex {
         private final String display;
         private final Predicate<Family> keep;
         private final Map<Family, List<String>> expectedRules;
+        private final String metric;
+        private final Map<Family, MetricContribution> contributions = new HashMap<>();
         private final Map<Family, Integer> lastAsOf = new HashMap<>();
         private final Map<Family, List<Entry>> entries = new LinkedHashMap<>();
         private JsonObject header;
@@ -179,10 +186,12 @@ final class ReplayTraceIndex {
         private long records;
         private long lineNumber;
 
-        Scan(final String display, final Predicate<Family> keep, final Map<Family, List<String>> expectedRules) {
+        Scan(final String display, final Predicate<Family> keep, final Map<Family, List<String>> expectedRules,
+                final String metric) {
             this.display = display;
             this.keep = keep;
             this.expectedRules = expectedRules;
+            this.metric = metric;
         }
 
         void accept(final String text, final long offset, final int length) {
@@ -223,6 +232,12 @@ final class ReplayTraceIndex {
                     }
                     records++;
                     if (keep.test(family)) {
+                        MetricContribution contribution = contributions.get(family);
+                        if (contribution == null) {
+                            contribution = new MetricContribution(metric);
+                            contributions.put(family, contribution);
+                        }
+                        contribution.observe(record);
                         index(entries, family, record, offset, length);
                     }
                 }
@@ -250,7 +265,114 @@ final class ReplayTraceIndex {
                 throw new ReplayArtifactException("trace " + display + " footer declares unsupported record count "
                         + declared + "; regenerate the run", e);
             }
-            return new ReplayTraceIndex(file, display, header, records, entries);
+            return new ReplayTraceIndex(file, display, header, records, entries, contributions);
+        }
+    }
+
+    /** Reconstructs only the requested metric, without retaining parsed records. */
+    private static final class MetricContribution {
+        private final String metric;
+        private long numerator;
+        private long denominator;
+        private double sum;
+        private Set<String> previousLabels;
+
+        MetricContribution(final String metric) {
+            this.metric = metric;
+        }
+
+        void observe(final JsonObject record) {
+            final String status = text(record, "status");
+            final boolean complete = "COMPLETE".equals(status) || "complete".equals(status);
+            switch (metric) {
+            case "completeOccupancyRate" -> count(complete);
+            case "ambiguousRate" -> count("AMBIGUOUS".equals(status) || "ambiguous".equals(status));
+            case "noMatchRate" -> count("NO_MATCH".equals(status) || "no-match".equals(status));
+            case "evidencePassRate", "jointPassRate" -> {
+                if (complete) {
+                    for (final JsonElement element : record.getAsJsonArray("candidates")) {
+                        final JsonArray rules = element.getAsJsonObject().getAsJsonArray("rules");
+                        long passes = 0;
+                        for (final JsonElement rule : rules) {
+                            if ("PASS".equals(text(rule.getAsJsonObject(), "state"))) {
+                                passes++;
+                            }
+                        }
+                        if ("evidencePassRate".equals(metric)) {
+                            numerator += passes;
+                            denominator += rules.size();
+                        } else if (!rules.isEmpty()) {
+                            count(passes == rules.size());
+                        }
+                    }
+                }
+            }
+            case "confirmationLagBars" -> {
+                if (complete && "topology".equals(text(record, "kind"))) {
+                    final JsonArray visible = record.getAsJsonArray("pivots");
+                    for (final JsonElement element : record.getAsJsonArray("candidates")) {
+                        final JsonArray placement = element.getAsJsonObject().getAsJsonArray("placement");
+                        double lag = 0.0d;
+                        int visibleIndex = 0;
+                        for (final JsonElement point : placement) {
+                            final int index = point.getAsJsonObject().get("index").getAsInt();
+                            while (visible.get(visibleIndex).getAsJsonObject().get("index").getAsInt() < index) {
+                                visibleIndex++;
+                            }
+                            lag += Math.max(0, visible.get(visibleIndex).getAsJsonObject()
+                                    .get("confirmationIndex").getAsInt() - index);
+                        }
+                        sum += lag / placement.size();
+                        denominator++;
+                    }
+                }
+            }
+            case "labelStabilityJaccard" -> {
+                final JsonArray labels = record.getAsJsonArray("labels");
+                final Set<String> current = labels.isEmpty() ? Set.of() : new HashSet<>();
+                for (final JsonElement label : labels) {
+                    current.add(label.getAsString());
+                }
+                if (previousLabels != null) {
+                    int intersection = 0;
+                    for (final String label : current) {
+                        if (previousLabels.contains(label)) {
+                            intersection++;
+                        }
+                    }
+                    final int union = previousLabels.size() + current.size() - intersection;
+                    sum += union == 0 ? 1.0d : intersection / (double) union;
+                    denominator++;
+                }
+                previousLabels = current;
+            }
+            default -> throw new ReplayArtifactException("unsupported comparison metric '" + metric
+                    + "'; regenerate the run with ElliottResearch");
+            }
+        }
+
+        private void count(final boolean contributes) {
+            numerator += contributes ? 1 : 0;
+            denominator++;
+        }
+
+        String evidence(final ReplayArtifact.ComparisonRow row, final boolean nullMember, final String display) {
+            final boolean ratio = !"confirmationLagBars".equals(metric) && !"labelStabilityJaccard".equals(metric);
+            final double value = denominator == 0 ? Double.NaN : (ratio ? numerator : sum) / denominator;
+            if (!nullMember && (Double.compare(value, row.observed()) != 0
+                    || ratio && (row.numerator() == null || row.numerator() != numerator
+                            || row.denominator() == null || row.denominator() != denominator))) {
+                throw new ReplayArtifactException("trace " + display + " " + metric
+                        + " contributions do not match the selected comparison row '" + row.key()
+                        + "'; regenerate the run with ElliottResearch");
+            }
+            final String support = ratio ? numerator + "/" + denominator + " = " + value
+                    : value + " from " + denominator + ("confirmationLagBars".equals(metric)
+                            ? " complete candidate observations (candidate-pivot means)"
+                            : " adjacent label-set transitions");
+            return (nullMember ? "Selected null member " : "Captured real comparison scope ") + metric + ": "
+                    + support + (nullMember ? " (not compared with the real comparison row)"
+                            : denominator == 0 ? " -> unavailable (no contributions)" : " -> match");
         }
     }
 
@@ -313,6 +435,7 @@ final class ReplayTraceIndex {
         for (final String field : List.of("nullBlockLength", "nullMemberIndex", "asOfIndex")) {
             requireInteger(display, line, record, field, where);
         }
+        final int asOfIndex = record.get("asOfIndex").getAsInt();
         final JsonElement direction = record.get("direction");
         if (direction == null || !direction.isJsonNull() && textOrNull(record, "direction") == null) {
             throw corrupt(display, line, where + "direction is missing or not a string or null");
@@ -320,6 +443,9 @@ final class ReplayTraceIndex {
         if ("topology".equals(kind) && (!direction.isJsonNull() && !isWaveDirection(direction.getAsString())
                 || direction.isJsonNull() && "FORMING".equals(status))) {
             throw corrupt(display, line, where + "direction must be a wave direction, and must not be null for FORMING");
+        }
+        if ("alternative".equals(kind) && !direction.isJsonNull()) {
+            throw corrupt(display, line, where + "direction must be null for an alternative outcome");
         }
         requireTexts(display, line, record, "activeRules", where);
         final JsonElement bar = record.get("bar");
@@ -337,6 +463,7 @@ final class ReplayTraceIndex {
         }
         final JsonArray pivots = requireArray(display, line, record, "pivots", where);
         final List<BigDecimal> visiblePrices = new ArrayList<>(pivots.size());
+        int confirmedPivotCount = 0;
         for (int i = 0; i < pivots.size(); i++) {
             final String at = where + "pivots[" + i + "]";
             final JsonObject pivot = requireObject(display, line, pivots.get(i), at);
@@ -345,8 +472,17 @@ final class ReplayTraceIndex {
             if (confirmation < pivot.get("index").getAsInt()) {
                 throw corrupt(display, line, at + ".confirmationIndex must not precede index");
             }
+            if (confirmation <= asOfIndex) {
+                confirmedPivotCount++;
+            }
             if (i > 0 && pivot.get("index").getAsInt() <= pivots.get(i - 1).getAsJsonObject().get("index").getAsInt()) {
                 throw corrupt(display, line, at + ".index must strictly increase in the visible pivot view");
+            }
+            // Future pivots remain a projection warning, not an alternation failure.
+            if (i > 0 && confirmation <= asOfIndex
+                    && pivots.get(i - 1).getAsJsonObject().get("confirmationIndex").getAsInt() <= asOfIndex
+                    && text(pivot, "type").equals(text(pivots.get(i - 1).getAsJsonObject(), "type"))) {
+                throw corrupt(display, line, at + ".type must alternate in the visible pivot view");
             }
         }
         final JsonArray candidates = requireArray(display, line, record, "candidates", where);
@@ -358,6 +494,7 @@ final class ReplayTraceIndex {
                     + "candidates must match status (COMPLETE: 1, AMBIGUOUS: 2-64, all other states: 0)");
         }
         int requiredPivots = 0;
+        final Set<String> candidateKeys = candidates.size() > 1 ? new HashSet<>(candidates.size()) : null;
         for (int i = 0; i < candidates.size(); i++) {
             final String at = where + "candidates[" + i + "]";
             final JsonObject candidate = requireObject(display, line, candidates.get(i), at);
@@ -401,6 +538,9 @@ final class ReplayTraceIndex {
             final String key = sha256(identity.toString()).substring(0, 32);
             if (!key.equals(text(candidate, "candidateKey"))) {
                 throw corrupt(display, line, at + ".candidateKey does not match the recorded candidate");
+            }
+            if (candidateKeys != null && !candidateKeys.add(key)) {
+                throw corrupt(display, line, at + ".candidateKey duplicates a retained candidate");
             }
             if (!(key + "@" + sha256(rules.toString()).substring(0, 32)).equals(text(candidate, "version"))) {
                 throw corrupt(display, line, at + ".version does not match the recorded rule evidence");
@@ -465,8 +605,16 @@ final class ReplayTraceIndex {
             for (int p = 0; p < placement.size(); p++) {
                 final JsonObject placed = placement.get(p).getAsJsonObject();
                 final int index = placed.get("index").getAsInt();
+                if (p > 0) {
+                    visibleIndex++;
+                }
                 while (visibleIndex < pivots.size()
                         && pivots.get(visibleIndex).getAsJsonObject().get("index").getAsInt() < index) {
+                    if (p > 0
+                            && pivots.get(visibleIndex).getAsJsonObject().get("confirmationIndex").getAsInt() <= asOfIndex) {
+                        throw corrupt(display, line,
+                                at + ".placement[" + p + "] must follow the preceding visible pivot contiguously");
+                    }
                     visibleIndex++;
                 }
                 if (visibleIndex == pivots.size()
@@ -479,7 +627,14 @@ final class ReplayTraceIndex {
         }
         if ("topology".equals(kind)) {
             if (requiredPivots == 0) {
-                requireGrammar(display, line, record, where);
+                requiredPivots = requireGrammar(display, line, record, where);
+            }
+            final boolean insufficient = "INSUFFICIENT_HISTORY".equals(status);
+            // Future entries may be leaked additions or recorded members with bad
+            // confirmation times. Reject only a history contradiction either way.
+            if (insufficient && confirmedPivotCount >= 2 || !insufficient && pivots.size() < 2) {
+                throw corrupt(display, line, where + "status " + status
+                        + " conflicts with the confirmed/captured pivot history");
             }
             if ("COMPLETE".equals(status)) {
                 if (direction.isJsonNull()
@@ -490,15 +645,199 @@ final class ReplayTraceIndex {
                 throw corrupt(display, line, where + "direction must be null for " + status);
             }
         }
-        if ("alternative".equals(kind)) {
-            requireTexts(display, line, record, "labels", where);
-            switch (text(record, "grammar")) {
-            case "MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3" -> throw corrupt(display, line,
-                    where + "grammar is a topology grammar but kind is alternative");
-            default -> {
-            }
+        requireTexts(display, line, record, "labels", where);
+        final Set<String> labels = new HashSet<>();
+        final JsonArray recordedLabels = record.getAsJsonArray("labels");
+        for (int i = 0; i < recordedLabels.size(); i++) {
+            if (!labels.add(recordedLabels.get(i).getAsString())) {
+                throw corrupt(display, line, where + "labels[" + i + "] duplicates a label");
             }
         }
+        final Set<String> expectedLabels = "topology".equals(kind)
+                ? topologyLabels(display, line, record, pivots, visiblePrices, candidates, requiredPivots, where)
+                : alternativeLabels(display, line, record, pivots, visiblePrices, where);
+        if (!labels.equals(expectedLabels)) {
+            throw corrupt(display, line, where + "labels do not match the recorded outcome");
+        }
+    }
+
+    private static Set<String> topologyLabels(final String display, final long line, final JsonObject record,
+            final JsonArray pivots, final List<BigDecimal> prices, final JsonArray candidates, final int requiredPivots,
+            final String where) {
+        final String status = text(record, "status");
+        final int formingStart = requireInteger(display, line, record, "formingStartBarIndex", where);
+        final int formingEnd = requireInteger(display, line, record, "formingEndBarIndex", where);
+        requireText(display, line, record, "explanation", where);
+        if ("FORMING".equals(status)) {
+            final int asOfIndex = record.get("asOfIndex").getAsInt();
+            if (formingStart < 0 || formingEnd < formingStart || formingEnd > asOfIndex) {
+                throw corrupt(display, line, where
+                        + "formingStartBarIndex/formingEndBarIndex must be ordered within the as-of view");
+            }
+            int startPosition = -1;
+            int endPosition = -1;
+            int suffixSize = 0;
+            for (int p = pivots.size() - 1; p >= 0; p--) {
+                final JsonObject pivot = pivots.get(p).getAsJsonObject();
+                // Captured suffix members retain their shape even when their confirmation
+                // times are inconsistent. Only a future tail beyond the declared end is
+                // omitted, leaving projection to suppress and warn about future members.
+                if (pivot.get("index").getAsInt() > formingEnd
+                        && pivot.get("confirmationIndex").getAsInt() > asOfIndex) {
+                    continue;
+                }
+                if (endPosition < 0) {
+                    endPosition = p;
+                }
+                if (pivot.get("index").getAsInt() < formingStart) {
+                    break;
+                }
+                suffixSize++;
+                if (pivot.get("index").getAsInt() == formingStart) {
+                    startPosition = p;
+                    break;
+                }
+            }
+            if (startPosition < 0 || endPosition < 0
+                    || pivots.get(endPosition).getAsJsonObject().get("index").getAsInt() != formingEnd || suffixSize < 3
+                    || suffixSize >= requiredPivots) {
+                throw corrupt(display, line, where
+                        + "formingStartBarIndex/formingEndBarIndex must identify a contiguous trailing suffix of 3 to "
+                        + (requiredPivots - 1)
+                        + " captured pivots; only future-confirmed pivots may follow its declared end");
+            }
+            final boolean bullish = "BULLISH".equals(text(record, "direction"));
+            final boolean corrective = "CORRECTIVE_3".equals(text(record, "grammar"));
+            if ((bullish != corrective)
+                    != "LOW".equals(text(pivots.get(startPosition).getAsJsonObject(), "type"))) {
+                throw corrupt(display, line, where + "forming suffix has the wrong origin type for its direction");
+            }
+            int previous = startPosition;
+            int leg = 0;
+            for (int p = startPosition + 1; p <= endPosition; p++) {
+                final JsonObject pivot = pivots.get(p).getAsJsonObject();
+                final boolean rising = (corrective ? leg == 1 : leg % 2 == 0) == bullish;
+                final int change = prices.get(p).compareTo(prices.get(previous));
+                if (text(pivot, "type").equals(text(pivots.get(previous).getAsJsonObject(), "type"))
+                        || (rising ? change <= 0 : change >= 0)) {
+                    throw corrupt(display, line, where + "forming suffix must match its grammar and direction");
+                }
+                previous = p;
+                leg++;
+            }
+        } else if (formingStart != -1 || formingEnd != -1) {
+            throw corrupt(display, line, where
+                    + "formingStartBarIndex/formingEndBarIndex must both be -1 outside FORMING");
+        }
+        return switch (status) {
+        case "COMPLETE", "AMBIGUOUS" -> {
+            final Set<String> labels = new HashSet<>();
+            for (final JsonElement element : candidates) {
+                final JsonObject candidate = element.getAsJsonObject();
+                final JsonArray placement = candidate.getAsJsonArray("placement");
+                labels.add(text(candidate, "direction") + ":"
+                        + placement.get(0).getAsJsonObject().get("index").getAsInt() + "-"
+                        + placement.get(placement.size() - 1).getAsJsonObject().get("index").getAsInt());
+            }
+            yield labels;
+        }
+        case "FORMING" -> Set.of("forming:" + text(record, "direction") + ":" + formingStart + "-" + formingEnd);
+        case "INVALIDATED" -> Set.of("invalidated:" + text(record, "explanation"));
+        case "INSUFFICIENT_HISTORY" -> Set.of("insufficient-history");
+        case "NO_MATCH" -> Set.of();
+        default -> throw corrupt(display, line, where + "status is not a topology status");
+        };
+    }
+
+    private static Set<String> alternativeLabels(final String display, final long line, final JsonObject record,
+            final JsonArray pivots, final List<BigDecimal> prices, final String where) {
+        final String grammar = text(record, "grammar");
+        final String status = text(record, "status");
+        if ("change-point-baseline".equals(grammar)) {
+            if (!pivots.isEmpty()) {
+                throw corrupt(display, line, where + "pivots must be empty for change-point-baseline");
+            }
+            // Closes are not captured here: verify the recorded outcome's label,
+            // without introducing a second price-based classification.
+            return switch (status) {
+            case "insufficient-history" -> Set.of("insufficient-history");
+            case "complete" -> Set.of("change@" + record.get("asOfIndex").getAsInt());
+            case "no-match" -> Set.of("stable");
+            default -> throw corrupt(display, line, where + "status is not a change-point-baseline outcome");
+            };
+        }
+        final int segmentLegs = switch (grammar) {
+        case "3+3" -> 3;
+        case "5+5" -> 5;
+        case "MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3" -> throw corrupt(display, line,
+                where + "grammar is a topology grammar but kind is alternative");
+        default -> throw corrupt(display, line, where + "grammar is not a supported alternative grammar");
+        };
+        final Set<String> labels = new HashSet<>();
+        final String expectedStatus;
+        if (pivots.size() < 2) {
+            expectedStatus = "insufficient-history";
+            labels.add("insufficient-history");
+        } else {
+            final int required = segmentLegs * 2 + 1;
+            final int horizon = Math.max(0, pivots.size() - required);
+            for (int start = 0; start + required <= pivots.size(); start++) {
+                if (start + required - 1 >= horizon
+                        && matchesAlternative(pivots, prices, start, required, segmentLegs, true)) {
+                    labels.add(pivots.get(start).getAsJsonObject().get("index").getAsInt() + "-"
+                            + pivots.get(start + required - 1).getAsJsonObject().get("index").getAsInt());
+                }
+            }
+            if (!labels.isEmpty()) {
+                expectedStatus = labels.size() == 1 ? "complete" : "ambiguous";
+            } else {
+                for (int suffix = Math.min(pivots.size(), segmentLegs * 2); suffix >= segmentLegs + 1; suffix--) {
+                    final int start = pivots.size() - suffix;
+                    if (matchesAlternative(pivots, prices, start, suffix, segmentLegs, false)) {
+                        final String direction = "LOW".equals(text(pivots.get(start).getAsJsonObject(), "type"))
+                                ? "BULLISH" : "BEARISH";
+                        labels.add(direction + ":" + pivots.get(start).getAsJsonObject().get("index").getAsInt() + "-"
+                                + pivots.get(pivots.size() - 1).getAsJsonObject().get("index").getAsInt());
+                    }
+                }
+                expectedStatus = labels.isEmpty() ? "no-match" : labels.size() == 1 ? "forming" : "ambiguous";
+                if (labels.isEmpty()) {
+                    labels.add("no-match");
+                }
+            }
+        }
+        if (!status.equals(expectedStatus)) {
+            throw corrupt(display, line, where + "status does not match the visible pivots: expected " + expectedStatus);
+        }
+        return labels;
+    }
+
+    private static boolean matchesAlternative(final JsonArray pivots, final List<BigDecimal> prices, final int start,
+            final int count, final int segmentLegs, final boolean complete) {
+        final boolean bullish = "LOW".equals(text(pivots.get(start).getAsJsonObject(), "type"));
+        for (int leg = 0; leg < count - 1; leg++) {
+            if (text(pivots.get(start + leg).getAsJsonObject(), "type")
+                    .equals(text(pivots.get(start + leg + 1).getAsJsonObject(), "type"))) {
+                return false;
+            }
+            final int change = prices.get(start + leg + 1).compareTo(prices.get(start + leg));
+            final int signed = bullish ? change : -change;
+            final boolean positive = leg < segmentLegs ? leg % 2 == 0 : (leg - segmentLegs) % 2 != 0;
+            if (signed == 0 ? complete || leg < count - 2 : positive ? signed < 0 : signed > 0) {
+                return false;
+            }
+        }
+        final int junction = start + segmentLegs;
+        final String junctionType = text(pivots.get(junction).getAsJsonObject(), "type");
+        for (int previous = start; previous < junction; previous++) {
+            if (junctionType.equals(text(pivots.get(previous).getAsJsonObject(), "type"))) {
+                final int change = prices.get(junction).compareTo(prices.get(previous));
+                if ("HIGH".equals(junctionType) ? change <= 0 : change >= 0) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static boolean isWaveDirection(final String direction) {
@@ -628,6 +967,10 @@ final class ReplayTraceIndex {
      */
     List<Entry> entries(final Family family) {
         return List.copyOf(entries.getOrDefault(family, List.of()));
+    }
+
+    String comparisonEvidence(final Family family, final ReplayArtifact.ComparisonRow row, final boolean nullMember) {
+        return contributions.get(family).evidence(row, nullMember, display);
     }
 
     /**
