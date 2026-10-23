@@ -1667,7 +1667,7 @@ class ElliottResearchTest {
                 assertTrue(scoped.out().contains(expected + " in this row's scope"), scoped.out());
                 if (allForeign) {
                     assertTrue(scoped.out().contains("Null member ambiguousRate: 0/0 = NaN"), scoped.out());
-                    assertTrue(scoped.out().contains("Null member status tallies: {}"), scoped.out());
+                    assertTrue(scoped.out().contains("Null member status tallies: no records"), scoped.out());
                 } else if (!"h2|all-rules".equals(sectionMode)) {
                     assertEquals(valid.out().substring(valid.out().indexOf("Null member status tallies:")),
                             scoped.out().substring(scoped.out().indexOf("Null member status tallies:")));
