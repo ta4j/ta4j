@@ -6,6 +6,7 @@ package ta4jexamples.charting.replay;
 import java.time.Instant;
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -114,7 +115,7 @@ final class ReplaySession {
         final boolean nullMember = ReplayArtifact.TRACE_MODE_NULL_MEMBER.equals(traceMode);
         final Family family = nullMember ? nullFamily(row) : row.family();
         final ReplayTraceIndex trace = ReplayTraceIndex.scan(artifact.resolveInside(traceFile), traceFile,
-                family::equals);
+                family::equals, rulesByFamily(artifact, row.dataset(), nullMember));
         if (nullMember) {
             requireBlockLength(row, trace, traceFile);
         }
@@ -132,6 +133,22 @@ final class ReplaySession {
                 family, entries, window, overlayCap, hint);
         session.position = session.defaultPosition();
         return session;
+    }
+
+    private static Map<Family, List<String>> rulesByFamily(final ReplayArtifact artifact, final String dataset,
+            final boolean nullMember) {
+        final Map<Family, List<String>> rules = new HashMap<>();
+        for (final ComparisonRow row : artifact.comparisons()) {
+            if (!row.dataset().equals(dataset)) {
+                continue;
+            }
+            if (!nullMember) {
+                rules.put(row.family(), row.activeRules());
+            } else if (("h1".equals(row.section()) || "h2".equals(row.section())) && row.nullBlockLength() > 0) {
+                rules.put(nullFamily(row), row.activeRules());
+            }
+        }
+        return rules;
     }
 
     /**

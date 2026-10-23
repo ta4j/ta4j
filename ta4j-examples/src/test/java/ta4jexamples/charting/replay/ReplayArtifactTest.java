@@ -12,7 +12,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -660,34 +662,11 @@ class ReplayArtifactTest {
                     final List<String> lines = Files.readAllLines(trace);
                     final int line = firstRulesCandidateLine(lines);
                     final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
-                    record.addProperty("grammar", grammar);
+                    orientGrammarShape(record, grammar, direction);
                     record.add("direction", count == 1 ? new JsonPrimitive(direction) : JsonNull.INSTANCE);
                     record.addProperty("status", count == 1 ? "COMPLETE" : "AMBIGUOUS");
                     final JsonArray candidates = record.getAsJsonArray("candidates");
                     final JsonObject candidate = candidates.get(0).getAsJsonObject();
-                    candidate.addProperty("direction", direction);
-                    final JsonArray placement = candidate.getAsJsonArray("placement");
-                    final int required = "MOTIVE_5".equals(grammar) ? 6 : "CORRECTIVE_3".equals(grammar) ? 4 : 9;
-                    while (placement.size() > required) {
-                        placement.remove(placement.size() - 1);
-                    }
-                    while (placement.size() < required) {
-                        final JsonObject previous = placement.get(placement.size() - 1).getAsJsonObject();
-                        final JsonObject next = previous.deepCopy();
-                        next.addProperty("index", previous.get("index").getAsInt() + 1);
-                        next.addProperty("type", "HIGH".equals(previous.get("type").getAsString()) ? "LOW" : "HIGH");
-                        placement.add(next);
-                        final JsonObject visible = next.deepCopy();
-                        visible.addProperty("confirmationIndex", visible.get("index").getAsInt());
-                        record.getAsJsonArray("pivots").add(visible);
-                    }
-                    placement.get(0).getAsJsonObject().addProperty("price", "-1e1000");
-                    for (final JsonElement visible : record.getAsJsonArray("pivots")) {
-                        final JsonObject pivot = visible.getAsJsonObject();
-                        if (pivot.get("index").equals(placement.get(0).getAsJsonObject().get("index"))) {
-                            pivot.addProperty("price", "-1e1000");
-                        }
-                    }
                     final JsonArray rules = candidate.getAsJsonArray("rules");
                     rules.get(0).getAsJsonObject().addProperty("score", 0);
                     rules.get(1).getAsJsonObject().addProperty("state", "PASS");
@@ -698,7 +677,7 @@ class ReplayArtifactTest {
                     ReplayFixture.refreshIdentity(record);
                     lines.set(line, record.toString());
                     Files.write(trace, lines, StandardCharsets.UTF_8);
-                    assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true));
+                    assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true, Map.of()));
                 }
             }
         }
@@ -738,8 +717,8 @@ class ReplayArtifactTest {
                     lines.set(line, record.toString());
                     Files.write(trace, lines, StandardCharsets.UTF_8);
                     if (validCount && validDirection) {
-                        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true));
-                        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false));
+                        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true, Map.of()));
+                        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false, Map.of()));
                     } else {
                         final String field = "FORMING".equals(status) && direction == null || validCount
                                 ? "direction" : "candidates";
@@ -784,7 +763,7 @@ class ReplayArtifactTest {
                 field = "placement[0]";
             }
             case "different-visible-type" -> {
-                visible.addProperty("type", "LOW");
+                visible.addProperty("type", "HIGH");
                 field = "placement[0]";
             }
             case "duplicate-visible-index" -> {
@@ -821,8 +800,201 @@ class ReplayArtifactTest {
         visible.addProperty("price", visible.get("price").getAsString() + ".0");
         lines.set(line, record.toString());
         Files.write(trace, lines, StandardCharsets.UTF_8);
-        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true));
-        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false));
+        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true, Map.of()));
+        assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false, Map.of()));
+    }
+
+    @Test
+    public void comparedModesBindRuleIdsInRealAndNullTracesBeforeFamilyFiltering() throws IOException {
+        for (final boolean nullMember : List.of(false, true)) {
+            for (final boolean reorder : List.of(false, true)) {
+                final Path run = ReplayFixture.write(temp.resolve("mode-rules-" + nullMember + "-" + reorder),
+                        options -> {
+                            options.nullTrace = nullMember;
+                            return options;
+                        });
+                final String traceFile = "traces/d1-" + (nullMember ? "null" : "real") + ".jsonl";
+                final Path trace = run.resolve(traceFile);
+                final List<String> lines = Files.readAllLines(trace);
+                final int line = firstRulesCandidateLine(lines);
+                final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+                final JsonArray active = record.getAsJsonArray("activeRules");
+                if (reorder) {
+                    final JsonElement first = active.get(0);
+                    active.set(0, active.get(1));
+                    active.set(1, first);
+                } else {
+                    active.set(0, new JsonPrimitive("foreign-rule"));
+                }
+                for (final JsonElement element : record.getAsJsonArray("candidates")) {
+                    final JsonArray rules = element.getAsJsonObject().getAsJsonArray("rules");
+                    if (reorder) {
+                        final JsonElement first = rules.get(0);
+                        rules.set(0, rules.get(1));
+                        rules.set(1, first);
+                    } else {
+                        rules.get(0).getAsJsonObject().addProperty("id", "foreign-rule");
+                    }
+                }
+                ReplayFixture.refreshIdentity(record);
+                lines.set(line, record.toString());
+                Files.write(trace, lines, StandardCharsets.UTF_8);
+                final String traceMode = nullMember ? ReplayArtifact.TRACE_MODE_NULL_MEMBER : ReplayArtifact.TRACE_MODE_REAL;
+                for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
+                    final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
+                            () -> ReplaySession.open(ReplayArtifact.open(run), key, traceMode, 120, 8));
+                    assertTrue(e.getMessage().contains("activeRules") && e.getMessage().contains("comparisons.csv")
+                            && e.getMessage().contains(traceFile) && e.getMessage().contains("line " + (line + 1))
+                            && e.getMessage().contains("regenerate"), e.getMessage());
+                }
+            }
+        }
+    }
+
+    @Test
+    public void grammarShapesAreValidatedBeforeFamilyFiltering() throws IOException {
+        for (final String grammar : List.of("MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3")) {
+            final int required = "MOTIVE_5".equals(grammar) ? 6 : "CORRECTIVE_3".equals(grammar) ? 4 : 9;
+            final List<String> mutations = new ArrayList<>(List.of("wrong-direction", "wrong-origin-type"));
+            for (int p = 1; p < required; p++) {
+                mutations.add("flat-leg-" + p);
+                mutations.add("reversed-leg-" + p);
+            }
+            for (final String direction : List.of("BULLISH", "BEARISH")) {
+                for (final String mutation : mutations) {
+                    final Path run = ReplayFixture.write(temp.resolve("shape-" + grammar + "-" + direction + "-" + mutation));
+                    final Path trace = run.resolve("traces/d1-real.jsonl");
+                    final List<String> lines = Files.readAllLines(trace);
+                    final int line = firstRulesCandidateLine(lines);
+                    final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+                    orientGrammarShape(record, grammar, direction);
+                    final JsonObject candidate = record.getAsJsonArray("candidates").get(0).getAsJsonObject();
+                    final JsonArray placement = candidate.getAsJsonArray("placement");
+                    if ("wrong-direction".equals(mutation)) {
+                        final String opposite = "BULLISH".equals(direction) ? "BEARISH" : "BULLISH";
+                        record.addProperty("direction", opposite);
+                        candidate.addProperty("direction", opposite);
+                    } else if ("wrong-origin-type".equals(mutation)) {
+                        for (final JsonElement element : placement) {
+                            final JsonObject pivot = element.getAsJsonObject();
+                            pivot.addProperty("type", "LOW".equals(pivot.get("type").getAsString()) ? "HIGH" : "LOW");
+                        }
+                    } else {
+                        final int p = Integer.parseInt(mutation.substring(mutation.lastIndexOf('-') + 1));
+                        final JsonObject previous = placement.get(p - 1).getAsJsonObject();
+                        final JsonObject pivot = placement.get(p).getAsJsonObject();
+                        if (mutation.startsWith("flat")) {
+                            pivot.add("price", previous.get("price").deepCopy());
+                        } else {
+                            final boolean rising = pivot.get("price").getAsBigDecimal()
+                                    .compareTo(previous.get("price").getAsBigDecimal()) > 0;
+                            pivot.addProperty("price", rising ? "-2e1000" : "2e1000");
+                        }
+                    }
+                    synchronizePlacement(record);
+                    ReplayFixture.refreshIdentity(record);
+                    lines.set(line, record.toString());
+                    Files.write(trace, lines, StandardCharsets.UTF_8);
+                    for (final boolean keep : List.of(false, true)) {
+                        final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
+                                () -> ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> keep, Map.of()));
+                        assertTrue(e.getMessage().contains("placement") && e.getMessage().contains("line " + (line + 1))
+                                && e.getMessage().contains("regenerate"), mutation + ": " + e.getMessage());
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void everyFamilyMustHaveUniqueStrictlyIncreasingObservations() throws IOException {
+        for (final String mode : List.of("all-rules", "topology-only")) {
+            for (final boolean duplicate : List.of(false, true)) {
+                final Path run = ReplayFixture.write(temp.resolve("observation-order-" + mode + "-" + duplicate));
+                final Path trace = run.resolve("traces/d1-real.jsonl");
+                final List<String> lines = Files.readAllLines(trace);
+                final int line = firstRulesCandidateLine(lines) + ("all-rules".equals(mode) ? 0 : 1);
+                final int failedLine;
+                if (duplicate) {
+                    lines.add(line + 1, lines.get(line));
+                    final JsonObject footer = JsonParser.parseString(lines.getLast()).getAsJsonObject();
+                    footer.addProperty("records", footer.get("records").getAsInt() + 1);
+                    lines.set(lines.size() - 1, footer.toString());
+                    failedLine = line + 2;
+                } else {
+                    final String previous = lines.get(line - 3);
+                    lines.set(line - 3, lines.get(line));
+                    lines.set(line, previous);
+                    failedLine = line + 1;
+                }
+                Files.write(trace, lines, StandardCharsets.UTF_8);
+                for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
+                    final String message = failureOf(run, key);
+                    assertTrue(message.contains("asOfIndex") && message.contains("line " + failedLine)
+                            && message.contains("strictly increase") && message.contains("regenerate"), message);
+                }
+                final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
+                        () -> ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false, Map.of()));
+                assertTrue(e.getMessage().contains("asOfIndex") && e.getMessage().contains("line " + failedLine),
+                        e.getMessage());
+            }
+        }
+        for (final String field : List.of("section", "mode", "grammar", "detector", "partition")) {
+            final Path run = ReplayFixture.write(temp.resolve("distinct-scope-" + field));
+            final Path trace = run.resolve("traces/d1-real.jsonl");
+            final List<String> lines = Files.readAllLines(trace);
+            final JsonObject distinct = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+            distinct.addProperty(field, "grammar".equals(field) ? "CORRECTIVE_3" : "another-" + field);
+            lines.add(2, distinct.toString());
+            final JsonObject footer = JsonParser.parseString(lines.getLast()).getAsJsonObject();
+            footer.addProperty("records", footer.get("records").getAsInt() + 1);
+            lines.set(lines.size() - 1, footer.toString());
+            Files.write(trace, lines, StandardCharsets.UTF_8);
+            assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true, Map.of()));
+            assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false, Map.of()));
+        }
+    }
+
+    private static void orientGrammarShape(final JsonObject record, final String grammar, final String direction) {
+        record.addProperty("grammar", grammar);
+        record.addProperty("direction", direction);
+        final JsonObject candidate = record.getAsJsonArray("candidates").get(0).getAsJsonObject();
+        candidate.addProperty("direction", direction);
+        final JsonArray placement = candidate.getAsJsonArray("placement");
+        final int required = "MOTIVE_5".equals(grammar) ? 6 : "CORRECTIVE_3".equals(grammar) ? 4 : 9;
+        while (placement.size() > required) {
+            placement.remove(placement.size() - 1);
+        }
+        while (placement.size() < required) {
+            final JsonObject next = placement.get(placement.size() - 1).getAsJsonObject().deepCopy();
+            next.addProperty("index", next.get("index").getAsInt() + 1);
+            placement.add(next);
+            final JsonObject visible = next.deepCopy();
+            visible.addProperty("confirmationIndex", visible.get("index").getAsInt());
+            record.getAsJsonArray("pivots").add(visible);
+        }
+        final boolean startsLow = "BULLISH".equals(direction) != "CORRECTIVE_3".equals(grammar);
+        for (int p = 0; p < placement.size(); p++) {
+            final boolean low = (p % 2 == 0) == startsLow;
+            final JsonObject pivot = placement.get(p).getAsJsonObject();
+            pivot.addProperty("type", low ? "LOW" : "HIGH");
+            pivot.addProperty("price", low ? "-1e1000" : "1e1000");
+        }
+        synchronizePlacement(record);
+    }
+
+    private static void synchronizePlacement(final JsonObject record) {
+        for (final JsonElement element : record.getAsJsonArray("candidates").get(0).getAsJsonObject()
+                .getAsJsonArray("placement")) {
+            final JsonObject placed = element.getAsJsonObject();
+            for (final JsonElement visible : record.getAsJsonArray("pivots")) {
+                final JsonObject pivot = visible.getAsJsonObject();
+                if (pivot.get("index").equals(placed.get("index"))) {
+                    pivot.add("type", placed.get("type").deepCopy());
+                    pivot.add("price", placed.get("price").deepCopy());
+                }
+            }
+        }
     }
 
     private static int firstRulesCandidateLine(final List<String> lines) {

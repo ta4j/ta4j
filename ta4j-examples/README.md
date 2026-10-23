@@ -191,14 +191,19 @@ on records outside the requested family; they cannot silently disappear from evi
 Candidate keys must match the recorded grammar, direction and ordered pivot
 placement; each version must bind that key to its exact ordered rule evidence.
 Edited or foreign identities are rejected with the trace line and candidate field.
-The ordered candidate rule IDs must exactly match `activeRules`, even when hashes
-are self-consistent. `COMPLETE` has one candidate with the same direction;
+The ordered candidate rule IDs must exactly match `activeRules`, and compared
+families must match their mode's ordered rule IDs in `comparisons.csv`, including
+real and selected-null-member streams outside the selected family. `COMPLETE`
+has one candidate with the same direction;
 `AMBIGUOUS` has 2-64 candidates and a null direction. All other topology states
 have no candidates; only `FORMING` carries a direction. Supported grammar placement
-sizes, ordered alternating pivots with nonnegative indices and finite prices,
+sizes, the grammar/direction-specific origin type and strict price move of every
+leg, ordered alternating pivots with nonnegative indices and finite prices,
 strictly ordered visible pivots, confirmation ordering, and null-or-PASS scores
-in `[0, 1]` are also checked before selecting a replay family. Every candidate
-placement must match the index, type and exact decimal price of a recorded pivot.
+in `[0, 1]` are also checked before selecting a replay family. Within each full
+section/mode/grammar/detector/partition scope, as-of indices must be unique and
+strictly increasing even on unselected streams; different scopes may interleave.
+Every candidate placement must match the index, type and exact decimal price of a recorded pivot.
 Future-confirmed pivots remain inspectable but are prominently flagged as leaks.
 Malformed run metadata is also reported as an artifact diagnostic with the field
 to repair and regeneration guidance, rather than escaping as a Java stack trace.

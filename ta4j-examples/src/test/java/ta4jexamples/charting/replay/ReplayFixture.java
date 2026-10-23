@@ -32,11 +32,11 @@ import com.google.gson.JsonParser;
  * The bundle holds {@value #BARS} daily bars and two recorded topology streams:
  * {@code all-rules} ({@link #RULES_KEY}) and {@code topology-only}
  * ({@link #TOPOLOGY_KEY}). Three prehistory pivots at bars 0, 1 and 2 precede
- * LOW 5 (confirmed at 8), HIGH 12 (15), LOW 20 (23), HIGH 30 (33), LOW 40 (43).
- * Each motive candidate has six strictly ordered, alternating pivots, all
- * confirmed before it first appears. Candidate A exists from bar 23 and has
- * revised rule evidence at bar 33; candidate B exists on
- * bars 33 to 40. Their keys and versions follow the research writer protocol.
+ * HIGH 5 (confirmed at 8), LOW 12 (15), HIGH 20 (23), LOW 30 (33), HIGH 40 (43).
+ * Each motive candidate has six strictly ordered, alternating pivots with
+ * directionally strict prices, all confirmed before it first appears. Bullish
+ * candidate A exists from bar 23 and has revised rule evidence at bar 33;
+ * bearish candidate B exists on bars 33 to 40. Their keys and versions follow the research writer protocol.
  */
 final class ReplayFixture {
 
@@ -49,8 +49,8 @@ final class ReplayFixture {
     static final String COMPETING_KEY = "d1|competing|competing-3+3|3+3|fractal-w5|calibration|ambiguousRate|b20";
     static final Instant START = Instant.parse("2020-01-01T00:00:00Z");
 
-    private static final int[][] PIVOTS = { { 0, 1, 0 }, { 1, 0, 1 }, { 2, 1, 2 }, { 5, 0, 8 },
-            { 12, 1, 15 }, { 20, 0, 23 }, { 30, 1, 33 }, { 40, 0, 43 } };
+    private static final int[][] PIVOTS = { { 0, 0, 0 }, { 1, 1, 1 }, { 2, 0, 2 }, { 5, 1, 8 },
+            { 12, 0, 15 }, { 20, 1, 23 }, { 30, 0, 33 }, { 40, 1, 43 } };
     static final String CANDIDATE_A = candidate(0, false, true).get("candidateKey").getAsString();
     static final String CANDIDATE_B = candidate(1, false, true).get("candidateKey").getAsString();
     static final String A_VERSION_1 = candidate(0, false, true).get("version").getAsString();
@@ -382,7 +382,7 @@ final class ReplayFixture {
 
     private static JsonObject candidate(final int skip, final boolean revised, final boolean rules) {
         final JsonObject candidate = new JsonObject();
-        candidate.addProperty("direction", "BULLISH");
+        candidate.addProperty("direction", skip == 0 ? "BULLISH" : "BEARISH");
         final JsonArray placement = new JsonArray();
         for (int i = skip; i < skip + 6; i++) {
             placement.add(point(PIVOTS[i]));
@@ -460,10 +460,10 @@ final class ReplayFixture {
     }
 
     static int high(final int i) {
-        return close(i) + 2;
+        return close(i) + 20;
     }
 
     static int low(final int i) {
-        return close(i) - 2;
+        return close(i) - 20;
     }
 }

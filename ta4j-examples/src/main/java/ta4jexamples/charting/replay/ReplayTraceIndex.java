@@ -16,6 +16,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -130,11 +131,14 @@ final class ReplayTraceIndex {
      * @param file    the trace file
      * @param display the artifact-relative name used in messages
      * @param keep    families to index
+     * @param expectedRules ordered rule IDs recorded for each compared family
      * @return the index
      */
-    static ReplayTraceIndex scan(final Path file, final String display, final Predicate<Family> keep) {
+    static ReplayTraceIndex scan(final Path file, final String display, final Predicate<Family> keep,
+            final Map<Family, List<String>> expectedRules) {
         Objects.requireNonNull(keep, "keep");
-        final Scan scan = new Scan(display, keep);
+        Objects.requireNonNull(expectedRules, "expectedRules");
+        final Scan scan = new Scan(display, keep, expectedRules);
         try (InputStream in = Files.newInputStream(file)) {
             final byte[] buffer = new byte[1 << 16];
             final ByteArrayOutputStream line = new ByteArrayOutputStream();
@@ -167,15 +171,18 @@ final class ReplayTraceIndex {
     private static final class Scan {
         private final String display;
         private final Predicate<Family> keep;
+        private final Map<Family, List<String>> expectedRules;
+        private final Map<Family, Integer> lastAsOf = new HashMap<>();
         private final Map<Family, List<Entry>> entries = new LinkedHashMap<>();
         private JsonObject header;
         private JsonObject footer;
         private long records;
         private long lineNumber;
 
-        Scan(final String display, final Predicate<Family> keep) {
+        Scan(final String display, final Predicate<Family> keep, final Map<Family, List<String>> expectedRules) {
             this.display = display;
             this.keep = keep;
+            this.expectedRules = expectedRules;
         }
 
         void accept(final String text, final long offset, final int length) {
@@ -193,8 +200,31 @@ final class ReplayTraceIndex {
                     footer = record;
                 } else {
                     validateRecord(display, lineNumber, record);
+                    final Family family = Family.of(record);
+                    final List<String> rules = expectedRules.get(family);
+                    if (rules != null) {
+                        final JsonArray active = record.getAsJsonArray("activeRules");
+                        if (active.size() != rules.size()) {
+                            throw corrupt(display, lineNumber, "activeRules do not match comparisons.csv mode "
+                                    + family.mode() + "; expected " + rules);
+                        }
+                        for (int i = 0; i < active.size(); i++) {
+                            if (!rules.get(i).equals(active.get(i).getAsString())) {
+                                throw corrupt(display, lineNumber, "activeRules do not match comparisons.csv mode "
+                                        + family.mode() + "; expected " + rules);
+                            }
+                        }
+                    }
+                    final int asOf = record.get("asOfIndex").getAsInt();
+                    final Integer previous = lastAsOf.put(family, asOf);
+                    if (previous != null && asOf <= previous) {
+                        throw corrupt(display, lineNumber, "asOfIndex " + asOf + " is out of order for " + family
+                                + "; observations must strictly increase after " + previous);
+                    }
                     records++;
-                    index(entries, record, offset, length, keep, display);
+                    if (keep.test(family)) {
+                        index(entries, family, record, offset, length);
+                    }
                 }
             }
         }
@@ -237,21 +267,10 @@ final class ReplayTraceIndex {
         }
     }
 
-    private static void index(final Map<Family, List<Entry>> entries, final JsonObject record, final long offset,
-            final int length, final Predicate<Family> keep, final String display) {
-        if (!record.has("section") || !record.has("asOfIndex")) {
-            throw new ReplayArtifactException("trace " + display + " contains a record without section/asOfIndex");
-        }
-        final Family family = Family.of(record);
-        if (!keep.test(family)) {
-            return;
-        }
+    private static void index(final Map<Family, List<Entry>> entries, final Family family, final JsonObject record,
+            final long offset, final int length) {
         final int asOf = record.get("asOfIndex").getAsInt();
         final List<Entry> list = entries.computeIfAbsent(family, ignored -> new ArrayList<>());
-        if (!list.isEmpty() && list.getLast().asOfIndex() >= asOf) {
-            throw new ReplayArtifactException("trace " + display + " records as-of " + asOf + " out of order for "
-                    + family + "; regenerate the run");
-        }
         final JsonElement candidates = record.get("candidates");
         list.add(new Entry(asOf, offset, length, signature(record), sha256(record.toString()), text(record, "status"),
                 candidates != null && candidates.isJsonArray() ? candidates.getAsJsonArray().size() : 0, bar(record)));
@@ -425,6 +444,21 @@ final class ReplayTraceIndex {
                 if (current.get("index").getAsInt() <= previous.get("index").getAsInt()
                         || text(current, "type").equals(text(previous, "type"))) {
                     throw corrupt(display, line, at + ".placement must have strictly ordered, alternating pivots");
+                }
+            }
+            final boolean bullish = "BULLISH".equals(text(candidate, "direction"));
+            final boolean corrective = "CORRECTIVE_3".equals(text(record, "grammar"));
+            final boolean startsLow = bullish != corrective;
+            if (startsLow != "LOW".equals(text(placement.get(0).getAsJsonObject(), "type"))) {
+                throw corrupt(display, line, at + ".placement has the wrong origin type for its grammar and direction");
+            }
+            for (int p = 1; p < placement.size(); p++) {
+                final int leg = p - 1;
+                final boolean rising = (corrective ? leg == 1 : leg % 2 == 0) == bullish;
+                final int change = placementPrices.get(p).compareTo(placementPrices.get(p - 1));
+                if (rising ? change <= 0 : change >= 0) {
+                    throw corrupt(display, line, at + ".placement[" + p
+                            + "] must move strictly in the expected direction for its grammar");
                 }
             }
             int visibleIndex = 0;
