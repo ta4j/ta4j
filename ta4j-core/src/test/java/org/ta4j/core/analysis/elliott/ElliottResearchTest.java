@@ -48,6 +48,7 @@ class ElliottResearchTest {
     Path work;
 
     private static Path smokeRun;
+    private static Path nullMemberRun;
 
     /** Captured result of one launcher invocation. */
     private record Result(int code, String out, String err) {
@@ -58,6 +59,10 @@ class ElliottResearchTest {
         smokeRun = shared.resolve("smoke");
         final Result result = launch("run", "smoke", "--out", smokeRun.toString());
         assertEquals(0, result.code(), result.err());
+        nullMemberRun = shared.resolve("smoke-null-b20-m3");
+        final Result member = launch("run", "smoke", "--trace", "selected-null-member", "--block", "20", "--member",
+                "3", "--out", nullMemberRun.toString());
+        assertEquals(0, member.code(), member.err());
     }
 
     private static Result launch(final String... args) {
@@ -1392,24 +1397,16 @@ class ElliottResearchTest {
 
     @Test
     public void inspectBindsSelectedNullActiveRulesToTheComparisonMode() throws Exception {
-        final Path source = work.resolve("null-rules-source");
-        final Result captured = launch("run", "smoke", "--trace", "selected-null-member", "--block", "20", "--member",
-                "3", "--out", source.toString());
-        assertEquals(0, captured.code(), captured.err());
-        assertModeRuleBinding(source, "smoke-null-b20-m3.jsonl", true);
+        assertModeRuleBinding(nullMemberRun, "smoke-null-b20-m3.jsonl", true);
     }
 
     @Test
     public void completeTraceBytesAreBoundToMetadataBeforeAnyScopeIsEvidence() throws Exception {
-        final Path nullSource = work.resolve("trace-digest-null-source");
-        final Result captured = launch("run", "smoke", "--trace", "selected-null-member", "--block", "20", "--member",
-                "3", "--out", nullSource.toString());
-        assertEquals(0, captured.code(), captured.err());
         for (final boolean nullMember : List.of(false, true)) {
             for (final String damage : List.of("selected-observation", "other-observation", "labels",
                     "missing-digest")) {
                 final Path copy = work.resolve("trace-digest-" + nullMember + "-" + damage);
-                copyTree(nullMember ? nullSource : smokeRun, copy);
+                copyTree(nullMember ? nullMemberRun : smokeRun, copy);
                 final String relative = nullMember ? "traces/smoke-null-b20-m3.jsonl" : "traces/smoke-real.jsonl";
                 final Path trace = copy.resolve(relative);
                 if ("missing-digest".equals(damage)) {
@@ -1426,7 +1423,13 @@ class ElliottResearchTest {
                             continue;
                         }
                         if ("labels".equals(damage)) {
-                            observation.getAsJsonArray("labels").add("foreign-label");
+                            final JsonArray labels = observation.getAsJsonArray("labels");
+                            if (labels.size() < 2) {
+                                continue;
+                            }
+                            final JsonElement first = labels.get(0);
+                            labels.set(0, labels.get(1));
+                            labels.set(1, first);
                             lines.set(i, observation.toString());
                         } else {
                             lines.remove(i);
@@ -1473,11 +1476,7 @@ class ElliottResearchTest {
             assertTrue(result.out().contains("Supporting as-of indices ("), result.out());
             assertFalse(result.out().contains("not attributable"), result.out());
         }
-        final Path nullSource = work.resolve("confirmation-lag-null");
-        final Result captured = launch("run", "smoke", "--trace", "selected-null-member", "--block", "20", "--member",
-                "3", "--out", nullSource.toString());
-        assertEquals(0, captured.code(), captured.err());
-        final Result member = launch("inspect", nullSource.toString(),
+        final Result member = launch("inspect", nullMemberRun.toString(),
                 "smoke|h2|topology-only|fractal-w5|calibration|confirmationLagBars|b20");
         assertEquals(0, member.code(), member.err());
         assertTrue(
@@ -1624,12 +1623,8 @@ class ElliottResearchTest {
 
     @Test
     public void selectedNullMemberShowsItsOwnUnavailableRatioContributions() {
-        final Path nullSource = work.resolve("ratios-empty-null");
-        final Result captured = launch("run", "smoke", "--trace", "selected-null-member", "--block", "20", "--member",
-                "3", "--out", nullSource.toString());
-        assertEquals(0, captured.code(), captured.err());
         for (final String metric : List.of("evidencePassRate", "jointPassRate")) {
-            final Result result = launch("inspect", nullSource.toString(),
+            final Result result = launch("inspect", nullMemberRun.toString(),
                     "smoke|h2|all-rules|fractal-w5|validation|" + metric + "|b20");
             assertEquals(0, result.code(), result.err());
             assertTrue(result.out().contains("Null member " + metric + ": 0/0 = NaN"), result.out());

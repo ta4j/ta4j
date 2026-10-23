@@ -170,6 +170,65 @@ class ElliottResearchReportTest {
     }
 
     @Test
+    public void readCsvRejectsAdjacentAndNonadjacentDuplicateKeys(@TempDir final Path directory) {
+        final Row row = comparisonRow("calibration", 0.5d, List.of());
+        final Row distinct = comparisonRow("holdout", 0.5d, List.of());
+        final Path file = directory.resolve("comparisons.csv");
+        for (final boolean adjacent : List.of(true, false)) {
+            ElliottResearchReport.writeCsv(file, adjacent ? List.of(row, row, distinct) : List.of(row, distinct, row));
+
+            final IllegalArgumentException duplicate = assertThrows(IllegalArgumentException.class,
+                    () -> ElliottResearchReport.readCsv(file));
+            assertEquals(file + ":" + (adjacent ? 3 : 4) + ": Duplicate comparison key: " + row.key(),
+                    duplicate.getMessage());
+        }
+    }
+
+    @Test
+    public void readCsvRejectsConflictingObservedValuesInEitherRowOrder(@TempDir final Path directory) {
+        final Row row = comparisonRow("calibration", 0.5d, List.of());
+        final Row conflicting = comparisonRow("calibration", 0.75d, List.of());
+        final Row distinct = comparisonRow("holdout", 0.5d, List.of());
+        final Path file = directory.resolve("comparisons.csv");
+        assertEquals(row.key(), conflicting.key());
+        for (final boolean conflictFirst : List.of(false, true)) {
+            ElliottResearchReport.writeCsv(file,
+                    conflictFirst ? List.of(conflicting, distinct, row) : List.of(row, distinct, conflicting));
+
+            final IllegalArgumentException duplicate = assertThrows(IllegalArgumentException.class,
+                    () -> ElliottResearchReport.readCsv(file));
+            assertEquals(file + ":4: Duplicate comparison key: " + row.key(), duplicate.getMessage());
+        }
+    }
+
+    @Test
+    public void readCsvRejectsConflictingRuleMetadataInEitherRowOrder(@TempDir final Path directory) {
+        final Row row = comparisonRow("calibration", 0.5d, List.of());
+        final Row conflicting = comparisonRow("calibration", 0.5d, List.of("wave2-origin"));
+        final Path file = directory.resolve("comparisons.csv");
+        assertEquals(row.key(), conflicting.key());
+        for (final boolean conflictFirst : List.of(false, true)) {
+            ElliottResearchReport.writeCsv(file, conflictFirst ? List.of(conflicting, row) : List.of(row, conflicting));
+
+            final IllegalArgumentException duplicate = assertThrows(IllegalArgumentException.class,
+                    () -> ElliottResearchReport.readCsv(file));
+            assertEquals(file + ":3: Duplicate comparison key: " + row.key(), duplicate.getMessage());
+        }
+    }
+
+    @Test
+    public void csvRoundTripPreservesDistinctKeysWithOtherwiseIdenticalRows(@TempDir final Path directory) {
+        final List<Row> rows = List.of(comparisonRow("calibration", 0.5d, List.of()),
+                comparisonRow("holdout", 0.5d, List.of()));
+        final Path file = directory.resolve("comparisons.csv");
+
+        ElliottResearchReport.writeCsv(file, rows);
+
+        assertFalse(rows.get(0).key().equals(rows.get(1).key()));
+        assertEquals(rows, ElliottResearchReport.readCsv(file));
+    }
+
+    @Test
     void parseKeyRoundTripsAndRejectsMalformedKeys() {
         final String key = "btc|h2|+first|primary|holdout|completeOccupancyRate|b8";
         final ElliottResearchReport.Key parsed = ElliottResearchReport.parseKey(key);
@@ -323,6 +382,12 @@ class ElliottResearchReportTest {
         } catch (final IOException exception) {
             throw new IllegalStateException(exception);
         }
+    }
+
+    private static Row comparisonRow(final String partition, final double observed, final List<String> activeRules) {
+        return new Row("d", "A", "h2", "topology-only", "MOTIVE_5", activeRules, "p", "kernel-topology", partition,
+                "ambiguousRate", -1, observed, null, null, 0, 0, 0, Double.NaN, Double.NaN, Double.NaN, Double.NaN,
+                Double.NaN, ElliottResearchReport.NOT_COMPARABLE);
     }
 
     private static NullMemberMetrics member(final int memberIndex, final String partition, final double occupancy) {

@@ -525,9 +525,11 @@ class ElliottResearchTraceTest {
             trace.topology(scope, "calibration", 0, Instant.parse("2018-01-01T00:00:00Z"), List.of(),
                     TopologyAnalysis.insufficientHistory("single observation"), List.of());
             if (!selectedNull) {
-                trace.alternative(StudyObserver.Scope.real("competing", "change-point", "CHANGE_POINT", List.of(), "d"),
+                trace.alternative(
+                        StudyObserver.Scope.real("competing", "competing-change-point-baseline",
+                                "change-point-baseline", List.of(), "d"),
                         "calibration", 0, Instant.parse("2018-01-01T00:00:00Z"), List.of(), "insufficient-history",
-                        Set.of());
+                        Set.of("insufficient-history"));
             }
         }
         return file;
@@ -561,7 +563,8 @@ class ElliottResearchTraceTest {
         traceEvaluation(file, buildSeries(24), 0, 19);
         final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
         final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
-        final List<String> damages = List.of("dataset", "asOfIndex", "activeRules", "candidates", "status");
+        final List<String> damages = List.of("dataset", "asOfIndex", "activeRules", "candidates", "status",
+                "formingStartBarIndex", "formingEndBarIndex", "explanation");
         for (final String field : damages) {
             final JsonObject damaged = original.deepCopy();
             damaged.remove(field);
@@ -849,6 +852,7 @@ class ElliottResearchTraceTest {
                         candidates.add(candidate.deepCopy());
                     }
                     refreshIdentity(record);
+                    record.add("labels", labelArray(direction + ":0-" + (grammar.requiredPivots() - 1)));
                     final List<String> changed = new ArrayList<>(lines);
                     changed.set(1, record.toString());
                     final Path copy = directory.resolve("valid-" + grammar + "-" + direction + "-" + count + ".jsonl");
@@ -892,9 +896,15 @@ class ElliottResearchTraceTest {
                         candidates.add(firstCandidate(original).deepCopy());
                     }
                     record.add("candidates", candidates);
+                    record.addProperty("formingStartBarIndex", start);
+                    record.addProperty("formingEndBarIndex", end);
+                    record.addProperty("explanation", "");
                     if (validCount && validDirection) {
-                        assertEquals(direction,
-                                new TopologyAnalysis(status, direction, modelCandidates, "", start, end).direction());
+                        final TopologyAnalysis analysis = new TopologyAnalysis(status, direction, modelCandidates, "",
+                                start, end);
+                        assertEquals(direction, analysis.direction());
+                        record.add("labels",
+                                labelArray(StudyRunner.topologyStabilityLabels(analysis).toArray(String[]::new)));
                         final List<String> changed = new ArrayList<>(lines);
                         changed.set(1, record.toString());
                         final Path copy = directory
@@ -1008,8 +1018,8 @@ class ElliottResearchTraceTest {
                 final JsonObject alternative = original.deepCopy();
                 alternative.addProperty("kind", "alternative");
                 alternative.addProperty("grammar", grammar);
-                alternative.addProperty("status", "complete");
-                alternative.add("labels", new JsonArray());
+                alternative.addProperty("status", "insufficient-history");
+                alternative.add("labels", labelArray("insufficient-history"));
                 if (!selectedNull) {
                     alternative.addProperty("section", "competing");
                     alternative.addProperty("mode", "competing-" + grammar);
@@ -1100,6 +1110,315 @@ class ElliottResearchTraceTest {
         }
     }
 
+    @Test
+    public void formingRangeModelBoundaryIsAcceptedAtTheAsOfIndex() throws Exception {
+        final Path file = directory.resolve("forming-range-boundary.jsonl");
+        final List<ConfirmedPivot> visible = alternating(10);
+        final TopologyAnalysis analysis = TopologyAnalysis.forming(WaveDirection.BULLISH, 0, 0, "");
+        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
+                ElliottResearchTrace.MODE_REAL, -1, -1)) {
+            trace.topology(StudyObserver.Scope.real("h1", "topology-only", "MOTIVE_5", List.of(), "d"), "calibration",
+                    0, Instant.parse("2018-01-01T00:00:00Z"), visible, analysis, List.of());
+        }
+        final JsonObject record = ElliottResearchTrace.read(file).records().getFirst();
+        assertEquals(0, record.get("formingStartBarIndex").getAsInt());
+        assertEquals(0, record.get("formingEndBarIndex").getAsInt());
+        assertEquals(labelArray("forming:BULLISH:0-0"), record.get("labels"));
+    }
+
+    @Test
+    public void topologyLabelsAreCanonicalForEveryStatusAndCaptureModeBeforeRetention() throws Exception {
+        for (final boolean selectedNull : List.of(false, true)) {
+            final Path file = topologyLabelTrace("topology-labels-" + selectedNull + ".jsonl", selectedNull);
+            final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            final List<JsonObject> records = ElliottResearchTrace.read(file).records();
+            final Set<TopologyStatus> seen = new HashSet<>();
+            for (int i = 0; i < records.size(); i++) {
+                final JsonObject record = records.get(i);
+                final TopologyStatus status = TopologyStatus.valueOf(record.get("status").getAsString());
+                seen.add(status);
+                final JsonArray expected = switch (status) {
+                case COMPLETE -> labelArray("BULLISH:0-5");
+                case AMBIGUOUS -> labelArray("BULLISH:0-5", "BULLISH:2-7");
+                case FORMING -> labelArray("forming:BULLISH:0-2");
+                case INVALIDATED -> labelArray("invalidated:" + record.get("explanation").getAsString());
+                case INSUFFICIENT_HISTORY -> labelArray("insufficient-history");
+                case NO_MATCH -> labelArray();
+                };
+                assertEquals(expected, record.getAsJsonArray("labels"), status.name());
+                assertEquals(status == TopologyStatus.FORMING ? 0 : -1, record.get("formingStartBarIndex").getAsInt());
+                assertEquals(status == TopologyStatus.FORMING ? 2 : -1, record.get("formingEndBarIndex").getAsInt());
+                assertTrue(record.get("explanation").getAsJsonPrimitive().isString());
+                final JsonObject forged = record.deepCopy();
+                forged.add("labels", labelArray("arbitrary-label"));
+                assertMalformedAtLine(lines, forged, i + 2, "labels");
+                if (!expected.isEmpty()) {
+                    final JsonObject empty = record.deepCopy();
+                    empty.add("labels", labelArray());
+                    assertMalformedAtLine(lines, empty, i + 2, "labels");
+                    final JsonObject duplicate = record.deepCopy();
+                    duplicate.getAsJsonArray("labels").add(expected.get(0));
+                    final IllegalArgumentException error = assertMalformedAtLine(lines, duplicate, i + 2, "labels");
+                    assertTrue(error.getMessage().contains("duplicates a label"), error.getMessage());
+                }
+                if (status == TopologyStatus.AMBIGUOUS) {
+                    final JsonObject reordered = record.deepCopy();
+                    reordered.add("labels", labelArray("BULLISH:2-7", "BULLISH:0-5"));
+                    final List<String> changed = new ArrayList<>(lines);
+                    changed.set(i + 1, reordered.toString());
+                    final Path copy = directory.resolve("unordered-label-set-" + selectedNull + ".jsonl");
+                    Files.write(copy, changed, StandardCharsets.UTF_8);
+                    assertEquals(reordered, ElliottResearchTrace.read(copy).records().get(i));
+                }
+            }
+            assertEquals(Set.of(TopologyStatus.values()), seen);
+        }
+    }
+
+    @Test
+    public void topologyFormingBoundsAndExplanationAreRequiredAndCausalBeforeRetention() throws Exception {
+        for (final boolean selectedNull : List.of(false, true)) {
+            final List<String> lines = Files.readAllLines(
+                    topologyLabelTrace("topology-fields-" + selectedNull + ".jsonl", selectedNull),
+                    StandardCharsets.UTF_8);
+            for (int i = 1; i < lines.size() - 1; i++) {
+                final JsonObject original = JsonParser.parseString(lines.get(i)).getAsJsonObject();
+                for (final String field : List.of("formingStartBarIndex", "formingEndBarIndex", "explanation")) {
+                    final JsonObject missing = original.deepCopy();
+                    missing.remove(field);
+                    assertMalformedAtLine(lines, missing, i + 1, field);
+                    final JsonObject nullValue = original.deepCopy();
+                    nullValue.add(field, JsonNull.INSTANCE);
+                    assertMalformedAtLine(lines, nullValue, i + 1, field);
+                    final JsonObject wrongType = original.deepCopy();
+                    wrongType.add(field, "explanation".equals(field) ? new JsonPrimitive(1) : new JsonPrimitive("0"));
+                    assertMalformedAtLine(lines, wrongType, i + 1, field);
+                }
+                if (!"FORMING".equals(original.get("status").getAsString())) {
+                    for (final String field : List.of("formingStartBarIndex", "formingEndBarIndex")) {
+                        final JsonObject nonFormingRange = original.deepCopy();
+                        nonFormingRange.addProperty(field, 0);
+                        assertMalformedAtLine(lines, nonFormingRange, i + 1, field);
+                    }
+                    continue;
+                }
+                for (final String field : List.of("formingStartBarIndex", "formingEndBarIndex")) {
+                    for (final String number : List.of("1.5", "2147483648", "-2147483649", "1e2147483648")) {
+                        final JsonObject unsupported = original.deepCopy();
+                        unsupported.add(field, JsonParser.parseString(number));
+                        assertMalformedAtLine(lines, unsupported, i + 1, field);
+                    }
+                }
+                for (final String mutation : List.of("negative-start", "negative-end", "reversed", "future-end",
+                        "missing-start-pivot", "missing-end-pivot")) {
+                    final JsonObject damaged = original.deepCopy();
+                    switch (mutation) {
+                    case "negative-start" -> damaged.addProperty("formingStartBarIndex", -1);
+                    case "negative-end" -> damaged.addProperty("formingEndBarIndex", -1);
+                    case "reversed" -> damaged.addProperty("formingStartBarIndex", 3);
+                    case "future-end" ->
+                        damaged.addProperty("formingEndBarIndex", damaged.get("asOfIndex").getAsInt() + 1);
+                    case "missing-start-pivot" -> damaged.getAsJsonArray("pivots").remove(0);
+                    case "missing-end-pivot" -> damaged.getAsJsonArray("pivots").remove(2);
+                    default -> throw new AssertionError(mutation);
+                    }
+                    // Keep the label self-consistent: bounds must be valid independently.
+                    damaged.add("labels", labelArray("forming:BULLISH:" + damaged.get("formingStartBarIndex").getAsInt()
+                            + "-" + damaged.get("formingEndBarIndex").getAsInt()));
+                    assertMalformedAtLine(lines, damaged, i + 1, "forming");
+                }
+            }
+            final JsonObject invalidated = lines.stream()
+                    .map(JsonParser::parseString)
+                    .map(JsonElement::getAsJsonObject)
+                    .filter(record -> record.has("status") && "INVALIDATED".equals(record.get("status").getAsString()))
+                    .findFirst()
+                    .orElseThrow();
+            final int line = lines.indexOf(invalidated.toString()) + 1;
+            final JsonObject differentExplanation = invalidated.deepCopy();
+            differentExplanation.addProperty("explanation", "different captured reason");
+            assertMalformedAtLine(lines, differentExplanation, line, "labels");
+            // The model requires non-null text, not a new prose grammar or nonblankness.
+            final JsonObject emptyExplanation = invalidated.deepCopy();
+            emptyExplanation.addProperty("explanation", "");
+            emptyExplanation.add("labels", labelArray("invalidated:"));
+            final List<String> changed = new ArrayList<>(lines);
+            changed.set(line - 1, emptyExplanation.toString());
+            final Path supported = directory.resolve("empty-explanation-" + selectedNull + ".jsonl");
+            Files.write(supported, changed, StandardCharsets.UTF_8);
+            assertEquals(emptyExplanation, ElliottResearchTrace.read(supported).records().get(line - 2));
+        }
+    }
+
+    @Test
+    public void alternativeOutcomesAndLabelsComeFromTheCapturedPivotGrammarBeforeRetention() throws Exception {
+        for (final String grammar : List.of("3+3", "5+5")) {
+            final int leadingLegs = "3+3".equals(grammar) ? 3 : 5;
+            final double[][] histories = "3+3".equals(grammar)
+                    ? new double[][] { {}, { 0, 10 }, { 0, 10, 5, 20 }, { 0, 10, 5, 20, 8, 25 },
+                            { 0, 10, 5, 20, 8, 15, 10 }, { 0, 10, 5, 20, 8, 25, 12, 22, 14 }, { 0, 10, 5, 20, 20 },
+                            { 0, 10, 5, 10 } }
+                    : new double[][] { {}, { 0, 10 }, { 0, 10, 5, 20, 8, 30 }, { 0, 10, 5, 20, 8, 30, 12, 40 },
+                            { 0, 10, 5, 20, 8, 30, 12, 25, 14, 22, 16 },
+                            { 0, 10, 5, 20, 8, 30, 12, 40, 14, 35, 16, 32, 18 }, { 0, 10, 5, 20, 8, 30, 30 },
+                            { 0, 10, 5, 20, 8, 15 } };
+            final List<String> outcomes = List.of("insufficient-history", "no-match", "forming", "ambiguous",
+                    "complete", "ambiguous", "forming", "no-match");
+            final List<Set<String>> labels = List.of(Set.of("insufficient-history"), Set.of("no-match"),
+                    Set.of("BULLISH:0-" + leadingLegs),
+                    Set.of("BULLISH:0-" + (leadingLegs + 2), "BULLISH:2-" + (leadingLegs + 2)),
+                    Set.of("0-" + (2 * leadingLegs)), Set.of("0-" + (2 * leadingLegs), "2-" + (2 * leadingLegs + 2)),
+                    Set.of("BULLISH:0-" + (leadingLegs + 1)), Set.of("no-match"));
+            for (int i = 0; i < histories.length; i++) {
+                final Path file = directory.resolve("alternative-" + grammar + "-" + i + ".jsonl");
+                try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
+                        ElliottResearchTrace.MODE_REAL, -1, -1)) {
+                    trace.alternative(
+                            StudyObserver.Scope.real("competing", "competing-" + grammar, grammar, List.of(), "d"),
+                            "calibration", 20, Instant.parse("2018-01-21T00:00:00Z"), alternating(histories[i]),
+                            outcomes.get(i), labels.get(i));
+                }
+                final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+                final JsonObject record = ElliottResearchTrace.read(file).records().getFirst();
+                assertEquals(outcomes.get(i), record.get("status").getAsString());
+                assertFalse(record.has("formingStartBarIndex"));
+                assertFalse(record.has("formingEndBarIndex"));
+                assertFalse(record.has("explanation"));
+                for (final String outcome : Set.of("insufficient-history", "no-match", "forming", "complete",
+                        "ambiguous")) {
+                    if (!outcome.equals(outcomes.get(i))) {
+                        final JsonObject wrongOutcome = record.deepCopy();
+                        wrongOutcome.addProperty("status", outcome);
+                        assertMalformedAtLine2(lines, wrongOutcome, "status");
+                    }
+                }
+                final JsonObject empty = record.deepCopy();
+                empty.add("labels", labelArray());
+                assertMalformedAtLine2(lines, empty, "labels");
+                final JsonObject forged = record.deepCopy();
+                forged.add("labels", labelArray("arbitrary-placement"));
+                assertMalformedAtLine2(lines, forged, "labels");
+                final JsonObject duplicate = record.deepCopy();
+                duplicate.getAsJsonArray("labels").add(record.getAsJsonArray("labels").get(0));
+                assertMalformedAtLine2(lines, duplicate, "duplicates a label");
+                if ("complete".equals(outcomes.get(i))) {
+                    final JsonObject contradictedPivots = record.deepCopy();
+                    contradictedPivots.getAsJsonArray("pivots").get(1).getAsJsonObject().addProperty("price", "0");
+                    assertMalformedAtLine2(lines, contradictedPivots, "status");
+                }
+            }
+        }
+    }
+
+    @Test
+    public void changePointLabelsBindOnlyTheRecordedOutcomeAndAsOfIndexBeforeRetention() throws Exception {
+        for (final int asOfIndex : List.of(17, Integer.MAX_VALUE)) {
+            for (final String outcome : List.of("insufficient-history", "no-match", "complete")) {
+                final String label = switch (outcome) {
+                case "insufficient-history" -> "insufficient-history";
+                case "no-match" -> "stable";
+                default -> "change@" + asOfIndex;
+                };
+                final Path file = directory.resolve("change-point-" + outcome + "-" + asOfIndex + ".jsonl");
+                try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
+                        ElliottResearchTrace.MODE_REAL, -1, -1)) {
+                    trace.alternative(
+                            StudyObserver.Scope.real("competing", "competing-change-point-baseline",
+                                    "change-point-baseline", List.of(), "d"),
+                            "calibration", asOfIndex, Instant.parse("2018-01-01T00:00:00Z"), List.of(), outcome,
+                            Set.of(label));
+                }
+                final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+                final JsonObject record = ElliottResearchTrace.read(file).records().getFirst();
+                assertEquals(labelArray(label), record.get("labels"));
+                for (final String forgedLabel : List.of("arbitrary", "change@" + (asOfIndex - 1))) {
+                    final JsonObject forged = record.deepCopy();
+                    forged.add("labels", labelArray(forgedLabel));
+                    assertMalformedAtLine2(lines, forged, "labels");
+                }
+                final JsonObject empty = record.deepCopy();
+                empty.add("labels", labelArray());
+                assertMalformedAtLine2(lines, empty, "labels");
+                final JsonObject duplicate = record.deepCopy();
+                duplicate.add("labels", labelArray(label, label));
+                assertMalformedAtLine2(lines, duplicate, "duplicates a label");
+                for (final String invalidOutcome : List.of("forming", "ambiguous")) {
+                    final JsonObject impossible = record.deepCopy();
+                    impossible.addProperty("status", invalidOutcome);
+                    assertMalformedAtLine2(lines, impossible, "status");
+                }
+                final JsonObject unknownGrammar = record.deepCopy();
+                unknownGrammar.addProperty("grammar", "CHANGE_POINT");
+                assertMalformedAtLine2(lines, unknownGrammar, "grammar");
+            }
+        }
+    }
+
+    @Test
+    public void aggregatePreservingLabelRemapsCannotMasqueradeAsStabilityEvidence() throws Exception {
+        for (final boolean selectedNull : List.of(false, true)) {
+            final Path file = topologyLabelTrace("bijective-labels-" + selectedNull + ".jsonl", selectedNull);
+            final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            final List<JsonObject> originals = ElliottResearchTrace.read(file).records();
+            final List<JsonObject> forged = new ArrayList<>();
+            final List<String> changed = new ArrayList<>(lines);
+            boolean partialOverlap = false;
+            for (int i = 0; i < originals.size(); i++) {
+                final JsonObject record = originals.get(i).deepCopy();
+                final JsonArray labels = new JsonArray();
+                for (final JsonElement label : record.getAsJsonArray("labels")) {
+                    labels.add("forged:" + label.getAsString());
+                }
+                record.add("labels", labels);
+                assertEquals(originals.get(i).get("status"), record.get("status"));
+                assertEquals(originals.get(i).get("candidates"), record.get("candidates"));
+                forged.add(record);
+                changed.set(i + 1, record.toString());
+                if (i > 0) {
+                    final List<JsonElement> previous = originals.get(i - 1).getAsJsonArray("labels").asList();
+                    final List<JsonElement> current = originals.get(i).getAsJsonArray("labels").asList();
+                    final List<JsonElement> forgedPrevious = forged.get(i - 1).getAsJsonArray("labels").asList();
+                    final List<JsonElement> forgedCurrent = labels.asList();
+                    final long intersection = previous.stream().filter(current::contains).count();
+                    final long forgedIntersection = forgedPrevious.stream().filter(forgedCurrent::contains).count();
+                    final long union = previous.size() + current.size() - intersection;
+                    assertEquals(intersection, forgedIntersection);
+                    assertEquals(union, forgedPrevious.size() + forgedCurrent.size() - forgedIntersection);
+                    partialOverlap |= intersection > 0 && intersection < union;
+                }
+            }
+            assertTrue(partialOverlap, "the stream includes a nontrivial COMPLETE-to-AMBIGUOUS overlap");
+            // Every Jaccard numerator/denominator survived the bijection. The reader
+            // must reject the stream nonetheless, even when retaining no records.
+            assertMalformedAtLine(changed, forged.getFirst(), 2, "labels");
+        }
+    }
+
+    private Path topologyLabelTrace(final String name, final boolean selectedNull) throws IOException {
+        final List<List<ConfirmedPivot>> histories = List.of(List.of(), alternating(10, 20), alternating(10, 20, 14),
+                alternating(10, 20, 14, 26, 18, 32), alternating(10, 20, 14, 26, 18, 32, 24, 40),
+                alternating(10, 20, 14, 26, 18, 32, 35, 9));
+        final List<TopologyStatus> statuses = List.of(TopologyStatus.INSUFFICIENT_HISTORY, TopologyStatus.NO_MATCH,
+                TopologyStatus.FORMING, TopologyStatus.COMPLETE, TopologyStatus.AMBIGUOUS, TopologyStatus.INVALIDATED);
+        final Path file = directory.resolve(name);
+        final StudyObserver.Scope scope = new StudyObserver.Scope(selectedNull ? "null" : "h1",
+                selectedNull ? "MOTIVE_5" : "topology-only", "MOTIVE_5", List.of(), "d", selectedNull ? 2 : -1,
+                selectedNull ? 1 : -1);
+        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
+                selectedNull ? ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER : ElliottResearchTrace.MODE_REAL,
+                scope.nullBlockLength(), scope.nullMemberIndex())) {
+            for (int i = 0; i < histories.size(); i++) {
+                final List<ConfirmedPivot> visible = histories.get(i);
+                final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5, visible);
+                assertEquals(statuses.get(i), analysis.status());
+                trace.topology(scope, "calibration", 20 + i,
+                        Instant.parse("2018-01-21T00:00:00Z").plusSeconds(86_400L * i), visible, analysis,
+                        Collections.nCopies(analysis.candidates().size(), List.of()));
+            }
+        }
+        return file;
+    }
+
     private static void orientGrammarShape(final JsonObject record, final TopologyGrammar grammar,
             final WaveDirection direction) {
         record.addProperty("grammar", grammar.name());
@@ -1166,6 +1485,14 @@ class ElliottResearchTraceTest {
                 .digest(candidate.getAsJsonArray("rules").toString().getBytes(StandardCharsets.UTF_8));
         candidate.addProperty("version",
                 candidate.get("candidateKey").getAsString() + "@" + HexFormat.of().formatHex(digest, 0, 16));
+    }
+
+    private static JsonArray labelArray(final String... labels) {
+        final JsonArray array = new JsonArray();
+        for (final String label : labels) {
+            array.add(label);
+        }
+        return array;
     }
 
     private static JsonObject firstCandidate(final JsonObject record) {

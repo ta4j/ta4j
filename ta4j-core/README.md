@@ -215,6 +215,8 @@ with its dataset's `traceSha256` map (relative trace path to SHA-256). `summariz
 removing an observation, even from another scope with a repaired footer, cannot silently
 change support. Modified, mixed or older unbound bundles must be regenerated rather than
 paired with the recorded provenance.
+Comparison keys must also be unique: repeated keys are rejected even when their other
+cells agree, rather than letting inspection and summary rebuilding select different rows.
 Coverage bar totals and effective date bounds include only the configured partitions,
 never the unrequested intervals between them. If every requested partition is empty,
 coverage has zero bars and no effective dates even when the source has other bars.
@@ -252,6 +254,10 @@ shares the immutable evidence consumed by report metrics rather than reevaluatin
 the same candidates.
 Every observation also records the exact label set accumulated by the stability metric,
 including topology candidate spans, forming spans, invalidation reasons and empty sets.
+The reader reconstructs that set from the recorded outcome and candidate identities,
+explicit forming bounds or invalidation explanation; competing grammar labels must match
+their visible-pivot outcome. Duplicate or outcome-inconsistent labels are rejected before
+scope filtering, not merely compared by their resulting stability average.
 For `labelStabilityJaccard`, inspection recomputes the mean Jaccard similarity of adjacent
 label sets (two empty sets have similarity 1), reports the transition count and verifies
 the observed row rather than presenting only unrelated status tallies.

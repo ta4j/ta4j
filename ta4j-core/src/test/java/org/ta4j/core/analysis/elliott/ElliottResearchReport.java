@@ -535,6 +535,7 @@ final class ElliottResearchReport {
             throw new IllegalArgumentException(path + ":1: unexpected header, expected " + ROW_HEADER);
         }
         final List<Row> rows = new ArrayList<>(table.size() - 1);
+        final Set<String> keys = new HashSet<>();
         for (int line = 1; line < table.size(); line++) {
             final List<String> cells = table.get(line);
             final String where = path + ":" + (line + 1);
@@ -554,8 +555,12 @@ final class ElliottResearchReport {
                         Integer.parseInt(cells.get(17).isEmpty() ? "0" : cells.get(17)), number(cells.get(18)),
                         number(cells.get(19)), number(cells.get(20)), number(cells.get(21)), number(cells.get(22)),
                         cells.get(23));
-                if (!row.key().equals(cells.get(0))) {
+                final String key = row.key();
+                if (!key.equals(cells.get(0))) {
                     throw new IllegalArgumentException("key column '" + cells.get(0) + "' does not match row fields");
+                }
+                if (!keys.add(key)) {
+                    throw new IllegalArgumentException("Duplicate comparison key: " + key);
                 }
                 rows.add(row);
             } catch (final IllegalArgumentException exception) {

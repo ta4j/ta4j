@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +85,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
 
     private static final Set<String> ALTERNATIVE_STATUSES = Set.of("insufficient-history", "no-match", "forming",
             "complete", "ambiguous");
+
+    private static final StudyRunner.AlternativeGrammar THREE_PLUS_THREE = StudyRunner.AlternativeGrammar.of("3+3");
+    private static final StudyRunner.AlternativeGrammar FIVE_PLUS_FIVE = StudyRunner.AlternativeGrammar.of("5+5");
 
     private static final Comparator<ConfirmedPivot> PIVOT_INDEX_ORDER = Comparator
             .comparingInt(ConfirmedPivot::pivotIndex);
@@ -189,6 +193,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         final JsonObject record = base(scope, partition, recordedIndex, asOfEnd, visiblePivots, "topology",
                 analysis.status().name());
         record.add("direction", analysis.direction() == null ? null : new JsonPrimitive(analysis.direction().name()));
+        record.addProperty("formingStartBarIndex", analysis.formingStartBarIndex());
+        record.addProperty("formingEndBarIndex", analysis.formingEndBarIndex());
+        record.addProperty("explanation", analysis.explanation());
         record.add("pivots", pivotsJson(visiblePivots));
         final JsonArray candidates = new JsonArray();
         for (int i = 0; i < analysis.candidates().size(); i++) {
@@ -602,6 +609,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         }
         TopologyGrammar grammar = null;
         WaveDirection candidateDirection = null;
+        final List<TopologyCandidate> topologyCandidates = new ArrayList<>(candidates.size());
         for (int i = 0; i < candidates.size(); i++) {
             final String at = where + "candidates[" + i + "]";
             final JsonObject candidate = requireObject(path, lineNumber, candidates.get(i), at);
@@ -676,7 +684,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                 throw corrupt(path, lineNumber, at + ".direction is not a wave direction");
             }
             try {
-                TopologyCandidate.validatePivots(grammar, candidatePivots);
+                topologyCandidates.add(new TopologyCandidate(grammar, candidateDirection, candidatePivots));
             } catch (final IllegalArgumentException e) {
                 throw corrupt(path, lineNumber, at + ".placement: " + e.getMessage());
             }
@@ -707,14 +715,96 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             }
         }
         requireTexts(path, lineNumber, record, "labels", where);
-        if ("alternative".equals(kind)) {
-            switch (record.get("grammar").getAsString()) {
-            case "MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3" ->
-                throw corrupt(path, lineNumber, where + "grammar is a topology grammar but kind is alternative");
-            default -> {
-            }
+        final JsonArray recordedLabels = record.getAsJsonArray("labels");
+        final Set<String> labels = new HashSet<>(recordedLabels.size());
+        for (int i = 0; i < recordedLabels.size(); i++) {
+            if (!labels.add(recordedLabels.get(i).getAsString())) {
+                throw corrupt(path, lineNumber, where + "labels[" + i + "] duplicates a label");
             }
         }
+        final Set<String> expectedLabels;
+        if (topologyStatus != null) {
+            final int formingStart = requireCoordinate(path, lineNumber, record, "formingStartBarIndex", where);
+            final int formingEnd = requireCoordinate(path, lineNumber, record, "formingEndBarIndex", where);
+            requireText(path, lineNumber, record, "explanation", where);
+            final TopologyAnalysis analysis;
+            try {
+                analysis = new TopologyAnalysis(topologyStatus,
+                        direction.isJsonNull() ? null : WaveDirection.valueOf(direction.getAsString()),
+                        topologyCandidates, record.get("explanation").getAsString(), formingStart, formingEnd);
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber, where + "formingStartBarIndex/formingEndBarIndex: " + e.getMessage());
+            }
+            if (topologyStatus == TopologyStatus.FORMING) {
+                if (formingEnd > asOfIndex) {
+                    throw corrupt(path, lineNumber,
+                            where + "formingEndBarIndex must not exceed asOfIndex " + asOfIndex);
+                }
+                boolean startVisible = false;
+                boolean endVisible = false;
+                for (final ConfirmedPivot pivot : visiblePivots) {
+                    startVisible |= pivot.pivotIndex() == formingStart;
+                    endVisible |= pivot.pivotIndex() == formingEnd;
+                }
+                if (!startVisible || !endVisible) {
+                    throw corrupt(path, lineNumber,
+                            where + "formingStartBarIndex/formingEndBarIndex must identify visible pivots");
+                }
+            }
+            expectedLabels = StudyRunner.topologyStabilityLabels(analysis);
+        } else {
+            expectedLabels = alternativeLabels(path, lineNumber, record, visiblePivots, asOfIndex, where);
+        }
+        if (!labels.equals(expectedLabels)) {
+            throw corrupt(path, lineNumber,
+                    where + "labels do not match the recorded outcome: expected " + new TreeSet<>(expectedLabels));
+        }
+    }
+
+    private static Set<String> alternativeLabels(final Path path, final long lineNumber, final JsonObject record,
+            final List<ConfirmedPivot> visiblePivots, final int asOfIndex, final String where) {
+        final String status = record.get("status").getAsString();
+        final String grammarName = record.get("grammar").getAsString();
+        if ("change-point-baseline".equals(grammarName)) {
+            // The trace does not capture closes: bind labels to the recorded outcome,
+            // not to a new price-based classification.
+            return switch (status) {
+            case "insufficient-history" -> Set.of("insufficient-history");
+            case "complete" -> Set.of("change@" + asOfIndex);
+            case "no-match" -> Set.of("stable");
+            default -> throw corrupt(path, lineNumber, where + "status is not a change-point-baseline outcome");
+            };
+        }
+        final StudyRunner.AlternativeGrammar grammar;
+        switch (grammarName) {
+        case "3+3" -> grammar = THREE_PLUS_THREE;
+        case "5+5" -> grammar = FIVE_PLUS_FIVE;
+        case "MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3" ->
+            throw corrupt(path, lineNumber, where + "grammar is a topology grammar but kind is alternative");
+        default -> throw corrupt(path, lineNumber, where + "grammar is not a supported alternative grammar");
+        }
+        final String expectedStatus;
+        final Set<String> labels;
+        if (visiblePivots.size() < 2) {
+            expectedStatus = "insufficient-history";
+            labels = Set.of("insufficient-history");
+        } else {
+            final List<String> matches = grammar.matches(visiblePivots);
+            if (!matches.isEmpty()) {
+                expectedStatus = matches.size() == 1 ? "complete" : "ambiguous";
+                labels = Set.copyOf(matches);
+            } else {
+                final Set<String> partialMatches = grammar.partialMatches(visiblePivots);
+                expectedStatus = partialMatches.isEmpty() ? "no-match"
+                        : partialMatches.size() == 1 ? "forming" : "ambiguous";
+                labels = partialMatches.isEmpty() ? Set.of("no-match") : partialMatches;
+            }
+        }
+        if (!status.equals(expectedStatus)) {
+            throw corrupt(path, lineNumber,
+                    where + "status does not match the visible pivots: expected " + expectedStatus);
+        }
+        return labels;
     }
 
     private static TopologyGrammar requireGrammar(final Path path, final long lineNumber, final JsonObject record,
