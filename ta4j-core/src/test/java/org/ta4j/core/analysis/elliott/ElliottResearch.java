@@ -1277,14 +1277,7 @@ final class ElliottResearch {
          * unsupported or any write fails, the previous run file remains recoverable.
          */
         private void writeRunJson(final JsonObject json) throws IOException {
-            final Path temporary = Files.createTempFile(dir, RUN_FILE + "-", ".tmp");
-            try {
-                Files.writeString(temporary, GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
-                Files.move(temporary, dir.resolve(RUN_FILE), StandardCopyOption.ATOMIC_MOVE,
-                        StandardCopyOption.REPLACE_EXISTING);
-            } finally {
-                Files.deleteIfExists(temporary);
-            }
+            ElliottResearch.writeRunJson(dir, json, MetadataFiles.DEFAULT);
         }
 
         private String relative(final Path path) {
@@ -2450,5 +2443,31 @@ final class ElliottResearch {
     private static String number(final double value) {
         return Double.isFinite(value) ? new BigDecimal(value, new MathContext(6)).stripTrailingZeros().toPlainString()
                 : "NaN";
+    }
+
+    /**
+     * Real filesystem operations, replaceable only at the metadata I/O boundary.
+     */
+    interface MetadataFiles {
+        MetadataFiles DEFAULT = new MetadataFiles() {
+        };
+
+        default void write(final Path temporary, final String contents) throws IOException {
+            Files.writeString(temporary, contents, StandardCharsets.UTF_8);
+        }
+
+        default void replace(final Path temporary, final Path target) throws IOException {
+            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    static void writeRunJson(final Path dir, final JsonObject json, final MetadataFiles files) throws IOException {
+        final Path temporary = Files.createTempFile(dir, RUN_FILE + "-", ".tmp");
+        try {
+            files.write(temporary, GSON.toJson(json) + "\n");
+            files.replace(temporary, dir.resolve(RUN_FILE));
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
     }
 }
