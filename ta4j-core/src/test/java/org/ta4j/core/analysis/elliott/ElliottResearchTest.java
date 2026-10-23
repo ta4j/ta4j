@@ -1909,7 +1909,7 @@ class ElliottResearchTest {
         final Path file = out.resolve("relations/toy.jsonl");
         final Path outside = work.resolve("linked-relations.jsonl");
         Files.move(file, outside);
-        symlinkOrSkip(file, outside);
+        Files.createSymbolicLink(file, outside);
 
         final Result print = launch("relations", out.toString(), "toy");
         assertEquals(2, print.code());
