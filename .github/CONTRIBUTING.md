@@ -59,6 +59,8 @@ Then install `actionlint` (e.g., `brew install actionlint`). The hook will autom
 - Use primitives for indicator parameters (e.g., `int timeFrame`). Convert to `Num` inside using `series.numFactory()`.
 - Do not cache `Num` instances globally—always obtain them from the relevant factory.
 
+The data, charting, catalog, and executable-examples modules own their tests and coverage floors. At the ownership split, the former combined examples budget of 51% lines / 44% branches was redistributed as data 81% / 63%, charting 83% / 68%, catalog 80% / 74%, and examples 40% / 34%. Weighted by the moved source, those floors preserve at least 51.41% / 44.69% combined coverage; measured coverage is 52.45% / 45.59%. Raise each owner's floors as its coverage improves rather than comparing executable examples alone with the old combined budget.
+
 ## Indicator contributions
 
 Open an issue to discuss the new indicator first. Every indicator must ship with matching tests:

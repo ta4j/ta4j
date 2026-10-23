@@ -10,6 +10,11 @@
     <name>Ta4j Data</name>
     <description>Reusable market data sources and bundled historical datasets for ta4j</description>
 
+    <properties>
+        <ta4j.jacoco.line.minimum>0.81</ta4j.jacoco.line.minimum>
+        <ta4j.jacoco.branch.minimum>0.63</ta4j.jacoco.branch.minimum>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.ta4j</groupId>
