@@ -852,6 +852,69 @@ class ReplayArtifactTest {
     }
 
     @Test
+    public void recordKindsAreBoundToGrammarScopesBeforeFamilyFiltering() throws IOException {
+        for (final boolean nullMember : List.of(false, true)) {
+            final Path run = ReplayFixture.write(temp.resolve("kind-grammar-" + nullMember), options -> {
+                options.nullTrace = nullMember;
+                return options;
+            });
+            final String traceFile = "traces/d1-" + (nullMember ? "null" : "real") + ".jsonl";
+            final Path trace = run.resolve(traceFile);
+            final List<String> lines = Files.readAllLines(trace);
+            final JsonObject original = JsonParser.parseString(lines.get(2)).getAsJsonObject();
+            final String traceMode = nullMember ? ReplayArtifact.TRACE_MODE_NULL_MEMBER : ReplayArtifact.TRACE_MODE_REAL;
+            for (final String grammar : List.of("MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3")) {
+                for (final String status : List.of("insufficient-history", "no-match", "forming", "complete",
+                        "ambiguous")) {
+                    final JsonObject alternative = original.deepCopy();
+                    alternative.addProperty("kind", "alternative");
+                    alternative.addProperty("grammar", grammar);
+                    alternative.addProperty("status", status);
+                    alternative.add("direction", null);
+                    alternative.add("candidates", new JsonArray());
+                    alternative.add("labels", new JsonArray());
+                    lines.set(2, alternative.toString());
+                    Files.write(trace, lines, StandardCharsets.UTF_8);
+                    for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
+                        final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
+                                () -> ReplaySession.open(ReplayArtifact.open(run), key, traceMode, 120, 8));
+                        assertTrue(e.getMessage().contains("grammar") && e.getMessage().contains("line 3")
+                                && e.getMessage().contains("regenerate"), e.getMessage());
+                    }
+                    for (final boolean keep : List.of(false, true)) {
+                        final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
+                                () -> ReplayTraceIndex.scan(trace, traceFile, family -> keep, Map.of()));
+                        assertTrue(e.getMessage().contains("grammar") && e.getMessage().contains("line 3"),
+                                e.getMessage());
+                    }
+                }
+            }
+        }
+        for (final String grammar : List.of("3+3", "5+5", "change-point-baseline")) {
+            final Path run = ReplayFixture.write(temp.resolve("structural-kind-" + grammar));
+            final Path trace = run.resolve("traces/d1-real.jsonl");
+            final List<String> lines = Files.readAllLines(trace);
+            final JsonObject alternative = JsonParser.parseString(lines.get(3)).getAsJsonObject();
+            alternative.addProperty("grammar", grammar);
+            alternative.addProperty("mode", "competing-" + grammar);
+            lines.set(3, alternative.toString());
+            Files.write(trace, lines, StandardCharsets.UTF_8);
+            assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> true, Map.of()));
+            assertNotNull(ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> false, Map.of()));
+            alternative.addProperty("kind", "topology");
+            alternative.addProperty("status", "INSUFFICIENT_HISTORY");
+            lines.set(3, alternative.toString());
+            Files.write(trace, lines, StandardCharsets.UTF_8);
+            for (final boolean keep : List.of(false, true)) {
+                final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
+                        () -> ReplayTraceIndex.scan(trace, "traces/d1-real.jsonl", family -> keep, Map.of()));
+                assertTrue(e.getMessage().contains("grammar") && e.getMessage().contains("line 4")
+                        && e.getMessage().contains("regenerate"), e.getMessage());
+            }
+        }
+    }
+
+    @Test
     public void grammarShapesAreValidatedBeforeFamilyFiltering() throws IOException {
         for (final String grammar : List.of("MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3")) {
             final int required = "MOTIVE_5".equals(grammar) ? 6 : "CORRECTIVE_3".equals(grammar) ? 4 : 9;

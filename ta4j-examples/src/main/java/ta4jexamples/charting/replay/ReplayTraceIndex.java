@@ -492,6 +492,12 @@ final class ReplayTraceIndex {
         }
         if ("alternative".equals(kind)) {
             requireTexts(display, line, record, "labels", where);
+            switch (text(record, "grammar")) {
+            case "MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3" -> throw corrupt(display, line,
+                    where + "grammar is a topology grammar but kind is alternative");
+            default -> {
+            }
+            }
         }
     }
 
