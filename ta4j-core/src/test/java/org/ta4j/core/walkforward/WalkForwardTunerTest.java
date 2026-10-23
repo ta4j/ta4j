@@ -6,12 +6,18 @@ package org.ta4j.core.walkforward;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 class WalkForwardTunerTest {
@@ -196,5 +202,32 @@ class WalkForwardTunerTest {
             prices[i] = 100 + (i * 0.2);
         }
         return prices;
+    }
+
+    @Test
+    @ResourceLock(Resources.LOCALE)
+    public void calibrationMetricNamesAreLocaleIndependent() {
+        Locale previousLocale = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            NumFactory numFactory = DoubleNumFactory.getInstance();
+            Num brier = numFactory.numOf(0.1);
+            Num logLoss = numFactory.numOf(0.2);
+            Num ece = numFactory.numOf(0.05);
+            Map<String, Num> metrics = new HashMap<>(
+                    Map.of("BRIER", numFactory.zero(), "LOGLOSS", numFactory.zero(), "LOG_LOSS", numFactory.zero(),
+                            "LOG-LOSS", numFactory.zero(), "ECE", numFactory.zero(), "agreement", numFactory.one()));
+
+            WalkForwardTuner.patchCalibrationMetrics(metrics, brier, logLoss, ece);
+
+            assertThat(metrics).containsEntry("BRIER", brier)
+                    .containsEntry("LOGLOSS", logLoss)
+                    .containsEntry("LOG_LOSS", logLoss)
+                    .containsEntry("LOG-LOSS", logLoss)
+                    .containsEntry("ECE", ece)
+                    .containsEntry("agreement", numFactory.one());
+        } finally {
+            Locale.setDefault(previousLocale);
+        }
     }
 }

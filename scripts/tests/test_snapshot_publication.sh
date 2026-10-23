@@ -106,6 +106,10 @@ for argument in "$@"; do
 done
 [[ -n "$local_repo" ]] || exit 2
 [[ -s "$pom_file" ]] || exit 2
+[[ "$local_repo" != "$HOME/.m2"* ]] || exit 2
+[[ ! -e "$local_repo/org/ta4j/.fixture-attempt" ]] || exit 2
+mkdir -p "$local_repo/org/ta4j"
+: > "$local_repo/org/ta4j/.fixture-attempt"
 if [[ -n "${STUB_POM_CAPTURE:-}" ]]; then
   cp "$pom_file" "$STUB_POM_CAPTURE"
 fi
@@ -140,20 +144,23 @@ for node in root.iter():
         continue
     values = {local_name(child.tag): (child.text or "").strip() for child in node}
     artifact = values.get("artifactId", "")
-    if artifact in {"ta4j-parent", "ta4j-core", "ta4j-examples"}:
-        dependencies[artifact] = (values.get("version", ""), values.get("type", ""))
+    dependencies[artifact] = (values.get("version", ""), values.get("type", ""))
 
 expected = {
     "ta4j-parent": (os.environ["STUB_PARENT_RESOLVED_VERSION"], "pom"),
     "ta4j-core": (os.environ["STUB_CORE_RESOLVED_VERSION"], ""),
     "ta4j-examples": (os.environ["STUB_EXAMPLES_RESOLVED_VERSION"], ""),
+    "ta4j-data": (os.environ["STUB_DATA_RESOLVED_VERSION"], ""),
+    "ta4j-charting": (os.environ["STUB_CHARTING_RESOLVED_VERSION"], ""),
+    "ta4j-catalog": (os.environ["STUB_CATALOG_RESOLVED_VERSION"], ""),
 }
 if dependencies != expected:
     raise SystemExit(f"unexpected consumer coordinates: {dependencies!r} != {expected!r}")
 PY
 echo "consumer coordinates validated" >&2
+echo "download https://fixture:secret@example.invalid/repository/ ghp_123456789012345678901234567890" >&2
 
-for artifact in ta4j-parent ta4j-core ta4j-examples; do
+for artifact in ta4j-parent ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples; do
   directory="$local_repo/org/ta4j/$artifact/$STUB_VERSION"
   mkdir -p "$directory"
   extension=jar
@@ -164,9 +171,20 @@ for artifact in ta4j-parent ta4j-core ta4j-examples; do
   elif [[ "$artifact" == "ta4j-core" ]]; then
     resolved_version="$STUB_CORE_RESOLVED_VERSION"
     cp "$STUB_CORE_SOURCE" "$directory/$artifact-$resolved_version.jar"
-  else
+  elif [[ "$artifact" == "ta4j-examples" ]]; then
     resolved_version="$STUB_EXAMPLES_RESOLVED_VERSION"
     cp "$STUB_EXAMPLES_SOURCE" "$directory/$artifact-$resolved_version.jar"
+  else
+    case "$artifact" in
+      ta4j-data) resolved_version="$STUB_DATA_RESOLVED_VERSION"; source="$STUB_DATA_SOURCE" ;;
+      ta4j-charting) resolved_version="$STUB_CHARTING_RESOLVED_VERSION"; source="$STUB_CHARTING_SOURCE" ;;
+      ta4j-catalog) resolved_version="$STUB_CATALOG_RESOLVED_VERSION"; source="$STUB_CATALOG_SOURCE" ;;
+    esac
+    if [[ "${STUB_WRONG_RESOLVED_ARTIFACT:-}" == "$artifact" ]]; then
+      cp "$source" "$directory/$artifact-$STUB_VERSION.jar"
+    else
+      cp "$source" "$directory/$artifact-$resolved_version.jar"
+    fi
   fi
   if [[ "${STUB_SKIP_METADATA_ARTIFACT:-}" == "$artifact" ]]; then
     continue
@@ -196,12 +214,25 @@ write_metadata_curl_stub() {
 set -euo pipefail
 
 url=""
+timeout_seconds=""
+previous_argument=""
 for argument in "$@"; do
+  if [[ "$previous_argument" == "--max-time" ]]; then
+    timeout_seconds="$argument"
+  fi
   url="$argument"
+  previous_argument="$argument"
 done
 printf '%s\n' "$url" >> "$STUB_CURL_LOG"
+if [[ -n "${STUB_CLOCK_FILE:-}" ]]; then
+  printf '%s\n' "$timeout_seconds" >> "$STUB_CURL_TIMEOUT_LOG"
+  clock="$(cat "$STUB_CLOCK_FILE")"
+  duration="${STUB_CURL_SECONDS:-0}"
+  (( duration <= timeout_seconds )) || duration="$timeout_seconds"
+  printf '%s\n' "$((clock + duration))" > "$STUB_CLOCK_FILE"
+fi
 artifact=""
-for candidate in ta4j-parent ta4j-core ta4j-examples; do
+for candidate in ta4j-parent ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples; do
   if [[ "$url" == *"/org/ta4j/$candidate/"* ]]; then
     artifact="$candidate"
     break
@@ -212,7 +243,11 @@ if [[ "${STUB_SKIP_METADATA_ARTIFACT:-}" == "$artifact" ]]; then
   echo "metadata unavailable for $artifact" >&2
   exit 22
 fi
-cat "$STUB_METADATA_DIR/$artifact.xml"
+if [[ "${STUB_MALFORMED_METADATA_ARTIFACT:-}" == "$artifact" ]]; then
+  printf '<metadata><versioning>\n'
+else
+  cat "$STUB_METADATA_DIR/$artifact.xml"
+fi
 if [[ "${STUB_METADATA_WRITE_FAILURE_ARTIFACT:-}" == "$artifact" ]]; then
   echo "metadata transport failed after writing $artifact" >&2
   exit 22
@@ -227,6 +262,7 @@ write_consumption_metadata_fixture() {
   local parent_resolved="$3"
   local core_resolved="$4"
   local examples_resolved="$5"
+  local data_resolved="$6" charting_resolved="$7" catalog_resolved="$8"
   mkdir -p "$directory"
   cat > "$directory/ta4j-parent.xml" <<EOF
 <metadata>
@@ -258,14 +294,34 @@ EOF
   </versioning>
 </metadata>
 EOF
+  local artifact resolved
+  for artifact in ta4j-data ta4j-charting ta4j-catalog; do
+    case "$artifact" in
+      ta4j-data) resolved="$data_resolved" ;;
+      ta4j-charting) resolved="$charting_resolved" ;;
+      ta4j-catalog) resolved="$catalog_resolved" ;;
+    esac
+    cat > "$directory/$artifact.xml" <<EOF
+<metadata>
+  <version>${version}</version>
+  <versioning>
+    <snapshotVersions>
+      <snapshotVersion><extension>jar</extension><value>${resolved}</value></snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+</metadata>
+EOF
+  done
 }
 
 prepare_consumption_fixture() {
   local root="$1"
   local version="$2"
-  mkdir -p "$root/ta4j-core/target" "$root/ta4j-examples/target"
-  printf 'published core\n' > "$root/ta4j-core/target/ta4j-core-${version}.jar"
-  printf 'published examples\n' > "$root/ta4j-examples/target/ta4j-examples-${version}.jar"
+  local module
+  for module in ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples; do
+    mkdir -p "$root/$module/target"
+    printf 'published %s\n' "$module" > "$root/$module/target/${module}-${version}.jar"
+  done
 }
 
 run_consumption_fixture() {
@@ -285,17 +341,26 @@ run_consumption_fixture() {
   local parent_resolved="${STUB_METADATA_PARENT_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-2}"
   local core_resolved="${STUB_METADATA_CORE_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-1}"
   local examples_resolved="${STUB_METADATA_EXAMPLES_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-3}"
+  local data_resolved="${STUB_METADATA_DATA_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-4}"
+  local charting_resolved="${STUB_METADATA_CHARTING_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-5}"
+  local catalog_resolved="${STUB_METADATA_CATALOG_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-6}"
   write_metadata_curl_stub "$curl_stub"
-  write_consumption_metadata_fixture "$metadata_dir" "$version" "$parent_resolved" "$core_resolved" "$examples_resolved"
+  write_consumption_metadata_fixture "$metadata_dir" "$version" "$parent_resolved" "$core_resolved" "$examples_resolved" "$data_resolved" "$charting_resolved" "$catalog_resolved"
 
   STUB_VERSION="$version" \
   STUB_PARENT_RESOLVED_VERSION="$parent_resolved" \
   STUB_CORE_RESOLVED_VERSION="$core_resolved" \
   STUB_EXAMPLES_RESOLVED_VERSION="$examples_resolved" \
+  STUB_DATA_RESOLVED_VERSION="$data_resolved" \
+  STUB_CHARTING_RESOLVED_VERSION="$charting_resolved" \
+  STUB_CATALOG_RESOLVED_VERSION="$catalog_resolved" \
   STUB_SUCCESS_ATTEMPT="$success_attempt" \
   STUB_ATTEMPT_FILE="$TMP/maven-attempts.txt" \
   STUB_CORE_SOURCE="$core_source" \
   STUB_EXAMPLES_SOURCE="$examples_source" \
+  STUB_DATA_SOURCE="${STUB_DATA_SOURCE:-$publisher_root/ta4j-data/target/ta4j-data-${version}.jar}" \
+  STUB_CHARTING_SOURCE="${STUB_CHARTING_SOURCE:-$publisher_root/ta4j-charting/target/ta4j-charting-${version}.jar}" \
+  STUB_CATALOG_SOURCE="${STUB_CATALOG_SOURCE:-$publisher_root/ta4j-catalog/target/ta4j-catalog-${version}.jar}" \
   STUB_METADATA_DIR="$metadata_dir" \
   STUB_CURL_LOG="$TMP/curl.log" \
   STUB_POM_CAPTURE="$TMP/consumer.pom" \
@@ -306,7 +371,7 @@ run_consumption_fixture() {
       --repository-url "$repository_url" \
       --publisher-root "$publisher_root" \
       --max-attempts "$max_attempts" \
-      --retry-seconds 0 \
+      --retry-seconds "${STUB_RETRY_SECONDS:-0}" \
       --output "$output" \
       --github-output "$github_output" \
       --log "$log" >/dev/null
@@ -578,9 +643,40 @@ test_snapshot_consumption_immediate_success() {
   expect_output_value "$github_output" "snapshot_consumption_attempts" "1"
   expect_output_value "$github_output" "resolved_core_version" "0.23.1-20260714.120000-1"
   expect_output_value "$github_output" "resolved_examples_version" "0.23.1-20260714.120000-3"
+  expect_output_value "$github_output" "resolved_parent_version" "0.23.1-20260714.120000-2"
+  expect_output_value "$github_output" "resolved_data_version" "0.23.1-20260714.120000-4"
+  expect_output_value "$github_output" "resolved_charting_version" "0.23.1-20260714.120000-5"
+  expect_output_value "$github_output" "resolved_catalog_version" "0.23.1-20260714.120000-6"
   expect_file_contains "$output_file" '"mavenConsumable": true'
   expect_file_contains "$log" "consumer coordinates validated"
-  for artifact in ta4j-parent ta4j-core ta4j-examples; do
+  expect_file_contains "$log" "[REDACTED_URL]"
+  expect_file_contains "$log" "[REDACTED_TOKEN]"
+  if grep -Eq 'fixture:secret|ghp_123456789012345678901234567890' "$log"; then
+    fail "snapshot consumption log should redact credentials"
+  fi
+  if grep -Eq 'ta4j-cli|ta4j-acceleration' "$TMP/consumer.pom" "$TMP/curl.log" "$output_file" "$github_output"; then
+    fail "foundation snapshot consumption should not request or report application/native artifacts"
+  fi
+  python3 - "$output_file" "$publisher_root" "$version" "$github_output" <<'PY'
+import hashlib
+import json
+import pathlib
+import sys
+
+report = json.loads(pathlib.Path(sys.argv[1]).read_text())
+publisher = pathlib.Path(sys.argv[2])
+version = sys.argv[3]
+outputs = dict(line.split("=", 1) for line in pathlib.Path(sys.argv[4]).read_text().splitlines())
+for module, build in (("core", 1), ("examples", 3), ("data", 4), ("charting", 5), ("catalog", 6)):
+    field = module.capitalize()
+    expected = hashlib.sha256((publisher / f"ta4j-{module}/target/ta4j-{module}-{version}.jar").read_bytes()).hexdigest()
+    assert report[f"resolved{field}Version"] == f"{version[:-9]}-20260714.120000-{build}"
+    assert report[f"publisher{field}Sha256"] == expected
+    assert report[f"resolved{field}Sha256"] == expected
+    assert outputs[f"publisher_{module}_sha256"] == expected
+    assert outputs[f"resolved_{module}_sha256"] == expected
+PY
+  for artifact in ta4j-parent ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples; do
     expect_file_contains "$TMP/curl.log" "/org/ta4j/${artifact}/${version}/maven-metadata.xml?cacheBust="
   done
 
@@ -644,29 +740,53 @@ test_snapshot_consumption_retry_exhaustion() {
 test_snapshot_consumption_checksum_mismatch() {
   echo "Running test_snapshot_consumption_checksum_mismatch"
 
-  TMP="$(new_temp_dir)"
-  local version="0.23.1-SNAPSHOT"
-  local publisher_root="$TMP/publisher"
-  local maven_stub="$TMP/mvn-stub"
-  local output_file="$TMP/snapshot-consumption.json"
-  local github_output="$TMP/github-output.txt"
-  local log="$TMP/snapshot-consumption.log"
-  local wrong_core="$TMP/wrong-core.jar"
-  prepare_consumption_fixture "$publisher_root" "$version"
-  write_maven_stub "$maven_stub"
-  printf 'older core\n' > "$wrong_core"
+  local version="0.23.1-SNAPSHOT" module
+  local publisher_root maven_stub output_file github_output log wrong_jar
+  local core_source examples_source data_source charting_source catalog_source
+  for module in core data charting catalog examples; do
+    TMP="$(new_temp_dir)"
+    publisher_root="$TMP/publisher"
+    maven_stub="$TMP/mvn-stub"
+    output_file="$TMP/snapshot-consumption.json"
+    github_output="$TMP/github-output.txt"
+    log="$TMP/snapshot-consumption.log"
+    wrong_jar="$TMP/wrong.jar"
+    prepare_consumption_fixture "$publisher_root" "$version"
+    write_maven_stub "$maven_stub"
+    printf 'older %s\n' "$module" > "$wrong_jar"
+    core_source="$publisher_root/ta4j-core/target/ta4j-core-${version}.jar"
+    examples_source="$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar"
+    data_source="$publisher_root/ta4j-data/target/ta4j-data-${version}.jar"
+    charting_source="$publisher_root/ta4j-charting/target/ta4j-charting-${version}.jar"
+    catalog_source="$publisher_root/ta4j-catalog/target/ta4j-catalog-${version}.jar"
+    case "$module" in
+      core) core_source="$wrong_jar" ;;
+      examples) examples_source="$wrong_jar" ;;
+      data) data_source="$wrong_jar" ;;
+      charting) charting_source="$wrong_jar" ;;
+      catalog) catalog_source="$wrong_jar" ;;
+    esac
 
-  if run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 2 \
-    "$wrong_core" \
-    "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
-    "$output_file" "$github_output" "$log"; then
-    fail "snapshot consumption should reject an older artifact checksum"
-  fi
+    if STUB_DATA_SOURCE="$data_source" STUB_CHARTING_SOURCE="$charting_source" STUB_CATALOG_SOURCE="$catalog_source" \
+      run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
+        "$core_source" "$examples_source" "$output_file" "$github_output" "$log"; then
+      fail "snapshot consumption should reject an older $module artifact checksum"
+    fi
 
-  expect_output_value "$github_output" "maven_consumable" "false"
-  expect_file_contains "$log" "checksum mismatch"
+    expect_output_value "$github_output" "maven_consumable" "false"
+    expect_file_contains "$log" "checksum mismatch"
+    python3 - "$output_file" "$module" <<'PY'
+import json
+import pathlib
+import sys
 
-  rm -rf "$TMP"
+report = json.loads(pathlib.Path(sys.argv[1]).read_text())
+field = sys.argv[2].capitalize()
+assert report[f"resolved{field}Sha256"]
+assert report[f"resolved{field}Sha256"] != report[f"publisher{field}Sha256"]
+PY
+    rm -rf "$TMP"
+  done
   pass "test_snapshot_consumption_checksum_mismatch"
 }
 
@@ -698,6 +818,9 @@ test_snapshot_consumption_clears_checksums_after_later_failure() {
   expect_output_value "$github_output" "maven_consumable" "false"
   expect_output_value "$github_output" "resolved_core_sha256" ""
   expect_output_value "$github_output" "resolved_examples_sha256" ""
+  expect_output_value "$github_output" "resolved_data_sha256" ""
+  expect_output_value "$github_output" "resolved_charting_sha256" ""
+  expect_output_value "$github_output" "resolved_catalog_sha256" ""
 
   rm -rf "$TMP"
   pass "test_snapshot_consumption_clears_checksums_after_later_failure"
@@ -798,33 +921,41 @@ test_snapshot_consumption_skips_metadata_after_transport_failure() {
 test_snapshot_consumption_rejects_wrong_coordinate_base() {
   echo "Running test_snapshot_consumption_rejects_wrong_coordinate_base"
 
-  TMP="$(new_temp_dir)"
-  local version="0.23.1-SNAPSHOT"
-  local publisher_root="$TMP/publisher"
-  local maven_stub="$TMP/mvn-stub"
-  local output_file="$TMP/snapshot-consumption.json"
-  local github_output="$TMP/github-output.txt"
-  local log="$TMP/snapshot-consumption.log"
-  prepare_consumption_fixture "$publisher_root" "$version"
-  write_maven_stub "$maven_stub"
+  local version="0.23.1-SNAPSHOT" module variable
+  local publisher_root maven_stub output_file github_output log
+  for module in core data charting catalog; do
+    TMP="$(new_temp_dir)"
+    publisher_root="$TMP/publisher"
+    maven_stub="$TMP/mvn-stub"
+    output_file="$TMP/snapshot-consumption.json"
+    github_output="$TMP/github-output.txt"
+    log="$TMP/snapshot-consumption.log"
+    prepare_consumption_fixture "$publisher_root" "$version"
+    write_maven_stub "$maven_stub"
+    case "$module" in
+      core) variable=STUB_METADATA_CORE_RESOLVED_VERSION ;;
+      data) variable=STUB_METADATA_DATA_RESOLVED_VERSION ;;
+      charting) variable=STUB_METADATA_CHARTING_RESOLVED_VERSION ;;
+      catalog) variable=STUB_METADATA_CATALOG_RESOLVED_VERSION ;;
+    esac
 
-  export STUB_METADATA_CORE_RESOLVED_VERSION="0.99.1-20260714.120000-7"
-  if run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
-    "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
-    "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
-    "$output_file" "$github_output" "$log"; then
-    unset STUB_METADATA_CORE_RESOLVED_VERSION
-    fail "snapshot consumption should reject a coordinate from a different snapshot base"
-  fi
-  unset STUB_METADATA_CORE_RESOLVED_VERSION
+    export "$variable=0.99.1-20260714.120000-7"
+    if run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
+      "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
+      "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+      "$output_file" "$github_output" "$log"; then
+      fail "snapshot consumption should reject a $module coordinate from a different snapshot base"
+    fi
+    unset "$variable"
 
-  expect_output_value "$github_output" "maven_consumable" "false"
-  expect_file_contains "$log" "does not match requested snapshot base"
-  if [[ -e "$TMP/maven-attempts.txt" ]]; then
-    fail "snapshot consumption should not invoke Maven for a wrong coordinate base"
-  fi
+    expect_output_value "$github_output" "maven_consumable" "false"
+    expect_file_contains "$log" "does not match requested snapshot base"
+    if [[ -e "$TMP/maven-attempts.txt" ]]; then
+      fail "snapshot consumption should not invoke Maven for a wrong coordinate base"
+    fi
 
-  rm -rf "$TMP"
+    rm -rf "$TMP"
+  done
   pass "test_snapshot_consumption_rejects_wrong_coordinate_base"
 }
 
@@ -857,23 +988,28 @@ test_snapshot_consumption_escapes_repository_url_in_pom() {
 test_snapshot_consumption_rejects_missing_publisher_module() {
   echo "Running test_snapshot_consumption_rejects_missing_publisher_module"
 
-  TMP="$(new_temp_dir)"
-  local version="0.23.1-SNAPSHOT"
-  local publisher_root="$TMP/publisher"
-  local maven_stub="$TMP/mvn-stub"
-  prepare_consumption_fixture "$publisher_root" "$version"
-  rm "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar"
-  write_maven_stub "$maven_stub"
+  local version="0.23.1-SNAPSHOT" module publisher_root maven_stub
+  for module in core data charting catalog examples; do
+    TMP="$(new_temp_dir)"
+    publisher_root="$TMP/publisher"
+    maven_stub="$TMP/mvn-stub"
+    prepare_consumption_fixture "$publisher_root" "$version"
+    rm "$publisher_root/ta4j-$module/target/ta4j-${module}-${version}.jar"
+    write_maven_stub "$maven_stub"
 
-  if run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
-    "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
-    "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
-    "$TMP/output.json" "$TMP/github-output.txt" "$TMP/log" 2>"$TMP/error"; then
-    fail "snapshot consumption should reject a missing publisher module"
-  fi
-  expect_file_contains "$TMP/error" "Published examples JAR is missing"
+    if run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
+      "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
+      "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+      "$TMP/output.json" "$TMP/github-output.txt" "$TMP/log" 2>"$TMP/error"; then
+      fail "snapshot consumption should reject a missing $module publisher JAR"
+    fi
+    expect_file_contains "$TMP/error" "Published $module JAR is missing"
+    if [[ -e "$TMP/curl.log" || -e "$TMP/maven-attempts.txt" ]]; then
+      fail "snapshot consumption should reject missing publisher jars before network or Maven calls"
+    fi
 
-  rm -rf "$TMP"
+    rm -rf "$TMP"
+  done
   pass "test_snapshot_consumption_rejects_missing_publisher_module"
 }
 
@@ -921,6 +1057,133 @@ test_snapshot_consumption_rejects_repository_query() {
   pass "test_snapshot_consumption_rejects_repository_query"
 }
 
+test_snapshot_consumption_rejects_malformed_shared_metadata() {
+  echo "Running test_snapshot_consumption_rejects_malformed_shared_metadata"
+
+  TMP="$(new_temp_dir)"
+  local version="0.23.1-SNAPSHOT"
+  local publisher_root="$TMP/publisher" maven_stub="$TMP/mvn-stub"
+  prepare_consumption_fixture "$publisher_root" "$version"
+  write_maven_stub "$maven_stub"
+  if STUB_MALFORMED_METADATA_ARTIFACT=ta4j-catalog \
+    run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 2 \
+      "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
+      "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+      "$TMP/output.json" "$TMP/github-output.txt" "$TMP/log"; then
+    fail "snapshot consumption should reject malformed shared-module metadata"
+  fi
+  expect_output_value "$TMP/github-output.txt" "maven_consumable" "false"
+  expect_output_value "$TMP/github-output.txt" "resolved_catalog_version" ""
+  expect_output_value "$TMP/github-output.txt" "snapshot_consumption_attempts" "2"
+  expect_file_contains "$TMP/log" "ParseError"
+  expect_file_contains "$TMP/log" "missing timestamped parent/core/data/charting/catalog/examples coordinates"
+  if [[ -e "$TMP/maven-attempts.txt" ]]; then
+    fail "snapshot consumption should not invoke Maven for malformed shared-module metadata"
+  fi
+
+  rm -rf "$TMP"
+  pass "test_snapshot_consumption_rejects_malformed_shared_metadata"
+}
+
+test_snapshot_consumption_requires_timestamped_parent() {
+  echo "Running test_snapshot_consumption_requires_timestamped_parent"
+
+  TMP="$(new_temp_dir)"
+  local version="0.23.1-SNAPSHOT"
+  local publisher_root="$TMP/publisher" maven_stub="$TMP/mvn-stub"
+  prepare_consumption_fixture "$publisher_root" "$version"
+  write_maven_stub "$maven_stub"
+  if STUB_METADATA_PARENT_RESOLVED_VERSION="$version" \
+    run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
+      "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
+      "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+      "$TMP/output.json" "$TMP/github-output.txt" "$TMP/log"; then
+    fail "snapshot consumption should require an immutable timestamped parent coordinate"
+  fi
+  expect_output_value "$TMP/github-output.txt" "maven_consumable" "false"
+  expect_output_value "$TMP/github-output.txt" "resolved_parent_version" ""
+  expect_file_contains "$TMP/log" "resolved coordinate is not timestamped"
+  if [[ -e "$TMP/maven-attempts.txt" ]]; then
+    fail "snapshot consumption should not invoke Maven for a mutable parent coordinate"
+  fi
+
+  rm -rf "$TMP"
+  pass "test_snapshot_consumption_requires_timestamped_parent"
+}
+
+test_snapshot_consumption_requires_exact_shared_artifact_files() {
+  echo "Running test_snapshot_consumption_requires_exact_shared_artifact_files"
+
+  local version="0.23.1-SNAPSHOT" module publisher_root maven_stub
+  for module in ta4j-data ta4j-charting ta4j-catalog; do
+    TMP="$(new_temp_dir)"
+    publisher_root="$TMP/publisher"
+    maven_stub="$TMP/mvn-stub"
+    prepare_consumption_fixture "$publisher_root" "$version"
+    write_maven_stub "$maven_stub"
+    if STUB_WRONG_RESOLVED_ARTIFACT="$module" \
+      run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
+        "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
+        "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+        "$TMP/output.json" "$TMP/github-output.txt" "$TMP/log"; then
+      fail "snapshot consumption must not accept a mutable SNAPSHOT filename for $module"
+    fi
+    expect_output_value "$TMP/github-output.txt" "maven_consumable" "false"
+    expect_file_contains "$TMP/log" "resolved snapshot artifacts are missing from the isolated local repository"
+    rm -rf "$TMP"
+  done
+
+  pass "test_snapshot_consumption_requires_exact_shared_artifact_files"
+}
+
+test_snapshot_consumption_bounds_all_module_metadata_by_deadline() {
+  echo "Running test_snapshot_consumption_bounds_all_module_metadata_by_deadline"
+
+  TMP="$(new_temp_dir)"
+  local version="0.23.1-SNAPSHOT"
+  local publisher_root="$TMP/publisher" maven_stub="$TMP/mvn-stub"
+  prepare_consumption_fixture "$publisher_root" "$version"
+  write_maven_stub "$maven_stub"
+  mkdir -p "$TMP/bin"
+  cat > "$TMP/bin/date" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+[[ "$*" == "+%s" ]] || exit 2
+cat "$STUB_CLOCK_FILE"
+EOF
+  chmod +x "$TMP/bin/date"
+  printf '1000\n' > "$TMP/clock"
+  if PATH="$TMP/bin:$PATH" STUB_CLOCK_FILE="$TMP/clock" STUB_CURL_TIMEOUT_LOG="$TMP/timeouts" \
+    STUB_CURL_SECONDS=29 STUB_SKIP_METADATA_ARTIFACT=ta4j-parent \
+    run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 20 \
+      "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
+      "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+      "$TMP/output.json" "$TMP/github-output.txt" "$TMP/log"; then
+    fail "snapshot consumption should fail when fresh metadata uses the full deadline"
+  fi
+  expect_output_value "$TMP/github-output.txt" "maven_consumable" "false"
+  expect_output_value "$TMP/github-output.txt" "snapshot_consumption_attempts" "2"
+  expect_output_value "$TMP/github-output.txt" "snapshot_consumption_elapsed_seconds" "300"
+  expect_file_contains "$TMP/log" "snapshot consumption deadline exhausted after 300 seconds"
+  for module in ta4j-parent ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples; do
+    expect_file_contains "$TMP/curl.log" "/org/ta4j/$module/$version/maven-metadata.xml?cacheBust="
+  done
+  python3 - "$TMP/timeouts" "$TMP/clock" <<'PY'
+import pathlib
+import sys
+
+timeouts = [int(value) for value in pathlib.Path(sys.argv[1]).read_text().splitlines()]
+assert timeouts == [30] * 10 + [10], timeouts
+assert pathlib.Path(sys.argv[2]).read_text().strip() == "1300"
+PY
+  if [[ -e "$TMP/maven-attempts.txt" ]]; then
+    fail "snapshot consumption should not invoke Maven after metadata exhausts the deadline"
+  fi
+
+  rm -rf "$TMP"
+  pass "test_snapshot_consumption_bounds_all_module_metadata_by_deadline"
+}
+
 test_snapshot_version_present
 test_snapshot_exact_artifacts_present
 test_snapshot_missing_exact_artifact_fails
@@ -944,6 +1207,10 @@ test_snapshot_consumption_escapes_repository_url_in_pom
 test_snapshot_consumption_rejects_missing_publisher_module
 test_snapshot_consumption_rejects_release_version
 test_snapshot_consumption_rejects_repository_query
+test_snapshot_consumption_rejects_malformed_shared_metadata
+test_snapshot_consumption_requires_timestamped_parent
+test_snapshot_consumption_requires_exact_shared_artifact_files
+test_snapshot_consumption_bounds_all_module_metadata_by_deadline
 
 echo
 echo "All snapshot publication tests passed."

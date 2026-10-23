@@ -844,11 +844,16 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
         final Future<?> firstMutation = executorService.submit(() -> first.withWriteLock(() -> {
             CoordinatedMutationLockPhases.await(writeLeases);
-            sharedBar.addPrice(numOf(20));
+            // Separate series leases do not serialize writes to their shared bar.
+            synchronized (sharedBar) {
+                sharedBar.addPrice(numOf(20));
+            }
         }));
         final Future<?> secondMutation = executorService.submit(() -> second.withWriteLock(() -> {
             CoordinatedMutationLockPhases.await(writeLeases);
-            sharedBar.addPrice(numOf(30));
+            synchronized (sharedBar) {
+                sharedBar.addPrice(numOf(30));
+            }
         }));
         try {
             firstMutation.get(5, TimeUnit.SECONDS);

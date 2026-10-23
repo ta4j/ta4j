@@ -15,6 +15,7 @@ import ta4jexamples.datasources.json.AdaptiveBarSeriesTypeAdapter;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -127,12 +128,19 @@ public class JsonFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource
         }
         try (FileInputStream fis = new FileInputStream(source)) {
             return loadFromStream(fis);
+        } catch (UncheckedIOException e) {
+            // A local file that exists but fails mid-read is an I/O failure;
+            // preserve that classification instead of masking it as missing.
+            LOG.debug("Unable to read bars from JSON file: {}", source, e);
+            throw e;
         } catch (Exception e) {
             // Try as classpath resource
             InputStream resourceStream = JsonFileBarSeriesDataSource.class.getClassLoader().getResourceAsStream(source);
             if (resourceStream != null) {
                 try (resourceStream) {
                     return loadFromStream(resourceStream);
+                } catch (UncheckedIOException resourceIoFailure) {
+                    throw resourceIoFailure;
                 } catch (Exception resourceException) {
                     LOG.debug("Unable to load bars from classpath resource: {}", source, resourceException);
                     return null;
@@ -163,7 +171,7 @@ public class JsonFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource
             jsonContent = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             LOG.debug("Unable to read from input stream", e);
-            return null;
+            throw new UncheckedIOException("Unable to read bar data from input stream.", e);
         }
 
         // Parse the JSON content from the String

@@ -59,6 +59,8 @@ Then install `actionlint` (e.g., `brew install actionlint`). The hook will autom
 - Use primitives for indicator parameters (e.g., `int timeFrame`). Convert to `Num` inside using `series.numFactory()`.
 - Do not cache `Num` instances globally—always obtain them from the relevant factory.
 
+The data, charting, catalog, and executable-examples modules own their tests and coverage floors. At the ownership split, the former combined examples budget of 51% lines / 44% branches was redistributed as data 81% / 63%, charting 83% / 68%, catalog 80% / 74%, and examples 40% / 34%. Weighted by the moved source, those floors preserve at least 51.41% / 44.69% combined coverage; measured coverage is 52.45% / 45.59%. Raise each owner's floors as its coverage improves rather than comparing executable examples alone with the old combined budget.
+
 ## Indicator contributions
 
 Open an issue to discuss the new indicator first. Every indicator must ship with matching tests:
@@ -71,10 +73,10 @@ Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
 Run tagged suites manually from GitHub Actions, or locally with:
 
 - `xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
-- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags=`
-- `xvfb-run ./mvnw -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags= -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
+- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Djava.awt.headless=false -Dta4j.chart.disableDisplay=false`
+- `xvfb-run ./mvnw -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags= -Djava.awt.headless=false -Dta4j.chart.disableDisplay=false -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
 
-These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or
+These examples match the Linux GitHub Actions runners; the build defaults tests to headless with chart display disabled, so display-dependent suites override both. On macOS, use XQuartz or
 run the Maven command without `xvfb-run` when your local display can satisfy
 UI-dependent tests. On Windows, use WSL2, a CI runner, or an equivalent X server.
 
