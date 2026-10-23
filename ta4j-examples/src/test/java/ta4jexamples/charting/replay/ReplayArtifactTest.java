@@ -885,12 +885,11 @@ class ReplayArtifactTest {
             final int line = firstRulesCandidateLine(lines);
             final JsonObject record = JsonParser.parseString(lines.get(line)).getAsJsonObject();
             final JsonArray pivots = record.getAsJsonArray("pivots");
-            final JsonObject placed = record.getAsJsonArray("candidates")
+            final JsonArray placement = record.getAsJsonArray("candidates")
                     .get(0)
                     .getAsJsonObject()
-                    .getAsJsonArray("placement")
-                    .get(0)
-                    .getAsJsonObject();
+                    .getAsJsonArray("placement");
+            final JsonObject placed = placement.get(0).getAsJsonObject();
             final JsonObject visible = pivots.get(0).getAsJsonObject();
             final String field;
             switch (mutation) {
@@ -901,7 +900,7 @@ class ReplayArtifactTest {
             case "different-visible-index" -> {
                 final JsonObject last = pivots.get(pivots.size() - 1).getAsJsonObject();
                 last.addProperty("index", last.get("index").getAsInt() + 1);
-                field = "placement[5]";
+                field = "placement[" + (placement.size() - 1) + "]";
             }
             case "different-visible-price" -> {
                 visible.addProperty("price", visible.get("price").getAsString() + "1");
@@ -1147,8 +1146,16 @@ class ReplayArtifactTest {
                     lines.set(lines.size() - 1, footer.toString());
                     failedLine = line + 2;
                 } else {
-                    final String previous = lines.get(line - 3);
-                    lines.set(line - 3, lines.get(line));
+                    final ReplayTraceIndex.Family family = ReplayTraceIndex.Family
+                            .of(JsonParser.parseString(lines.get(line)).getAsJsonObject());
+                    int previousLine = line - 1;
+                    while (previousLine > 0 && !family.equals(ReplayTraceIndex.Family
+                            .of(JsonParser.parseString(lines.get(previousLine)).getAsJsonObject()))) {
+                        previousLine--;
+                    }
+                    assertTrue(previousLine > 0, "fixture has no earlier observation in " + family);
+                    final String previous = lines.get(previousLine);
+                    lines.set(previousLine, lines.get(line));
                     lines.set(line, previous);
                     failedLine = line + 1;
                 }
