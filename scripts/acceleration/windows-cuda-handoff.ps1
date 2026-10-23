@@ -20,10 +20,25 @@ foreach ($command in @("nvcc", "nvidia-smi", "cmake", "java")) {
         throw "Required command is unavailable: $command"
     }
 }
-nvcc --version | Select-Object -Last 1
-nvidia-smi --query-gpu=name,driver_version,compute_cap,memory.total --format=csv,noheader | Select-Object -First 1
-cmake --version | Select-Object -First 1
+$nvccOutput = nvcc --version
+if ($LASTEXITCODE -ne 0) {
+    throw "nvcc --version failed with exit code $LASTEXITCODE"
+}
+$nvccOutput | Select-Object -Last 1
+$gpuOutput = nvidia-smi --query-gpu=name,driver_version,compute_cap,memory.total --format=csv,noheader
+if ($LASTEXITCODE -ne 0) {
+    throw "nvidia-smi --query-gpu=name,driver_version,compute_cap,memory.total --format=csv,noheader failed with exit code $LASTEXITCODE"
+}
+$gpuOutput | Select-Object -First 1
+$cmakeOutput = cmake --version
+if ($LASTEXITCODE -ne 0) {
+    throw "cmake --version failed with exit code $LASTEXITCODE"
+}
+$cmakeOutput | Select-Object -First 1
 java -version
+if ($LASTEXITCODE -ne 0) {
+    throw "java -version failed with exit code $LASTEXITCODE"
+}
 
 if ($Action -eq "Preflight") {
     return

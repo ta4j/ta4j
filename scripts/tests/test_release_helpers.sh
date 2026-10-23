@@ -739,13 +739,103 @@ EOF
   pass "test_ai_transport_diagnostics_records_curl_exit_18"
 }
 
+write_release_reactor_pom() {
+  printf '<project xmlns="http://maven.apache.org/POM/4.0.0"><modules>\n' > pom.xml
+  local module
+  for module in "$@"; do
+    printf '<module>%s</module>\n' "$module" >> pom.xml
+  done
+  printf '</modules></project>\n' >> pom.xml
+}
+
+test_default_provider_publication_command_contract() {
+  echo "Running test_default_provider_publication_command_contract"
+  run_test
+
+  # Extract the actual publication commands, then execute only against fake
+  # Maven. No SDK, GPG, repository credentials, network, or Java build is used.
+  python3 - "$ROOT" > publication-commands.sh <<'PY'
+import pathlib
+import shlex
+import sys
+import xml.etree.ElementTree as ET
+
+root = pathlib.Path(sys.argv[1])
+ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+parent = ET.parse(root / "pom.xml").getroot()
+provider = ET.parse(root / "ta4j-acceleration/pom.xml").getroot()
+modules = [node.text for node in parent.findall("./m:modules/m:module", ns)]
+assert "ta4j-acceleration" in modules
+assert provider.findtext("m:packaging", default="jar", namespaces=ns) == "jar"
+assert provider.findtext("m:parent/m:version", namespaces=ns) == parent.findtext("m:version", namespaces=ns)
+assert provider.find("./m:build/m:plugins/m:plugin[m:artifactId='maven-shade-plugin']", ns) is None
+assert parent.find("./m:build/m:plugins/m:plugin[m:artifactId='maven-source-plugin']//m:goal[.='jar-no-fork']", ns) is not None
+assert parent.find("./m:profiles/m:profile[m:id='production-release']//m:plugin[m:artifactId='maven-javadoc-plugin']//m:goal[.='jar']", ns) is not None
+assert parent.find("./m:profiles/m:profile[m:id='sign-snapshots']//m:plugin[m:artifactId='maven-gpg-plugin']", ns) is not None
+shade = provider.find("./m:build/m:pluginManagement/m:plugins/m:plugin[m:artifactId='maven-shade-plugin']", ns)
+assert shade is not None and shade.findtext("m:version", namespaces=ns) == "3.6.1"
+profiles = provider.findall("./m:profiles/m:profile", ns)
+assert {node.findtext("m:id", namespaces=ns) for node in profiles} == {
+    "metal-macos-aarch64", "cuda-linux-x86_64", "cuda-windows-x86_64",
+    "opencl-linux-x86_64", "opencl-linux-aarch64",
+}
+for profile in profiles:
+    assert profile.find("m:activation", ns) is None
+    plugin = profile.find("./m:build/m:plugins/m:plugin[m:artifactId='maven-shade-plugin']", ns)
+    assert plugin is not None and plugin.find("m:version", ns) is None
+    config = plugin.find("./m:executions/m:execution/m:configuration", ns)
+    assert config.findtext("m:createDependencyReducedPom", namespaces=ns) == "false"
+    assert config.findtext("m:shadedArtifactAttached", namespaces=ns) == "true"
+    assert config.findtext("m:shadedClassifierName", namespaces=ns) == "${ta4j.native.classifier}"
+    assert [node.text for node in config.findall("./m:artifactSet/m:includes/m:include", ns)] == ["org.ta4j:ta4j-acceleration"]
+    assert [node.text for node in config.findall("./m:extraJars/m:extraJar", ns)] == ["${ta4j.native.resourceJar}"]
+
+def command_for(workflow, step_name):
+    lines = (root / ".github/workflows" / workflow).read_text().splitlines()
+    start = next(index for index, line in enumerate(lines) if line.strip() == f"- name: {step_name}")
+    end = next((index for index in range(start + 1, len(lines)) if lines[index].startswith("      - name:")), len(lines))
+    commands = [line.strip() for line in lines[start:end] if line.strip().startswith("./mvnw ")]
+    assert len(commands) == 1, (workflow, step_name, commands)
+    return commands[0]
+
+print("set -euo pipefail")
+for workflow, step, expected in (
+    ("publish-release.yml", "Build and validate release artifact manifest", ["-B", "-DskipTests", "-Dgpg.skip=true", "-Pproduction-release", "package"]),
+    ("publish-release.yml", "Deploy Release to Maven Central", ["-B", "-Pproduction-release", "deploy"]),
+    ("snapshot.yml", "Deploy Snapshot", ["-B", "deploy", "-Psign-snapshots"]),
+):
+    command = command_for(workflow, step)
+    assert shlex.split(command.split(" 2>&1", 1)[0]) == ["./mvnw", *expected], command
+    print(command)
+PY
+  cat > mvnw <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >> "$MAVEN_FIXTURE_LOG"
+EOF
+  chmod +x mvnw
+  MAVEN_FIXTURE_LOG="$PWD/maven-commands.txt" bash publication-commands.sh >publication.log
+  cat > expected-commands.txt <<'EOF'
+-B -DskipTests -Dgpg.skip=true -Pproduction-release package
+-B -Pproduction-release deploy
+-B deploy -Psign-snapshots
+EOF
+  if ! cmp -s expected-commands.txt maven-commands.txt; then
+    fail "existing release/snapshot owners must publish the default reactor without activating native profiles"
+  fi
+
+  finish_test
+  pass "test_default_provider_publication_command_contract"
+}
+
 test_artifact_manifest_validates_expected_release_jars() {
   echo "Running test_artifact_manifest_validates_expected_release_jars"
   run_test
 
   local version=1.2.3 module classifier file
+  write_release_reactor_pom ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples ta4j-acceleration
   : > expected-artifacts.txt
-  for module in ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples; do
+  for module in ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples ta4j-acceleration; do
     mkdir -p "$module/target"
     for classifier in "" "-sources" "-javadoc"; do
       file="$module/target/${module}-${version}${classifier}.jar"
@@ -763,8 +853,8 @@ test_artifact_manifest_validates_expected_release_jars() {
   : > ta4j-acceleration/target/native/build/resources.jar
   : > ta4j-data/target/native/build/resources.jar
   bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --github-output outputs.txt --strict >manifest.log
-  expect_file_contains manifest.log "expected=16 missing=0 unexpected=0" \
-    "manifest should require exactly the foundation release jars"
+  expect_file_contains manifest.log "expected=19 missing=0 unexpected=0" \
+    "manifest should require foundation jars and the provider's ordinary main/source/javadoc jars"
   expect_file_contains outputs.txt "missing_count=0" "manifest should report no missing artifacts"
   expect_file_contains outputs.txt "unexpected_count=0" "manifest must ignore nested native build jars"
   awk '
@@ -773,10 +863,10 @@ test_artifact_manifest_validates_expected_release_jars() {
     in_files { print }
   ' outputs.txt | sort > actual-artifacts.txt
   if ! cmp -s expected-sorted.txt actual-artifacts.txt; then
-    fail "release output should contain exactly the five library modules and core tests jar"
+    fail "release output should contain exactly the six reactor modules and core tests jar"
   fi
-  if grep -Eq 'ta4j-cli|ta4j-acceleration|resources.jar' artifact-manifest.txt outputs.txt; then
-    fail "foundation manifest must not publish application or native artifacts"
+  if grep -Eq 'ta4j-cli|resources.jar|-(metal|cuda|opencl)-' artifact-manifest.txt outputs.txt; then
+    fail "default manifest must not publish applications or profile-built native artifacts"
   fi
 
   while IFS= read -r file; do
@@ -795,8 +885,13 @@ test_artifact_manifest_validates_expected_release_jars() {
     "ta4j-charting/target/ta4j-charting-${version}-tests.jar" \
     "ta4j-catalog/target/ta4j-catalog-${version}-tests.jar" \
     "ta4j-cli/target/ta4j-cli-${version}.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}.jar" \
-    "ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar"; do
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-tests.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-9.9.9.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-linux-x86_64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-windows-x86_64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-x86_64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-aarch64.jar"; do
     mkdir -p "$(dirname "$file")"
     : > "$file"
     if bash "$SCRIPT" artifact-manifest --version "$version" --output unexpected-manifest.txt --strict >unexpected.log 2>&1; then
@@ -809,6 +904,53 @@ test_artifact_manifest_validates_expected_release_jars() {
 
   finish_test
   pass "test_artifact_manifest_validates_expected_release_jars"
+}
+
+test_artifact_manifest_uses_selected_release_reactor() {
+  echo "Running test_artifact_manifest_uses_selected_release_reactor"
+  run_test
+
+  local version=1.2.3 module classifier
+  write_release_reactor_pom ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples
+  for module in ta4j-core ta4j-data ta4j-charting ta4j-catalog ta4j-examples; do
+    mkdir -p "$module/target"
+    for classifier in "" "-sources" "-javadoc"; do
+      : > "$module/target/${module}-${version}${classifier}.jar"
+    done
+  done
+  : > "ta4j-core/target/ta4j-core-${version}-tests.jar"
+  # A source directory is not an active producer in a historical tag's reactor.
+  mkdir -p ta4j-acceleration/target
+  printf '<project/>\n' > ta4j-acceleration/pom.xml
+  bash "$SCRIPT" artifact-manifest --version "$version" --output historical-manifest.txt --github-output outputs.txt --strict >manifest.log
+  expect_file_contains manifest.log "expected=16 missing=0 unexpected=0" \
+    "historical tags must retain their five-library release artifact contract"
+  if grep -Fq ta4j-acceleration historical-manifest.txt outputs.txt; then
+    fail "current workflow support must not invent provider artifacts for a historical reactor"
+  fi
+
+  : > "ta4j-acceleration/target/ta4j-acceleration-${version}.jar"
+  if bash "$SCRIPT" artifact-manifest --version "$version" --output stale-manifest.txt --strict >stale.log 2>&1; then
+    fail "an unrelated target jar must not opt a module into the release manifest"
+  fi
+  expect_file_contains stale.log "Unexpected target jars: ta4j-acceleration/target/ta4j-acceleration-${version}.jar" \
+    "strict historical manifest should identify provider output outside its reactor"
+
+  printf '<project>\n' > pom.xml
+  if bash "$SCRIPT" artifact-manifest --version "$version" --output malformed-manifest.txt --strict >malformed.log 2>&1; then
+    fail "malformed reactor metadata must not silently omit provider artifacts"
+  fi
+  expect_file_contains malformed.log "Unable to read release reactor modules from pom.xml" \
+    "manifest should fail closed when its producer contract cannot be read"
+  rm pom.xml
+  if bash "$SCRIPT" artifact-manifest --version "$version" --output missing-pom-manifest.txt --strict >missing-pom.log 2>&1; then
+    fail "manifest must run from the selected release checkout"
+  fi
+  expect_file_contains missing-pom.log "Unable to read release reactor modules from pom.xml" \
+    "a missing checkout POM must not fall back to the workflow support reactor"
+
+  finish_test
+  pass "test_artifact_manifest_uses_selected_release_reactor"
 }
 
 test_javadoc_warning_baseline_rejects_new_warnings() {
@@ -866,7 +1008,9 @@ test_build_ai_request_compacts_oversized_dossier
 test_build_ai_request_includes_release_cadence
 test_last_release_date_uses_annotated_tag_date
 test_ai_transport_diagnostics_records_curl_exit_18
+test_default_provider_publication_command_contract
 test_artifact_manifest_validates_expected_release_jars
+test_artifact_manifest_uses_selected_release_reactor
 test_javadoc_warning_baseline_rejects_new_warnings
 
 echo

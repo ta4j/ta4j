@@ -47,7 +47,7 @@ if ! grep -qi 'cl_khr_fp64' "$CLINFO_FILE"; then
     cat "$CLINFO_FILE" >&2 || true
     exit 1
 fi
-grep -iE 'Platform Name|Device Name|Device Type|cl_khr_fp64' "$CLINFO_FILE" | head -20
+grep -im 20 -E 'Platform Name|Device Name|Device Type|cl_khr_fp64' "$CLINFO_FILE"
 
 LIBRARY="$ROOT/ta4j-acceleration/target/native/opencl-$ARCH/package/META-INF/native/linux-$ARCH/libta4j-opencl-accelerator.so"
 EXCLUDED="requires-cuda,requires-metal,requires-display,requires-headless"

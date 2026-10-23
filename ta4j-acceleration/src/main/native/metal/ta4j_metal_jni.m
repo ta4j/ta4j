@@ -119,8 +119,19 @@ static void initializeMetal(void) {
             initializationFailure = @"metal_device_unavailable";
             return;
         }
+        // Match ShockPathErrorBound's rounded FP32 arithmetic, including precise sqrt.
+        MTLCompileOptions *options = [[MTLCompileOptions alloc] init];
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
+        if (@available(macOS 15.0, *)) {
+            options.mathMode = MTLMathModeSafe;
+            options.mathFloatingPointFunctions = MTLMathFloatingPointFunctionsPrecise;
+        } else
+#endif
+        {
+            options.fastMathEnabled = NO;
+        }
         NSError *error = nil;
-        id<MTLLibrary> library = [device newLibraryWithSource:kernelSource options:nil error:&error];
+        id<MTLLibrary> library = [device newLibraryWithSource:kernelSource options:options error:&error];
         if (library == nil) {
             initializationFailure = [@"metal_library_compile_failed:"
                     stringByAppendingString:error.localizedDescription ?: @"unknown"];
