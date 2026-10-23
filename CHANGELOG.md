@@ -9,6 +9,7 @@
 
 ### Changed
 
+- **Module-owned coverage budgets (`CF-336`)**: Data, charting, catalog, and executable examples now verify their own coverage floors, redistributing the former combined examples budget without reducing its weighted line or branch minimum.
 - **Moving-series guidance for 0.27.0**: the [moving-series continuation example](https://ta4j.github.io/ta4j-wiki/Bar-series-and-bars.html#moving-series-and-continued-indicator-state) and [indicator cache policies](https://ta4j.github.io/ta4j-wiki/Technical-indicators.html#moving-series-cache-policies) explain continued versus fresh indicator state, mutation-aware latest-bar caching and retained-window exceptions in 0.27.0. Later releases extend continuation to additional indicators; consult their changelog entries for those changes.
 - **Leaner `DoubleNum` forecast summaries**: Monte Carlo summaries retain primitive-double sorting for `DoubleNum` samples and skip unused higher moments while keeping moment calculations in `Num` arithmetic and preserving the series' numeric ownership.
 

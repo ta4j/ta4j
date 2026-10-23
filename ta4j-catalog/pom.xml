@@ -10,6 +10,11 @@
     <name>Ta4j Catalog</name>
     <description>Reusable named strategies and rules for ta4j</description>
 
+    <properties>
+        <ta4j.jacoco.line.minimum>0.80</ta4j.jacoco.line.minimum>
+        <ta4j.jacoco.branch.minimum>0.74</ta4j.jacoco.branch.minimum>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.ta4j</groupId>

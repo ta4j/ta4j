@@ -10,6 +10,11 @@
     <name>Ta4j Charting</name>
     <description>Reusable chart composition, display, and storage for ta4j</description>
 
+    <properties>
+        <ta4j.jacoco.line.minimum>0.83</ta4j.jacoco.line.minimum>
+        <ta4j.jacoco.branch.minimum>0.68</ta4j.jacoco.branch.minimum>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.ta4j</groupId>
