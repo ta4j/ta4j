@@ -684,6 +684,47 @@ PY
   pass "test_snapshot_consumption_immediate_success"
 }
 
+test_snapshot_consumption_does_not_claim_optional_native_publication() {
+  echo "Running test_snapshot_consumption_does_not_claim_optional_native_publication"
+
+  TMP="$(new_temp_dir)"
+  local version="0.23.1-SNAPSHOT" classifier
+  local publisher_root="$TMP/publisher" maven_stub="$TMP/mvn-stub"
+  prepare_consumption_fixture "$publisher_root" "$version"
+  write_maven_stub "$maven_stub"
+  mkdir -p "$publisher_root/ta4j-acceleration/target"
+  # Ordinary reactor output and even local profile-built files do not expand
+  # the existing external five-library checksum proof into native evidence.
+  for classifier in "" "-sources" \
+    "-metal-macos-aarch64" "-cuda-linux-x86_64" "-cuda-windows-x86_64" \
+    "-opencl-linux-x86_64" "-opencl-linux-aarch64"; do
+    printf 'unverified local provider %s\n' "$classifier" > \
+      "$publisher_root/ta4j-acceleration/target/ta4j-acceleration-${version}${classifier}.jar"
+  done
+
+  run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
+    "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
+    "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+    "$TMP/output.json" "$TMP/github-output.txt" "$TMP/log"
+
+  expect_output_value "$TMP/github-output.txt" "maven_consumable" "true"
+  expect_file_contains "$TMP/log" "consumer coordinates validated"
+  if grep -Eiq 'ta4j-acceleration|acceleration|metal|cuda|opencl' \
+    "$TMP/consumer.pom" "$TMP/curl.log" "$TMP/output.json" "$TMP/github-output.txt"; then
+    fail "five-library consumption must not claim optional provider/classifier publication"
+  fi
+  python3 - "$TMP/curl.log" <<'PY'
+import pathlib
+import sys
+
+requests = pathlib.Path(sys.argv[1]).read_text().splitlines()
+assert len(requests) == 6, requests
+PY
+
+  rm -rf "$TMP"
+  pass "test_snapshot_consumption_does_not_claim_optional_native_publication"
+}
+
 test_snapshot_consumption_retries_until_success() {
   echo "Running test_snapshot_consumption_retries_until_success"
 
@@ -1195,6 +1236,7 @@ test_non_https_metadata_url_returns_unknown
 test_snapshot_publication_policy_defers_push_runs
 test_snapshot_publication_policy_enforces_snapshot_workflow_runs
 test_snapshot_consumption_immediate_success
+test_snapshot_consumption_does_not_claim_optional_native_publication
 test_snapshot_consumption_retries_until_success
 test_snapshot_consumption_retry_exhaustion
 test_snapshot_consumption_checksum_mismatch
