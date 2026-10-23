@@ -328,7 +328,12 @@ section in `summary.md`. Inspect with
 `ElliottResearch families <runDir> <dataset> [--as-of IDX] [--limit N] [--verdict KEY]`
 (exit 2 when the file is missing, incomplete, corrupt or from another run). The same
 exact integer and footer checks as relations apply to verdicts and their child edges,
-including availability bars, leg indices, composition counts and footer statistics. Runs without
+including availability bars, leg indices, composition counts and footer statistics.
+Stored verdict, candidate, child-edge and composition references require 32-digit
+lowercase-hex keys and matching `key@hash` versions where present; these checks do
+not reconstruct candidate contents absent from the sidecar. Dataset, partition,
+coverage-group, profile, profile-revision and parent-scale labels must be nonblank
+JSON strings; profile revisions remain labels, not hashes. Runs without
 `families` write no `families/` directory, and every other artifact is
 byte-identical apart from the recipe fingerprint that covers the declared
 profiles.

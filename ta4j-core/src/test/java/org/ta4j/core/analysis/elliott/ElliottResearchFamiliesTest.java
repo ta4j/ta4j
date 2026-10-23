@@ -343,6 +343,121 @@ class ElliottResearchFamiliesTest {
     }
 
     @Test
+    public void storedVerdictAndParentIdentitiesRequireConsistentKeysAndVersions() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        for (int line = 1; line < lines.size() - 1; line++) {
+            final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            for (final JsonElement event : frame.getAsJsonArray("events")) {
+                final JsonObject verdict = event.getAsJsonObject().getAsJsonObject("verdict");
+                assertIdentityRejections(lines, line, frame, verdict, "key", "version");
+                assertIdentityRejections(lines, line, frame, verdict, "parentCandidateKey", "parentVersion");
+                return;
+            }
+        }
+        fail("fixture must contain a verdict");
+    }
+
+    @Test
+    public void storedChildEdgeIdentitiesAndOptionalCandidateKeysAreValidated() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        for (int line = 1; line < lines.size() - 1; line++) {
+            final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            for (final JsonElement event : frame.getAsJsonArray("events")) {
+                final JsonObject verdict = event.getAsJsonObject().getAsJsonObject("verdict");
+                for (final JsonElement leg : verdict.getAsJsonArray("legs")) {
+                    for (final JsonElement element : leg.getAsJsonObject().getAsJsonArray("edges")) {
+                        final JsonObject edge = element.getAsJsonObject();
+                        assertIdentityRejections(lines, line, frame, edge, "key", "version");
+                        for (final String invalid : List.of("42", "true", "\"\"", "\"short\"",
+                                "\"" + "A".repeat(32) + "\"", "[]", "{}")) {
+                            edge.add("childCandidateKey", JsonParser.parseString(invalid));
+                            assertFrameRejected(lines, line, frame, "childCandidateKey");
+                        }
+                        edge.add("childCandidateKey", verdict.get("parentCandidateKey"));
+                        lines.set(line, frame.toString());
+                        Files.write(file, lines, StandardCharsets.UTF_8);
+                        assertTrue(ElliottResearchFamilies.read(file, ignored -> {
+                        }).complete());
+                        edge.add("childCandidateKey", JsonParser.parseString("null"));
+                        lines.set(line, frame.toString());
+                        Files.write(file, lines, StandardCharsets.UTF_8);
+                        assertTrue(ElliottResearchFamilies.read(file, ignored -> {
+                        }).complete());
+                        edge.remove("childCandidateKey");
+                        lines.set(line, frame.toString());
+                        Files.write(file, lines, StandardCharsets.UTF_8);
+                        assertTrue(ElliottResearchFamilies.read(file, ignored -> {
+                        }).complete());
+                        return;
+                    }
+                }
+            }
+        }
+        fail("fixture must contain a child edge");
+    }
+
+    @Test
+    public void storedCompositionAndEdgeReferenceKeysMustBeDigests() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        for (int line = 1; line < lines.size() - 1; line++) {
+            final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            for (final JsonElement event : frame.getAsJsonArray("events")) {
+                final JsonObject verdict = event.getAsJsonObject().getAsJsonObject("verdict");
+                for (final JsonElement element : verdict.getAsJsonArray("compositions")) {
+                    final JsonObject composition = element.getAsJsonObject();
+                    final JsonElement originalKey = composition.get("key");
+                    final JsonArray edgeKeys = composition.getAsJsonArray("edgeKeys");
+                    assertFalse(edgeKeys.isEmpty(), "fixture must contain a composition edge reference");
+                    final JsonElement originalEdge = edgeKeys.get(0);
+                    for (final String invalid : List.of("null", "42", "true", "\"\"", "\"short\"",
+                            "\"" + "A".repeat(32) + "\"", "[]", "{}")) {
+                        composition.add("key", JsonParser.parseString(invalid));
+                        assertFrameRejected(lines, line, frame, "key");
+                        composition.add("key", originalKey);
+                        edgeKeys.set(0, JsonParser.parseString(invalid));
+                        assertFrameRejected(lines, line, frame, "edgeKeys");
+                        edgeKeys.set(0, originalEdge);
+                    }
+                    return;
+                }
+            }
+        }
+        fail("fixture must contain a composition");
+    }
+
+    @Test
+    public void frameGroupAndProfileScopeLabelsMustBeNonblankStrings() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        for (int line = 1; line < lines.size() - 1; line++) {
+            final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            for (final JsonElement event : frame.getAsJsonArray("events")) {
+                final JsonObject verdict = event.getAsJsonObject().getAsJsonObject("verdict");
+                final JsonObject coverage = frame.getAsJsonArray("coverage").get(0).getAsJsonObject();
+                for (final JsonObject owner : List.of(frame, coverage, verdict)) {
+                    final List<String> fields = owner == frame ? List.of("dataset", "partition")
+                            : owner == coverage ? List.of("group") : List.of("profile", "profileVersion", "parentScale");
+                    for (final String field : fields) {
+                        final JsonElement original = owner.get(field);
+                        for (final String invalid : List.of("null", "\"\"", "\" \\t\"", "1", "true", "[]", "{}")) {
+                            owner.add(field, JsonParser.parseString(invalid));
+                            assertFrameRejected(lines, line, frame, field);
+                        }
+                        owner.remove(field);
+                        assertFrameRejected(lines, line, frame, field);
+                        owner.add(field, original);
+                    }
+                }
+                lines.set(line, frame.toString());
+                Files.write(file, lines, StandardCharsets.UTF_8);
+                assertTrue(ElliottResearchFamilies.read(file, ignored -> {
+                }).complete());
+                return;
+            }
+        }
+        fail("fixture must contain a verdict");
+    }
+
+    @Test
     public void headerCompositionCapsCannotWrap() throws IOException {
         final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
         final JsonObject header = JsonParser.parseString(lines.get(0)).getAsJsonObject();
@@ -384,6 +499,40 @@ class ElliottResearchFamiliesTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new ElliottResearchFamilies.Families(8, List.of(zigzag, zigzag)));
         assertNotNull(new ElliottResearchFamilies.Families(8, List.of(zigzag)).toJson().get("profiles"));
+    }
+
+    private void assertIdentityRejections(final List<String> lines, final int line, final JsonObject frame,
+            final JsonObject owner, final String keyField, final String versionField) throws IOException {
+        final JsonElement originalKey = owner.get(keyField);
+        final JsonElement originalVersion = owner.get(versionField);
+        for (final String invalid : List.of("null", "42", "true", "\"\"", "\"short\"", "\"" + "A".repeat(32) + "\"",
+                "\"" + "0".repeat(64) + "\"", "[]", "{}")) {
+            owner.add(keyField, JsonParser.parseString(invalid));
+            assertFrameRejected(lines, line, frame, keyField);
+        }
+        owner.remove(keyField);
+        assertFrameRejected(lines, line, frame, keyField);
+        owner.add(keyField, originalKey);
+        final String key = originalKey.getAsString();
+        final String otherKey = (key.charAt(0) == '0' ? "1" : "0") + key.substring(1);
+        for (final String invalid : List.of("null", "42", "true", "\"\"", "\"" + key + "@short\"",
+                "\"" + otherKey + "@" + "0".repeat(32) + "\"", "\"" + key + "@" + "A".repeat(32) + "\"", "[]", "{}")) {
+            owner.add(versionField, JsonParser.parseString(invalid));
+            assertFrameRejected(lines, line, frame, versionField);
+        }
+        owner.remove(versionField);
+        assertFrameRejected(lines, line, frame, versionField);
+        owner.add(versionField, originalVersion);
+    }
+
+    private void assertFrameRejected(final List<String> lines, final int line, final JsonObject frame,
+            final String field) throws IOException {
+        lines.set(line, frame.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        final String message = rejection();
+        final String prefix = file + ": line " + (line + 1) + ": ";
+        assertTrue(message.startsWith(prefix + "malformed frame: " + field + " ")
+                || message.equals(prefix + "frame lacks " + field), message);
     }
 
     private String rejection() {
