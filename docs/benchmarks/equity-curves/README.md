@@ -131,8 +131,10 @@ The corrected per-statement ranking run is pinned to harness revision
 baseline `7adc45bfdf78aae2c07f4008b8bb939eac0aea6b`. Its raw samples and effective
 JVM metadata are `per-statement-ranking.csv` and
 `per-statement-environment.txt`. It ran with `-Dequity.benchmark.rankingOnly=true`
-and the same two warmups / three measured repetitions. The full command is the
-reproduction command above plus that property and the pinned revision value.
+and the same two warmups / three measured repetitions. To reproduce this historical run, use its pinned source revision,
+`-Dequity.benchmark.rankingOnly=true`, two warmups and
+`-Dequity.benchmark.repetitions=3` (the newer balanced harness requires an even
+count).
 The rerun took 20m09s. Initial individual-criterion samples are reused because
 the correction only changes the test-side ranking prototype's retention scope;
 no production criterion or fixture changed. Ranking baseline and candidate
@@ -232,4 +234,41 @@ to `<M2>`/`<WORKTREE>`; newly generated metadata uses `<HOME>`/`<MODULE>`. Only
 paths change: JaCoCo version, other JVM flags, effective heap and numeric samples
 are retained. The original absolute paths are unnecessary for reproduction.
 
-Paired-run results and the resulting go/no-go assessment are pending.
+The balanced run uses harness revision
+`b4ac786f2a5f617c8451c35295b74e754a213e32`, two paired warmups and four paired
+measured repetitions. Its unmodified sample rows are `paired-ranking.csv`;
+`paired-environment.txt` records the effective JVM and ordering policy. It took
+19m49s. All four workloads passed exact score/order equivalence and scope checks.
+Artifact validation confirms 32 rows, chronological positions 1/2 for each pair,
+and equal first/second counts for each operation. No production criterion or
+fixture behavior changed, so the individual-criterion table remains valid at
+its original pinned revision.
+
+**Final Phase-0 decision:** the retained wall-time design threshold is met on
+DoubleNum at 100,000 bars (1.598x); DecimalNum improves 1.432x but remains below
+1.5x. Allocation reductions are 36.79% and 24.48%, below 40% for both factories.
+Proceed to a separate Phase-1 design review with these qualifications. No
+production cache is endorsed or shipped. The four-consumer, immutable-fixture
+and instrumented-JVM limits above continue to apply. Repeat measurements after
+any relevant production/accounting baseline changes. The previous fixed-order
+ratios are superseded for this decision, including the small-workload results.
+
+### Balanced paired ranking
+
+| Factory | Bars | Operation | Median ms | Median allocated MiB |
+| -- | --: | -- | --: | --: |
+| DoubleNumFactory | 1100 | ranking20 | 18.769 | 66.084 |
+| DoubleNumFactory | 1100 | ranking20-shared-drawdowns | 14.688 | 53.846 |
+| DoubleNumFactory | 100000 | ranking20 | 17169.985 | 96496.408 |
+| DoubleNumFactory | 100000 | ranking20-shared-drawdowns | 10742.775 | 60991.640 |
+| DecimalNumFactory | 1100 | ranking20 | 113.183 | 642.523 |
+| DecimalNumFactory | 1100 | ranking20-shared-drawdowns | 105.600 | 609.082 |
+| DecimalNumFactory | 100000 | ranking20 | 83486.288 | 393854.052 |
+| DecimalNumFactory | 100000 | ranking20-shared-drawdowns | 58318.932 | 297424.181 |
+
+| Factory | Bars | Speedup | Allocation reduction |
+| -- | --: | --: | --: |
+| DoubleNumFactory | 1100 | 1.278x | 18.52% |
+| DoubleNumFactory | 100000 | 1.598x | 36.79% |
+| DecimalNumFactory | 1100 | 1.072x | 5.20% |
+| DecimalNumFactory | 100000 | 1.432x | 24.48% |
