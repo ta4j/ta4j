@@ -14,6 +14,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -44,6 +46,28 @@ public class ChandelierExitShortIndicatorTest extends AbstractIndicatorTest<Indi
         data.barBuilder().openPrice(45.58).closePrice(45.55).highPrice(45.61).lowPrice(45.39).add();
         data.barBuilder().openPrice(45.45).closePrice(45.01).highPrice(45.55).lowPrice(44.80).add();
         data.barBuilder().openPrice(45.03).closePrice(44.23).highPrice(45.04).lowPrice(44.17).add();
+    }
+
+    @Test
+    public void primesAtrBeforeTheExitWarmUpReturn() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(4);
+        ChandelierExitShortIndicator indicator = new ChandelierExitShortIndicator(moving, 14, 2);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index <= 20; index++) {
+                moving.barBuilder().closePrice(100).highPrice(103).lowPrice(98).add();
+                Num actual = indicator.getValue(index);
+                if (index < 14) {
+                    assertThat(actual.isNaN()).isTrue();
+                } else {
+                    TestUtils.assertNumEquals(108, actual);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

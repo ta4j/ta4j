@@ -42,23 +42,37 @@ public class KeltnerChannelMiddleIndicator extends CachedIndicator<Num> {
      * @param barCountEMA the bar count for the {@link EMAIndicator}
      */
     public KeltnerChannelMiddleIndicator(Indicator<Num> indicator, int barCountEMA) {
-        super(indicator);
+        this(indicator, barCountEMA, new EMAIndicator(indicator, barCountEMA));
+    }
+
+    private KeltnerChannelMiddleIndicator(Indicator<Num> indicator, int barCountEMA, EMAIndicator emaIndicator) {
+        super(emaIndicator);
         this.indicator = indicator;
         this.barCount = barCountEMA;
-        this.emaIndicator = new EMAIndicator(indicator, barCountEMA);
+        this.emaIndicator = emaIndicator;
     }
 
     @Override
     protected Num calculate(int index) {
+        Num average = emaIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
-        return emaIndicator.getValue(index);
+        return average;
     }
 
     @Override
     public int getCountOfUnstableBars() {
         return indicator.getCountOfUnstableBars() + getBarCount();
+    }
+
+    /**
+     * @return {@code true}, because the EMA retains full-history state
+     * @since 0.27.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     /** @return the bar count of {@link #emaIndicator} */

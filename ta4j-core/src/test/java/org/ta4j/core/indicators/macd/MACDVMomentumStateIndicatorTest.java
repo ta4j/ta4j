@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.NumFactory;
 
@@ -33,6 +34,63 @@ public class MACDVMomentumStateIndicatorTest
     @BeforeEach
     public void setUp() {
         series = buildSeries(120);
+    }
+
+    @Test
+    public void continuouslyClassifiesThroughThePublicEntryPointsOnAShortWindow() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            MACDVMomentumProfile profile = new MACDVMomentumProfile(5, 10, -5, -10);
+            for (boolean weighted : new boolean[] { false, true }) {
+                for (boolean convenience : new boolean[] { false, true }) {
+                    BarSeries bounded = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+                    bounded.setMaximumBarCount(2);
+                    MACDVIndicator volumeWeighted = weighted ? new MACDVIndicator(bounded, 3, 5, 2) : null;
+                    VolatilityNormalizedMACDIndicator normalized = weighted ? null
+                            : new VolatilityNormalizedMACDIndicator(bounded, 3, 5, 2);
+                    MACDVMomentumStateIndicator state = new MACDVMomentumStateIndicator(
+                            weighted ? volumeWeighted : normalized, profile);
+                    double fast = Double.NaN;
+                    double slow = Double.NaN;
+                    for (int index = 0; index < 40; index++) {
+                        int close = 100 + index;
+                        bounded.barBuilder()
+                                .timePeriod(PERIOD)
+                                .endTime(START.plus(PERIOD.multipliedBy(index + 1L)))
+                                .openPrice(close)
+                                .closePrice(close)
+                                .highPrice(close + 1)
+                                .lowPrice(close - 1)
+                                .volume(100)
+                                .add();
+                        if (index == 3) {
+                            fast = close;
+                        } else if (index > 3) {
+                            fast += (close - fast) / 2.0;
+                        }
+                        if (index == 5) {
+                            slow = close;
+                        } else if (index > 5) {
+                            slow += (close - slow) / 3.0;
+                        }
+                        MACDVMomentumState actual = convenience
+                                ? weighted ? volumeWeighted.getMomentumState(index, profile)
+                                        : normalized.getMomentumState(index, profile)
+                                : state.getValue(index);
+                        // Constant volume/ATR weights cancel from the weighted
+                        // averages; the normalized variant additionally scales by 100/TR.
+                        MACDVMomentumState expected = index < state.getCountOfUnstableBars()
+                                ? MACDVMomentumState.UNDEFINED
+                                : profile.classify(numFactory.numOf((fast - slow) * (weighted ? 1 : 50)));
+                        assertThat(actual).as("weighted=%s convenience=%s index=%s", weighted, convenience, index)
+                                .isEqualTo(expected);
+                    }
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

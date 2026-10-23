@@ -11,8 +11,10 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -21,6 +23,28 @@ public class LogReturnIndicatorTest extends AbstractIndicatorTest<LogReturnIndic
 
     public LogReturnIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void startsRecursiveSourceBeforeReturnWarmUpEnds() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(2);
+        LogReturnIndicator returns = new LogReturnIndicator(new EMAIndicator(new ClosePriceIndicator(series), 3));
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index < 20; index++) {
+                series.barBuilder().closePrice(10).add();
+                Num value = returns.getValue(index);
+                if (index < 4) {
+                    assertTrue(value.isNaN());
+                } else {
+                    assertNumEquals(0, value);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

@@ -15,8 +15,10 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -48,6 +50,42 @@ public class ADXIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(22, actualIndicator.getCountOfUnstableBars());
         assertEquals(7.3884, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
+    }
+
+    @Test
+    public void periodFourteenContinuesOnAWindowShorterThanItsDependencyWarmUp() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(4);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        ADXIndicator indicator = new ADXIndicator(moving, 14);
+        ADXIndicator reference = new ADXIndicator(unbounded, 14);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            assertEquals(29, indicator.getCountOfUnstableBars());
+            for (int index = 0; index <= 33; index++) {
+                moving.barBuilder()
+                        .openPrice(100 + index)
+                        .highPrice(103 + index)
+                        .lowPrice(98 + index)
+                        .closePrice(101 + index)
+                        .add();
+                unbounded.barBuilder()
+                        .openPrice(100 + index)
+                        .highPrice(103 + index)
+                        .lowPrice(98 + index)
+                        .closePrice(101 + index)
+                        .add();
+                Num actual = indicator.getValue(index);
+                Num expected = reference.getValue(index);
+                TestUtils.assertNumEquals(expected, actual);
+                if (index >= 29) {
+                    TestUtils.assertNumEquals(100, actual);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Override

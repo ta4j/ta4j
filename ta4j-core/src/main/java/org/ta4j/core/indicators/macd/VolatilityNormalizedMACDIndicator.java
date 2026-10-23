@@ -542,10 +542,11 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public MACDVMomentumState getMomentumState(int index, MACDVMomentumProfile momentumProfile) {
+        Num value = getValue(index);
         if (index < getCountOfUnstableBars()) {
             return MACDVMomentumState.UNDEFINED;
         }
-        return MACDVMomentumState.fromMacdV(getValue(index), momentumProfile);
+        return MACDVMomentumState.fromMacdV(value, momentumProfile);
     }
 
     /**
@@ -646,13 +647,13 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        Num fastValue = getCachedFastEma().getValue(index);
+        Num slowValue = getCachedSlowEma().getValue(index);
+        Num atrValue = getCachedAtrIndicator().getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
 
-        Num fastValue = getCachedFastEma().getValue(index);
-        Num slowValue = getCachedSlowEma().getValue(index);
-        Num atrValue = getCachedAtrIndicator().getValue(index);
         if (Num.isNaNOrNull(fastValue) || Num.isNaNOrNull(slowValue) || Num.isNaNOrNull(atrValue)) {
             return NaN.NaN;
         }
@@ -667,6 +668,30 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
 
         Num macdV = spread.dividedBy(atrValue).multipliedBy(scaleFactor);
         return Num.isNaNOrNull(macdV) ? NaN.NaN : macdV;
+    }
+
+    /**
+     * Retains the historical state consumed by the EMA and ATR branches.
+     *
+     * @return {@code true}
+     * @since 0.27.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
+    }
+
+    /**
+     * Includes the actual lazily constructed averages in head-advance decisions.
+     *
+     * @param firstRetainedIndex the first retained series index
+     * @return the cache floor derived from all three calculated branches
+     * @since 0.27.1
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        return minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex, getCachedFastEma(), getCachedSlowEma(),
+                getCachedAtrIndicator());
     }
 
     @Override
