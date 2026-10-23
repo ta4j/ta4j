@@ -1957,6 +1957,17 @@ final class ElliottResearch {
                 out.println("Support check: adjacent label-set Jaccard mean=" + number(mean) + " from "
                         + Math.max(0, real.scope().size() - 1) + " transitions vs row " + number(row.observed())
                         + " -> match");
+            } else if ("confirmationLagBars".equals(row.metric())) {
+                final ConfirmationLag lag = confirmationLag(real.scope());
+                if (Double.compare(lag.mean(), row.observed()) != 0) {
+                    throw new Diagnostic("trace candidate-pivot confirmation lags do not match the selected comparison "
+                            + "row. Recapture with:\n  "
+                            + ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
+                }
+                out.println("Support check: mean candidate-pivot confirmation lag=" + number(lag.mean()) + " bars from "
+                        + lag.count() + " complete candidate observations vs row " + number(row.observed())
+                        + " -> match");
+                out.println("Supporting as-of indices (" + lag.indices().size() + "): " + limited(lag.indices()));
             } else if (attribution == null) {
                 out.println("Support check: " + row.metric()
                         + " is not attributable to single as-of records; tallies only.");
@@ -1987,6 +1998,12 @@ final class ElliottResearch {
                 out.println("Null member labelStabilityJaccard: adjacent label-set Jaccard mean="
                         + number(stability(nullView.scope())) + " from " + Math.max(0, nullView.scope().size() - 1)
                         + " transitions");
+            } else if ("confirmationLagBars".equals(row.metric())) {
+                final ConfirmationLag lag = confirmationLag(nullView.scope());
+                out.println("Null member confirmationLagBars: mean candidate-pivot confirmation lag="
+                        + number(lag.mean()) + " bars from " + lag.count() + " complete candidate observations");
+                out.println("Null member supporting as-of indices (" + lag.indices().size() + "): "
+                        + limited(lag.indices()));
             }
             final Attribution attribution = attribute(nullView.scope());
             if (attribution != null && attribution.denominator > 0) {
@@ -2237,6 +2254,41 @@ final class ElliottResearch {
             private long denominator;
             private final List<Integer> supportive = new ArrayList<>();
             private final List<Integer> counter = new ArrayList<>();
+        }
+
+        private record ConfirmationLag(double mean, long count, List<Integer> indices) {
+        }
+
+        private static ConfirmationLag confirmationLag(final List<JsonObject> records) {
+            double sum = 0.0d;
+            long count = 0;
+            final List<Integer> indices = new ArrayList<>();
+            for (final JsonObject record : records) {
+                if (!"topology".equals(record.get("kind").getAsString()) || !"complete".equals(status(record))) {
+                    continue;
+                }
+                final JsonArray visible = record.getAsJsonArray("pivots");
+                for (final JsonElement candidate : record.getAsJsonArray("candidates")) {
+                    final JsonArray placement = candidate.getAsJsonObject().getAsJsonArray("placement");
+                    double lag = 0.0d;
+                    int visibleIndex = 0;
+                    for (final JsonElement placed : placement) {
+                        final int pivotIndex = placed.getAsJsonObject().get("index").getAsInt();
+                        while (visible.get(visibleIndex).getAsJsonObject().get("index").getAsInt() < pivotIndex) {
+                            visibleIndex++;
+                        }
+                        final int confirmedAt = visible.get(visibleIndex)
+                                .getAsJsonObject()
+                                .get("confirmationIndex")
+                                .getAsInt();
+                        lag += Math.max(0, confirmedAt - pivotIndex);
+                    }
+                    sum += lag / placement.size();
+                    count++;
+                }
+                indices.add(record.get("asOfIndex").getAsInt());
+            }
+            return new ConfirmationLag(count == 0 ? Double.NaN : sum / count, count, indices);
         }
 
         private static double stability(final List<JsonObject> records) {

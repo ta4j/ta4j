@@ -251,6 +251,11 @@ including topology candidate spans, forming spans, invalidation reasons and empt
 For `labelStabilityJaccard`, inspection recomputes the mean Jaccard similarity of adjacent
 label sets (two empty sets have similarity 1), reports the transition count and verifies
 the observed row rather than presenting only unrelated status tallies.
+For `confirmationLagBars`, inspection uses only complete topology candidates, finds their
+placed pivots in the captured visible pivots and averages each candidate's confirmation
+lags before averaging across candidates, matching the producer's weighting. It verifies
+the observed value, identifies the supporting as-of bars and reports a selected null
+member's own mean separately from the ensemble reference.
 All trace indices and coordinates must fit a signed 32-bit integer; the footer count must
 match exactly without numeric narrowing. When the trace is missing,
 truncated or corrupt, inspection exits with status 2 and prints the recapture

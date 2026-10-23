@@ -1366,6 +1366,79 @@ class ElliottResearchTest {
         }
     }
 
+    @Test
+    public void inspectReconstructsConfirmationLagFromRecordedCandidatePivots() throws Exception {
+        for (final String sectionMode : List.of("h1|topology-only", "h2|topology-only", "h2|all-rules")) {
+            final Result result = launch("inspect", smokeRun.toString(),
+                    "smoke|" + sectionMode + "|fractal-w5|calibration|confirmationLagBars|b20");
+            assertEquals(0, result.code(), result.err());
+            assertTrue(result.out().contains("mean candidate-pivot confirmation lag=5 bars"), result.out());
+            assertTrue(result.out().contains("complete candidate observations vs row 5 -> match"), result.out());
+            assertTrue(result.out().contains("Supporting as-of indices ("), result.out());
+            assertFalse(result.out().contains("not attributable"), result.out());
+        }
+        final Path nullSource = work.resolve("confirmation-lag-null");
+        final Result captured = launch("run", "smoke", "--trace", "selected-null-member", "--block", "20", "--member",
+                "3", "--out", nullSource.toString());
+        assertEquals(0, captured.code(), captured.err());
+        final Result member = launch("inspect", nullSource.toString(),
+                "smoke|h2|topology-only|fractal-w5|calibration|confirmationLagBars|b20");
+        assertEquals(0, member.code(), member.err());
+        assertTrue(
+                member.out().contains("Null member confirmationLagBars: mean candidate-pivot confirmation lag=5 bars"),
+                member.out());
+        assertTrue(member.out().contains("Null member supporting as-of indices ("), member.out());
+
+        final Path copy = work.resolve("confirmation-lag-changed-pivot");
+        copyTree(smokeRun, copy);
+        final String relative = "traces/smoke-real.jsonl";
+        final Path trace = copy.resolve(relative);
+        final List<String> lines = new ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
+        boolean changed = false;
+        for (int i = 1; i < lines.size() - 1; i++) {
+            final JsonObject record = JsonParser.parseString(lines.get(i)).getAsJsonObject();
+            if (!"h2".equals(record.get("section").getAsString())
+                    || !"topology-only".equals(record.get("mode").getAsString())
+                    || !"calibration".equals(record.get("partition").getAsString())
+                    || !"COMPLETE".equals(record.get("status").getAsString())) {
+                continue;
+            }
+            final int index = record.getAsJsonArray("candidates")
+                    .get(0)
+                    .getAsJsonObject()
+                    .getAsJsonArray("placement")
+                    .get(0)
+                    .getAsJsonObject()
+                    .get("index")
+                    .getAsInt();
+            for (final JsonElement element : record.getAsJsonArray("pivots")) {
+                final JsonObject pivot = element.getAsJsonObject();
+                if (pivot.get("index").getAsInt() == index) {
+                    pivot.addProperty("confirmationIndex", pivot.get("confirmationIndex").getAsInt() + 1);
+                    changed = true;
+                    break;
+                }
+            }
+            lines.set(i, record.toString());
+            break;
+        }
+        assertTrue(changed, "the fixture must change a completed candidate's confirmation lag");
+        Files.write(trace, lines, StandardCharsets.UTF_8);
+        final JsonObject run = readJson(copy.resolve("run.json"));
+        run.getAsJsonArray("datasets")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("traceSha256")
+                .addProperty(relative, HexFormat.of()
+                        .formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(trace))));
+        Files.writeString(copy.resolve("run.json"), run.toString());
+        final Result mismatch = launch("inspect", copy.toString(),
+                "smoke|h2|topology-only|fractal-w5|calibration|confirmationLagBars|b20");
+        assertEquals(2, mismatch.code(), mismatch.out() + mismatch.err());
+        assertTrue(mismatch.err().contains("candidate-pivot confirmation lags do not match")
+                && mismatch.err().contains("Recapture with:"), mismatch.err());
+    }
+
     private void assertModeRuleBinding(final Path source, final String traceName, final boolean nullMember)
             throws Exception {
         for (final boolean reorder : List.of(false, true)) {
