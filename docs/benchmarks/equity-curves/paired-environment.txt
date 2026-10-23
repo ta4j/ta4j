@@ -1,0 +1,16 @@
+seed=6342026
+warmups=2
+repetitions=4
+rankingOnly=true
+monteCarloIterations=32
+monteCarloPathBlocks=16
+java=25.0.5
+vm=OpenJDK 64-Bit Server VM
+os=Mac OS X 26.6.2 aarch64
+jvmArgs=[-javaagent:<HOME>/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=<MODULE>/target/jacoco.exec, -XX:+EnableDynamicAgentLoading, -Xshare:off, -Djdk.instrument.traceUsage=false]
+rankingOrder=paired; even repetition: baseline,candidate; odd: candidate,baseline
+warmupOrder=paired alternating in the same way
+started=2026-10-23T12:32:11.179159Z
+sourceRevision=b4ac786f2a5f617c8451c35295b74e754a213e32
+availableProcessors=18
+maxHeapBytes=32178700288

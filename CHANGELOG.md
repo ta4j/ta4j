@@ -2,6 +2,8 @@
 
 ### Added
 
+- **Reproducible equity-curve profiling**: individual performance criteria and weighted statement ranking can be measured with seeded fixtures, exact equivalence checks and recorded timing/allocation samples. See [the experiment procedure](docs/benchmarks/equity-curves/README.md).
+
 - **Hardware-accelerated Monte Carlo backtests (`CF-336`)**: Backtests using `MonteCarloPriceForecastIndicator` can hand simulation to an installed, qualified acceleration provider without changing strategy code. Enable it with `-Dta4j.acceleration.enabled=auto` on any `Num` series. Missing or unsupported providers and provider failures fall back to CPU evaluation; `AccelerationRuntime.lastDiagnostic()` explains the decision. Stale provider batches are discarded and retried at the next decision index. `BacktestExecutor` runs still throw `IllegalStateException` when a bar in their captured window changes. Other indicators can opt in through `KernelIndicator` and `Kernel`, sharing the arithmetic between CPU and provider execution. Native providers and their hardware qualification are delivered separately.
 
 ### Changed

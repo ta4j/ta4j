@@ -54,6 +54,78 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void deterministicRecordsMatchIncrementalCurvesExactly() {
+        for (long seed = EquityCurveTestSupport.SEED; seed < EquityCurveTestSupport.SEED + 4; seed++) {
+            for (ExecutionMatchPolicy policy : List.of(ExecutionMatchPolicy.FIFO, ExecutionMatchPolicy.LIFO,
+                    ExecutionMatchPolicy.AVG_COST)) {
+                for (boolean prune : new boolean[] { false, true }) {
+                    BarSeries series = EquityCurveTestSupport.series(numFactory, 40, seed);
+                    BaseTradingRecord record = EquityCurveTestSupport.record(series, 9, policy, seed);
+                    assertEquals(7, record.getPositions().size());
+                    assertTrue(record.getPositions().getFirst().getEntry().getCost().isPositive(),
+                            "explicit fills must carry the configured linear transaction fee");
+                    assertEquals(policy == ExecutionMatchPolicy.AVG_COST ? 1 : 2, record.getOpenPositions().size());
+                    if (prune) {
+                        series.setMaximumBarCount(34);
+                    }
+                    for (int end : new int[] { 7, series.getEndIndex() - 2, series.getEndIndex() }) {
+                        for (EquityCurveMode mode : EquityCurveMode.values()) {
+                            for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                                assertIncrementalEquivalence(series, record, end, mode, handling,
+                                        "seed=" + seed + ", policy=" + policy + ", prune=" + prune);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static void assertIncrementalEquivalence(BarSeries series, TradingRecord record, int end,
+            EquityCurveMode mode, OpenPositionHandling handling, String context) {
+        // This is the single exhaustive matrix owner for both curves. Select
+        // eligible positions independently, without the production selector.
+        BaseTradingRecord empty = new BaseTradingRecord();
+        CashFlow actualCash = new CashFlow(series, record, end, mode, handling);
+        CashFlow incrementalCash = new CashFlow(series, empty, end, mode, handling);
+        CumulativePnL actualPnl = new CumulativePnL(series, record, end, mode, handling);
+        CumulativePnL incrementalPnl = new CumulativePnL(series, empty, end, mode, handling);
+        List<Position> positions = new ArrayList<>(record.getPositions());
+        boolean includeOpen = mode == EquityCurveMode.MARK_TO_MARKET && handling == OpenPositionHandling.MARK_TO_MARKET;
+        if (includeOpen) {
+            positions.addAll(record.getOpenPositions());
+        }
+        for (Position position : positions) {
+            if (position.getEntry().getIndex() <= end
+                    && (includeOpen || position.isClosed() && position.getExit().getIndex() <= end)) {
+                incrementalCash.calculatePosition(position, end);
+                incrementalPnl.calculatePosition(position, end);
+            }
+        }
+        String details = context + ", end=" + end + ", mode=" + mode + ", handling=" + handling;
+        assertEquals(actualCash.getBeginIndex(), incrementalCash.getBeginIndex(), details);
+        assertEquals(actualCash.getEndIndex(), incrementalCash.getEndIndex(), details);
+        assertEquals(actualCash.stream().toList(), incrementalCash.stream().toList(), details + " cash flow");
+        assertEquals(actualPnl.getBeginIndex(), incrementalPnl.getBeginIndex(), details);
+        assertEquals(actualPnl.getEndIndex(), incrementalPnl.getEndIndex(), details);
+        assertEquals(actualPnl.stream().toList(), incrementalPnl.stream().toList(), details + " cumulative PnL");
+
+        // CashFlow also owns an explicit start-index constructor. Exercise an
+        // interior window independently of the retained series begin index.
+        int start = Math.min(series.getBeginIndex() + 2, end);
+        CashFlow bounded = new CashFlow(series, record, start, end, mode, handling);
+        CashFlow incrementalBounded = new CashFlow(series, empty, start, end, mode, handling);
+        for (Position position : positions) {
+            if (position.getEntry().getIndex() <= end
+                    && (includeOpen || position.isClosed() && position.getExit().getIndex() <= end)) {
+                incrementalBounded.calculatePosition(position, end);
+            }
+        }
+        assertEquals(start, bounded.getBeginIndex(), details);
+        assertEquals(bounded.stream().toList(), incrementalBounded.stream().toList(), details + " bounded cash flow");
+    }
+
+    @Test
     public void capturesRollingWindowUnderOneReadLease() {
         AtomicBoolean appendBeforeLock = new AtomicBoolean();
         ConcurrentBarSeries series = ConstrainedSeriesSupport.rollingSeriesWithAppendBeforeReadLock(numFactory,
