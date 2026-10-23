@@ -328,7 +328,7 @@ section in `summary.md`. Inspect with
 `ElliottResearch families <runDir> <dataset> [--as-of IDX] [--limit N] [--verdict KEY]`
 (exit 2 when the file is missing, incomplete, corrupt or from another run). The same
 exact integer and footer checks as relations apply to verdicts and their child edges,
-including availability bars and composition counts. Runs without
+including availability bars, leg indices, composition counts and footer statistics. Runs without
 `families` write no `families/` directory, and every other artifact is
 byte-identical apart from the recipe fingerprint that covers the declared
 profiles.

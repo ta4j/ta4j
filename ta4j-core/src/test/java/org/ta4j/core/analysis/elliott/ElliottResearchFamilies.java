@@ -324,6 +324,13 @@ final class ElliottResearchFamilies {
         } catch (final IllegalArgumentException e) {
             throw ElliottResearchRelations.corrupt(path, 1, "malformed header: " + e.getMessage());
         }
+        if (meta.footer() != null) {
+            try {
+                ElliottResearchRelations.requireLong(meta.footer(), "truncatedCompositions");
+            } catch (final IllegalArgumentException e) {
+                throw ElliottResearchRelations.corrupt(path, meta.frames() + 2, "malformed footer: " + e.getMessage());
+            }
+        }
         return meta;
     }
 
@@ -355,7 +362,9 @@ final class ElliottResearchFamilies {
                 object.get("lifecycle").getAsString();
                 object.get("reason").getAsString();
                 for (final JsonElement leg : verdict.getAsJsonArray("legs")) {
-                    for (final JsonElement edge : leg.getAsJsonObject().getAsJsonArray("edges")) {
+                    final JsonObject legObject = leg.getAsJsonObject();
+                    ElliottResearchRelations.requireInt(legObject, "leg");
+                    for (final JsonElement edge : legObject.getAsJsonArray("edges")) {
                         final JsonObject edgeObject = edge.getAsJsonObject();
                         ElliottResearchRelations.requireInt(edgeObject, "childPivotCount");
                         ElliottResearchRelations.requireInt(edgeObject, "availableAt");

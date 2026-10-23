@@ -286,6 +286,63 @@ class ElliottResearchFamiliesTest {
     }
 
     @Test
+    public void storedLegIndicesCannotWrapOrCoerce() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        for (int line = 1; line < lines.size() - 1; line++) {
+            final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            for (final JsonElement event : frame.getAsJsonArray("events")) {
+                final JsonArray legs = event.getAsJsonObject().getAsJsonObject("verdict").getAsJsonArray("legs");
+                if (legs.isEmpty()) {
+                    continue;
+                }
+                final JsonObject leg = legs.get(0).getAsJsonObject();
+                final JsonElement original = leg.get("leg");
+                for (final String invalid : List.of("4294967296", "-2147483649", "1.5", "\"1\"", "true", "null", "[]",
+                        "{}")) {
+                    leg.add("leg", JsonParser.parseString(invalid));
+                    lines.set(line, frame.toString());
+                    Files.write(file, lines, StandardCharsets.UTF_8);
+                    final String message = rejection();
+                    assertTrue(message.startsWith(file + ": line " + (line + 1) + ": malformed frame: leg "), message);
+                }
+                leg.add("leg", JsonParser.parseString(original.getAsString() + ".0"));
+                lines.set(line, frame.toString());
+                Files.write(file, lines, StandardCharsets.UTF_8);
+                assertTrue(ElliottResearchFamilies.read(file, ignored -> {
+                }).complete());
+                return;
+            }
+        }
+        fail("fixture must contain a family leg");
+    }
+
+    @Test
+    public void truncatedCompositionTotalsCannotWrapOrCoerce() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        final int line = lines.size() - 1;
+        final JsonObject footer = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+        for (final String invalid : List.of("18446744073709551616", "-9223372036854775809", "1.5", "\"1\"", "true",
+                "null", "[]", "{}")) {
+            footer.add("truncatedCompositions", JsonParser.parseString(invalid));
+            lines.set(line, footer.toString());
+            Files.write(file, lines, StandardCharsets.UTF_8);
+            final String message = rejection();
+            assertTrue(message.startsWith(
+                    file + ": line " + (line + 1) + ": malformed footer: truncatedCompositions "), message);
+        }
+        footer.addProperty("truncatedCompositions", Long.MAX_VALUE);
+        lines.set(line, footer.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        assertEquals(Long.MAX_VALUE, ElliottResearchFamilies.read(file, ignored -> {
+        }).footer().get("truncatedCompositions").getAsLong());
+        footer.add("truncatedCompositions", JsonParser.parseString("5.0"));
+        lines.set(line, footer.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        assertTrue(ElliottResearchFamilies.read(file, ignored -> {
+        }).complete());
+    }
+
+    @Test
     public void headerCompositionCapsCannotWrap() throws IOException {
         final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
         final JsonObject header = JsonParser.parseString(lines.get(0)).getAsJsonObject();
