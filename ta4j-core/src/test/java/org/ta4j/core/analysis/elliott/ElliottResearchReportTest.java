@@ -39,6 +39,8 @@ import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
 class ElliottResearchReportTest {
 
     private static final long SEED = 5_252_026L;
+    private static final List<Metric> RATE_METRICS = List.of(Metric.COMPLETE_OCCUPANCY, Metric.AMBIGUOUS,
+            Metric.NO_MATCH, Metric.EVIDENCE_PASS, Metric.JOINT_PASS);
 
     @Test
     void nullReferenceUsesNearestRankOverFiniteMembersOnly() {
@@ -127,8 +129,9 @@ class ElliottResearchReportTest {
     void csvRoundTripPreservesAvailableUnavailableAndNotComparableRows(@TempDir final Path directory) {
         final List<Row> rows = List.of(
                 new Row("btc,\"daily\"", "BTC", "h2", "all-rules", "CYCLE_5_3", List.of("first", "+second"), "primary",
-                        "kernel-topology+evidence", "holdout", "evidencePassRate", 8, 0.1234567890123d, 3L, 7L, 6, 8, 2,
-                        0.5d, 0.0000123d, 1.0d, 0.1234567890123d - 0.5d, 5.0d / 7.0d, ElliottResearchReport.AVAILABLE),
+                        "kernel-topology+evidence", "holdout", "evidencePassRate", 8, 0.1234567890123d,
+                        1_234_567_890_123L, 10_000_000_000_000L, 6, 8, 2, 0.5d, 0.0000123d, 1.0d,
+                        0.1234567890123d - 0.5d, 5.0d / 7.0d, ElliottResearchReport.AVAILABLE),
                 new Row("btc,\"daily\"", "BTC", "h2", "all-rules", "CYCLE_5_3", List.of("first", "+second"), "primary",
                         "kernel-topology+evidence", "validation", "jointPassRate", 8, Double.NaN, 0L, 0L, 0, 8, 8,
                         Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, ElliottResearchReport.UNAVAILABLE),
@@ -168,6 +171,136 @@ class ElliottResearchReportTest {
         Files.writeString(file, "wrong,header\r\n", StandardCharsets.UTF_8);
         assertTrue(assertThrows(IllegalArgumentException.class, () -> ElliottResearchReport.readCsv(file)).getMessage()
                 .contains(file + ":1"));
+    }
+
+    @Test
+    public void csvRoundTripPreservesRateSupportBoundariesAndNonRateValues(@TempDir final Path directory) {
+        final List<Row> rows = new ArrayList<>();
+        for (final Metric metric : RATE_METRICS) {
+            final Row maximum = supportRow("maximum", metric.id(), 1.0d, Long.MAX_VALUE, Long.MAX_VALUE);
+            assertEquals(Long.MAX_VALUE, maximum.numerator());
+            assertEquals(Long.MAX_VALUE, maximum.denominator());
+            final Row minimumPositive = supportRow("minimum-positive", metric.id(), 1.0d / Long.MAX_VALUE, 1L,
+                    Long.MAX_VALUE);
+            assertTrue(Double.isFinite(minimumPositive.observed()) && minimumPositive.observed() > 0.0d);
+            final Row unavailable = supportRow("unavailable", metric.id(), Double.NaN, 0L, 0L);
+            assertEquals(ElliottResearchReport.UNAVAILABLE, unavailable.availability());
+            rows.addAll(List.of(supportRow("fraction", metric.id(), 1.0d / 3.0d, 1L, 3L),
+                    supportRow("zero", metric.id(), 0.0d, 0L, Long.MAX_VALUE), maximum, minimumPositive,
+                    supportRow("rounded-maximum", metric.id(), (Long.MAX_VALUE - 1) / (double) Long.MAX_VALUE,
+                            Long.MAX_VALUE - 1, Long.MAX_VALUE),
+                    unavailable));
+        }
+        for (final Metric metric : List.of(Metric.CONFIRMATION_LAG, Metric.LABEL_STABILITY)) {
+            rows.add(supportRow("finite", metric.id(), 0.5d, null, null));
+            rows.add(supportRow("unavailable", metric.id(), Double.NaN, null, null));
+        }
+        final Path file = directory.resolve("support-boundaries.csv");
+        ElliottResearchReport.writeCsv(file, rows);
+        assertEquals(rows, ElliottResearchReport.readCsv(file));
+    }
+
+    @Test
+    public void rowRejectsIncoherentSupportForEveryRate() {
+        for (final Metric metric : RATE_METRICS) {
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), 0.5d, null, null));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), 0.5d, null, 2L));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), 0.5d, 1L, null));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), 0.5d, -1L, 2L));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), 0.5d, 1L, -2L));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), 1.5d, 3L, 2L));
+            assertThrows(IllegalArgumentException.class,
+                    () -> supportRow("cal", metric.id(), 1.0d, Long.MAX_VALUE, Long.MAX_VALUE - 1));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), 0.9d, 1L, 2L));
+            assertThrows(IllegalArgumentException.class,
+                    () -> supportRow("cal", metric.id(), Math.nextUp(1.0d / 3.0d), 1L, 3L));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), Double.NaN, 1L, 2L));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), 0.0d, 0L, 0L));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), Double.NaN, 1L, 0L));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), -0.0d, 0L, 2L));
+            assertThrows(IllegalArgumentException.class,
+                    () -> supportRow("cal", metric.id(), Double.POSITIVE_INFINITY, 1L, 2L));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new Row("d", "A", "h2", "all-rules", "MOTIVE_5", List.of("rule"), "p", "kernel-topology",
+                            "cal", metric.id(), 20, 0.9d, 1L, 2L, 1, 1, 0, 0.25d, 0.25d, 0.25d, 0.9d - 0.25d, 0.5d,
+                            ElliottResearchReport.AVAILABLE));
+        }
+    }
+
+    @Test
+    public void rowRejectsUnknownMetricsAndStrayNonRateSupport() {
+        for (final String metric : List.of("unknownMetric", "matchRate", "COMPLETE_OCCUPANCY")) {
+            final IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                    () -> supportRow("cal", metric, 0.5d, null, null));
+            assertTrue(rejected.getMessage().contains("unknown metric"), rejected.getMessage());
+        }
+        assertThrows(IllegalArgumentException.class, () -> supportRow("cal", null, 0.5d, null, null));
+        for (final Metric metric : List.of(Metric.CONFIRMATION_LAG, Metric.LABEL_STABILITY)) {
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), 0.5d, 1L, null));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), 0.5d, null, 2L));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), 0.5d, 1L, 2L));
+            assertThrows(IllegalArgumentException.class, () -> supportRow("cal", metric.id(), Double.NaN, 0L, 0L));
+            assertThrows(IllegalArgumentException.class,
+                    () -> supportRow("cal", metric.id(), Double.NEGATIVE_INFINITY, null, null));
+        }
+    }
+
+    @Test
+    public void readCsvRejectsInvalidSupportAndUnknownMetricsWithRowContext(@TempDir final Path directory)
+            throws IOException {
+        final Row valid = supportRow("cal", "completeOccupancyRate", 0.5d, 1L, 2L);
+        final Path file = directory.resolve("comparisons.csv");
+        ElliottResearchReport.writeCsv(file, List.of(valid));
+        final String[] lines = read(file).split("\\r\\n");
+        final List<String> columns = List.of(lines[0].split(",", -1));
+        final List<Map<String, String>> corruptions = List.of(Map.of("numerator", ""), Map.of("denominator", ""),
+                Map.of("numerator", "-1"), Map.of("denominator", "-1"), Map.of("numerator", "3"),
+                Map.of("denominator", "0"), Map.of("observed", "", "availability", ElliottResearchReport.UNAVAILABLE),
+                Map.of("metric", "matchRate", "key", valid.key().replace("completeOccupancyRate", "matchRate")),
+                Map.of("metric", "confirmationLagBars", "key",
+                        valid.key().replace("completeOccupancyRate", "confirmationLagBars")),
+                Map.of("metric", "labelStabilityJaccard", "key",
+                        valid.key().replace("completeOccupancyRate", "labelStabilityJaccard")));
+        for (final Map<String, String> corruption : corruptions) {
+            final String[] cells = lines[1].split(",", -1);
+            corruption.forEach((column, value) -> cells[columns.indexOf(column)] = value);
+            Files.writeString(file, lines[0] + "\r\n" + String.join(",", cells) + "\r\n", StandardCharsets.UTF_8);
+            final IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                    () -> ElliottResearchReport.readCsv(file), corruption.toString());
+            assertTrue(rejected.getMessage().startsWith(file + ":2: "), rejected.getMessage());
+        }
+    }
+
+    @Test
+    public void readCsvRejectsEveryRateMismatchRegardlessOfNullAvailability(@TempDir final Path directory)
+            throws IOException {
+        final Path file = directory.resolve("comparisons.csv");
+        for (final Metric metric : RATE_METRICS) {
+            final List<Row> rows = List.of(supportRow("cal", metric.id(), 0.5d, 1L, 2L),
+                    new Row("d", "A", "h2", "all-rules", "MOTIVE_5", List.of("rule"), "p", "kernel-topology", "cal",
+                            metric.id(), 20, 0.5d, 1L, 2L, 1, 1, 0, 0.25d, 0.25d, 0.25d, 0.25d, 0.5d,
+                            ElliottResearchReport.AVAILABLE),
+                    new Row("d", "A", "h2", "all-rules", "MOTIVE_5", List.of("rule"), "p", "kernel-topology", "cal",
+                            metric.id(), 20, 0.5d, 1L, 2L, 0, 1, 1, Double.NaN, Double.NaN, Double.NaN, Double.NaN,
+                            Double.NaN, ElliottResearchReport.UNAVAILABLE));
+            for (final Row row : rows) {
+                ElliottResearchReport.writeCsv(file, List.of(row));
+                assertEquals(List.of(row), ElliottResearchReport.readCsv(file));
+                final String[] lines = read(file).split("\\r\\n");
+                final List<String> columns = List.of(lines[0].split(",", -1));
+                final String[] cells = lines[1].split(",", -1);
+                cells[columns.indexOf("observed")] = "0.9";
+                if (ElliottResearchReport.AVAILABLE.equals(row.availability())) {
+                    cells[columns.indexOf("observedMinusNullMedian")] = Double.toString(0.9d - row.nullMedian());
+                }
+                Files.writeString(file, lines[0] + "\r\n" + String.join(",", cells) + "\r\n", StandardCharsets.UTF_8);
+                final IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                        () -> ElliottResearchReport.readCsv(file), row.toString());
+                assertTrue(rejected.getMessage().startsWith(file + ":2: "), rejected.getMessage());
+                assertTrue(rejected.getMessage().contains("observed must equal numerator / denominator"),
+                        rejected.getMessage());
+            }
+        }
     }
 
     @Test
@@ -462,8 +595,16 @@ class ElliottResearchReportTest {
 
     private static Row comparisonRow(final String partition, final double observed, final List<String> activeRules) {
         return new Row("d", "A", "h2", "topology-only", "MOTIVE_5", activeRules, "p", "kernel-topology", partition,
-                "ambiguousRate", -1, observed, null, null, 0, 0, 0, Double.NaN, Double.NaN, Double.NaN, Double.NaN,
-                Double.NaN, ElliottResearchReport.NOT_COMPARABLE);
+                "ambiguousRate", -1, observed, (long) (observed * 4), 4L, 0, 0, 0, Double.NaN, Double.NaN, Double.NaN,
+                Double.NaN, Double.NaN, ElliottResearchReport.NOT_COMPARABLE);
+    }
+
+    private static Row supportRow(final String partition, final String metric, final double observed,
+            final Long numerator, final Long denominator) {
+        return new Row("d", "A", "h2", "all-rules", "MOTIVE_5", List.of("rule"), "p", "kernel-topology", partition,
+                metric, -1, observed, numerator, denominator, 0, 0, 0, Double.NaN, Double.NaN, Double.NaN, Double.NaN,
+                Double.NaN,
+                Double.isFinite(observed) ? ElliottResearchReport.NOT_COMPARABLE : ElliottResearchReport.UNAVAILABLE);
     }
 
     private static NullMemberMetrics member(final int memberIndex, final String partition, final double occupancy) {

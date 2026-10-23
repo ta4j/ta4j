@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -25,6 +26,12 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -244,6 +251,320 @@ class ElliottResearchTest {
     }
 
     @Test
+    public void comparisonInventoryRejectsMissingRowsMetricsModesAndPartitionsBeforeSelection() throws Exception {
+        final List<ElliottResearchReport.Row> rows = ElliottResearchReport.readCsv(smokeRun.resolve("comparisons.csv"));
+        for (final String missing : List.of("one-row", "metric", "mode", "partition", "dataset")) {
+            final Path copy = work.resolve("missing-inventory-" + missing);
+            Files.createDirectories(copy);
+            Files.copy(smokeRun.resolve("run.json"), copy.resolve("run.json"));
+            final List<ElliottResearchReport.Row> retained = new ArrayList<>(rows);
+            retained.removeIf(row -> switch (missing) {
+            case "one-row" -> row.key().equals(rows.getLast().key());
+            case "metric" -> "labelStabilityJaccard".equals(row.metric());
+            case "mode" -> "h2".equals(row.section()) && "+wave2-origin".equals(row.mode());
+            case "partition" -> "holdout".equals(row.partition());
+            default -> "smoke".equals(row.dataset());
+            });
+            assertTrue(retained.size() < rows.size(), missing);
+            writeBoundComparisons(copy, readJson(copy.resolve("run.json")), retained);
+            assertInventoryRejected(copy, OCCUPANCY_KEY, "missing ", rows.size() - retained.size());
+            final Result foreignSelection = launch("inspect", copy.toString(),
+                    OCCUPANCY_KEY.replace("smoke|", "other|"));
+            assertEquals(2, foreignSelection.code(), foreignSelection.err());
+            assertTrue(foreignSelection.err().contains("row-key inventory"), foreignSelection.err());
+            assertFalse(foreignSelection.err().contains("unknown dataset"), foreignSelection.err());
+        }
+    }
+
+    @Test
+    public void comparisonInventoryRejectsInventedCoordinatesEvenWhenAnotherRowIsSelected() throws Exception {
+        final List<ElliottResearchReport.Row> rows = ElliottResearchReport.readCsv(smokeRun.resolve("comparisons.csv"));
+        for (final String coordinate : List.of("dataset", "section", "mode", "detector", "partition", "block")) {
+            final ElliottResearchReport.Row original = "block".equals(coordinate) ? rows.getFirst() : rows.getLast();
+            for (final boolean append : List.of(false, true)) {
+                final Path copy = work.resolve("foreign-inventory-" + coordinate + "-" + append);
+                Files.createDirectories(copy);
+                Files.copy(smokeRun.resolve("run.json"), copy.resolve("run.json"));
+                final List<ElliottResearchReport.Row> mutated = new ArrayList<>(rows);
+                if (!append) {
+                    mutated.remove(original);
+                }
+                mutated.add(new ElliottResearchReport.Row("dataset".equals(coordinate) ? "foreign" : original.dataset(),
+                        original.asset(), "section".equals(coordinate) ? "foreign" : original.section(),
+                        "mode".equals(coordinate) ? "foreign" : original.mode(), original.grammar(),
+                        original.activeRules(), "detector".equals(coordinate) ? "foreign" : original.detector(),
+                        original.policy(), "partition".equals(coordinate) ? "foreign" : original.partition(),
+                        original.metric(), "block".equals(coordinate) ? Integer.MAX_VALUE : original.nullBlockLength(),
+                        original.observed(), original.numerator(), original.denominator(), original.validNullMembers(),
+                        original.requestedNullMembers(), original.unavailableNullMembers(), original.nullMedian(),
+                        original.nullLow(), original.nullHigh(), original.observedMinusNullMedian(),
+                        original.empiricalReferenceRank(), original.availability()));
+                writeBoundComparisons(copy, readJson(copy.resolve("run.json")), mutated);
+                assertInventoryRejected(copy, OCCUPANCY_KEY, "unexpected ", 1);
+                final String diagnostic = launch("inspect", copy.toString(), OCCUPANCY_KEY).err();
+                assertTrue(diagnostic.contains(mutated.getLast().key()), diagnostic);
+                assertTrue(diagnostic.contains("missing " + (append ? 0 : 1) + " key(s)"), diagnostic);
+            }
+        }
+    }
+
+    @Test
+    public void comparisonFamiliesMustMatchRecordedMetadataBeforeSelectingAnotherRow() throws Exception {
+        final List<ElliottResearchReport.Row> rows = ElliottResearchReport.readCsv(smokeRun.resolve("comparisons.csv"));
+        for (final String field : List.of("asset", "grammar", "activeRules", "policy", "requestedNullMembers")) {
+            final Path copy = work.resolve("foreign-family-" + field);
+            Files.createDirectories(copy);
+            Files.copy(smokeRun.resolve("run.json"), copy.resolve("run.json"));
+            final List<ElliottResearchReport.Row> mutated = new ArrayList<>(rows.size());
+            String changedKey = null;
+            for (final ElliottResearchReport.Row row : rows) {
+                final boolean evidenceFamily = "activeRules".equals(field) || "requestedNullMembers".equals(field);
+                final boolean replace = evidenceFamily ? "h2".equals(row.section()) && "all-rules".equals(row.mode())
+                        : "robustness".equals(row.section());
+                if (!replace) {
+                    mutated.add(row);
+                    continue;
+                }
+                changedKey = row.key();
+                mutated.add(new ElliottResearchReport.Row(row.dataset(),
+                        "asset".equals(field) ? "foreign-asset" : row.asset(), row.section(), row.mode(),
+                        "grammar".equals(field) ? "CYCLE_5_3" : row.grammar(),
+                        "activeRules".equals(field) ? row.activeRules().reversed() : row.activeRules(), row.detector(),
+                        "policy".equals(field) ? "kernel-topology" : row.policy(), row.partition(), row.metric(),
+                        row.nullBlockLength(), row.observed(), row.numerator(), row.denominator(),
+                        row.validNullMembers(),
+                        row.requestedNullMembers() + ("requestedNullMembers".equals(field) ? 1 : 0),
+                        row.unavailableNullMembers() + ("requestedNullMembers".equals(field) ? 1 : 0), row.nullMedian(),
+                        row.nullLow(), row.nullHigh(), row.observedMinusNullMedian(), row.empiricalReferenceRank(),
+                        row.availability()));
+            }
+            assertNotNull(changedKey, field);
+            assertFalse(OCCUPANCY_KEY.equals(changedKey), field);
+            writeBoundComparisons(copy, readJson(copy.resolve("run.json")), mutated);
+            Files.writeString(copy.resolve("summary.md"), "keep the existing summary");
+            for (final Result rejected : List.of(launch("summarize", copy.toString()),
+                    launch("inspect", copy.toString(), OCCUPANCY_KEY))) {
+                assertEquals(2, rejected.code(), rejected.out() + rejected.err());
+                assertTrue(rejected.err().contains("comparisons.csv family metadata " + field), rejected.err());
+                assertTrue(rejected.err().contains("run.json's recorded configuration"), rejected.err());
+                assertTrue(rejected.err().contains("rerun the recipe to regenerate"), rejected.err());
+            }
+            assertEquals("keep the existing summary", Files.readString(copy.resolve("summary.md")));
+        }
+    }
+
+    @Test
+    public void frozenInventoryRequiresCompletedDatasetsButNotFailedOrPendingDatasetsOrTraces() throws Exception {
+        final Path runDir = frozenInventoryRun();
+        final JsonObject run = readJson(runDir.resolve("run.json"));
+        final List<ElliottResearchReport.Row> rows = ElliottResearchReport.readCsv(runDir.resolve("comparisons.csv"));
+        final String key = rows.getFirst().key();
+        assertEquals(0, launch("summarize", runDir.toString()).code());
+        final Result noTrace = launch("inspect", runDir.toString(), key);
+        assertEquals(2, noTrace.code(), noTrace.err());
+        assertTrue(noTrace.err().contains("Recapture with:"), noTrace.err());
+        assertFalse(noTrace.err().contains("row-key inventory"), noTrace.err());
+        assertTrue(rows.stream().anyMatch(row -> "classical-all".equals(row.mode())));
+        assertTrue(rows.stream().noneMatch(row -> "all-rules".equals(row.mode())));
+        final JsonObject omitted = run.getAsJsonArray("datasets").get(1).getAsJsonObject();
+        final String omittedId = omitted.get("id").getAsString();
+        final List<ElliottResearchReport.Row> retained = rows.stream()
+                .filter(row -> !omittedId.equals(row.dataset()))
+                .toList();
+        assertTrue(retained.size() < rows.size());
+        writeBoundComparisons(runDir, run, retained);
+        assertInventoryRejected(runDir, key, "missing ", rows.size() - retained.size());
+        final String omittedKey = rows.stream()
+                .filter(row -> omittedId.equals(row.dataset()))
+                .findFirst()
+                .orElseThrow()
+                .key();
+        for (final String status : List.of("failed", "pending")) {
+            run.addProperty("status", "failed".equals(status) ? "partial" : "running");
+            omitted.addProperty("status", status);
+            omitted.addProperty("message", "intentional " + status + " dataset");
+            omitted.getAsJsonObject("coverage").addProperty("status", "failed");
+            omitted.add("report", null);
+            writeBoundComparisons(runDir, run, retained);
+            final Result summary = launch("summarize", runDir.toString());
+            assertEquals(0, summary.code(), summary.err());
+            final Result failedSelection = launch("inspect", runDir.toString(), omittedKey);
+            assertEquals(2, failedSelection.code(), failedSelection.err());
+            assertTrue(failedSelection.err().contains("intentional " + status + " dataset"), failedSelection.err());
+            assertFalse(failedSelection.err().contains("row-key inventory"), failedSelection.err());
+            final Result completeSelection = launch("inspect", runDir.toString(), key);
+            assertEquals(2, completeSelection.code(), completeSelection.err());
+            assertTrue(completeSelection.err().contains("Recapture with:"), completeSelection.err());
+        }
+        run.addProperty("status", "failed");
+        for (final JsonElement element : run.getAsJsonArray("datasets")) {
+            element.getAsJsonObject().addProperty("status", "failed");
+            element.getAsJsonObject().getAsJsonObject("coverage").addProperty("status", "failed");
+        }
+        writeBoundComparisons(runDir, run, List.of());
+        final Result allFailed = launch("summarize", runDir.toString());
+        assertEquals(0, allFailed.code(), allFailed.err());
+        assertTrue(ElliottResearchReport.readCsv(runDir.resolve("comparisons.csv")).isEmpty());
+    }
+
+    @Test
+    public void exploreInventoryPreservesOneRuleEmptyAlternativesAndConfiguredDetectorAndBlockBoundaries()
+            throws Exception {
+        final Path candles = work.resolve("inventory-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 3, date -> true);
+        final JsonObject definition = JsonParser.parseString(toyRecipe("inventory")).getAsJsonObject();
+        definition.add("activeRules", JsonParser.parseString("[\"wave4-nonoverlap\"]"));
+        definition.add("competingModes", new JsonArray());
+        definition.getAsJsonObject("null").add("blockLengths", JsonParser.parseString("[1,10]"));
+        definition.getAsJsonObject("null").addProperty("ensembleSize", 1);
+        final Path recipe = work.resolve("inventory-recipe.json");
+        for (final boolean withRobustness : List.of(false, true)) {
+            definition.add("robustnessDetectors",
+                    JsonParser.parseString(withRobustness
+                            ? "[{\"name\":\"custom-primary\",\"factory\":\"fractal\",\"params\":[3]},"
+                                    + "{\"name\":\"custom-slope\",\"factory\":\"slopeChange\",\"params\":[2]},"
+                                    + "{\"name\":\"custom-prominence\",\"factory\":\"prominence\",\"params\":[]}]"
+                            : "[]"));
+            definition.getAsJsonObject("detector").addProperty("name", "custom-primary");
+            Files.writeString(recipe, definition.toString());
+            final Path out = work.resolve("inventory-explore-" + withRobustness);
+            final Result produced = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                    recipe.toString(), "--out", out.toString());
+            assertEquals(0, produced.code(), produced.err());
+            final List<ElliottResearchReport.Row> rows = ElliottResearchReport.readCsv(out.resolve("comparisons.csv"));
+            assertEquals(withRobustness ? 189 : 144, rows.size());
+            assertTrue(rows.stream().noneMatch(row -> "competing".equals(row.section())));
+            for (final String mode : List.of("+wave4-nonoverlap", "all-rules")) {
+                assertTrue(rows.stream()
+                        .anyMatch(row -> mode.equals(row.mode()) && "evidencePassRate".equals(row.metric())));
+                assertTrue(
+                        rows.stream().anyMatch(row -> mode.equals(row.mode()) && "jointPassRate".equals(row.metric())));
+            }
+            assertTrue(rows.stream()
+                    .filter(row -> "robustness".equals(row.section()))
+                    .allMatch(row -> row.nullBlockLength() == -1));
+            final Result summary = launch("summarize", out.toString());
+            assertEquals(0, summary.code(), summary.err());
+            final Result inspect = launch("inspect", out.toString(), rows.getFirst().key());
+            assertEquals(2, inspect.code(), inspect.err());
+            assertTrue(inspect.err().contains("Recapture with:"), inspect.err());
+            assertFalse(inspect.err().contains("row-key inventory"), inspect.err());
+        }
+    }
+
+    private static void writeBoundComparisons(final Path dir, final JsonObject run,
+            final List<ElliottResearchReport.Row> rows) throws Exception {
+        final Path csv = dir.resolve("comparisons.csv");
+        ElliottResearchReport.writeCsv(csv, rows);
+        run.addProperty("comparisonsSha256",
+                HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(csv))));
+        Files.writeString(dir.resolve("run.json"), run.toString());
+    }
+
+    private static void assertInventoryRejected(final Path dir, final String key, final String countLabel,
+            final int count) throws Exception {
+        Files.writeString(dir.resolve("summary.md"), "keep the existing summary");
+        for (final Result rejected : List.of(launch("summarize", dir.toString()),
+                launch("inspect", dir.toString(), key))) {
+            assertEquals(2, rejected.code(), rejected.out() + rejected.err());
+            assertTrue(rejected.err().contains("comparisons.csv row-key inventory"), rejected.err());
+            assertTrue(rejected.err().contains("run.json's recorded configuration"), rejected.err());
+            assertTrue(rejected.err().contains(countLabel + count + " key(s)"), rejected.err());
+            assertTrue(rejected.err().contains("rerun the recipe to regenerate"), rejected.err());
+        }
+        assertEquals("keep the existing summary", Files.readString(dir.resolve("summary.md")));
+    }
+
+    private Path frozenInventoryRun() throws Exception {
+        final ElliottStudyProtocol protocol = ElliottStudyProtocol.load();
+        final ElliottStudyProtocol.Partitions bounds = protocol.partitions();
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", bounds.calibrationStart(), bounds.calibrationEnd()),
+                        new StudyRunner.Partition("validation", bounds.validationStart(), bounds.validationEnd()),
+                        new StudyRunner.Partition("holdout", bounds.holdoutStart(), bounds.holdoutEnd())),
+                bounds.forbiddenCalibrationStart());
+        final List<DetectorRobustnessMatrix.DetectorSpec> detectors = DetectorRobustnessMatrix.defaults();
+        final DetectorRobustnessMatrix.DetectorSpec primary = detectors.stream()
+                .filter(detector -> protocol.primaryDetector().equals(detector.name()))
+                .findFirst()
+                .orElseThrow();
+        final StudyRunner runner = StudyRunner.frozenPreregistered(primary.factory(),
+                series -> new RSIIndicator(new ClosePriceIndicator(series), protocol.momentumIndicator().barCount()),
+                new StudyRunner.Configuration(partitions, protocol.fingerprintSha256(), protocol.nullEnsemble().seed(),
+                        protocol.nullEnsemble().blockLengths(), protocol.nullEnsemble().ensembleSize(), detectors,
+                        protocol.primaryDetector(), protocol.competingGrammars()),
+                protocol.ablationSet());
+        // One out-of-window bar exercises the frozen producer's full unavailable
+        // inventory without evaluating bundled market histories.
+        final BarSeries series = new BaseBarSeriesBuilder().withName("inventory-boundary").build();
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(bounds.calibrationStart().minusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(1)
+                .highPrice(1)
+                .lowPrice(1)
+                .closePrice(1)
+                .volume(1)
+                .add();
+        final Path dir = Files.createDirectories(work.resolve("frozen-inventory"));
+        Files.createDirectories(dir.resolve("reports"));
+        final JsonObject run = readJson(smokeRun.resolve("run.json"));
+        run.getAsJsonObject("recipe").addProperty("name", "frozen-cf525");
+        run.getAsJsonObject("trace").addProperty("mode", "off");
+        run.getAsJsonObject("identity").addProperty("fingerprint", protocol.fingerprintSha256());
+        final JsonObject configuration = run.getAsJsonObject("configuration");
+        final Gson gson = new Gson();
+        final JsonArray partitionJson = new JsonArray();
+        for (final StudyRunner.Partition partition : partitions.entries()) {
+            final JsonObject entry = new JsonObject();
+            entry.addProperty("name", partition.name());
+            entry.addProperty("start", partition.start().toString());
+            entry.addProperty("end", partition.end().toString());
+            partitionJson.add(entry);
+        }
+        configuration.add("partitions", partitionJson);
+        configuration.addProperty("forbiddenCalibrationStart", bounds.forbiddenCalibrationStart().toString());
+        configuration.add("robustnessDetectors", gson.toJsonTree(protocol.detectorConfigurations()));
+        configuration.add("detector",
+                gson.toJsonTree(protocol.detectorConfigurations()
+                        .stream()
+                        .filter(detector -> protocol.primaryDetector().equals(detector.name()))
+                        .findFirst()
+                        .orElseThrow()));
+        configuration.add("momentum", gson.toJsonTree(protocol.momentumIndicator()));
+        configuration.add("competingModes", gson.toJsonTree(protocol.competingGrammars()));
+        final JsonObject nulls = gson.toJsonTree(protocol.nullEnsemble()).getAsJsonObject();
+        nulls.remove("type");
+        configuration.add("null", nulls);
+        final JsonObject template = run.getAsJsonArray("datasets").get(0).getAsJsonObject();
+        final JsonArray datasets = new JsonArray();
+        final List<ElliottResearchReport.Row> rows = new ArrayList<>();
+        for (final ElliottStudyProtocol.DatasetSpec spec : protocol.datasets()) {
+            final StudyReport report = runner.evaluate(spec.asset(), series, 0, 0);
+            rows.addAll(ElliottResearchReport.comparisons(spec.id(), report));
+            Files.writeString(dir.resolve("reports").resolve(spec.id() + ".json"), report.toJson());
+            final JsonObject dataset = template.deepCopy();
+            dataset.addProperty("id", spec.id());
+            dataset.addProperty("asset", spec.asset());
+            dataset.getAsJsonObject("source").addProperty("generator", "inventory-boundary");
+            dataset.getAsJsonObject("requested").addProperty("from", bounds.calibrationStart().toString());
+            dataset.getAsJsonObject("requested").addProperty("to", bounds.holdoutEnd().toString());
+            dataset.getAsJsonObject("effective").add("from", null);
+            dataset.getAsJsonObject("effective").add("to", null);
+            dataset.addProperty("bars", 0);
+            dataset.getAsJsonObject("coverage").addProperty("status", "partial");
+            dataset.getAsJsonObject("coverage").addProperty("message", "no bars inside the requested window");
+            dataset.addProperty("report", "reports/" + spec.id() + ".json");
+            dataset.add("traces", new JsonArray());
+            dataset.add("traceSha256", new JsonObject());
+            datasets.add(dataset);
+        }
+        run.add("datasets", datasets);
+        writeBoundComparisons(dir, run, rows);
+        return dir;
+    }
+
+    @Test
     public void overwritePreservesExploreInputsUnderManagedPathsIncludingSymlinkAliases() throws Exception {
         final Path source = work.resolve("overwrite-source.json");
         writeCandles(source, LocalDate.of(2020, 1, 1), 366, date -> true);
@@ -393,7 +714,7 @@ class ElliottResearchTest {
         final JsonObject dataset = run.getAsJsonArray("datasets").get(0).getAsJsonObject();
         dataset.addProperty("status", "failed");
         dataset.addProperty("message", "IllegalStateException: boom");
-        Files.writeString(copy.resolve("run.json"), run.toString());
+        writeBoundComparisons(copy, run, List.of());
 
         final Result result = launch("inspect", copy.toString(), OCCUPANCY_KEY);
         assertEquals(2, result.code());
@@ -1547,24 +1868,36 @@ class ElliottResearchTest {
                     valid.out());
             final Path copy = work.resolve("ratio-" + scopeMetric.replace('|', '-'));
             copyTree(smokeRun, copy);
-            for (final String changed : List.of("observed", "numerator", "denominator")) {
+            for (final String changed : List.of("observed-and-support", "proportional-support",
+                    "denominator-and-observed")) {
                 final List<ElliottResearchReport.Row> mutated = new ArrayList<>(rows.size());
                 for (final ElliottResearchReport.Row row : rows) {
                     if (!key.equals(row.key())) {
                         mutated.add(row);
                         continue;
                     }
-                    final double observed = "observed".equals(changed)
-                            ? (Double.isFinite(row.observed()) ? row.observed() : 0.0d) + 0.125d
-                            : row.observed();
-                    final boolean replacedNullReference = "observed".equals(changed) && row.validNullMembers() > 0
-                            && Double.isFinite(observed);
+                    final long numerator;
+                    final long denominator;
+                    if (row.denominator() == 0) {
+                        numerator = "observed-and-support".equals(changed) ? 1 : 0;
+                        denominator = "proportional-support".equals(changed) ? 2 : 1;
+                    } else if ("observed-and-support".equals(changed)) {
+                        numerator = row.numerator().equals(row.denominator()) ? row.numerator() - 1
+                                : row.numerator() + 1;
+                        denominator = row.denominator();
+                    } else if ("proportional-support".equals(changed)) {
+                        numerator = row.numerator() * 2;
+                        denominator = row.denominator() * 2;
+                    } else {
+                        numerator = row.numerator();
+                        denominator = row.denominator() + 1;
+                    }
+                    final double observed = numerator / (double) denominator;
+                    final boolean replacedNullReference = row.validNullMembers() > 0;
                     mutated.add(new ElliottResearchReport.Row(row.dataset(), row.asset(), row.section(), row.mode(),
                             row.grammar(), row.activeRules(), row.detector(), row.policy(), row.partition(),
-                            row.metric(), row.nullBlockLength(), observed,
-                            row.numerator() + ("numerator".equals(changed) ? 1 : 0),
-                            row.denominator() + ("denominator".equals(changed) ? 1 : 0), row.validNullMembers(),
-                            row.requestedNullMembers(), row.unavailableNullMembers(),
+                            row.metric(), row.nullBlockLength(), observed, numerator, denominator,
+                            row.validNullMembers(), row.requestedNullMembers(), row.unavailableNullMembers(),
                             replacedNullReference ? observed : row.nullMedian(),
                             replacedNullReference ? observed : row.nullLow(),
                             replacedNullReference ? observed : row.nullHigh(),

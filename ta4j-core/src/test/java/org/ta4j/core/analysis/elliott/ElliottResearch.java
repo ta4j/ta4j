@@ -39,6 +39,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -360,19 +361,8 @@ final class ElliottResearch {
         StudyRunner runner() {
             final Function<BarSeries, Indicator<Num>> momentum = series -> new RSIIndicator(
                     new ClosePriceIndicator(series), momentumBarCount);
-            final List<RelationshipRule> registered = ClassicalRelationshipRules.classicalRelationships(momentum);
-            final List<RelationshipRule> rules = new ArrayList<>(activeRules.size());
-            for (final String id : activeRules) {
-                for (final RelationshipRule rule : registered) {
-                    if (id.equals(rule.id())) {
-                        rules.add(rule);
-                        break;
-                    }
-                }
-            }
-            if (rules.size() != activeRules.size()) {
-                throw new IllegalArgumentException("activeRules contains an unregistered relationship rule");
-            }
+            final List<RelationshipRule> rules = configuredRules(activeRules,
+                    ClassicalRelationshipRules.classicalRelationships(momentum));
             final List<DetectorRobustnessMatrix.DetectorSpec> specs = robustness.stream()
                     .map(detector -> new DetectorRobustnessMatrix.DetectorSpec(detector.name(), detector.supplier()))
                     .toList();
@@ -437,6 +427,23 @@ final class ElliottResearch {
             json.add("null", nulls);
             return json;
         }
+    }
+
+    private static List<RelationshipRule> configuredRules(final List<String> activeRules,
+            final List<RelationshipRule> registered) {
+        final List<RelationshipRule> rules = new ArrayList<>(activeRules.size());
+        for (final String id : activeRules) {
+            for (final RelationshipRule rule : registered) {
+                if (id.equals(rule.id())) {
+                    rules.add(rule);
+                    break;
+                }
+            }
+        }
+        if (rules.size() != activeRules.size()) {
+            throw new IllegalArgumentException("activeRules contains an unregistered relationship rule");
+        }
+        return rules;
     }
 
     /** Where the run's identity and recapture inputs come from. */
@@ -1732,7 +1739,160 @@ final class ElliottResearch {
             throw new Diagnostic(COMPARISONS_FILE
                     + " SHA-256 differs from run.json; the artifact bundle was modified or mixed, rerun the recipe");
         }
-        return ElliottResearchReport.readCsv(path, bytes);
+        final List<Row> rows = ElliottResearchReport.readCsv(path, bytes);
+        final Map<String, ComparisonFamily> expected;
+        try {
+            expected = expectedComparisonKeys(run);
+        } catch (final IllegalArgumentException | IllegalStateException | NullPointerException e) {
+            throw new Diagnostic(COMPARISONS_FILE + " row-key inventory cannot be derived from run.json: "
+                    + e.getMessage() + "; rerun the recipe to regenerate the artifact bundle");
+        }
+        final Set<String> missing = new TreeSet<>(expected.keySet());
+        final Set<String> unexpected = new TreeSet<>();
+        for (final Row row : rows) {
+            if (!missing.remove(row.key())) {
+                unexpected.add(row.key());
+            }
+        }
+        if (!missing.isEmpty() || !unexpected.isEmpty()) {
+            throw new Diagnostic(
+                    COMPARISONS_FILE + " row-key inventory differs from run.json's recorded configuration: "
+                            + "missing " + missing.size() + " key(s) " + missing.stream().limit(5).toList()
+                            + "; unexpected " + unexpected.size() + " key(s) " + unexpected.stream().limit(5).toList()
+                            + "; rerun the recipe to regenerate the complete artifact bundle");
+        }
+        for (final Row row : rows) {
+            final ComparisonFamily family = expected.get(row.key());
+            final String mismatch = !family.asset().equals(row.asset()) ? "asset"
+                    : !family.grammar().equals(row.grammar()) ? "grammar"
+                            : !family.activeRules().equals(row.activeRules()) ? "activeRules"
+                                    : !family.policy().equals(row.policy()) ? "policy"
+                                            : family.requestedNullMembers() != row.requestedNullMembers()
+                                                    ? "requestedNullMembers"
+                                                    : null;
+            if (mismatch != null) {
+                throw new Diagnostic(COMPARISONS_FILE + " family metadata " + mismatch
+                        + " differs from run.json's recorded configuration for comparison " + row.key()
+                        + "; rerun the recipe to regenerate the artifact bundle");
+            }
+        }
+        return rows;
+    }
+
+    /**
+     * Derives the producer's complete row shape without reading reports or traces.
+     */
+    private static Map<String, ComparisonFamily> expectedComparisonKeys(final JsonObject run) {
+        final JsonObject recipe = objectOf(required(run, "recipe", RUN_FILE), "run.json.recipe");
+        final String recipeName = text(required(recipe, "name", "run.json.recipe"), "run.json.recipe.name");
+        if (!RECIPES.contains(recipeName)) {
+            throw new IllegalArgumentException("unknown recorded recipe '" + recipeName + "'");
+        }
+        final String where = "run.json.configuration";
+        final JsonObject configuration = objectOf(required(run, "configuration", RUN_FILE), where);
+        final List<String> partitions = new ArrayList<>();
+        final JsonArray partitionEntries = arrayOf(required(configuration, "partitions", where), where + ".partitions");
+        for (int index = 0; index < partitionEntries.size(); index++) {
+            final String partitionWhere = where + ".partitions[" + index + "]";
+            final JsonObject partition = objectOf(partitionEntries.get(index), partitionWhere);
+            partitions.add(text(required(partition, "name", partitionWhere), partitionWhere + ".name"));
+        }
+        if (partitions.isEmpty()) {
+            throw new IllegalArgumentException(where + ".partitions must not be empty");
+        }
+        final String primary = detector(required(configuration, "detector", where), where + ".detector").name();
+        final List<String> robustness = new ArrayList<>();
+        final JsonArray detectors = arrayOf(required(configuration, "robustnessDetectors", where),
+                where + ".robustnessDetectors");
+        for (int index = 0; index < detectors.size(); index++) {
+            robustness.add(detector(detectors.get(index), where + ".robustnessDetectors[" + index + "]").name());
+        }
+        final List<String> activeRules = strings(required(configuration, "activeRules", where), where + ".activeRules",
+                RULE_IDS);
+        if (activeRules.isEmpty()) {
+            throw new IllegalArgumentException(where + ".activeRules must not be empty");
+        }
+        final List<RelationshipRule> rules = configuredRules(activeRules,
+                ClassicalRelationshipRules.classicalRelationships());
+        final List<RuleAblation.Mode> modes = RECIPE_FROZEN.equals(recipeName) ? RuleAblation.frozenModes(rules)
+                : RuleAblation.modes(rules);
+        final List<String> competing = strings(required(configuration, "competingModes", where),
+                where + ".competingModes", COMPETING_MODES);
+        final JsonObject nulls = objectOf(required(configuration, "null", where), where + ".null");
+        final List<Integer> blockLengths = new ArrayList<>();
+        final JsonArray blocks = arrayOf(required(nulls, "blockLengths", where + ".null"),
+                where + ".null.blockLengths");
+        for (int index = 0; index < blocks.size(); index++) {
+            final int block = integer(blocks.get(index), where + ".null.blockLengths[" + index + "]");
+            if (block <= 0 || blockLengths.contains(block)) {
+                throw new IllegalArgumentException(where + ".null.blockLengths must contain distinct positive values");
+            }
+            blockLengths.add(block);
+        }
+        if (blockLengths.isEmpty()) {
+            throw new IllegalArgumentException(where + ".null.blockLengths must not be empty");
+        }
+        final int ensembleSize = integer(required(nulls, "ensembleSize", where + ".null"),
+                where + ".null.ensembleSize");
+        if (ensembleSize <= 0) {
+            throw new IllegalArgumentException(where + ".null.ensembleSize must be positive");
+        }
+        final Map<String, ComparisonFamily> expected = new LinkedHashMap<>();
+        final Set<String> datasetIds = new HashSet<>();
+        final JsonArray datasets = arrayOf(required(run, "datasets", RUN_FILE), "run.json.datasets");
+        for (int index = 0; index < datasets.size(); index++) {
+            final String datasetWhere = "run.json.datasets[" + index + "]";
+            final JsonObject dataset = objectOf(datasets.get(index), datasetWhere);
+            final String id = text(required(dataset, "id", datasetWhere), datasetWhere + ".id");
+            if (!datasetIds.add(id)) {
+                throw new IllegalArgumentException("duplicate recorded dataset '" + id + "'");
+            }
+            if (!"complete".equals(text(required(dataset, "status", datasetWhere), datasetWhere + ".status"))) {
+                continue;
+            }
+            final String asset = text(required(dataset, "asset", datasetWhere), datasetWhere + ".asset");
+            addExpectedComparisonKeys(expected, id, "h1", "topology-only", primary, partitions, blockLengths,
+                    new ComparisonFamily(asset, "MOTIVE_5", List.of(), "kernel-topology", ensembleSize));
+            for (final RuleAblation.Mode mode : modes) {
+                addExpectedComparisonKeys(expected, id, "h2", mode.name(), primary, partitions, blockLengths,
+                        new ComparisonFamily(asset, "CYCLE_5_3", mode.ruleIds(),
+                                mode.rules().isEmpty() ? "kernel-topology" : "kernel-topology+evidence", ensembleSize));
+            }
+            for (final String mode : competing) {
+                addExpectedComparisonKeys(expected, id, "competing", "competing-" + mode, primary, partitions,
+                        List.of(-1), new ComparisonFamily(asset, mode, List.of(), "unmatched-recognizer", 0));
+            }
+            for (final String detector : robustness) {
+                addExpectedComparisonKeys(expected, id, "robustness", "topology-only", detector, partitions,
+                        List.of(-1), new ComparisonFamily(asset, "MOTIVE_5", List.of(), "robustness-detector", 0));
+            }
+        }
+        return expected;
+    }
+
+    /** Metadata shared by the metrics of one recorded study mode. */
+    private record ComparisonFamily(String asset, String grammar, List<String> activeRules, String policy,
+            int requestedNullMembers) {
+    }
+
+    private static void addExpectedComparisonKeys(final Map<String, ComparisonFamily> expected, final String dataset,
+            final String section, final String mode, final String detector, final List<String> partitions,
+            final List<Integer> blocks, final ComparisonFamily family) {
+        for (final String partition : partitions) {
+            for (final ElliottResearchReport.Metric metric : ElliottResearchReport.Metric.values()) {
+                if (family.activeRules().isEmpty() && (metric == ElliottResearchReport.Metric.EVIDENCE_PASS
+                        || metric == ElliottResearchReport.Metric.JOINT_PASS)) {
+                    continue;
+                }
+                for (final int block : blocks) {
+                    final String key = new ElliottResearchReport.Key(dataset, section, mode, detector, partition,
+                            metric.id(), block).toString();
+                    if (expected.putIfAbsent(key, family) != null) {
+                        throw new IllegalArgumentException("recorded configuration produces duplicate key " + key);
+                    }
+                }
+            }
+        }
     }
 
     // -------------------------------------------------------------- inspect
@@ -1783,16 +1943,16 @@ final class ElliottResearch {
         }
         final ElliottResearchReport.Key key = ElliottResearchReport.parseKey(keyText);
         final JsonObject run = loadRun(dir);
+        final Path comparisons = resolveInside(dir, COMPARISONS_FILE);
+        final List<Row> rows = Files.isRegularFile(comparisons) ? readVerifiedComparisons(comparisons, run) : null;
         final JsonObject dataset = findDataset(run, key.dataset());
         if (!"complete".equals(dataset.get("status").getAsString())) {
             throw new Diagnostic("dataset '" + key.dataset() + "' is " + dataset.get("status").getAsString() + ": "
                     + dataset.get("message").getAsString() + " (rerun the recipe to recompute it)");
         }
-        final Path comparisons = resolveInside(dir, COMPARISONS_FILE);
-        if (!Files.isRegularFile(comparisons)) {
+        if (rows == null) {
             throw new Diagnostic(COMPARISONS_FILE + " is missing in " + dir + "; rerun the recipe");
         }
-        final List<Row> rows = readVerifiedComparisons(comparisons, run);
         Row row = null;
         for (final Row candidateRow : rows) {
             if (candidateRow.key().equals(key.toString())) {

@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.ta4j.core.analysis.elliott.StudyReport.PartitionMetrics;
 
@@ -51,6 +52,8 @@ final class ElliottResearchReport {
     private static final MathContext DISPLAY_PRECISION = new MathContext(4);
     private static final String EVIDENCE_NOT_CAPTURED = "evidence not captured";
     private static final Set<String> AVAILABILITIES = Set.of(AVAILABLE, UNAVAILABLE, NOT_COMPARABLE);
+    private static final Map<String, Metric> METRICS_BY_ID = Arrays.stream(Metric.values())
+            .collect(Collectors.toUnmodifiableMap(Metric::id, Function.identity()));
     private static final List<String> ROW_HEADER = List.of("key", "dataset", "asset", "section", "mode", "grammar",
             "activeRules", "detector", "policy", "partition", "metric", "nullBlockLength", "observed", "numerator",
             "denominator", "validNullMembers", "requestedNullMembers", "unavailableNullMembers", "nullMedian",
@@ -170,6 +173,27 @@ final class ElliottResearchReport {
                     unavailableNullMembers, nullMedian, nullLow, nullHigh, observedMinusNullMedian,
                     empiricalReferenceRank, availability);
             new Key(dataset, section, mode, detector, partition, metric, nullBlockLength);
+            final Metric definition = METRICS_BY_ID.get(metric);
+            if (definition == null) {
+                throw new IllegalArgumentException("unknown metric: " + metric);
+            }
+            if (definition.numerator == null) {
+                if (numerator != null || denominator != null) {
+                    throw new IllegalArgumentException(
+                            "non-rate metrics must not carry numerator or denominator: " + metric);
+                }
+            } else {
+                if (numerator == null || denominator == null || numerator < 0 || denominator < 0
+                        || numerator > denominator) {
+                    throw new IllegalArgumentException(
+                            "rate metrics require non-null non-negative numerator <= denominator: " + metric);
+                }
+                final double expected = denominator == 0 ? Double.NaN : numerator / (double) denominator;
+                if (Double.compare(observed, expected) != 0) {
+                    throw new IllegalArgumentException(
+                            "observed must equal numerator / denominator for rate metric: " + metric);
+                }
+            }
         }
 
         /** @return stable inspection key of this row */

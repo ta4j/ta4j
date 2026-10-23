@@ -221,6 +221,12 @@ change support. Modified, mixed or older unbound bundles must be regenerated rat
 paired with the recorded provenance.
 Comparison keys must also be unique: repeated keys are rejected even when their other
 cells agree, rather than letting inspection and summary rebuilding select different rows.
+Both commands require the complete comparison-key inventory derived from `run.json`:
+every completed dataset's configured modes, detectors, partitions, applicable metrics and
+null blocks, with no rows for failed or pending datasets. This check is independent of
+trace capture and precedes key selection; missing or invented rows are a corrupt bundle,
+not an unknown-key lookup. Asset, grammar, ordered rules, policy and requested null-member
+count must also match the recorded family configuration.
 Coverage bar totals and effective date bounds include only the configured partitions,
 never the unrequested intervals between them. If every requested partition is empty,
 coverage has zero bars and no effective dates even when the source has other bars.
@@ -232,6 +238,9 @@ nearest-rank quantiles (including shared positions for small ensembles), the obs
 difference, and an empirical rank on the `(valid + 1)` lattice consistent with those quantiles.
 Availability must agree with the observed value, null block and valid-member count;
 undefined observations and all-undefined ensembles remain explicitly unavailable.
+The five rate metrics require nonnegative count support with numerator no greater than
+denominator and an observed value exactly equal to their division. Only `0/0` represents
+an undefined rate; the confirmation-lag and label-stability metrics have no count support.
 `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements. Every observation must match its trace
 header's dataset and null-member coordinates and carry a status defined for its
