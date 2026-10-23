@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis.elliott;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
@@ -14,8 +15,11 @@ import java.nio.channels.OverlappingFileLockException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
@@ -36,6 +40,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -378,10 +383,7 @@ final class ElliottResearch {
         List<RelationshipRule> rules() {
             final Function<BarSeries, Indicator<Num>> momentum = series -> new RSIIndicator(
                     new ClosePriceIndicator(series), momentumBarCount);
-            return ClassicalRelationshipRules.classicalRelationships(momentum)
-                    .stream()
-                    .filter(rule -> activeRules.contains(rule.id()))
-                    .toList();
+            return configuredRules(activeRules, ClassicalRelationshipRules.classicalRelationships(momentum));
         }
 
         StudyRunner runner() {
@@ -478,6 +480,23 @@ final class ElliottResearch {
             }
             return json;
         }
+    }
+
+    private static List<RelationshipRule> configuredRules(final List<String> activeRules,
+            final List<RelationshipRule> registered) {
+        final List<RelationshipRule> rules = new ArrayList<>(activeRules.size());
+        for (final String id : activeRules) {
+            for (final RelationshipRule rule : registered) {
+                if (id.equals(rule.id())) {
+                    rules.add(rule);
+                    break;
+                }
+            }
+        }
+        if (rules.size() != activeRules.size()) {
+            throw new IllegalArgumentException("activeRules contains an unregistered relationship rule");
+        }
+        return rules;
     }
 
     /** Where the run's identity and recapture inputs come from. */
@@ -579,17 +598,14 @@ final class ElliottResearch {
             throw new IllegalArgumentException("recipe.datasetId is " + datasetId.length() + " characters; at most "
                     + MAX_DATASET_ID_LENGTH + " keeps every artifact file name within 255 bytes");
         }
-        final String asset = text(required(root, "asset", "recipe"), "recipe.asset");
-        if ("=+-@\t\r".indexOf(asset.charAt(0)) >= 0) {
-            throw new IllegalArgumentException("recipe.asset must not start with a spreadsheet formula character");
-        }
+        final String asset = csvLabel(required(root, "asset", "recipe"), "recipe.asset");
         final List<StudyRunner.Partition> partitions = new ArrayList<>();
         final JsonArray partitionArray = arrayOf(required(root, "partitions", "recipe"), "recipe.partitions");
         for (int index = 0; index < partitionArray.size(); index++) {
             final String where = "recipe.partitions[" + index + "]";
             final JsonObject entry = objectOf(partitionArray.get(index), where);
             rejectUnknown(entry, where, Set.of("name", "start", "end"));
-            final String name = text(required(entry, "name", where), where + ".name");
+            final String name = csvLabel(required(entry, "name", where), where + ".name");
             ElliottResearchReport.requireKeyPart(name, where + ".name");
             partitions.add(new StudyRunner.Partition(name, date(required(entry, "start", where), where + ".start"),
                     date(required(entry, "end", where), where + ".end")));
@@ -598,8 +614,13 @@ final class ElliottResearch {
         try {
             runnerPartitions = new StudyRunner.Partitions(partitions,
                     date(required(root, "forbiddenCalibrationStart", "recipe"), "recipe.forbiddenCalibrationStart"));
-            runnerPartitions.validation();
-            runnerPartitions.holdout();
+            final StudyRunner.Partition calibration = runnerPartitions.calibration();
+            final StudyRunner.Partition validation = runnerPartitions.validation();
+            final StudyRunner.Partition holdout = runnerPartitions.holdout();
+            if (!calibration.end().isBefore(validation.start()) || !validation.end().isBefore(holdout.start())) {
+                throw new IllegalArgumentException(
+                        "calibration -> validation -> holdout must be in chronological order");
+            }
             runnerPartitions.assertCalibrationConfiguration();
         } catch (final IllegalStateException | IllegalArgumentException e) {
             throw new IllegalArgumentException("recipe.partitions invalid: " + e.getMessage());
@@ -677,7 +698,7 @@ final class ElliottResearch {
                 params.add(integer(array.get(index), where + ".params[" + index + "]"));
             }
         }
-        final String name = text(required(object, "name", where), where + ".name");
+        final String name = csvLabel(required(object, "name", where), where + ".name");
         ElliottResearchReport.requireKeyPart(name, where + ".name");
         return new DetectorRecipe(name, text(required(object, "factory", where), where + ".factory"), params);
     }
@@ -856,6 +877,20 @@ final class ElliottResearch {
             throw new IllegalArgumentException(where + " must be a non-blank string");
         }
         return element.getAsString();
+    }
+
+    private static String csvLabel(final JsonElement element, final String where) {
+        final String value = text(element, where);
+        if ("=+-@\t\r".indexOf(value.charAt(0)) >= 0) {
+            throw new IllegalArgumentException(where + " must not start with a spreadsheet formula character");
+        }
+        for (int i = 0; i < value.length(); i++) {
+            final char character = value.charAt(i);
+            if (Character.isISOControl(character) || character == '\u2028' || character == '\u2029') {
+                throw new IllegalArgumentException(where + " must not contain control characters or line separators");
+            }
+        }
+        return value;
     }
 
     private static int integer(final JsonElement element, final String where) {
@@ -1043,7 +1078,7 @@ final class ElliottResearch {
     /** Holds the shared writer lock until the returned channel closes. */
     private static FileChannel lockRunDirectory(final Path dir) throws IOException {
         final FileChannel channel = FileChannel.open(dir.resolve(LOCK_FILE), StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE);
+                StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS);
         try {
             final FileLock lock;
             try {
@@ -1161,6 +1196,7 @@ final class ElliottResearch {
         private ElliottResearchRelations.Totals relationTotals;
         private String families;
         private ElliottResearchFamilies.Totals familyTotals;
+        private final Map<String, String> traceSha256 = new LinkedHashMap<>();
 
         DatasetEntry(final String id, final String asset, final JsonObject source) {
             this.id = id;
@@ -1198,7 +1234,7 @@ final class ElliottResearch {
         }
 
         void start() throws IOException {
-            writeRunJson();
+            writeRunJson(toJson());
         }
 
         StudyObserver observer(final String id) throws IOException {
@@ -1300,6 +1336,8 @@ final class ElliottResearch {
                 if (real != null) {
                     real.close();
                     entry.traces.add(relative(dir.resolve(realTraceName(id))));
+                    entry.traceSha256.put(relative(dir.resolve(realTraceName(id))),
+                            sha256(dir.resolve(realTraceName(id))));
                 }
                 if (ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER.equals(options.trace())) {
                     final Path file = dir.resolve(nullTraceName(id, options.block(), options.member()));
@@ -1310,12 +1348,13 @@ final class ElliottResearch {
                                 options.member(), trace);
                     }
                     entry.traces.add(relative(file));
+                    entry.traceSha256.put(relative(file), sha256(file));
                 }
                 rows.addAll(ElliottResearchReport.comparisons(id, report));
                 entry.report = relative(reportFile);
                 applyCoverage(entry, series);
                 entry.status = "complete";
-                writeRunJson();
+                writeRunJson(toJson());
             } catch (final IOException | RuntimeException failure) {
                 fail(id, failure);
             }
@@ -1339,15 +1378,15 @@ final class ElliottResearch {
                 if (date.isBefore(from) || date.isAfter(to)) {
                     continue;
                 }
-                first = first == null || date.isBefore(first) ? date : first;
-                last = last == null || date.isAfter(last) ? date : last;
-                count++;
-                final Duration tolerance = bar.getTimePeriod().multipliedBy(INTERNAL_GAP_BAR_PERIODS);
                 for (int partition = 0; partition < partitions.size(); partition++) {
                     final StudyRunner.Partition window = partitions.get(partition);
                     if (!window.contains(date)) {
                         continue;
                     }
+                    first = first == null || date.isBefore(first) ? date : first;
+                    last = last == null || date.isAfter(last) ? date : last;
+                    count++;
+                    final Duration tolerance = bar.getTimePeriod().multipliedBy(INTERNAL_GAP_BAR_PERIODS);
                     if (firstObserved[partition] == null) {
                         firstObserved[partition] = bar;
                     }
@@ -1364,6 +1403,7 @@ final class ElliottResearch {
                         }
                     }
                     previous[partition] = bar;
+                    break;
                 }
             }
             entry.effectiveFrom = first;
@@ -1438,6 +1478,7 @@ final class ElliottResearch {
             }
             rows.removeIf(row -> row.dataset().equals(id));
             entry.traces.clear();
+            entry.traceSha256.clear();
             entry.report = null;
             entry.relations = null;
             entry.relationTotals = null;
@@ -1451,7 +1492,7 @@ final class ElliottResearch {
             entry.coverageStatus = "failed";
             entry.coverageMessage = entry.message;
             try {
-                writeRunJson();
+                writeRunJson(toJson());
             } catch (final IOException e) {
                 throw new UncheckedIOException(e);
             }
@@ -1464,12 +1505,16 @@ final class ElliottResearch {
             final JsonObject json = toJson();
             json.addProperty("comparisonsSha256", sha256(Files.readAllBytes(dir.resolve(COMPARISONS_FILE))));
             ElliottResearchReport.writeCoverage(dir.resolve(COVERAGE_FILE), coverage(json));
-            Files.writeString(dir.resolve(RUN_FILE), GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
+            writeRunJson(json);
             writeSummary(dir, renderSummary(dir, json, rows));
         }
 
-        private void writeRunJson() throws IOException {
-            Files.writeString(dir.resolve(RUN_FILE), GSON.toJson(toJson()) + "\n", StandardCharsets.UTF_8);
+        /**
+         * Publishes only a complete metadata snapshot. If atomic replacement is
+         * unsupported or any write fails, the previous run file remains recoverable.
+         */
+        private void writeRunJson(final JsonObject json) throws IOException {
+            ElliottResearch.writeRunJson(dir, json, MetadataFiles.DEFAULT);
         }
 
         private String relative(final Path path) {
@@ -1547,6 +1592,9 @@ final class ElliottResearch {
                     families.addProperty("truncatedCompositions", entry.familyTotals.truncatedCompositions());
                     dataset.add("families", families);
                 }
+                final JsonObject traceSha256 = new JsonObject();
+                entry.traceSha256.forEach(traceSha256::addProperty);
+                dataset.add("traceSha256", traceSha256);
                 datasets.add(dataset);
             }
             json.add("datasets", datasets);
@@ -1638,6 +1686,33 @@ final class ElliottResearch {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
         } catch (final NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
+    private static String sha256(final Path path) throws IOException {
+        try {
+            final MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            try (DigestInputStream input = new DigestInputStream(Files.newInputStream(path), digest)) {
+                input.transferTo(OutputStream.nullOutputStream());
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (final NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
+    private static void verifyTraceDigest(final Path file, final JsonObject dataset, final String relative)
+            throws IOException {
+        final JsonElement digests = dataset.get("traceSha256");
+        final JsonElement digest = digests != null && digests.isJsonObject() ? digests.getAsJsonObject().get(relative)
+                : null;
+        if (digest == null || !digest.isJsonPrimitive() || !digest.getAsJsonPrimitive().isString()
+                || !digest.getAsString().matches("[0-9a-f]{64}")) {
+            throw new IllegalArgumentException("trace " + relative + " has no valid recorded SHA-256 in run.json");
+        }
+        if (!sha256(file).equals(digest.getAsString())) {
+            throw new IllegalArgumentException(
+                    "trace " + relative + " SHA-256 differs from run.json; the artifact bundle was modified or mixed");
         }
     }
 
@@ -1837,6 +1912,7 @@ final class ElliottResearch {
                 }
                 final ElliottResearchTrace.TraceFile parsed = ElliottResearchTrace.read(file, record -> false);
                 if (parsed.complete() && headerMismatch(parsed.header(), expected) == null) {
+                    verifyTraceDigest(file, dataset, name);
                     traced.add(id);
                 }
             } catch (final IOException | IllegalArgumentException unreadable) {
@@ -2098,7 +2174,165 @@ final class ElliottResearch {
             throw new Diagnostic(COMPARISONS_FILE
                     + " SHA-256 differs from run.json; the artifact bundle was modified or mixed, rerun the recipe");
         }
-        return ElliottResearchReport.readCsv(path, bytes);
+        final List<Row> rows = ElliottResearchReport.readCsv(path, bytes);
+        final Map<String, ComparisonFamily> expected;
+        try {
+            expected = expectedComparisonKeys(run);
+        } catch (final IllegalArgumentException | IllegalStateException | NullPointerException e) {
+            throw new Diagnostic(COMPARISONS_FILE + " row-key inventory cannot be derived from run.json: "
+                    + e.getMessage() + "; rerun the recipe to regenerate the artifact bundle");
+        }
+        final Set<String> missing = new TreeSet<>(expected.keySet());
+        final Set<String> unexpected = new TreeSet<>();
+        for (final Row row : rows) {
+            if (!missing.remove(row.key())) {
+                unexpected.add(row.key());
+            }
+        }
+        if (!missing.isEmpty() || !unexpected.isEmpty()) {
+            throw new Diagnostic(
+                    COMPARISONS_FILE + " row-key inventory differs from run.json's recorded configuration: "
+                            + "missing " + missing.size() + " key(s) " + missing.stream().limit(5).toList()
+                            + "; unexpected " + unexpected.size() + " key(s) " + unexpected.stream().limit(5).toList()
+                            + "; rerun the recipe to regenerate the complete artifact bundle");
+        }
+        for (final Row row : rows) {
+            final ComparisonFamily family = expected.get(row.key());
+            final String mismatch = !family.asset().equals(row.asset()) ? "asset"
+                    : !family.grammar().equals(row.grammar()) ? "grammar"
+                            : !family.activeRules().equals(row.activeRules()) ? "activeRules"
+                                    : !family.policy().equals(row.policy()) ? "policy"
+                                            : family.requestedNullMembers() != row.requestedNullMembers()
+                                                    ? "requestedNullMembers"
+                                                    : null;
+            if (mismatch != null) {
+                throw new Diagnostic(COMPARISONS_FILE + " family metadata " + mismatch
+                        + " differs from run.json's recorded configuration for comparison " + row.key()
+                        + "; rerun the recipe to regenerate the artifact bundle");
+            }
+        }
+        return rows;
+    }
+
+    /**
+     * Derives the producer's complete row shape without reading reports or traces.
+     */
+    private static Map<String, ComparisonFamily> expectedComparisonKeys(final JsonObject run) {
+        final JsonObject recipe = objectOf(required(run, "recipe", RUN_FILE), "run.json.recipe");
+        final String recipeName = text(required(recipe, "name", "run.json.recipe"), "run.json.recipe.name");
+        if (!RECIPES.contains(recipeName)) {
+            throw new IllegalArgumentException("unknown recorded recipe '" + recipeName + "'");
+        }
+        final String where = "run.json.configuration";
+        final JsonObject configuration = objectOf(required(run, "configuration", RUN_FILE), where);
+        final List<String> partitions = new ArrayList<>();
+        final JsonArray partitionEntries = arrayOf(required(configuration, "partitions", where), where + ".partitions");
+        for (int index = 0; index < partitionEntries.size(); index++) {
+            final String partitionWhere = where + ".partitions[" + index + "]";
+            final JsonObject partition = objectOf(partitionEntries.get(index), partitionWhere);
+            partitions.add(text(required(partition, "name", partitionWhere), partitionWhere + ".name"));
+        }
+        if (partitions.isEmpty()) {
+            throw new IllegalArgumentException(where + ".partitions must not be empty");
+        }
+        final String primary = detector(required(configuration, "detector", where), where + ".detector").name();
+        final List<String> robustness = new ArrayList<>();
+        final JsonArray detectors = arrayOf(required(configuration, "robustnessDetectors", where),
+                where + ".robustnessDetectors");
+        for (int index = 0; index < detectors.size(); index++) {
+            robustness.add(detector(detectors.get(index), where + ".robustnessDetectors[" + index + "]").name());
+        }
+        final List<String> activeRules = strings(required(configuration, "activeRules", where), where + ".activeRules",
+                RULE_IDS);
+        if (activeRules.isEmpty()) {
+            throw new IllegalArgumentException(where + ".activeRules must not be empty");
+        }
+        final JsonObject momentum = objectOf(required(configuration, "momentum", where), where + ".momentum");
+        final int momentumBarCount = integer(required(momentum, "barCount", where + ".momentum"),
+                where + ".momentum.barCount");
+        final Function<BarSeries, Indicator<Num>> momentumFactory = series -> new RSIIndicator(
+                new ClosePriceIndicator(series), momentumBarCount);
+        final List<RelationshipRule> rules = configuredRules(activeRules,
+                ClassicalRelationshipRules.classicalRelationships(momentumFactory));
+        final List<RuleAblation.Mode> modes = RECIPE_FROZEN.equals(recipeName) ? RuleAblation.frozenModes(rules)
+                : RuleAblation.modes(rules);
+        final List<String> competing = strings(required(configuration, "competingModes", where),
+                where + ".competingModes", COMPETING_MODES);
+        final JsonObject nulls = objectOf(required(configuration, "null", where), where + ".null");
+        final List<Integer> blockLengths = new ArrayList<>();
+        final JsonArray blocks = arrayOf(required(nulls, "blockLengths", where + ".null"),
+                where + ".null.blockLengths");
+        for (int index = 0; index < blocks.size(); index++) {
+            final int block = integer(blocks.get(index), where + ".null.blockLengths[" + index + "]");
+            if (block <= 0 || blockLengths.contains(block)) {
+                throw new IllegalArgumentException(where + ".null.blockLengths must contain distinct positive values");
+            }
+            blockLengths.add(block);
+        }
+        if (blockLengths.isEmpty()) {
+            throw new IllegalArgumentException(where + ".null.blockLengths must not be empty");
+        }
+        final int ensembleSize = integer(required(nulls, "ensembleSize", where + ".null"),
+                where + ".null.ensembleSize");
+        if (ensembleSize <= 0) {
+            throw new IllegalArgumentException(where + ".null.ensembleSize must be positive");
+        }
+        final Map<String, ComparisonFamily> expected = new LinkedHashMap<>();
+        final Set<String> datasetIds = new HashSet<>();
+        final JsonArray datasets = arrayOf(required(run, "datasets", RUN_FILE), "run.json.datasets");
+        for (int index = 0; index < datasets.size(); index++) {
+            final String datasetWhere = "run.json.datasets[" + index + "]";
+            final JsonObject dataset = objectOf(datasets.get(index), datasetWhere);
+            final String id = text(required(dataset, "id", datasetWhere), datasetWhere + ".id");
+            if (!datasetIds.add(id)) {
+                throw new IllegalArgumentException("duplicate recorded dataset '" + id + "'");
+            }
+            if (!"complete".equals(text(required(dataset, "status", datasetWhere), datasetWhere + ".status"))) {
+                continue;
+            }
+            final String asset = text(required(dataset, "asset", datasetWhere), datasetWhere + ".asset");
+            addExpectedComparisonKeys(expected, id, "h1", "topology-only", primary, partitions, blockLengths,
+                    new ComparisonFamily(asset, "MOTIVE_5", List.of(), "kernel-topology", ensembleSize));
+            for (final RuleAblation.Mode mode : modes) {
+                addExpectedComparisonKeys(expected, id, "h2", mode.name(), primary, partitions, blockLengths,
+                        new ComparisonFamily(asset, "CYCLE_5_3", mode.ruleIds(),
+                                mode.rules().isEmpty() ? "kernel-topology" : "kernel-topology+evidence", ensembleSize));
+            }
+            for (final String mode : competing) {
+                addExpectedComparisonKeys(expected, id, "competing", "competing-" + mode, primary, partitions,
+                        List.of(-1), new ComparisonFamily(asset, mode, List.of(), "unmatched-recognizer", 0));
+            }
+            for (final String detector : robustness) {
+                addExpectedComparisonKeys(expected, id, "robustness", "topology-only", detector, partitions,
+                        List.of(-1), new ComparisonFamily(asset, "MOTIVE_5", List.of(), "robustness-detector", 0));
+            }
+        }
+        return expected;
+    }
+
+    /** Metadata shared by the metrics of one recorded study mode. */
+    private record ComparisonFamily(String asset, String grammar, List<String> activeRules, String policy,
+            int requestedNullMembers) {
+    }
+
+    private static void addExpectedComparisonKeys(final Map<String, ComparisonFamily> expected, final String dataset,
+            final String section, final String mode, final String detector, final List<String> partitions,
+            final List<Integer> blocks, final ComparisonFamily family) {
+        for (final String partition : partitions) {
+            for (final ElliottResearchReport.Metric metric : ElliottResearchReport.Metric.values()) {
+                if (family.activeRules().isEmpty() && (metric == ElliottResearchReport.Metric.EVIDENCE_PASS
+                        || metric == ElliottResearchReport.Metric.JOINT_PASS)) {
+                    continue;
+                }
+                for (final int block : blocks) {
+                    final String key = new ElliottResearchReport.Key(dataset, section, mode, detector, partition,
+                            metric.id(), block).toString();
+                    if (expected.putIfAbsent(key, family) != null) {
+                        throw new IllegalArgumentException("recorded configuration produces duplicate key " + key);
+                    }
+                }
+            }
+        }
     }
 
     // -------------------------------------------------------------- inspect
@@ -2149,16 +2383,16 @@ final class ElliottResearch {
         }
         final ElliottResearchReport.Key key = ElliottResearchReport.parseKey(keyText);
         final JsonObject run = loadRun(dir);
+        final Path comparisons = resolveInside(dir, COMPARISONS_FILE);
+        final List<Row> rows = Files.isRegularFile(comparisons) ? readVerifiedComparisons(comparisons, run) : null;
         final JsonObject dataset = findDataset(run, key.dataset());
         if (!"complete".equals(dataset.get("status").getAsString())) {
             throw new Diagnostic("dataset '" + key.dataset() + "' is " + dataset.get("status").getAsString() + ": "
                     + dataset.get("message").getAsString() + " (rerun the recipe to recompute it)");
         }
-        final Path comparisons = resolveInside(dir, COMPARISONS_FILE);
-        if (!Files.isRegularFile(comparisons)) {
+        if (rows == null) {
             throw new Diagnostic(COMPARISONS_FILE + " is missing in " + dir + "; rerun the recipe");
         }
-        final List<Row> rows = readVerifiedComparisons(comparisons, run);
         Row row = null;
         for (final Row candidateRow : rows) {
             if (candidateRow.key().equals(key.toString())) {
@@ -2169,7 +2403,7 @@ final class ElliottResearch {
         if (row == null) {
             throw new IllegalArgumentException(unknownKeyMessage(key, rows));
         }
-        new Inspection(dir, run, dataset, row, limit).print(out, asOf, candidate);
+        new Inspection(dir, run, dataset, row, rows, limit).print(out, asOf, candidate);
         return 0;
     }
 
@@ -2218,13 +2452,22 @@ final class ElliottResearch {
         private final JsonObject dataset;
         private final Row row;
         private final int limit;
+        private final Map<String, List<String>> activeRulesByMode = new HashMap<>();
 
-        Inspection(final Path dir, final JsonObject run, final JsonObject dataset, final Row row, final int limit) {
+        Inspection(final Path dir, final JsonObject run, final JsonObject dataset, final Row row,
+                final List<Row> allRows, final int limit) {
             this.dir = dir;
             this.run = run;
             this.dataset = dataset;
             this.row = row;
             this.limit = limit;
+            for (final Row comparison : allRows) {
+                if (row.dataset().equals(comparison.dataset()) && row.section().equals(comparison.section())
+                        && row.grammar().equals(comparison.grammar()) && row.detector().equals(comparison.detector())
+                        && row.partition().equals(comparison.partition())) {
+                    activeRulesByMode.put(comparison.mode(), comparison.activeRules());
+                }
+            }
         }
 
         /**
@@ -2238,7 +2481,7 @@ final class ElliottResearch {
         void print(final PrintStream out, final Integer asOf, final String candidate) throws IOException {
             // Real: retain the whole family so cross-mode rule disagreements stay visible.
             final View real = load("real", findTrace(realSuffixMatcher()),
-                    expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_REAL, -1, -1), this::sameFamily,
+                    expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_REAL, -1, -1), this::retainRealFamily,
                     this::inRealScope, ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
             // A run that selected no member captured no null trace, so -1 rejects any found
             // one.
@@ -2247,7 +2490,7 @@ final class ElliottResearch {
                     expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER,
                             row.nullBlockLength(),
                             member == null || member.isJsonNull() ? -1 : integer(member, "run.trace.member")),
-                    this::inNullScope, this::inNullScope, recaptureNull()) : null;
+                    this::retainNullScope, this::inNullScope, recaptureNull()) : null;
             if (real == null && nullView == null) {
                 throw new Diagnostic(
                         "no trace was captured for key " + row.key() + " in " + dir + ". Recapture with:\n  "
@@ -2314,7 +2557,28 @@ final class ElliottResearch {
                     + real.scope().size() + " in this row's scope)");
             out.println("Status tallies: " + tally(real.scope()));
             final Attribution attribution = attribute(real.scope());
-            if (attribution == null) {
+            if ("labelStabilityJaccard".equals(row.metric())) {
+                final double mean = stability(real.scope());
+                if (Double.compare(mean, row.observed()) != 0) {
+                    throw new Diagnostic("trace label-stability transitions do not match the selected comparison row."
+                            + " Recapture with:\n  "
+                            + ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
+                }
+                out.println("Support check: adjacent label-set Jaccard mean=" + number(mean) + " from "
+                        + Math.max(0, real.scope().size() - 1) + " transitions vs row " + number(row.observed())
+                        + " -> " + (Double.isNaN(mean) ? "unavailable (no adjacent label-set transitions)" : "match"));
+            } else if ("confirmationLagBars".equals(row.metric())) {
+                final ConfirmationLag lag = confirmationLag(real.scope());
+                if (Double.compare(lag.mean(), row.observed()) != 0) {
+                    throw new Diagnostic("trace candidate-pivot confirmation lags do not match the selected comparison "
+                            + "row. Recapture with:\n  "
+                            + ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
+                }
+                out.println("Support check: mean candidate-pivot confirmation lag=" + number(lag.mean()) + " bars from "
+                        + lag.count() + " complete candidate observations vs row " + number(row.observed()) + " -> "
+                        + (Double.isNaN(lag.mean()) ? "unavailable (no complete topology candidates)" : "match"));
+                out.println("Supporting as-of indices (" + lag.indices().size() + "): " + limited(lag.indices()));
+            } else if (attribution == null) {
                 out.println("Support check: " + row.metric()
                         + " is not attributable to single as-of records; tallies only.");
             } else {
@@ -2322,10 +2586,20 @@ final class ElliottResearch {
                         || "jointPassRate".equals(row.metric());
                 final String expected = (evidence ? "recomputed " : "records ") + attribution.numerator + "/"
                         + attribution.denominator;
+                final double observed = attribution.denominator == 0 ? Double.NaN
+                        : attribution.numerator / (double) attribution.denominator;
                 final boolean matches = row.denominator() != null && row.denominator() == attribution.denominator
-                        && row.numerator() != null && row.numerator() == attribution.numerator;
+                        && row.numerator() != null && row.numerator() == attribution.numerator
+                        && Double.compare(observed, row.observed()) == 0;
+                if (!matches) {
+                    throw new Diagnostic(
+                            "trace " + row.metric() + " contributions do not match the selected comparison row: "
+                                    + expected + " = " + number(observed) + " vs row " + row.numerator() + "/"
+                                    + row.denominator() + " = " + number(row.observed()) + ". Recapture with:\n  "
+                                    + ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
+                }
                 out.println("Support check: " + expected + " vs row " + row.numerator() + "/" + row.denominator()
-                        + " -> " + (matches ? "match" : "DIFFERS"));
+                        + " -> " + (attribution.denominator == 0 ? "unavailable (no contributions)" : "match"));
                 out.println("Supportive as-of indices (" + attribution.supportive.size() + "): "
                         + limited(attribution.supportive));
                 out.println("Counterexample as-of indices (" + attribution.counter.size() + "): "
@@ -2340,10 +2614,23 @@ final class ElliottResearch {
                     + nullView.file().header().get("nullMemberIndex").getAsInt() + ", " + nullView.file().recordCount()
                     + " records, " + nullView.scope().size() + " in this row's scope)");
             out.println("Null member status tallies: " + tally(nullView.scope()));
+            if ("labelStabilityJaccard".equals(row.metric())) {
+                out.println("Null member labelStabilityJaccard: adjacent label-set Jaccard mean="
+                        + number(stability(nullView.scope())) + " from " + Math.max(0, nullView.scope().size() - 1)
+                        + " transitions");
+            } else if ("confirmationLagBars".equals(row.metric())) {
+                final ConfirmationLag lag = confirmationLag(nullView.scope());
+                out.println("Null member confirmationLagBars: mean candidate-pivot confirmation lag="
+                        + number(lag.mean()) + " bars from " + lag.count() + " complete candidate observations");
+                out.println("Null member supporting as-of indices (" + lag.indices().size() + "): "
+                        + limited(lag.indices()));
+            }
             final Attribution attribution = attribute(nullView.scope());
-            if (attribution != null && attribution.denominator > 0) {
+            if (attribution != null) {
+                final double observed = attribution.denominator == 0 ? Double.NaN
+                        : attribution.numerator / (double) attribution.denominator;
                 out.println("Null member " + row.metric() + ": " + attribution.numerator + "/" + attribution.denominator
-                        + " = " + number((double) attribution.numerator / attribution.denominator));
+                        + " = " + number(observed));
             }
         }
 
@@ -2474,6 +2761,34 @@ final class ElliottResearch {
                     && row.partition().equals(textOf(record, "partition"));
         }
 
+        private boolean retainRealFamily(final JsonObject record) {
+            if (!sameFamily(record)) {
+                return false;
+            }
+            requireActiveRules(record, activeRulesByMode.get(textOf(record, "mode")));
+            return true;
+        }
+
+        private boolean retainNullScope(final JsonObject record) {
+            if (!inNullScope(record)) {
+                return false;
+            }
+            requireActiveRules(record, row.activeRules());
+            return true;
+        }
+
+        private static void requireActiveRules(final JsonObject record, final List<String> expected) {
+            final JsonArray activeRules = record.getAsJsonArray("activeRules");
+            boolean matches = expected != null && activeRules.size() == expected.size();
+            for (int i = 0; matches && i < activeRules.size(); i++) {
+                matches = expected.get(i).equals(activeRules.get(i).getAsString());
+            }
+            if (!matches) {
+                throw new IllegalArgumentException("record activeRules " + activeRules
+                        + " do not match comparisons.csv mode " + textOf(record, "mode") + " expected " + expected);
+            }
+        }
+
         /**
          * Null topology records carry the grammar name as their mode, except for H2
          * ablation modes which keep their own name. H1 and competing rows have real
@@ -2482,6 +2797,7 @@ final class ElliottResearch {
         private boolean inNullScope(final JsonObject record) {
             final String nullMode = "h2".equals(row.section()) ? row.mode() : row.grammar();
             return "null".equals(textOf(record, "section")) && row.grammar().equals(textOf(record, "grammar"))
+                    && row.detector().equals(textOf(record, "detector"))
                     && row.partition().equals(textOf(record, "partition")) && nullMode.equals(textOf(record, "mode"));
         }
 
@@ -2546,6 +2862,11 @@ final class ElliottResearch {
                         + trace.header().get(mismatch) + ", not this run's " + expected.get(mismatch)
                         + ". Recapture with:\n  " + recapture);
             }
+            try {
+                verifyTraceDigest(file, dataset, relative);
+            } catch (final IllegalArgumentException corrupt) {
+                throw new Diagnostic(corrupt.getMessage() + ". Recapture with:\n  " + recapture);
+            }
             return new View(label, relative, trace, trace.records().stream().filter(scope).toList());
         }
 
@@ -2556,6 +2877,64 @@ final class ElliottResearch {
             private long denominator;
             private final List<Integer> supportive = new ArrayList<>();
             private final List<Integer> counter = new ArrayList<>();
+        }
+
+        private record ConfirmationLag(double mean, long count, List<Integer> indices) {
+        }
+
+        private static ConfirmationLag confirmationLag(final List<JsonObject> records) {
+            double sum = 0.0d;
+            long count = 0;
+            final List<Integer> indices = new ArrayList<>();
+            for (final JsonObject record : records) {
+                if (!"topology".equals(record.get("kind").getAsString()) || !"complete".equals(status(record))) {
+                    continue;
+                }
+                final JsonArray visible = record.getAsJsonArray("pivots");
+                for (final JsonElement candidate : record.getAsJsonArray("candidates")) {
+                    final JsonArray placement = candidate.getAsJsonObject().getAsJsonArray("placement");
+                    double lag = 0.0d;
+                    int visibleIndex = 0;
+                    for (final JsonElement placed : placement) {
+                        final int pivotIndex = placed.getAsJsonObject().get("index").getAsInt();
+                        while (visible.get(visibleIndex).getAsJsonObject().get("index").getAsInt() < pivotIndex) {
+                            visibleIndex++;
+                        }
+                        final int confirmedAt = visible.get(visibleIndex)
+                                .getAsJsonObject()
+                                .get("confirmationIndex")
+                                .getAsInt();
+                        lag += Math.max(0, confirmedAt - pivotIndex);
+                    }
+                    sum += lag / placement.size();
+                    count++;
+                }
+                indices.add(record.get("asOfIndex").getAsInt());
+            }
+            return new ConfirmationLag(count == 0 ? Double.NaN : sum / count, count, indices);
+        }
+
+        private static double stability(final List<JsonObject> records) {
+            Set<String> previous = null;
+            double sum = 0.0d;
+            long transitions = 0;
+            for (final JsonObject record : records) {
+                final Set<String> current = new HashSet<>();
+                record.getAsJsonArray("labels").forEach(label -> current.add(label.getAsString()));
+                if (previous != null) {
+                    int intersection = 0;
+                    for (final String label : current) {
+                        if (previous.contains(label)) {
+                            intersection++;
+                        }
+                    }
+                    final int union = previous.size() + current.size() - intersection;
+                    sum += union == 0 ? 1.0d : intersection / (double) union;
+                    transitions++;
+                }
+                previous = current;
+            }
+            return transitions == 0 ? Double.NaN : sum / transitions;
         }
 
         private Attribution attribute(final List<JsonObject> records) {
@@ -2665,5 +3044,31 @@ final class ElliottResearch {
     private static String number(final double value) {
         return Double.isFinite(value) ? new BigDecimal(value, new MathContext(6)).stripTrailingZeros().toPlainString()
                 : "NaN";
+    }
+
+    /**
+     * Real filesystem operations, replaceable only at the metadata I/O boundary.
+     */
+    interface MetadataFiles {
+        MetadataFiles DEFAULT = new MetadataFiles() {
+        };
+
+        default void write(final Path temporary, final String contents) throws IOException {
+            Files.writeString(temporary, contents, StandardCharsets.UTF_8);
+        }
+
+        default void replace(final Path temporary, final Path target) throws IOException {
+            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    static void writeRunJson(final Path dir, final JsonObject json, final MetadataFiles files) throws IOException {
+        final Path temporary = Files.createTempFile(dir, RUN_FILE + "-", ".tmp");
+        try {
+            files.write(temporary, GSON.toJson(json) + "\n");
+            files.replace(temporary, dir.resolve(RUN_FILE));
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
     }
 }

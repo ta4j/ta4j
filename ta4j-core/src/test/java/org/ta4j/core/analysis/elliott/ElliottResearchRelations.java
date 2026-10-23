@@ -391,6 +391,10 @@ final class ElliottResearchRelations {
                     final long count;
                     try {
                         count = requireLong(object, "frames");
+                        requireLong(object, "events");
+                        requireLong(object, "truncatedFrames");
+                        requireLong(object, "incompleteFrames");
+                        requireInt(object, "peakRetainedEdges");
                     } catch (final IllegalArgumentException e) {
                         throw corrupt(path, lineNumber, "malformed footer: " + e.getMessage());
                     }
@@ -417,11 +421,17 @@ final class ElliottResearchRelations {
         }
         try {
             requireInt(frame, "asOfIndex");
+            requireLabel(frame, "dataset");
+            requireLabel(frame, "partition");
             requireCoverage(frame.getAsJsonObject("coverage"));
             for (final JsonElement event : frame.getAsJsonArray("events")) {
                 final JsonObject object = event.getAsJsonObject();
                 final JsonObject edge = object.getAsJsonObject("edge");
-                edge.get("key").getAsString();
+                requireLabel(edge, "parentScale");
+                requireLabel(edge, "childScale");
+                requireIdentity(edge, "key", "version");
+                requireIdentity(edge, "parentCandidateKey", "parentVersion");
+                requireOptionalIdentity(edge, "childCandidateKey", "childVersion");
                 requireInt(edge, "parentLeg");
                 requireInt(edge, "childPivotCount");
                 requireInt(edge, "availableAt");
@@ -479,6 +489,63 @@ final class ElliottResearchRelations {
         } catch (final ArithmeticException | NumberFormatException e) {
             throw new IllegalArgumentException(field + " " + value + " is not a supported integer");
         }
+    }
+
+    static void requireLabel(final JsonObject owner, final String field) {
+        final JsonElement value = owner.get(field);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()
+                || value.getAsString().isBlank()) {
+            throw new IllegalArgumentException(field + " must be a nonblank JSON string");
+        }
+    }
+
+    static void requireIdentity(final JsonObject owner, final String keyField, final String versionField) {
+        final String key = requireDigest(owner, keyField);
+        final JsonElement value = owner.get(versionField);
+        final String version = value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()
+                ? value.getAsString()
+                : null;
+        if (version == null || version.length() != 65 || version.charAt(32) != '@' || !version.startsWith(key)
+                || !isDigest(version, 33)) {
+            throw new IllegalArgumentException(
+                    versionField + " must be " + keyField + " followed by @ and a 32-digit lowercase hex digest");
+        }
+    }
+
+    static void requireOptionalIdentity(final JsonObject owner, final String keyField, final String versionField) {
+        final JsonElement key = owner.get(keyField);
+        final JsonElement version = owner.get(versionField);
+        if ((key == null || key.isJsonNull()) && (version == null || version.isJsonNull())) {
+            return;
+        }
+        requireIdentity(owner, keyField, versionField);
+    }
+
+    static String requireDigest(final JsonObject owner, final String field) {
+        return requireDigest(owner.get(field), field);
+    }
+
+    static String requireDigest(final JsonElement value, final String field) {
+        final String digest = value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()
+                ? value.getAsString()
+                : null;
+        if (digest == null || !isDigest(digest, 0)) {
+            throw new IllegalArgumentException(field + " is missing or not a 32-digit lowercase hex digest");
+        }
+        return digest;
+    }
+
+    private static boolean isDigest(final String value, final int start) {
+        if (value.length() != start + 32) {
+            return false;
+        }
+        for (int index = start; index < value.length(); index++) {
+            final char digit = value.charAt(index);
+            if ((digit < '0' || digit > '9') && (digit < 'a' || digit > 'f')) {
+                return false;
+            }
+        }
+        return true;
     }
 
     static String text(final JsonObject object, final String key) {

@@ -130,11 +130,11 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        final Num rawSpread = upperHistogram ? jawMinusTeeth.getValue(index) : teethMinusLips.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
 
-        final Num rawSpread = upperHistogram ? jawMinusTeeth.getValue(index) : teethMinusLips.getValue(index);
         if (!Num.isFinite(rawSpread)) {
             return NaN;
         }

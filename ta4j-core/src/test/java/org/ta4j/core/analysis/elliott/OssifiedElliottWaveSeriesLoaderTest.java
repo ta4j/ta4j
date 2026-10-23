@@ -19,6 +19,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.ta4j.core.BarSeries;
 
@@ -60,6 +61,22 @@ class OssifiedElliottWaveSeriesLoaderTest {
                 () -> OssifiedElliottWaveSeriesLoader.parseCandles(json.getBytes(StandardCharsets.UTF_8), "bad"));
 
         assertTrue(failure.getMessage().contains("integer epoch second"), failure.getMessage());
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = { "null", "\"not-a-number\"", "true", "[]", "[86400]", "{}", "86400.5",
+            "9223372036854775808" })
+    public void rejectsMalformedStartsWithDocumentedDiagnostic(final String start) {
+        final String field = start == null ? "" : "\"start\":" + start + ",";
+        for (final long[] starts : new long[][] { { 86_400 }, { 0, 86_400 } }) {
+            final String json = new String(candles(starts), StandardCharsets.UTF_8).replace("\"start\":86400,", field);
+            final IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                    () -> OssifiedElliottWaveSeriesLoader.parseCandles(json.getBytes(StandardCharsets.UTF_8), "bad"));
+
+            assertTrue(failure.getMessage().contains("daily candle start must be an integer epoch second"),
+                    failure.getMessage());
+        }
     }
 
     @Test
