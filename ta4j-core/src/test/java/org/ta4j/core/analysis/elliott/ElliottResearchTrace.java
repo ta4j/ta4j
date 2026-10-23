@@ -432,6 +432,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                         + nullBlockLength + ", nullMemberIndex=" + nullMemberIndex);
             }
             final List<JsonObject> records = new ArrayList<>();
+            final Map<ObservationScope, Integer> lastAsOfByScope = new HashMap<>();
             long recordCount = 0;
             boolean complete = false;
             long lineNumber = 1;
@@ -466,9 +467,22 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                     complete = true;
                 } else if (object.has("kind")) {
                     validateRecord(path, lineNumber, object, datasetId, traceMode, nullBlockLength, nullMemberIndex);
+                    final ObservationScope scope = new ObservationScope(object.get("section").getAsString(),
+                            object.get("mode").getAsString(), object.get("grammar").getAsString(),
+                            object.get("detector").getAsString(), object.get("partition").getAsString());
+                    final int asOf = object.get("asOfIndex").getAsInt();
+                    final Integer previous = lastAsOfByScope.put(scope, asOf);
+                    if (previous != null && asOf <= previous) {
+                        throw corrupt(path, lineNumber, "asOfIndex " + asOf + " must strictly increase within scope "
+                                + scope + " after " + previous);
+                    }
                     recordCount++;
-                    if (retain.test(object)) {
-                        records.add(object);
+                    try {
+                        if (retain.test(object)) {
+                            records.add(object);
+                        }
+                    } catch (final IllegalArgumentException e) {
+                        throw corrupt(path, lineNumber, e.getMessage());
                     }
                 } else {
                     throw corrupt(path, lineNumber, "line is neither a record nor a footer");
@@ -477,6 +491,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             }
             return new TraceFile(header, records, recordCount, complete);
         }
+    }
+
+    private record ObservationScope(String section, String mode, String grammar, String detector, String partition) {
     }
 
     private static boolean endsWithNewline(final Path path) throws IOException {
@@ -657,6 +674,11 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                 TopologyCandidate.validatePivots(grammar, candidatePivots);
             } catch (final IllegalArgumentException e) {
                 throw corrupt(path, lineNumber, at + ".placement: " + e.getMessage());
+            }
+            if (!TopologyAnalyzer.startsInExpectedDirection(grammar, candidateDirection, candidatePivots)
+                    || !TopologyAnalyzer.matchesShape(grammar, candidateDirection, candidatePivots)) {
+                throw corrupt(path, lineNumber,
+                        at + ".placement does not match its grammar, direction and strict leg-price shape");
             }
             for (int p = 0; p < candidatePivots.size(); p++) {
                 final ConfirmedPivot placed = candidatePivots.get(p);

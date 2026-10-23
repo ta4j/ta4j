@@ -1755,7 +1755,7 @@ final class ElliottResearch {
         if (row == null) {
             throw new IllegalArgumentException(unknownKeyMessage(key, rows));
         }
-        new Inspection(dir, run, dataset, row, limit).print(out, asOf, candidate);
+        new Inspection(dir, run, dataset, row, rows, limit).print(out, asOf, candidate);
         return 0;
     }
 
@@ -1804,13 +1804,22 @@ final class ElliottResearch {
         private final JsonObject dataset;
         private final Row row;
         private final int limit;
+        private final Map<String, List<String>> activeRulesByMode = new HashMap<>();
 
-        Inspection(final Path dir, final JsonObject run, final JsonObject dataset, final Row row, final int limit) {
+        Inspection(final Path dir, final JsonObject run, final JsonObject dataset, final Row row,
+                final List<Row> allRows, final int limit) {
             this.dir = dir;
             this.run = run;
             this.dataset = dataset;
             this.row = row;
             this.limit = limit;
+            for (final Row comparison : allRows) {
+                if (row.dataset().equals(comparison.dataset()) && row.section().equals(comparison.section())
+                        && row.grammar().equals(comparison.grammar()) && row.detector().equals(comparison.detector())
+                        && row.partition().equals(comparison.partition())) {
+                    activeRulesByMode.put(comparison.mode(), comparison.activeRules());
+                }
+            }
         }
 
         /**
@@ -1824,7 +1833,7 @@ final class ElliottResearch {
         void print(final PrintStream out, final Integer asOf, final String candidate) throws IOException {
             // Real: retain the whole family so cross-mode rule disagreements stay visible.
             final View real = load("real", findTrace(realSuffixMatcher()),
-                    expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_REAL, -1, -1), this::sameFamily,
+                    expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_REAL, -1, -1), this::retainRealFamily,
                     this::inRealScope, ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
             // A run that selected no member captured no null trace, so -1 rejects any found
             // one.
@@ -1833,7 +1842,7 @@ final class ElliottResearch {
                     expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER,
                             row.nullBlockLength(),
                             member == null || member.isJsonNull() ? -1 : integer(member, "run.trace.member")),
-                    this::inNullScope, this::inNullScope, recaptureNull()) : null;
+                    this::retainNullScope, this::inNullScope, recaptureNull()) : null;
             if (real == null && nullView == null) {
                 throw new Diagnostic(
                         "no trace was captured for key " + row.key() + " in " + dir + ". Recapture with:\n  "
@@ -2058,6 +2067,34 @@ final class ElliottResearch {
             return row.section().equals(textOf(record, "section")) && row.grammar().equals(textOf(record, "grammar"))
                     && row.detector().equals(textOf(record, "detector"))
                     && row.partition().equals(textOf(record, "partition"));
+        }
+
+        private boolean retainRealFamily(final JsonObject record) {
+            if (!sameFamily(record)) {
+                return false;
+            }
+            requireActiveRules(record, activeRulesByMode.get(textOf(record, "mode")));
+            return true;
+        }
+
+        private boolean retainNullScope(final JsonObject record) {
+            if (!inNullScope(record)) {
+                return false;
+            }
+            requireActiveRules(record, row.activeRules());
+            return true;
+        }
+
+        private static void requireActiveRules(final JsonObject record, final List<String> expected) {
+            final JsonArray activeRules = record.getAsJsonArray("activeRules");
+            boolean matches = expected != null && activeRules.size() == expected.size();
+            for (int i = 0; matches && i < activeRules.size(); i++) {
+                matches = expected.get(i).equals(activeRules.get(i).getAsString());
+            }
+            if (!matches) {
+                throw new IllegalArgumentException("record activeRules " + activeRules
+                        + " do not match comparisons.csv mode " + textOf(record, "mode") + " expected " + expected);
+            }
         }
 
         /**

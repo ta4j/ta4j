@@ -16,12 +16,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.stream.Stream;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -1283,6 +1287,92 @@ class ElliottResearchTest {
         assertEquals(1, recipeChanged.code());
         assertTrue(recipeChanged.err().contains("the recipe changed since the run"), recipeChanged.err());
         assertFalse(Files.exists(editedRecipe));
+    }
+
+    @Test
+    public void inspectBindsRealActiveRulesToEveryComparedMode() throws Exception {
+        assertModeRuleBinding(smokeRun, "smoke-real.jsonl", false);
+    }
+
+    @Test
+    public void inspectBindsSelectedNullActiveRulesToTheComparisonMode() throws Exception {
+        final Path source = work.resolve("null-rules-source");
+        final Result captured = launch("run", "smoke", "--trace", "selected-null-member", "--block", "20", "--member",
+                "3", "--out", source.toString());
+        assertEquals(0, captured.code(), captured.err());
+        assertModeRuleBinding(source, "smoke-null-b20-m3.jsonl", true);
+    }
+
+    private void assertModeRuleBinding(final Path source, final String traceName, final boolean nullMember)
+            throws Exception {
+        for (final boolean reorder : List.of(false, true)) {
+            final Path copy = work.resolve("mode-bound-" + nullMember + "-" + reorder);
+            copyTree(source, copy);
+            final Path trace = copy.resolve("traces").resolve(traceName);
+            final List<String> lines = new ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
+            int recordLine = -1;
+            JsonObject record = null;
+            for (int i = 1; i < lines.size() - 1; i++) {
+                final JsonObject observation = JsonParser.parseString(lines.get(i)).getAsJsonObject();
+                if ((nullMember || "h2".equals(observation.get("section").getAsString()))
+                        && observation.getAsJsonArray("activeRules").size() > 1
+                        && !observation.getAsJsonArray("candidates").isEmpty()) {
+                    recordLine = i;
+                    record = observation;
+                    break;
+                }
+            }
+            assertTrue(recordLine > 0, "the captured trace must contain all-rules evidence");
+            final JsonArray original = record.getAsJsonArray("activeRules");
+            final JsonArray activeRules = new JsonArray();
+            for (int i = 0; i < original.size(); i++) {
+                activeRules.add(reorder ? original.get(original.size() - 1 - i).getAsString()
+                        : "foreign-" + original.get(i).getAsString());
+            }
+            record.add("activeRules", activeRules);
+            for (final JsonElement element : record.getAsJsonArray("candidates")) {
+                final JsonObject candidate = element.getAsJsonObject();
+                final JsonArray originalRules = candidate.getAsJsonArray("rules");
+                final JsonArray rules = new JsonArray();
+                for (int i = 0; i < originalRules.size(); i++) {
+                    final JsonObject rule = originalRules.get(reorder ? originalRules.size() - 1 - i : i)
+                            .getAsJsonObject();
+                    rule.addProperty("id", activeRules.get(i).getAsString());
+                    rules.add(rule);
+                }
+                candidate.add("rules", rules);
+                final byte[] digest = MessageDigest.getInstance("SHA-256")
+                        .digest(rules.toString().getBytes(StandardCharsets.UTF_8));
+                candidate.addProperty("version",
+                        candidate.get("candidateKey").getAsString() + "@" + HexFormat.of().formatHex(digest, 0, 16));
+            }
+            lines.set(recordLine, record.toString());
+            Files.write(trace, lines, StandardCharsets.UTF_8);
+            final JsonObject observation = record;
+            final List<ElliottResearchReport.Row> family = ElliottResearchReport
+                    .readCsv(copy.resolve("comparisons.csv"))
+                    .stream()
+                    .filter(row -> "h2".equals(row.section())
+                            && row.grammar().equals(observation.get("grammar").getAsString())
+                            && row.partition().equals(observation.get("partition").getAsString()))
+                    .toList();
+            final ElliottResearchReport.Row allRules = family.stream()
+                    .filter(row -> row.mode().equals(observation.get("mode").getAsString()))
+                    .findFirst()
+                    .orElseThrow();
+            final List<String> keys = new ArrayList<>(List.of(allRules.key()));
+            if (!nullMember) {
+                keys.add(family.stream().filter(row -> row.activeRules().size() == 1).findFirst().orElseThrow().key());
+            }
+            for (final String key : keys) {
+                final Result rejected = launch("inspect", copy.toString(), key);
+                assertEquals(2, rejected.code(), rejected.out() + rejected.err());
+                assertTrue(rejected.err().contains("activeRules"), rejected.err());
+                assertTrue(rejected.err().contains("comparisons.csv mode"), rejected.err());
+                assertTrue(rejected.err().contains("line " + (recordLine + 1)), rejected.err());
+                assertTrue(rejected.err().contains("Recapture with:"), rejected.err());
+            }
+        }
     }
 
     private static void rewriteTraceHeader(final Path trace, final java.util.function.Consumer<JsonObject> edit) {

@@ -201,9 +201,10 @@ class ElliottResearchTraceTest {
         final Path file = directory.resolve(name);
         try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
                 ElliottResearchTrace.MODE_REAL, -1, -1)) {
-            for (final List<RuleEvidence> rules : emissions) {
-                trace.topology(scope, "calibration", 5, Instant.parse("2018-01-06T00:00:00Z"), candidate.pivots(),
-                        analysis, List.of(rules));
+            for (int i = 0; i < emissions.size(); i++) {
+                trace.topology(scope, "calibration", 5 + i,
+                        Instant.parse("2018-01-06T00:00:00Z").plusSeconds(i * 86_400L), candidate.pivots(), analysis,
+                        List.of(emissions.get(i)));
             }
             assertEquals(emissions.size(), trace.records());
         }
@@ -617,6 +618,8 @@ class ElliottResearchTraceTest {
             firstCandidate(damaged).getAsJsonArray("rules").get(0).getAsJsonObject().addProperty("state", state);
             assertMalformedAtLine2(lines, damaged, "candidates[0].rules[0].state");
         }
+        final int nestedLine = lines.indexOf(nested.toString());
+        assertTrue(nestedLine > 0);
         for (final EvidenceState state : EvidenceState.values()) {
             final JsonObject supported = nested.deepCopy();
             firstCandidate(supported).getAsJsonArray("rules")
@@ -625,7 +628,7 @@ class ElliottResearchTraceTest {
                     .addProperty("state", state.name());
             refreshVersion(firstCandidate(supported));
             final List<String> supportedLines = new ArrayList<>(lines);
-            supportedLines.set(1, supported.toString());
+            supportedLines.set(nestedLine, supported.toString());
             final Path supportedFile = directory.resolve("supported-rule-state.jsonl");
             Files.write(supportedFile, supportedLines, StandardCharsets.UTF_8);
             assertTrue(ElliottResearchTrace.read(supportedFile).complete());
@@ -835,17 +838,10 @@ class ElliottResearchTraceTest {
             for (final WaveDirection direction : WaveDirection.values()) {
                 for (final int count : List.of(1, 2, 64)) {
                     final JsonObject record = original.deepCopy();
-                    record.addProperty("grammar", grammar.name());
+                    orientGrammarShape(record, grammar, direction);
                     record.add("direction", count == 1 ? new JsonPrimitive(direction.name()) : JsonNull.INSTANCE);
                     record.addProperty("status", count == 1 ? "COMPLETE" : "AMBIGUOUS");
                     final JsonObject candidate = firstCandidate(record);
-                    candidate.addProperty("direction", direction.name());
-                    final JsonArray placement = candidate.getAsJsonArray("placement");
-                    while (placement.size() > grammar.requiredPivots()) {
-                        placement.remove(placement.size() - 1);
-                    }
-                    placement.get(0).getAsJsonObject().addProperty("price", "1e400");
-                    record.getAsJsonArray("pivots").get(0).getAsJsonObject().addProperty("price", "1e400");
                     candidate.getAsJsonArray("rules").get(0).getAsJsonObject().addProperty("score", 0);
                     candidate.getAsJsonArray("rules").get(1).getAsJsonObject().addProperty("score", 1);
                     final JsonArray candidates = record.getAsJsonArray("candidates");
@@ -989,6 +985,102 @@ class ElliottResearchTraceTest {
         final Path equivalent = directory.resolve("equivalent-pivot-prices.jsonl");
         Files.write(equivalent, equivalentLines, StandardCharsets.UTF_8);
         assertEquals(equivalentPrices, ElliottResearchTrace.read(equivalent).records().get(0));
+    }
+
+    @Test
+    public void grammarDirectionOriginAndStrictLegShapeAreCheckedBeforeRetention() throws Exception {
+        final List<String> lines = Files.readAllLines(domainTrace("grammar-shape.jsonl"), StandardCharsets.UTF_8);
+        final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        for (final TopologyGrammar grammar : TopologyGrammar.values()) {
+            for (final WaveDirection direction : WaveDirection.values()) {
+                final JsonObject valid = original.deepCopy();
+                orientGrammarShape(valid, grammar, direction);
+                valid.addProperty("direction", direction.name());
+                final JsonObject wrongDirection = valid.deepCopy();
+                final String opposite = direction == WaveDirection.BULLISH ? "BEARISH" : "BULLISH";
+                wrongDirection.addProperty("direction", opposite);
+                firstCandidate(wrongDirection).addProperty("direction", opposite);
+                refreshIdentity(wrongDirection);
+                assertMalformedAtLine2(lines, wrongDirection, "placement");
+
+                final JsonObject wrongOrigin = valid.deepCopy();
+                for (final JsonElement pivot : wrongOrigin.getAsJsonArray("pivots")) {
+                    final JsonObject point = pivot.getAsJsonObject();
+                    point.addProperty("type", "LOW".equals(point.get("type").getAsString()) ? "HIGH" : "LOW");
+                }
+                for (final JsonElement pivot : firstCandidate(wrongOrigin).getAsJsonArray("placement")) {
+                    final JsonObject point = pivot.getAsJsonObject();
+                    point.addProperty("type", "LOW".equals(point.get("type").getAsString()) ? "HIGH" : "LOW");
+                }
+                refreshIdentity(wrongOrigin);
+                assertMalformedAtLine2(lines, wrongOrigin, "placement");
+
+                for (int leg = 0; leg < grammar.legCount(); leg++) {
+                    for (final boolean reversed : List.of(false, true)) {
+                        final JsonObject damaged = valid.deepCopy();
+                        final JsonArray placement = firstCandidate(damaged).getAsJsonArray("placement");
+                        final String start = placement.get(leg).getAsJsonObject().get("price").getAsString();
+                        final String end = reversed ? start.startsWith("-") ? "-2e400" : "2e400" : start;
+                        placement.get(leg + 1).getAsJsonObject().addProperty("price", end);
+                        damaged.getAsJsonArray("pivots").get(leg + 1).getAsJsonObject().addProperty("price", end);
+                        refreshIdentity(damaged);
+                        assertMalformedAtLine2(lines, damaged, "placement");
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void observationsAreUniqueAndStrictlyIncreasingWithinEachScopeBeforeRetention() throws Exception {
+        final List<String> lines = Files.readAllLines(domainTrace("observation-order.jsonl"), StandardCharsets.UTF_8);
+        final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        final JsonObject footer = JsonParser.parseString(lines.get(2)).getAsJsonObject();
+        footer.addProperty("records", 3);
+        for (final int firstIndex : List.of(8, 10)) {
+            final JsonObject first = original.deepCopy();
+            first.addProperty("asOfIndex", firstIndex);
+            final JsonObject interleaved = original.deepCopy();
+            interleaved.addProperty("mode", "another-mode");
+            final List<String> changed = List.of(lines.get(0), first.toString(), interleaved.toString(),
+                    original.toString(), footer.toString());
+            assertMalformedAtLine(changed, original, 4, "asOfIndex");
+        }
+        final JsonObject later = original.deepCopy();
+        later.addProperty("asOfIndex", 9);
+        for (final String otherScope : List.of("section", "mode", "detector", "partition")) {
+            final JsonObject interleaved = original.deepCopy();
+            interleaved.addProperty(otherScope, "another-" + otherScope);
+            final Path valid = directory.resolve("ordered-" + otherScope + ".jsonl");
+            Files.write(valid, List.of(lines.get(0), original.toString(), interleaved.toString(), later.toString(),
+                    footer.toString()), StandardCharsets.UTF_8);
+            assertEquals(3, ElliottResearchTrace.read(valid).recordCount());
+            assertTrue(ElliottResearchTrace.read(valid, ignored -> false).records().isEmpty());
+        }
+    }
+
+    private static void orientGrammarShape(final JsonObject record, final TopologyGrammar grammar,
+            final WaveDirection direction) {
+        record.addProperty("grammar", grammar.name());
+        final JsonObject candidate = firstCandidate(record);
+        candidate.addProperty("direction", direction.name());
+        final JsonArray placement = candidate.getAsJsonArray("placement");
+        while (placement.size() > grammar.requiredPivots()) {
+            placement.remove(placement.size() - 1);
+        }
+        final boolean startsLow = (direction == WaveDirection.BULLISH) == (grammar != TopologyGrammar.CORRECTIVE_3);
+        final JsonArray pivots = record.getAsJsonArray("pivots");
+        for (int i = 0; i < pivots.size(); i++) {
+            final boolean low = (i % 2 == 0) == startsLow;
+            final JsonObject pivot = pivots.get(i).getAsJsonObject();
+            pivot.addProperty("type", low ? "LOW" : "HIGH");
+            pivot.addProperty("price", low ? "-1e400" : "1e400");
+            if (i < placement.size()) {
+                final JsonObject placed = placement.get(i).getAsJsonObject();
+                placed.addProperty("type", low ? "LOW" : "HIGH");
+                placed.addProperty("price", low ? "-1e400" : "1e400");
+            }
+        }
     }
 
     private Path domainTrace(final String name) throws IOException {

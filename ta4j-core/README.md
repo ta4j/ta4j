@@ -217,18 +217,24 @@ reference rank; neither is a confidence interval or a p-value, and partitions
 are never pooled. `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements. Every observation must match its trace
 header's dataset and null-member coordinates and carry a status defined for its
-record kind; required scope labels and as-of timestamps must be nonblank.
+record kind; required scope labels and as-of timestamps must be nonblank. Observations
+must have unique, strictly increasing as-of indices within each section, mode, grammar,
+detector and partition; different scopes may be interleaved.
 Topology status, candidate count and direction must agree: `COMPLETE` has one
 candidate and its direction, `AMBIGUOUS` has 2-64 candidates and a null direction,
 and all other states have no candidates. `FORMING` requires a wave direction;
 the remaining states have a null direction.
-Each candidate's rules must exactly match `activeRules` in order;
-scores are null except for `PASS`, whose recorded score, if present, is in `[0, 1]`.
+Each candidate's rules must exactly match `activeRules` in order. Inspection also
+binds the selected mode, every real cross-mode disagreement and the selected null member
+to that mode's ordered rule list in `comparisons.csv`.
+Scores are null except for `PASS`, whose recorded score, if present, is in `[0, 1]`.
 Pivots require nonnegative, strictly increasing indices, finite prices and valid
 high/low types, with confirmation no earlier than the pivot and no later than the
 observation's `asOfIndex`. Candidate placement must match the visible pivot view
 by index, type and exact numeric price, have the grammar's required number of
-strictly ordered, alternating pivots and a valid direction. Candidate keys must
+strictly ordered, alternating pivots, the expected origin type for its direction,
+and strictly positive or negative legs in the grammar's declared pattern.
+Candidate keys must
 match the recorded grammar, direction and full
 placement, and evidence versions must match the candidate key and serialized rules.
 All these checks precede scope filtering. Trace capture
