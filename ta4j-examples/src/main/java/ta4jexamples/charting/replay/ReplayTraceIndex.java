@@ -825,8 +825,8 @@ final class ReplayTraceIndex {
                     .equals(text(pivots.get(start + leg + 1).getAsJsonObject(), "type"))) {
                 return false;
             }
-            final int change = prices.get(start + leg + 1).compareTo(prices.get(start + leg));
-            final int signed = bullish ? change : -change;
+            final int signed = bullish ? prices.get(start + leg + 1).compareTo(prices.get(start + leg))
+                    : prices.get(start + leg).compareTo(prices.get(start + leg + 1));
             final boolean positive = leg < segmentLegs ? leg % 2 == 0 : (leg - segmentLegs) % 2 != 0;
             if (signed == 0 ? complete || leg < count - 2 : positive ? signed < 0 : signed > 0) {
                 return false;
