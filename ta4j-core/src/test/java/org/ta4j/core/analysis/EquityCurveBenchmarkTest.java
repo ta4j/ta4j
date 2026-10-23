@@ -62,6 +62,7 @@ class EquityCurveBenchmarkTest {
     @Test
     void measuresCriteriaAndRanking() throws IOException {
         int warmups = Integer.getInteger("equity.benchmark.warmups", 2);
+        boolean rankingOnly = Boolean.getBoolean("equity.benchmark.rankingOnly");
         int repetitions = Integer.getInteger("equity.benchmark.repetitions", 3);
         assertTrue(warmups > 0 && repetitions > 0, "warmups and repetitions must be positive");
         com.sun.management.ThreadMXBean allocation = ManagementFactory
@@ -76,7 +77,7 @@ class EquityCurveBenchmarkTest {
         Files.write(output, rows);
         Files.writeString(Path.of("target", "equity-curve-benchmark-environment.txt"),
                 "seed=" + EquityCurveTestSupport.SEED + "\nwarmups=" + warmups + "\nrepetitions=" + repetitions
-                        + "\nmonteCarloIterations=32\nmonteCarloPathBlocks=16\njava="
+                        + "\nrankingOnly=" + rankingOnly + "\nmonteCarloIterations=32\nmonteCarloPathBlocks=16\njava="
                         + System.getProperty("java.runtime.version") + "\nvm=" + System.getProperty("java.vm.name")
                         + "\nos=" + System.getProperty("os.name") + " " + System.getProperty("os.version") + " "
                         + System.getProperty("os.arch") + "\njvmArgs="
@@ -102,10 +103,12 @@ class EquityCurveBenchmarkTest {
                     statements.add(new BaseTradingStatement(null, record, null, null));
                 }
                 Result result = new Result(series, List.copyOf(statements));
-                for (AnalysisCriterion criterion : criteria) {
-                    measure(rows, allocation, factory, bars, positions, criterion.getClass().getSimpleName(),
-                            () -> criterion.calculate(series, statements.getFirst().getTradingRecord()), warmups,
-                            repetitions);
+                if (!rankingOnly) {
+                    for (AnalysisCriterion criterion : criteria) {
+                        measure(rows, allocation, factory, bars, positions, criterion.getClass().getSimpleName(),
+                                () -> criterion.calculate(series, statements.getFirst().getTradingRecord()), warmups,
+                                repetitions);
+                    }
                 }
                 List<WeightedCriterion> weights = criteria.stream()
                         .map(criterion -> new WeightedCriterion(criterion, factory.one()))
@@ -127,6 +130,8 @@ class EquityCurveBenchmarkTest {
                 List<TradingStatementExecutionResult.RankedTradingStatement> baselineRows = result
                         .rankTradingStatements(profile);
                 List<TradingStatementExecutionResult.RankedTradingStatement> candidateRows = candidate.get();
+                assertTrue(prototype.curves.isEmpty(), "sharing state must be released after ranking");
+                assertEquals(1, prototype.peakCurves, "sharing must retain only the current statement");
                 assertEquals(20, candidateRows.size());
                 for (int index = 0; index < baselineRows.size(); index++) {
                     TradingStatementExecutionResult.RankedTradingStatement baseline = baselineRows.get(index);
@@ -180,6 +185,7 @@ class EquityCurveBenchmarkTest {
      */
     private static final class SharingPrototype {
         private final Map<TradingRecord, CashFlow> curves = new IdentityHashMap<>();
+        private int peakCurves;
         private final List<AnalysisCriterion> criteria = new ArrayList<>();
 
         private SharingPrototype(BarSeries series, List<AnalysisCriterion> originals) {
@@ -194,7 +200,13 @@ class EquityCurveBenchmarkTest {
                 criteria.add(new AbstractAnalysisCriterion() {
                     @Override
                     public Num calculate(BarSeries input, TradingRecord record) {
+                        // Ranking evaluates every criterion for one statement
+                        // before moving to the next. Release its predecessor here.
+                        if (!curves.containsKey(record)) {
+                            curves.clear();
+                        }
                         CashFlow curve = curves.computeIfAbsent(record, key -> new CashFlow(series, key));
+                        peakCurves = Math.max(peakCurves, curves.size());
                         if (original instanceof MaximumDrawdownBarLengthCriterion) {
                             return Drawdown.length(series, record, curve);
                         }

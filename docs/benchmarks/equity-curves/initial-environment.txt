@@ -1,0 +1,13 @@
+seed=6342026
+warmups=2
+repetitions=3
+monteCarloIterations=32
+monteCarloPathBlocks=16
+java=25.0.5
+vm=OpenJDK 64-Bit Server VM
+os=Mac OS X 26.6.2 aarch64
+jvmArgs=[-javaagent:/Users/david/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=/Users/david/Workspace/Codex/2026-10-23/task/ta4j-cf634/ta4j-core/target/jacoco.exec, -XX:+EnableDynamicAgentLoading, -Xshare:off, -Djdk.instrument.traceUsage=false]
+started=2026-10-23T11:22:49.970037Z
+sourceRevision=650d8433640747b98586e48fd6cc65857fa91ede
+availableProcessors=18
+maxHeapBytes=32178700288

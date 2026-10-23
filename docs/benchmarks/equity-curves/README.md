@@ -44,8 +44,9 @@ drawdown, drawdown duration, RoMaD and Calmar. RoMaD and Calmar reproduce their
 default formula only for these immutable, unbounded fixture records. Maximum
 absolute drawdown, Monte Carlo, Sharpe and Sortino retain their original
 implementations. All eight raw and normalized scores, composite scores and
-ranking order must exactly match production before measurement. State is cleared
-in `finally` after each ranking invocation, including warmups.
+ranking order must exactly match production before measurement. The previous statement's curve is released before the next is constructed; a peak-size assertion
+requires exactly one retained curve. State is also cleared in `finally` after
+each ranking invocation, including warmups.
 
 This is a conservative subset experiment, not a production cache contract.
 Its numbers include map lookup and clearing. It excludes mutation support,
@@ -62,9 +63,13 @@ the repository root:
 mvn -pl ta4j-core test -Dtest=CashFlowTest,CumulativePnLTest
 mvn -pl ta4j-core test -Dtest=EquityCurveBenchmarkTest \
   -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.test.forkCount=1 \
-  '-DargLine=-Xms512m -Xmx2g' \
-  -Dequity.benchmark.warmups=2 -Dequity.benchmark.repetitions=3
+  -Dequity.benchmark.warmups=2 -Dequity.benchmark.repetitions=3 \
+  -Dequity.benchmark.revision="$(git rev-parse HEAD)"
 ```
+
+For a comparison-only rerun, add `-Dequity.benchmark.rankingOnly=true`.
+This retains all four workloads and both ranking variants; the default also
+measures the eight criteria individually.
 
 The existing benchmark-tagged workflow discovers this test. No workflow changes
 are needed. The test writes `ta4j-core/target/equity-curve-benchmark.csv` and
@@ -87,3 +92,29 @@ The inherited design threshold is at least 1.5x ranking speedup or at least 40%
 allocation reduction at 100,000 bars. Both factories and all workloads must be
 reported, including losses. Phase 1 requires a measured decision and additional
 production-contract design; it is not authorized by adding this harness.
+
+
+## Measurement provenance
+
+Production baseline: `7adc45bfdf78aae2c07f4008b8bb939eac0aea6b` (remote master
+verified on 2026-10-23). The original full run uses harness revision
+`650d8433640747b98586e48fd6cc65857fa91ede`; its unmodified samples and JVM
+metadata are `initial-retaining20.csv` and `initial-environment.txt`.
+Its per-criterion measurements remain valid. Its prototype retained all 20
+statement curves through ranking, so its ranking comparison is preserved as a
+rejected experiment rather than the final scope design.
+
+The full run took 22m38s. At 100,000 bars it measured 1.621x DoubleNum ranking
+speedup / 36.79% allocation reduction and 0.853x DecimalNum speedup / 24.49%
+allocation reduction. The loss is retained rather than omitted. Retention of
+all statement curves differs from the PRD's per-statement lifetime and can
+increase GC pressure; this is a possible contributor, not an established
+causal diagnosis from these samples alone.
+
+The recorded JVM was OpenJDK 25.0.5, macOS 26.6.2 aarch64, 18 available
+processors. Maven's JaCoCo configuration overrode the requested
+`-DargLine=-Xms512m -Xmx2g`: the effective JVM had the JaCoCo 0.8.14 agent,
+`-XX:+EnableDynamicAgentLoading -Xshare:off -Djdk.instrument.traceUsage=false`,
+and a 32,178,700,288-byte maximum heap. These are instrumented measurements,
+not uninstrumented production-latency claims. The metadata records the actual
+arguments and heap; use those effective settings when comparing results.
