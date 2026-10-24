@@ -5,6 +5,9 @@ package org.ta4j.core;
 
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
@@ -605,6 +608,34 @@ public class Position implements Serializable {
      */
     private Num zero() {
         return entry.getNetPrice().getNumFactory().zero();
+    }
+
+    @Serial
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        validateDeserializedState();
+    }
+
+    private void validateDeserializedState() throws InvalidObjectException {
+        if (startingType == null) {
+            throw new InvalidObjectException("startingType cannot be null");
+        }
+        if (entry == null && exit != null) {
+            throw new InvalidObjectException("Position cannot have an exit without an entry");
+        }
+        if (entry != null) {
+            if (entry.getType() == null || entry.getType() != startingType) {
+                throw new InvalidObjectException("Entry trade type must match startingType");
+            }
+            if (exit != null) {
+                if (exit.getType() == null || exit.getType() == entry.getType()) {
+                    throw new InvalidObjectException("Exit trade type must complement entry trade type");
+                }
+                if (exit.getIndex() < entry.getIndex()) {
+                    throw new InvalidObjectException("Exit trade index cannot be less than entry trade index");
+                }
+            }
+        }
     }
 
     @Override
