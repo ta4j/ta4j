@@ -143,6 +143,10 @@ class ElliottResearchTest {
         throw new AssertionError("row not found: " + key);
     }
 
+    private static String replayLine(final String inspectOutput) {
+        return inspectOutput.lines().filter(line -> line.startsWith("Replay: ")).findFirst().orElseThrow();
+    }
+
     @Test
     void smokeRunWritesEveryArtifactAndInspectMatchesRowDenominator() throws Exception {
         for (final String artifact : List.of("run.json", "comparisons.csv", "coverage.csv", "summary.md",
@@ -171,6 +175,18 @@ class ElliottResearchTest {
         assertEquals(0, inspect.code(), inspect.err());
         assertTrue(inspect.out().contains(denominator + " in this row's scope"), inspect.out());
         assertTrue(inspect.out().contains("-> match"), inspect.out());
+        // Replay: the sidecar bars are hashed and complete, and inspect names the
+        // viewer command with this key.
+        final JsonObject priceBars = dataset.getAsJsonObject("priceBars");
+        assertEquals("bars/smoke.csv", priceBars.get("path").getAsString());
+        final byte[] barBytes = Files.readAllBytes(smokeRun.resolve("bars/smoke.csv"));
+        assertEquals(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(barBytes)),
+                priceBars.get("sha256").getAsString());
+        assertEquals(dataset.get("bars").getAsInt() + 1, Files.readAllLines(smokeRun.resolve("bars/smoke.csv")).size());
+        assertTrue(inspect.out().contains("Replay: mvn -q -pl ta4j-examples exec:java"), inspect.out());
+        assertTrue(inspect.out().contains("ElliottReplayInspector"), inspect.out());
+        assertFalse(replayLine(inspect.out()).contains("--trace"), inspect.out());
+        assertTrue(inspect.out().contains(OCCUPANCY_KEY), inspect.out());
 
         for (final String artifact : List.of("events.jsonl", "outcomes.csv", "outcomes-summary.csv")) {
             assertTrue(Files.isRegularFile(smokeRun.resolve(artifact)), artifact);
@@ -759,7 +775,8 @@ class ElliottResearchTest {
                 "relations/input.json", "families/input.json", ElliottResearchOutcomes.EVENTS_FILE,
                 ElliottResearchOutcomes.OUTCOMES_FILE, ElliottResearchOutcomes.SUMMARY_FILE,
                 ElliottResearchCalibration.TABLES_FILE, ElliottResearchCalibration.PREDICTIONS_FILE,
-                ElliottResearchCalibration.SUMMARY_FILE, ElliottResearchCalibration.RELIABILITY_FILE)) {
+                ElliottResearchCalibration.SUMMARY_FILE, ElliottResearchCalibration.RELIABILITY_FILE,
+                "bars/input.json")) {
             for (final boolean recipeInput : List.of(false, true)) {
                 for (final boolean symlink : List.of(false, true)) {
                     final Path out = work.resolve("overwrite-managed-" + caseIndex++);
@@ -1001,7 +1018,7 @@ class ElliottResearchTest {
     }
 
     @Test
-    void selectedNullMemberRunWritesNullTraceUsedByInspect() throws Exception {
+    public void selectedNullMemberRunWritesNullTraceUsedByInspect() throws Exception {
         final Path run = work.resolve("null-member");
         final Result result = launch("run", "smoke", "--trace", "selected-null-member", "--block", "20", "--member",
                 "3", "--out", run.toString());
@@ -1017,6 +1034,9 @@ class ElliottResearchTest {
         assertEquals(0, inspect.code(), inspect.err());
         assertTrue(inspect.out().contains("Selected null member trace: traces/smoke-null-b20-m3.jsonl"), inspect.out());
         assertTrue(inspect.out().contains("member 3"), inspect.out());
+        // The viewer reads the real trace by default; a run that retained only the null
+        // member must name that mode or the printed command fails.
+        assertTrue(replayLine(inspect.out()).contains("--trace selected-null-member"), inspect.out());
         final JsonObject nullReport = readJson(run.resolve("reports/smoke.json")).getAsJsonArray("nulls")
                 .asList()
                 .stream()
@@ -1043,6 +1063,14 @@ class ElliottResearchTest {
         final Result summary = launch("summarize", run.toString());
         assertEquals(0, summary.code(), summary.err());
         assertTrue(Files.readString(run.resolve("summary.md")).contains("--trace real"));
+
+        // A genuine competing row has no captured null stream: request a real
+        // recapture, not an unusable viewer command.
+        final String competingKey = "smoke|competing|competing-3+3|fractal-w5|calibration|completeOccupancyRate|b-";
+        final Result competing = launch("inspect", run.toString(), competingKey);
+        assertEquals(2, competing.code(), competing.err());
+        assertTrue(competing.err().contains("no trace was captured for key " + competingKey), competing.err());
+        assertTrue(competing.err().contains("--trace real"), competing.err());
     }
 
     @Test

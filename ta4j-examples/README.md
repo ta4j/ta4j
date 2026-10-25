@@ -174,6 +174,141 @@ Finite extreme endpoint innovations are whitened before subtraction, so
 `DoubleNum` range limits do not turn a representable robust update into
 `NaN.NaN`.
 
+### 7) Replay an Elliott research run bar by bar
+
+`ElliottReplayInspector` replays what a research run (`ta4j-core/README.md`,
+"Run Elliott wave pattern research") knew at each bar. It reads only the run
+directory: it never recomputes a wave count from bars, fetches data, or writes into the run, and
+it rejects a trace whose dataset, run revision, fingerprint, source digest or
+null block/member coordinates differ from `run.json`. Trace indices, header and
+selected-member coordinates, and retained price-bar row counts must be exact
+32-bit integers: fractional or out-of-range JSON numbers are rejected before
+conversion, never wrapped into another bar or member. Unknown topology statuses,
+alternative outcomes and nested rule-evidence states are rejected at the trace
+line that contains them instead of being presented as recorded evidence.
+Required stream identity labels and as-of timestamps must be nonblank, including
+on records outside the requested family; they cannot silently disappear from evidence.
+Kernel grammar scopes require topology records, while structural alternative scopes
+require alternative records; changing the kind cannot bypass topology evidence checks.
+Each listed trace must also match its entry in the dataset's `traceSha256` map before
+the viewer opens. A rewritten status, label set or observation stream, including a
+removed record in an unselected family with a repaired footer, is not the recorded
+bundle. Regenerate older unbound runs rather than replaying different support.
+Candidate keys must match the recorded grammar, direction and ordered pivot
+placement; each version must bind that key to its exact ordered rule evidence.
+Edited or foreign identities are rejected with the trace line and candidate field.
+The ordered candidate rule IDs must exactly match `activeRules`, and compared
+families must match their mode's ordered rule IDs in `comparisons.csv`, including
+real and selected-null-member streams outside the selected family. `COMPLETE`
+has one candidate with the same direction;
+`AMBIGUOUS` has 2-64 candidates and a null direction. All other topology states
+have no candidates; only `FORMING` carries a direction. Supported grammar placement
+sizes, the grammar/direction-specific origin type and strict price move of every
+leg, ordered alternating pivots with nonnegative indices and finite prices,
+strictly ordered visible pivots with alternating confirmed neighbors, confirmations no earlier
+than their pivot indices (not a monotonic sequence), and null-or-PASS scores in `[0, 1]`
+are also checked before selecting a replay family. Within each full
+section/mode/grammar/detector/partition scope, as-of indices must be unique and
+strictly increasing even on unselected streams; different scopes may interleave.
+Comparison keys must be unique and equal the producer's seven-part identity from
+their row fields, so duplicate or relabeled rows cannot change selection semantics.
+Before selection, the complete key inventory must match the recorded recipe, completed
+datasets, detector scopes, partitions, rule modes, metrics and null blocks in `run.json`.
+Each row must also match its asset, grammar, ordered active rules, policy and requested
+ensemble size; missing and invented families cannot masquerade as a partial comparison.
+The five rate metrics require nonnegative integer support with numerator no larger than
+denominator, and their observation must exactly equal that ratio (`0/0` is unavailable).
+The two non-rate metrics carry no numerator or denominator; unknown metric IDs are rejected.
+CSV header names must be unique and every row must have exactly the header's cell count.
+Every comparison row retains the producer's full CSV schema and validates null-reference
+member counts, finite ordered nearest-rank quantiles, the observed-minus-median difference,
+and the `(valid + 1)` empirical rank lattice and its quantile bounds before selection.
+The null block, valid-member count and observation determine availability; valid small
+ensembles, ties, undefined observations and all-undefined ensembles remain supported.
+Competing and robustness controls without a bootstrap null retain empty null-reference
+count, quantile, difference and rank cells.
+Trace label arrays are duplicate-free and must describe the recorded outcome:
+topology candidate spans, forming bounds, invalidation explanation or empty/no-history
+state; structural `3+3` and `5+5` labels and outcomes must match their captured pivot
+windows. Change-point labels bind only the recorded outcome, not a new close-price
+classification. Alternative directions must be null and change-point-baseline pivots empty.
+Every topology record includes its explanation and exact forming bounds, which are `-1`
+outside `FORMING`. A forming span must be a grammar-valid contiguous suffix of at least
+three but fewer than the full grammar's pivot count, ending at the newest pivot except for
+trailing future-confirmed entries. Shorter valid suffixes after disjoint completions remain valid.
+Candidate placements must match recorded pivots by index, type and exact decimal price,
+without skipping confirmed pivots, and retained candidate keys must be distinct.
+Future-confirmed pivots and candidate points remain inspectable but are suppressed from
+the as-of projection and prominently flagged as leaks, not silently reclassified.
+Malformed run metadata is also reported as an artifact diagnostic with the field
+to repair and regeneration guidance, rather than escaping as a Java stack trace.
+
+Before opening the selected family, replay reconstructs its comparison metric
+from the captured records: complete, ambiguous and no-match occupancy; individual
+and joint rule-pass rates; mean candidate-pivot confirmation lag; or adjacent
+label-set Jaccard stability. Real observations must match exactly, including the
+numerator and denominator for rate metrics. Evidence-pass denominators count
+every rule on complete candidates; joint-pass denominators count those candidates
+with rules. Lag averages each complete candidate's pivot lags before averaging
+candidates, while stability averages adjacent label-set intersections over unions.
+Undefined metrics are explicitly unavailable, not successful support checks.
+A selected null member reports only its own contributions: it is never compared
+with the real observation or presented as the unrecorded null ensemble.
+
+Reproducible smoke walkthrough (synthetic data, no network):
+
+```bash
+./mvnw -q -pl ta4j-core test-compile exec:java "-Dexec.args=run smoke --out target/elliott-research/smoke --overwrite"
+./mvnw -q -pl ta4j-core test-compile exec:java "-Dexec.args=inspect target/elliott-research/smoke '<key from comparisons.csv>'"
+./mvnw -pl ta4j-examples -am install -DskipTests   # once, for exec:java
+./mvnw -q -pl ta4j-examples exec:java \
+  -Dexec.mainClass=ta4jexamples.charting.replay.ElliottReplayInspector \
+  "-Dexec.args=target/elliott-research/smoke --key '<key>' --commands 'tnext;select 1;history;seek 40;export' --out target/elliott-replay"
+```
+
+`inspect` prints the matching `Replay:` command for a comparison, so the key to
+replay is the one whose counterexample or rule disagreement you want to see. The
+cursor opens at `--at` when given, otherwise on the first ambiguous record of the
+stream (or the first record when none is ambiguous); `next`/`prev` step by bar,
+`tnext`/`tprev` jump to the next or previous recorded state change (the first
+record of a stream is an initial recorded state, not a change), `seek <bar|instant>` moves
+to the latest record at or before it, `select <candidate key|#>` follows one
+candidate across bars, `history` lists its recorded version changes (when the
+stream is longer than the 5,000-record lookback it says where the scanned history
+starts instead of inventing a change), and `export` writes
+`frame-<bar>.json`, `frame-<bar>.txt` and `frame-<bar>.jpg`. `--out` is resolved
+through symbolic links and `..` the way the file system does, and must not be
+the run directory or inside it. A frame file that is a symbolic link is refused,
+and an existing file or hard link is replaced, never overwritten in place; the
+replay refuses before writing anything.
+`--interactive` starts a prompt (`help` lists the commands); `--display` opens the
+chart in a window.
+
+Real-data counterexample walkthrough: run the frozen study with trace capture
+(`run frozen-cf525 --trace real --out <dir>`; `frozen-cf525` traces nothing by
+default and replay needs the trace), `inspect <dir> '<key>'` for a row whose
+observed value sits outside its null band, replay that key with the printed
+command, jump to the listed counterexample bar with `seek`, `select` the candidate
+the report names, and `export` the frame as evidence.
+
+The frozen study replays many null-member tapes, and the trace records the full
+visible pivot history at every bar, so `--trace real` is a long run (expect far
+longer than the smoke run) and writes a large trace file; budget disk and time
+accordingly. Only the synthetic smoke walkthrough above is a seconds-scale run.
+
+To replay the resampled null member behind a null reference band, capture it
+with `run ... --trace selected-null-member --block <L> --member <M>` (`L` must be
+the row's null block length) and replay with
+`--trace selected-null-member`. Only `h1` and `h2` rows map to the producer's
+`null` stream (mode is the grammar for `h1`, the ablation mode for `h2`); other
+rows are refused with an explanation. The member's own recorded prices are shown,
+never the real series.
+
+Replay verifies the completed run's `comparisonsSha256` before accepting comparison
+rows. Regenerate older bundles without this metadata, or bundles whose CSV was
+modified or copied from another run; matching keys alone do not bind statistics to
+the recorded provenance.
+
 ## Suggested progression
 
 1. `ta4jexamples.Quickstart`

@@ -200,7 +200,9 @@ A run directory holds `run.json` (revision and whether the worktree was dirty,
 recipe, configuration, dataset
 sources and status), `reports/` (one study report per dataset),
 `comparisons.csv` (one row per dataset, section, mode, detector, partition,
-metric and null block length), `coverage.csv`, `summary.md`, `traces/`
+metric and null block length), `coverage.csv`, `summary.md`, `bars/` (one CSV
+of the evaluated price bars per dataset, keyed by the source index the traces
+use), `traces/`
 (JSON lines per as-of bar) and `.run.lock`, which a run holds while it writes so
 a second run into the same directory is refused. `summarize` validates run metadata
 before creating a lock file, then holds the same lock while reading evidence and
@@ -329,6 +331,18 @@ resolve inside the run directory: a trace name that is absolute or climbs out wi
 and `summary.md` is replaced rather than written through, so a link planted at that
 name never redirects the write. A run directory received from someone else is still
 an untrusted local artifact; read it with the care you give any downloaded file.
+
+`inspect` also prints a `Replay:` line: the `ElliottReplayInspector` command
+(`ta4j-examples`) that steps through the row's trace bar by bar, showing the
+confirmed pivots, every retained candidate and its rule results exactly as
+recorded for that bar. Runs written before `bars/` existed print why replay is
+unavailable; regenerate them. A run that retained only a `selected-null-member`
+trace prints the command with `--trace selected-null-member`. See
+`ta4j-examples/README.md`.
+
+A `selected-null-member` trace additionally records each as-of bar of the
+resampled member (`bar`: begin, end, open, high, low, close, volume), because
+those prices exist nowhere else; replay shows them instead of the real series.
 
 Every run also records causal forward-outcome evidence for enrolled `MOTIVE_5`
 events (events enroll once per placement, when it first becomes visible to the

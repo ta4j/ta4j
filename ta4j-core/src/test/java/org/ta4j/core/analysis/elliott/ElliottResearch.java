@@ -138,8 +138,14 @@ final class ElliottResearch {
             ElliottResearchOutcomes.SUMMARY_FILE, ElliottResearchCalibration.TABLES_FILE,
             ElliottResearchCalibration.PREDICTIONS_FILE, ElliottResearchCalibration.SUMMARY_FILE,
             ElliottResearchCalibration.RELIABILITY_FILE);
+    /**
+     * Per-dataset price bars a replay viewer needs to draw the traced as-of
+     * indices.
+     */
+    private static final String BARS_DIR = "bars";
     private static final List<String> MANAGED_DIRECTORIES = List.of(REPORTS_DIR, TRACES_DIR,
-            ElliottResearchRelations.RELATIONS_DIR, ElliottResearchFamilies.FAMILIES_DIR);
+            ElliottResearchRelations.RELATIONS_DIR, ElliottResearchFamilies.FAMILIES_DIR, BARS_DIR);
+    private static final String BARS_HEADER = "index,beginTime,endTime,open,high,low,close,volume";
     /**
      * Consecutive in-window bars further apart than this many bar periods mark
      * coverage partial.
@@ -1240,6 +1246,7 @@ final class ElliottResearch {
         }
         Files.createDirectories(dir.resolve(REPORTS_DIR));
         Files.createDirectories(dir.resolve(TRACES_DIR));
+        Files.createDirectories(dir.resolve(BARS_DIR));
     }
 
     private static void deleteTree(final Path root) throws IOException {
@@ -1271,6 +1278,9 @@ final class ElliottResearch {
         private ElliottResearchRelations.Totals relationTotals;
         private String families;
         private ElliottResearchFamilies.Totals familyTotals;
+        private String barsFile;
+        private String barsSha256;
+        private int barsRows;
         private final Map<String, String> traceSha256 = new LinkedHashMap<>();
 
         DatasetEntry(final String id, final String asset, final JsonObject source) {
@@ -1415,6 +1425,7 @@ final class ElliottResearch {
             final DatasetEntry entry = entries.get(id);
             try {
                 numFactory = series.numFactory().getClass().getName();
+                writeBars(entry, series);
                 final ElliottResearchTrace real = openTraces.remove(id);
                 if (real != null) {
                     real.close();
@@ -1576,6 +1587,7 @@ final class ElliottResearch {
                 Files.deleteIfExists(dir.resolve(REPORTS_DIR).resolve(id + ".json"));
                 Files.deleteIfExists(dir.resolve(ElliottResearchRelations.fileName(id)));
                 Files.deleteIfExists(dir.resolve(ElliottResearchFamilies.fileName(id)));
+                Files.deleteIfExists(dir.resolve(barsName(id)));
             } catch (final IOException ignored) {
                 // best effort: run.json records no trace or report for a failed dataset
             }
@@ -1591,6 +1603,9 @@ final class ElliottResearch {
             entry.families = null;
             entry.familyTotals = null;
             entry.bars = 0;
+            entry.barsFile = null;
+            entry.barsSha256 = null;
+            entry.barsRows = 0;
             entry.effectiveFrom = null;
             entry.effectiveTo = null;
             entry.status = "failed";
@@ -1693,6 +1708,15 @@ final class ElliottResearch {
                         : new JsonPrimitive(entry.effectiveTo.toString()));
                 dataset.add("effective", effective);
                 dataset.addProperty("bars", entry.bars);
+                if (entry.barsFile == null) {
+                    dataset.add("priceBars", JsonNull.INSTANCE);
+                } else {
+                    final JsonObject priceBars = new JsonObject();
+                    priceBars.addProperty("path", entry.barsFile);
+                    priceBars.addProperty("sha256", entry.barsSha256);
+                    priceBars.addProperty("rows", entry.barsRows);
+                    dataset.add("priceBars", priceBars);
+                }
                 final JsonObject coverage = new JsonObject();
                 coverage.addProperty("status", entry.coverageStatus);
                 coverage.addProperty("message", entry.coverageMessage);
@@ -1749,10 +1773,49 @@ final class ElliottResearch {
             }
             return json;
         }
+
+        /**
+         * Persists every bar of the evaluated series under its source index, the
+         * coordinate trace records use, so a viewer can draw them without the source
+         * candles.
+         */
+        private void writeBars(final DatasetEntry entry, final BarSeries series) throws IOException {
+            final StringBuilder csv = new StringBuilder(BARS_HEADER).append('\n');
+            int rows = 0;
+            for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+                final Bar bar = series.getBar(index);
+                csv.append(index)
+                        .append(',')
+                        .append(bar.getBeginTime())
+                        .append(',')
+                        .append(bar.getEndTime())
+                        .append(',')
+                        .append(bar.getOpenPrice())
+                        .append(',')
+                        .append(bar.getHighPrice())
+                        .append(',')
+                        .append(bar.getLowPrice())
+                        .append(',')
+                        .append(bar.getClosePrice())
+                        .append(',')
+                        .append(bar.getVolume())
+                        .append('\n');
+                rows++;
+            }
+            final byte[] bytes = csv.toString().getBytes(StandardCharsets.UTF_8);
+            Files.write(dir.resolve(barsName(entry.id)), bytes);
+            entry.barsFile = barsName(entry.id);
+            entry.barsSha256 = sha256(bytes);
+            entry.barsRows = rows;
+        }
     }
 
     private static String realTraceName(final String datasetId) {
         return TRACES_DIR + "/" + datasetId + "-real.jsonl";
+    }
+
+    private static String barsName(final String datasetId) {
+        return BARS_DIR + "/" + datasetId + ".csv";
     }
 
     private static String nullTraceName(final String datasetId, final int block, final int member) {
@@ -2788,6 +2851,7 @@ final class ElliottResearch {
             out.println("Dataset: " + row.dataset() + " (" + row.asset() + ")  section: " + row.section() + "  mode: "
                     + row.mode() + "  grammar: " + row.grammar() + "  detector: " + row.detector() + "  partition: "
                     + row.partition());
+            out.println(replayLine(real == null));
             out.println(
                     "Active rules: " + (row.activeRules().isEmpty() ? "(none)" : String.join(", ", row.activeRules())));
             out.println("Metric: " + row.metric() + "  observed=" + number(row.observed()) + "  numerator="
@@ -2821,6 +2885,29 @@ final class ElliottResearch {
             if (calibration != null) {
                 printCalibration(out, calibration, asOf, candidate);
             }
+        }
+
+        /**
+         * The command that replays this row's trace in the examples-module viewer, or
+         * the reason it cannot: runs written before price bars were persisted lack
+         * them, and a selected null member records only h1 and h2 rows. The viewer
+         * reads a real trace by default, so a run that retained only a selected null
+         * member names that mode.
+         */
+        private String replayLine(final boolean nullMemberOnly) {
+            if (dataset.get("priceBars") == null || dataset.get("priceBars").isJsonNull()) {
+                return "Replay: unavailable, this run persisted no price bars. Regenerate the run to enable replay.";
+            }
+            if (nullMemberOnly && !"h1".equals(row.section()) && !"h2".equals(row.section())) {
+                return "Replay: unavailable, this run retained only a selected null member, which records only h1"
+                        + " and h2 rows. Recapture with --trace real to replay this row.";
+            }
+            final String args = execQuoted(displayPath(dir)) + " --key " + execQuoted(row.key())
+                    + (nullMemberOnly ? " --trace " + ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER : "");
+            return "Replay: mvn -q -pl ta4j-examples exec:java"
+                    + " -Dexec.mainClass=ta4jexamples.charting.replay.ElliottReplayInspector "
+                    + shellQuoted("-Dexec.args=" + args)
+                    + "  (run `mvn -pl ta4j-examples -am install -DskipTests` once first)";
         }
 
         private void printFlags(final PrintStream out) {
