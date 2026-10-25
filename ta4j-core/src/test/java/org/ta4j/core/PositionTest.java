@@ -513,31 +513,38 @@ public class PositionTest {
     @ParameterizedTest
     @MethodSource("numFactories")
     public void mixedLiveAndBaseTradesRetainTheirRecordedFeeModel(NumFactory factory) throws Exception {
-        for (TradeType type : TradeType.values()) {
-            for (boolean liveEntry : new boolean[] { false, true }) {
-                ExecutionSide entrySide = type == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-                ExecutionSide exitSide = entrySide == ExecutionSide.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
-                Trade entry = liveEntry
-                        ? new LiveTrade(1, java.time.Instant.EPOCH, factory.numOf(100), factory.one(), factory.numOf(2),
-                                entrySide, null, null)
-                        : new BaseTrade(1, java.time.Instant.EPOCH, factory.numOf(100), factory.one(), factory.numOf(2),
-                                entrySide, null, null);
-                Trade exit = liveEntry
-                        ? new BaseTrade(3, java.time.Instant.EPOCH, factory.numOf(110), factory.one(), factory.numOf(3),
-                                exitSide, null, null)
-                        : new LiveTrade(3, java.time.Instant.EPOCH, factory.numOf(110), factory.one(), factory.numOf(3),
-                                exitSide, null, null);
-                Position original = new Position(entry, exit);
-                Position restored = restore(original);
-                assertTrue(restored.isClosed());
-                assertEquals(type, restored.getStartingType());
-                assertSame(RecordedTradeCostModel.INSTANCE, restored.getTransactionCostModel());
-                assertNumEquals(5, restored.getPositionCost());
-                assertNumEquals(2, restored.getPositionCost(1));
-                assertNumEquals(5, restored.getPositionCost(4));
-                assertNumEquals(type == TradeType.BUY ? 5 : -15, restored.getProfit());
-                assertNumEquals(original.getProfit(), restored.getProfit());
+        TraceTestLogger capture = new TraceTestLogger();
+        // Legacy-trade compatibility deliberately triggers its deprecation notice.
+        capture.open();
+        try {
+            for (TradeType type : TradeType.values()) {
+                for (boolean liveEntry : new boolean[] { false, true }) {
+                    ExecutionSide entrySide = type == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+                    ExecutionSide exitSide = entrySide == ExecutionSide.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
+                    Trade entry = liveEntry
+                            ? new LiveTrade(1, java.time.Instant.EPOCH, factory.numOf(100), factory.one(),
+                                    factory.numOf(2), entrySide, null, null)
+                            : new BaseTrade(1, java.time.Instant.EPOCH, factory.numOf(100), factory.one(),
+                                    factory.numOf(2), entrySide, null, null);
+                    Trade exit = liveEntry
+                            ? new BaseTrade(3, java.time.Instant.EPOCH, factory.numOf(110), factory.one(),
+                                    factory.numOf(3), exitSide, null, null)
+                            : new LiveTrade(3, java.time.Instant.EPOCH, factory.numOf(110), factory.one(),
+                                    factory.numOf(3), exitSide, null, null);
+                    Position original = new Position(entry, exit);
+                    Position restored = restore(original);
+                    assertTrue(restored.isClosed());
+                    assertEquals(type, restored.getStartingType());
+                    assertSame(RecordedTradeCostModel.INSTANCE, restored.getTransactionCostModel());
+                    assertNumEquals(5, restored.getPositionCost());
+                    assertNumEquals(2, restored.getPositionCost(1));
+                    assertNumEquals(5, restored.getPositionCost(4));
+                    assertNumEquals(type == TradeType.BUY ? 5 : -15, restored.getProfit());
+                    assertNumEquals(original.getProfit(), restored.getProfit());
+                }
             }
+        } finally {
+            capture.close();
         }
     }
 
