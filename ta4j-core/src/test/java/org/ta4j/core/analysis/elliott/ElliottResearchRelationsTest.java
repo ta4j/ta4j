@@ -310,6 +310,41 @@ class ElliottResearchRelationsTest {
     }
 
     @Test
+    public void eventLabelsAndCoverageFlagsMustBeRecognisedValues() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        int line = 1;
+        while (line < lines.size() - 1 && !lines.get(line).contains("\"parentStart\"")) {
+            line++;
+        }
+        assertTrue(line < lines.size() - 1, "fixture must contain an edge");
+        final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+        final JsonObject event = frame.getAsJsonArray("events").get(0).getAsJsonObject();
+        final JsonObject coverage = frame.getAsJsonObject("coverage");
+        for (final JsonObject owner : List.of(event, event.getAsJsonObject("edge"))) {
+            for (final String field : owner == event ? List.of("lifecycle", "reason") : List.of("state")) {
+                final JsonElement original = owner.get(field);
+                for (final String invalid : List.of("null", "\"\"", "\"Active\"", "\"unknown\"", "1", "true")) {
+                    owner.add(field, JsonParser.parseString(invalid));
+                    assertIdentityRejected(lines, line, frame, field);
+                }
+                owner.add(field, original);
+            }
+        }
+        for (final String field : List.of("truncated", "incomplete")) {
+            final JsonElement original = coverage.get(field);
+            for (final String invalid : List.of("null", "\"true\"", "1", "[]")) {
+                coverage.add(field, JsonParser.parseString(invalid));
+                assertIdentityRejected(lines, line, frame, field);
+            }
+            coverage.add(field, original);
+        }
+        lines.set(line, frame.toString());
+        Files.write(file, lines, StandardCharsets.UTF_8);
+        assertTrue(ElliottResearchRelations.read(file, ignored -> {
+        }).complete());
+    }
+
+    @Test
     public void edgeAndParentIdentitiesRejectMalformedKeysAndVersions() throws IOException {
         final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
         int line = 1;

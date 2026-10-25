@@ -61,6 +61,9 @@ final class ElliottResearchFamilies {
     private static final String COMPARISON_REASON = "verdicts are observed on the real series under the relation"
             + " admission and lifecycle policy of the hierarchy; no matched null comparison is computed, so counts are"
             + " descriptive and not comparable across profiles";
+    private static final Set<String> STATUSES = ElliottResearchRelations.labels(CorrectiveFamily.Status.class);
+    private static final Set<String> STUDY_REASONS = ElliottResearchRelations
+            .labels(CorrectiveFamilyStudy.Reason.class);
 
     private ElliottResearchFamilies() {
     }
@@ -347,8 +350,6 @@ final class ElliottResearchFamilies {
             for (final JsonElement group : frame.getAsJsonArray("coverage")) {
                 ElliottResearchRelations.requireLabel(group.getAsJsonObject(), "group");
                 ElliottResearchRelations.requireCoverage(group.getAsJsonObject());
-                group.getAsJsonObject().get("truncated").getAsBoolean();
-                group.getAsJsonObject().get("incomplete").getAsBoolean();
             }
             for (final JsonElement event : frame.getAsJsonArray("events")) {
                 final JsonObject object = event.getAsJsonObject();
@@ -358,14 +359,14 @@ final class ElliottResearchFamilies {
                 ElliottResearchRelations.requireLabel(verdict, "profile");
                 ElliottResearchRelations.requireLabel(verdict, "profileVersion");
                 ElliottResearchRelations.requireLabel(verdict, "parentScale");
-                verdict.get("status").getAsString();
+                ElliottResearchRelations.requireOneOf(verdict, "status", STATUSES);
                 ElliottResearchRelations.requireInt(verdict, "availableAt");
                 ElliottResearchRelations.requireLong(verdict, "compositionCount");
                 for (final JsonElement pivot : verdict.getAsJsonArray("parentPivots")) {
                     ElliottResearchRelations.requirePivot(pivot.getAsJsonObject());
                 }
-                object.get("lifecycle").getAsString();
-                object.get("reason").getAsString();
+                ElliottResearchRelations.requireOneOf(object, "lifecycle", ElliottResearchRelations.LIFECYCLES);
+                ElliottResearchRelations.requireOneOf(object, "reason", STUDY_REASONS);
                 for (final JsonElement leg : verdict.getAsJsonArray("legs")) {
                     final JsonObject legObject = leg.getAsJsonObject();
                     ElliottResearchRelations.requireInt(legObject, "leg");

@@ -17,9 +17,12 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Consumer;
 
@@ -60,6 +63,9 @@ final class ElliottResearchRelations {
     private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
     private static final List<String> COVERAGE_COUNTS = List.of("parentCandidates", "legsChecked", "edgesGenerated",
             "edgesRetained", "edgesOmitted", "edgeCap", "decompositionLegsTruncated");
+    static final Set<String> LIFECYCLES = labels(ScaleRelation.Lifecycle.class);
+    private static final Set<String> RELATION_REASONS = labels(ScaleRelation.Reason.class);
+    private static final Set<String> RELATION_STATES = labels(ScaleRelation.State.class);
 
     private ElliottResearchRelations() {
     }
@@ -440,7 +446,9 @@ final class ElliottResearchRelations {
                 for (final JsonElement pivot : edge.getAsJsonArray("childPivots")) {
                     requirePivot(pivot.getAsJsonObject());
                 }
-                object.get("lifecycle").getAsString();
+                requireOneOf(object, "lifecycle", LIFECYCLES);
+                requireOneOf(object, "reason", RELATION_REASONS);
+                requireOneOf(edge, "state", RELATION_STATES);
             }
         } catch (final RuntimeException e) {
             throw corrupt(path, line, "malformed frame: " + e.getMessage());
@@ -451,6 +459,8 @@ final class ElliottResearchRelations {
         for (final String field : COVERAGE_COUNTS) {
             requireInt(coverage, field);
         }
+        requireBoolean(coverage, "truncated");
+        requireBoolean(coverage, "incomplete");
     }
 
     static void requirePivot(final JsonObject pivot) {
@@ -497,6 +507,29 @@ final class ElliottResearchRelations {
                 || value.getAsString().isBlank()) {
             throw new IllegalArgumentException(field + " must be a nonblank JSON string");
         }
+    }
+
+    static void requireBoolean(final JsonObject owner, final String field) {
+        final JsonElement value = owner.get(field);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isBoolean()) {
+            throw new IllegalArgumentException(field + " must be a JSON boolean");
+        }
+    }
+
+    static void requireOneOf(final JsonObject owner, final String field, final Set<String> allowed) {
+        requireLabel(owner, field);
+        if (!allowed.contains(owner.get(field).getAsString())) {
+            throw new IllegalArgumentException(field + " " + owner.get(field) + " is not one of " + allowed);
+        }
+    }
+
+    /** Serialized labels of {@code type}: lower case, hyphenated. */
+    static <E extends Enum<E>> Set<String> labels(final Class<E> type) {
+        final Set<String> labels = new LinkedHashSet<>();
+        for (final E constant : type.getEnumConstants()) {
+            labels.add(constant.name().toLowerCase(Locale.ROOT).replace('_', '-'));
+        }
+        return Set.copyOf(labels);
     }
 
     static void requireIdentity(final JsonObject owner, final String keyField, final String versionField) {

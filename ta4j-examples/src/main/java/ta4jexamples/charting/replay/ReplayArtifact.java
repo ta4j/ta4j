@@ -240,7 +240,8 @@ final class ReplayArtifact {
     /**
      * Suggests a comparison row of the all-rules ablation for the same detector and
      * partition, so a topology-only observation can point at recorded rule
-     * evidence.
+     * evidence. The frozen {@code frozen-cf525} recipe names that ablation
+     * {@code classical-all}.
      *
      * @param row the row being replayed
      * @return a key whose trace carries rule evidence, if the run has one
@@ -249,7 +250,8 @@ final class ReplayArtifact {
         return comparisons.stream()
                 .filter(candidate -> candidate.dataset().equals(row.dataset())
                         && candidate.detector().equals(row.detector()) && candidate.partition().equals(row.partition())
-                        && "h2".equals(candidate.section()) && "all-rules".equals(candidate.mode()))
+                        && "h2".equals(candidate.section())
+                        && ("all-rules".equals(candidate.mode()) || "classical-all".equals(candidate.mode())))
                 .findFirst();
     }
 

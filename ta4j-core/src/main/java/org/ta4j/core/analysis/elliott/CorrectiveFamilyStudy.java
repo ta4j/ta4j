@@ -123,7 +123,7 @@ final class CorrectiveFamilyStudy {
     private final List<ScaleRelation.Scale> scales;
     private final List<ScaleRelationStudy.ScaleInput> inputs;
     private final List<Group> groups;
-    private final List<ScaleRelationExtractor> extractors;
+    private final List<RelationshipRule> childRules;
     private final List<ScaleRelation.Policy> policies;
     private final int maxCompositions;
     private final StudyRunner.Partitions partitions;
@@ -161,20 +161,17 @@ final class CorrectiveFamilyStudy {
         }
         this.maxCompositions = maxCompositions;
         this.groups = groupSpecs(Objects.requireNonNull(specs, "specs"));
-        final List<ScaleRelationExtractor> built = new ArrayList<>(groups.size());
+        this.childRules = List.copyOf(Objects.requireNonNull(childRules, "childRules"));
         final List<ScaleRelation.Policy> builtPolicies = new ArrayList<>(groups.size());
         for (final Group group : groups) {
             final List<TopologyGrammar> signature = group.childGrammars();
-            final ScaleRelation.Policy policy = new ScaleRelation.Policy(group.parentGrammar(), basePolicy.interior(),
+            builtPolicies.add(new ScaleRelation.Policy(group.parentGrammar(), basePolicy.interior(),
                     basePolicy.edgeCap(), basePolicy.maxDecompositionsPerLeg(), basePolicy.nodeBudgetPerLeg(),
                     (parent, leg) -> parent == group.parentGrammar() && leg < signature.size()
                             ? List.of(signature.get(leg))
-                            : List.of());
-            builtPolicies.add(policy);
-            built.add(new ScaleRelationExtractor(policy, childRules, identity));
+                            : List.of()));
         }
         this.policies = List.copyOf(builtPolicies);
-        this.extractors = List.copyOf(built);
     }
 
     /**
@@ -244,6 +241,10 @@ final class CorrectiveFamilyStudy {
             replayList.add(replays.replay(series, input.detector(), end));
         }
         final TopologyAnalyzer analyzer = new TopologyAnalyzer();
+        final List<ScaleRelationExtractor> extractors = new ArrayList<>(groups.size());
+        for (final ScaleRelation.Policy policy : policies) {
+            extractors.add(new ScaleRelationExtractor(policy, childRules, identity));
+        }
         final Map<String, CorrectiveFamily.Verdict> active = new TreeMap<>();
         List<GroupCoverage> lastCoverage = emptyCoverage();
         int emitted = 0;
@@ -260,7 +261,8 @@ final class CorrectiveFamilyStudy {
                 final Map<String, CorrectiveFamily.Verdict> current = new TreeMap<>();
                 final List<GroupCoverage> coverage = new ArrayList<>(groups.size());
                 for (int g = 0; g < groups.size(); g++) {
-                    coverage.add(observeGroup(g, analyzer, series, index, tapes, invalidated, current));
+                    coverage.add(observeGroup(g, extractors.get(g), analyzer, series, index, tapes, invalidated,
+                            current));
                 }
                 final List<Event> events = advance(index, active, current, invalidated);
                 if (!events.isEmpty() || !coverage.equals(lastCoverage)) {
@@ -286,8 +288,9 @@ final class CorrectiveFamilyStudy {
         return empty;
     }
 
-    private GroupCoverage observeGroup(final int groupIndex, final TopologyAnalyzer analyzer, final BarSeries series,
-            final int index, final List<List<ConfirmedPivot>> tapes, final Set<String> invalidated,
+    private GroupCoverage observeGroup(final int groupIndex, final ScaleRelationExtractor extractor,
+            final TopologyAnalyzer analyzer, final BarSeries series, final int index,
+            final List<List<ConfirmedPivot>> tapes, final Set<String> invalidated,
             final Map<String, CorrectiveFamily.Verdict> sink) {
         final Group group = groups.get(groupIndex);
         final ScaleRelation.Policy policy = policies.get(groupIndex);
@@ -309,8 +312,8 @@ final class CorrectiveFamilyStudy {
             }
             parentCandidates += parents.size();
             parentsByScale.add(Map.entry(parentScale, parents));
-            final ScaleRelationExtractor.Result result = extractors.get(groupIndex)
-                    .extract(parentScale, scales.get(i + 1), parents, tapes.get(i + 1), series);
+            final ScaleRelationExtractor.Result result = extractor.extract(parentScale, scales.get(i + 1), parents,
+                    tapes.get(i + 1), series);
             generated.addAll(result.edges());
             legs += result.legsChecked();
             truncatedLegs += result.decompositionLegsTruncated();

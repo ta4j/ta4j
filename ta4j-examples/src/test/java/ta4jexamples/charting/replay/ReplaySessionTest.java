@@ -740,8 +740,10 @@ class ReplaySessionTest {
 
             final ReplayArtifact artifact = assertDoesNotThrow(() -> ReplayArtifact.open(directory));
             assertEquals(50, artifact.comparisons().size());
-            assertEquals(expected, artifact.comparison(ReplayFixture.RULES_KEY.replace("|all-rules|", "|" + mode + "|"))
-                    .activeRules());
+            final String rulesKey = ReplayFixture.RULES_KEY.replace("|all-rules|", "|" + mode + "|");
+            assertEquals(expected, artifact.comparison(rulesKey).activeRules());
+            assertEquals(rulesKey,
+                    artifact.ruleEvidenceRow(artifact.comparison(ReplayFixture.TOPOLOGY_KEY)).orElseThrow().key());
         }
     }
 

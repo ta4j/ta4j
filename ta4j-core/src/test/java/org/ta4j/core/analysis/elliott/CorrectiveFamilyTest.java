@@ -132,6 +132,23 @@ class CorrectiveFamilyTest {
     }
 
     @Test
+    void oneStudyInstanceReplaysIdenticallyAcrossRepeatedRuns() {
+        final CorrectiveFamilyStudy study = new CorrectiveFamilyStudy(
+                List.of(ScaleRelationFixtures.input("parent", ZIGZAG_PARENT, PARENT_LAG),
+                        ScaleRelationFixtures.input("child", ZIGZAG_CHILD, CHILD_LAG)),
+                ScaleRelation.Policy.defaults(), ScaleRelationFixtures.passingRules(), ScaleRelationFixtures.identity(),
+                ScaleRelationFixtures.PARTITIONS, List.of(spec(CorrectiveFamily.Profile.ZIGZAG)),
+                CorrectiveFamily.DEFAULT_MAX_COMPOSITIONS);
+        final List<CorrectiveFamilyStudy.Frame> first = new ArrayList<>();
+        final List<CorrectiveFamilyStudy.Frame> second = new ArrayList<>();
+        study.run(ScaleRelationFixtures.series(BARS), 0, BARS - 1, DetectorReplays.uncached(), first::add);
+        study.run(ScaleRelationFixtures.series(BARS), 0, BARS - 1, DetectorReplays.uncached(), second::add);
+
+        assertFalse(first.isEmpty());
+        assertEquals(first, second);
+    }
+
+    @Test
     void everyChildEdgeKeepsTheExactChildPivotSequenceItRestsOn() {
         final CorrectiveFamily.Verdict verdict = verdict(
                 frames(ZIGZAG_PARENT, ZIGZAG_CHILD, CorrectiveFamily.Profile.ZIGZAG), CorrectiveFamily.Profile.ZIGZAG);

@@ -358,6 +358,34 @@ class ElliottResearchFamiliesTest {
     }
 
     @Test
+    public void storedStatusLifecycleAndReasonMustBeRecognisedLabels() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        for (int line = 1; line < lines.size() - 1; line++) {
+            final JsonObject frame = JsonParser.parseString(lines.get(line)).getAsJsonObject();
+            for (final JsonElement element : frame.getAsJsonArray("events")) {
+                final JsonObject event = element.getAsJsonObject();
+                final JsonObject verdict = event.getAsJsonObject("verdict");
+                for (final JsonObject owner : List.of(verdict, event)) {
+                    for (final String field : owner == verdict ? List.of("status") : List.of("lifecycle", "reason")) {
+                        final JsonElement original = owner.get(field);
+                        for (final String invalid : List.of("null", "\"\"", "\"unknown\"", "\"Active\"", "1", "true")) {
+                            owner.add(field, JsonParser.parseString(invalid));
+                            assertFrameRejected(lines, line, frame, field);
+                        }
+                        owner.add(field, original);
+                    }
+                }
+                lines.set(line, frame.toString());
+                Files.write(file, lines, StandardCharsets.UTF_8);
+                assertTrue(ElliottResearchFamilies.read(file, ignored -> {
+                }).complete());
+                return;
+            }
+        }
+        fail("fixture must contain a verdict");
+    }
+
+    @Test
     public void storedChildEdgeIdentitiesAndOptionalCandidateKeysAreValidated() throws IOException {
         final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
         for (int line = 1; line < lines.size() - 1; line++) {
