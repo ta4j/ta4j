@@ -119,6 +119,11 @@ final class ElliottResearchEvents implements StudyObserver {
                 present.forEach(observer -> observer.nullTape(nullBlockLength, nullMemberIndex, partition, sourceOffset,
                         member));
             }
+
+            @Override
+            public void nullBar(final Scope scope, final String partition, final int recordedIndex, final Bar bar) {
+                present.forEach(observer -> observer.nullBar(scope, partition, recordedIndex, bar));
+            }
         };
     }
 

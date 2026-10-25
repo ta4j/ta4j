@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.elliott.ElliottResearchEvents.Event;
 import org.ta4j.core.analysis.elliott.ElliottResearchEvents.Stream;
@@ -99,6 +100,51 @@ final class ElliottResearchEventsTest {
             assertEquals("null-b2-m1", stream.key().label());
             assertNotNull(recorder.tapeOf(stream), "null stream labels read its own member tape");
         }
+    }
+
+    @Test
+    void teeDeliversEveryNullMemberHookToEachObserver() {
+        final BarSeries series = zigzagSeries(160);
+        final int[][] counts = new int[2][3];
+        final StudyObserver[] counting = new StudyObserver[2];
+        for (int i = 0; i < counting.length; i++) {
+            final int[] count = counts[i];
+            counting[i] = new StudyObserver() {
+                @Override
+                public void nullTape(final int nullBlockLength, final int nullMemberIndex, final String partition,
+                        final int sourceOffset, final BarSeries member) {
+                    count[0]++;
+                }
+
+                @Override
+                public void nullBar(final Scope scope, final String partition, final int recordedIndex,
+                        final Bar bar) {
+                    count[1]++;
+                }
+
+                @Override
+                public void topology(final Scope scope, final String partition, final int recordedIndex,
+                        final Instant asOfEnd, final List<ConfirmedPivot> visiblePivots,
+                        final TopologyAnalysis analysis, final List<List<RuleEvidence>> candidateEvidence) {
+                    count[2]++;
+                }
+
+                @Override
+                public void alternative(final Scope scope, final String partition, final int recordedIndex,
+                        final Instant asOfEnd, final List<ConfirmedPivot> visiblePivots, final String outcome,
+                        final Set<String> labels) {
+                    // topology counting is sufficient for the tee contract
+                }
+            };
+        }
+
+        ElliottResearchOutcomesTest.runner(ElliottResearchEventsTest::localExtrema)
+                .replayNullMember(series, 0, 159, 2, 1, ElliottResearchEvents.tee(counting[0], null, counting[1]));
+
+        assertTrue(counts[0][0] > 0 && counts[0][1] > 0 && counts[0][2] > 0, "first observer saw every hook");
+        assertEquals(counts[0][0], counts[1][0]);
+        assertEquals(counts[0][1], counts[1][1]);
+        assertEquals(counts[0][2], counts[1][2]);
     }
 
     @Test
