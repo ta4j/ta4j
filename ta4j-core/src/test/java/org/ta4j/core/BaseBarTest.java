@@ -39,7 +39,7 @@ class BaseBarTest {
 
     @ParameterizedTest
     @MethodSource("numFactories")
-    void testSerializedValidBarRoundTrips(NumFactory numFactory) throws Exception {
+    public void testSerializedValidBarRoundTrips(NumFactory numFactory) throws Exception {
         final BaseBar original = new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10),
                 numFactory.numOf(20), numFactory.numOf(5), numFactory.numOf(15), numFactory.numOf(25),
                 numFactory.numOf(30), 2);
@@ -83,7 +83,7 @@ class BaseBarTest {
     }
 
     @Test
-    void testSerializedBarWithMixedNumericPricesIsRejected() throws Exception {
+    public void testSerializedBarWithMixedNumericPricesIsRejected() throws Exception {
         final Num highPrice = numFactory.numOf(20);
         final BaseBar bar = new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), highPrice,
                 numFactory.numOf(5), numFactory.numOf(15), numFactory.zero(), numFactory.zero(), 0);
