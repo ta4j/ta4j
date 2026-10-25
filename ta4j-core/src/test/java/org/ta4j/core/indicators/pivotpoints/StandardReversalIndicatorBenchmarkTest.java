@@ -23,7 +23,7 @@ class StandardReversalIndicatorBenchmarkTest {
     private static final int ITERATIONS = 10;
 
     @Test
-    void benchmarkStandardReversalIndicator() {
+    public void benchmarkStandardReversalIndicator() {
         BarSeries series = createSeries(BARS);
         PivotPointIndicator pivotPointIndicator = new PivotPointIndicator(series, TimeLevel.DAY);
 
@@ -71,10 +71,8 @@ class StandardReversalIndicatorBenchmarkTest {
         }
 
         long avgMs = (totalNano / ITERATIONS) / 1_000_000;
-        LOG.info("StandardReversalIndicator benchmark over {} bars ({} iterations avg): {} ms, checksum: {}", BARS,
+        LOG.debug("StandardReversalIndicator benchmark over {} bars ({} iterations avg): {} ms, checksum: {}", BARS,
                 ITERATIONS, avgMs, checksum);
-        System.out.printf("StandardReversalIndicator benchmark over %d bars (%d iterations avg): %d ms%n", BARS,
-                ITERATIONS, avgMs);
         assertNotNull(checksum);
     }
 
@@ -87,7 +85,7 @@ class StandardReversalIndicatorBenchmarkTest {
             double low = open - 5;
             double close = open + 1;
             series.barBuilder()
-                    .endTime(now.plusMinutes(i * 5).toInstant())
+                    .endTime(now.plusMinutes(i * 5L).toInstant())
                     .openPrice(open)
                     .highPrice(high)
                     .lowPrice(low)
