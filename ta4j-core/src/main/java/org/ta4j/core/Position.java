@@ -32,11 +32,28 @@ import org.ta4j.core.num.Num;
  * Open-position inspection APIs on {@link TradingRecord} also use this type, so
  * callers can query per-lot and net exposure through one consistent contract.
  * </p>
+ *
+ * <p>
+ * Java deserialization requires a non-null starting type, an entry before any
+ * exit, an entry type matching the starting type, complementary entry/exit
+ * types, and matching non-null trade cost models. Missing class data and
+ * inconsistent saved states are rejected with {@link InvalidObjectException};
+ * valid new, open, and closed positions remain supported, including
+ * constructor-created pairs whose exit index precedes their entry index.
+ * </p>
+ * <p>
+ * Cost models are transient. After loading, transaction costs use the entry
+ * trade's effective model (normally zero for {@link BaseTrade}); holding costs
+ * use a zero-cost model. Custom trades retaining their own serializable models
+ * continue to use those models, provided both trades agree.
+ * </p>
  */
 public class Position implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -5484709075767220358L;
+
+    private static final CostModel ZERO_COST_MODEL = new ZeroCostModel();
 
     /** The entry trade */
     private Trade entry;
@@ -458,7 +475,7 @@ public class Position implements Serializable {
      * @return the cost of the position
      */
     public Num getPositionCost(int finalIndex) {
-        Num transactionCost = transactionCostModel.calculate(this, finalIndex);
+        Num transactionCost = getTransactionCostModel().calculate(this, finalIndex);
         Num borrowingCost = getHoldingCost(finalIndex);
         return transactionCost.plus(borrowingCost);
     }
@@ -469,7 +486,7 @@ public class Position implements Serializable {
      * @return the cost of the position
      */
     public Num getPositionCost() {
-        Num transactionCost = transactionCostModel.calculate(this);
+        Num transactionCost = getTransactionCostModel().calculate(this);
         Num borrowingCost = getHoldingCost();
         return transactionCost.plus(borrowingCost);
     }
@@ -480,7 +497,7 @@ public class Position implements Serializable {
      * @return the cost of the position
      */
     public Num getHoldingCost() {
-        return holdingCostModel.calculate(this);
+        return getHoldingCostModel().calculate(this);
     }
 
     /**
@@ -491,17 +508,20 @@ public class Position implements Serializable {
      * @return the cost of the position
      */
     public Num getHoldingCost(int finalIndex) {
-        return holdingCostModel.calculate(this, finalIndex);
+        return getHoldingCostModel().calculate(this, finalIndex);
     }
 
     /**
-     * @return the transaction cost model, or a zero-cost model after
-     *         deserialization when the model is unset
+     * @return the transaction cost model, or the entry trade's effective model
+     *         after deserialization (zero when there is no entry)
      *
      * @since 0.22.2
      */
     public CostModel getTransactionCostModel() {
-        return transactionCostModel == null ? new ZeroCostModel() : transactionCostModel;
+        if (transactionCostModel != null) {
+            return transactionCostModel;
+        }
+        return entry == null ? ZERO_COST_MODEL : entry.getCostModel();
     }
 
     /**
@@ -511,7 +531,7 @@ public class Position implements Serializable {
      * @since 0.22.2
      */
     public CostModel getHoldingCostModel() {
-        return holdingCostModel == null ? new ZeroCostModel() : holdingCostModel;
+        return holdingCostModel == null ? ZERO_COST_MODEL : holdingCostModel;
     }
 
     /**
@@ -610,32 +630,46 @@ public class Position implements Serializable {
         return entry.getNetPrice().getNumFactory().zero();
     }
 
+    /**
+     * Restores and validates the persisted position without changing its schema.
+     *
+     * @param stream the object stream
+     * @throws IOException            if reading fails
+     * @throws ClassNotFoundException if a serialized class is unavailable
+     * @throws InvalidObjectException if the saved position is inconsistent
+     */
     @Serial
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         stream.defaultReadObject();
-        validateDeserializedState();
+        if (startingType == null) {
+            throw new InvalidObjectException("Starting type must not be null");
+        }
+        if (entry == null) {
+            if (exit != null) {
+                throw new InvalidObjectException("Position cannot have an exit without an entry");
+            }
+            return;
+        }
+        if (entry.getType() != startingType) {
+            throw new InvalidObjectException("Entry trade type must match the starting type");
+        }
+        CostModel entryCostModel = entry.getCostModel();
+        if (entryCostModel == null) {
+            throw new InvalidObjectException("Entry trade cost model must not be null");
+        }
+        if (exit != null) {
+            if (exit.getType() != startingType.complementType()) {
+                throw new InvalidObjectException("Exit trade type must complement the entry trade type");
+            }
+            if (exit.getCostModel() == null || !entryCostModel.equals(exit.getCostModel())) {
+                throw new InvalidObjectException("Trades must incorporate the same trading cost model");
+            }
+        }
     }
 
-    private void validateDeserializedState() throws InvalidObjectException {
-        if (startingType == null) {
-            throw new InvalidObjectException("startingType cannot be null");
-        }
-        if (entry == null && exit != null) {
-            throw new InvalidObjectException("Position cannot have an exit without an entry");
-        }
-        if (entry != null) {
-            if (entry.getType() == null || entry.getType() != startingType) {
-                throw new InvalidObjectException("Entry trade type must match startingType");
-            }
-            if (exit != null) {
-                if (exit.getType() == null || exit.getType() == entry.getType()) {
-                    throw new InvalidObjectException("Exit trade type must complement entry trade type");
-                }
-                if (exit.getIndex() < entry.getIndex()) {
-                    throw new InvalidObjectException("Exit trade index cannot be less than entry trade index");
-                }
-            }
-        }
+    @Serial
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("Position class data is required");
     }
 
     @Override

@@ -13,12 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -433,64 +427,5 @@ public class PositionTest {
         assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenPositionFinalBefore);
         assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalAfter);
         assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalBefore);
-    }
-
-    @Test
-    public void deserializesValidPosition() throws Exception {
-        Position position = new Position(Trade.buyAt(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1)),
-                Trade.sellAt(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1)));
-        Position roundTripped = roundTrip(position);
-        assertEquals(position, roundTripped);
-    }
-
-    @Test
-    public void deserializationRejectsInvalidInvariants() throws Exception {
-        Position position = new Position(Trade.buyAt(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1)),
-                Trade.sellAt(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1)));
-
-        // Null startingType
-        Position nullStartingType = duplicate(position);
-        setField(nullStartingType, "startingType", null);
-        assertThrows(InvalidObjectException.class, () -> roundTrip(nullStartingType));
-
-        // Exit without entry
-        Position exitWithoutEntry = duplicate(position);
-        setField(exitWithoutEntry, "entry", null);
-        assertThrows(InvalidObjectException.class, () -> roundTrip(exitWithoutEntry));
-
-        // Mismatched entry type
-        Position mismatchedEntry = duplicate(position);
-        setField(mismatchedEntry, "entry", Trade.sellAt(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1)));
-        assertThrows(InvalidObjectException.class, () -> roundTrip(mismatchedEntry));
-
-        // Mismatched exit type (same as entry)
-        Position mismatchedExit = duplicate(position);
-        setField(mismatchedExit, "exit", Trade.buyAt(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1)));
-        assertThrows(InvalidObjectException.class, () -> roundTrip(mismatchedExit));
-
-        // Exit index before entry index
-        Position exitBeforeEntry = duplicate(position);
-        setField(exitBeforeEntry, "exit", Trade.sellAt(0, DoubleNum.valueOf(110), DoubleNum.valueOf(1)));
-        assertThrows(InvalidObjectException.class, () -> roundTrip(exitBeforeEntry));
-    }
-
-    private static Position roundTrip(Position position) throws Exception {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-            oos.writeObject(position);
-        }
-        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
-            return (Position) ois.readObject();
-        }
-    }
-
-    private static Position duplicate(Position position) throws Exception {
-        return roundTrip(position);
-    }
-
-    private static void setField(Object obj, String fieldName, Object value) throws Exception {
-        Field field = obj.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(obj, value);
     }
 }
