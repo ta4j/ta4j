@@ -93,7 +93,7 @@ class PositionSerializationTest {
         assertNumEquals(4, closed.getPositionCost());
         assertNumEquals(4, closed.getPositionCost(4));
 
-        Position open = restore(new Position(entry, null, model, new ZeroCostModel()));
+        Position open = restore(new Position(entry, model, new ZeroCostModel()));
         assertNumEquals(2, open.getPositionCost(3));
         open.operate(3, factory.numOf(110), factory.one());
         assertTrue(open.isClosed());
