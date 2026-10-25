@@ -799,11 +799,13 @@ final class ReplayArtifact {
                 : integerCell(csv, line, "requestedNullMembers", row.get(column.get("requestedNullMembers")));
         final int unavailable = block == 0 ? 0
                 : integerCell(csv, line, "unavailableNullMembers", row.get(column.get("unavailableNullMembers")));
-        final double median = optionalNumber(row.get(column.get("nullMedian")));
-        final double low = optionalNumber(row.get(column.get("nullLow")));
-        final double high = optionalNumber(row.get(column.get("nullHigh")));
-        final double difference = optionalNumber(row.get(column.get("observedMinusNullMedian")));
-        final double rank = optionalNumber(row.get(column.get("empiricalReferenceRank")));
+        final double median = optionalNumber(csv, line, "nullMedian", row.get(column.get("nullMedian")));
+        final double low = optionalNumber(csv, line, "nullLow", row.get(column.get("nullLow")));
+        final double high = optionalNumber(csv, line, "nullHigh", row.get(column.get("nullHigh")));
+        final double difference = optionalNumber(csv, line, "observedMinusNullMedian",
+                row.get(column.get("observedMinusNullMedian")));
+        final double rank = optionalNumber(csv, line, "empiricalReferenceRank",
+                row.get(column.get("empiricalReferenceRank")));
         if (requested < 0 || valid < 0 || unavailable < 0 || (long) valid + unavailable != requested) {
             throw nullReferenceError(csv, line,
                     "member counts must be non-negative and valid + unavailable must equal requested");
@@ -864,8 +866,16 @@ final class ReplayArtifact {
         return requested;
     }
 
-    private static double optionalNumber(final String value) {
-        return value.isEmpty() ? Double.NaN : Double.parseDouble(value);
+    private static double optionalNumber(final Path csv, final int line, final String field, final String value) {
+        if (value.isEmpty()) {
+            return Double.NaN;
+        }
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            throw new ReplayArtifactException(csv + " row " + line + " has invalid numeric comparison fields: " + field
+                    + " '" + value + "' is not a number. " + REGENERATE, e);
+        }
     }
 
     private static int nearestRankPosition(final int count, final double quantile) {
