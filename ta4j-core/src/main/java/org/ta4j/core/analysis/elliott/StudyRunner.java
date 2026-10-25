@@ -192,7 +192,7 @@ final class StudyRunner {
      * @param observer  optional observation sink, or {@code null}
      * @param replays   replay cache bound to {@code series}
      * @return immutable study report
-     * @since 0.26.1
+     * @since 0.27.1
      */
     StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex,
             final StudyObserver observer, final DetectorReplays replays) {

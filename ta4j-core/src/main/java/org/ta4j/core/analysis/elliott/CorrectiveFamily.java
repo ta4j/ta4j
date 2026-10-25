@@ -37,7 +37,7 @@ import org.ta4j.core.num.NumFactory;
  * Package-private research machinery; it reuses the released
  * {@link ScenarioType} identities without changing their meaning.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 final class CorrectiveFamily {
 
@@ -56,7 +56,7 @@ final class CorrectiveFamily {
     /**
      * A bounded, independently selectable corrective-family profile.
      *
-     * @since 0.26.1
+     * @since 0.27.1
      */
     enum Profile {
         /** A/B/C with 5-3-5 children; B retraces part of A, C passes A's end. */
@@ -151,7 +151,7 @@ final class CorrectiveFamily {
      * @param minRetracement regular flat only, in {@code (0, 1]}; {@code null}
      *                       otherwise
      * @param maxOvershoot   regular flat only, positive; {@code null} otherwise
-     * @since 0.26.1
+     * @since 0.27.1
      */
     record Spec(Profile profile, BigDecimal minRetracement, BigDecimal maxOvershoot) {
 

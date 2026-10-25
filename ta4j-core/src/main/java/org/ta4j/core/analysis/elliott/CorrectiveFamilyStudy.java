@@ -42,7 +42,7 @@ import org.ta4j.core.BarSeries;
  * group; whenever a group's search was incomplete, verdicts that are not
  * already verified or excluded by their envelope are {@code unavailable}.
  *
- * @since 0.26.1
+ * @since 0.27.1
  */
 final class CorrectiveFamilyStudy {
 

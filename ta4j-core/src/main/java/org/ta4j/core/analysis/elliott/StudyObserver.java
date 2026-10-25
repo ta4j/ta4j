@@ -80,7 +80,7 @@ interface StudyObserver {
      * @param partition       locked partition name the tape belongs to
      * @param sourceOffset    source index of the member's first bar
      * @param member          the member's causal prefix tape
-     * @since 0.26.1
+     * @since 0.27.1
      */
     default void nullTape(final int nullBlockLength, final int nullMemberIndex, final String partition,
             final int sourceOffset, final BarSeries member) {
