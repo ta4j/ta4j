@@ -691,6 +691,21 @@ class ElliottResearchExploreTest {
     }
 
     @Test
+    public void summarizeAndInspectRefuseAPredictionProbabilityOutsideZeroToOne() throws Exception {
+        for (final String value : List.of("1.5", "-0.1", "NaN", "Infinity")) {
+            assertRefusedBySummarizeAndInspect(ElliottResearchCalibration.PREDICTIONS_FILE,
+                    new Damage("probability-" + value, text -> {
+                        final String[] lines = text.split("\r\n", -1);
+                        final int column = List.of(lines[0].split(",", -1)).indexOf("probability");
+                        final String[] cells = lines[1].split(",", -1);
+                        cells[column] = value;
+                        lines[1] = String.join(",", cells);
+                        return String.join("\r\n", lines);
+                    }, "probability holds '" + value + "', outside [0, 1]"));
+        }
+    }
+
+    @Test
     public void summarizeAndInspectRefuseBlankCalibrationCsvIdentities() throws IOException {
         final Map<String, List<String>> fields = Map.of(ElliottResearchCalibration.PREDICTIONS_FILE,
                 List.of("dataset", "stage", "partition", "candidateKey", "version", "direction", "target"),

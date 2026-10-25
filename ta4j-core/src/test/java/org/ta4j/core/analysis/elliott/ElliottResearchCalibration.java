@@ -1408,10 +1408,30 @@ final class ElliottResearchCalibration {
         verifyTables(tables, ElliottResearchOutcomes.declaredCount(declared, "tables"));
         ElliottResearchOutcomes.verifyRows(predictions, PREDICTION_HEADER,
                 ElliottResearchOutcomes.declaredCount(declared, "predictions"), PREDICTION_IDENTITY_FIELDS);
+        verifyProbabilities(predictions);
         ElliottResearchOutcomes.verifyRows(summary, SUMMARY_HEADER,
                 ElliottResearchOutcomes.declaredCount(declared, "summary"), SUMMARY_IDENTITY_FIELDS);
         ElliottResearchOutcomes.verifyRows(reliability, RELIABILITY_HEADER,
                 ElliottResearchOutcomes.declaredCount(declared, "reliability"), RELIABILITY_IDENTITY_FIELDS);
+    }
+
+    /**
+     * Rejects a prediction row whose probability is not a finite value in [0, 1].
+     */
+    private static void verifyProbabilities(final Path predictions) {
+        final List<List<String>> table = ElliottResearchReport.parseCsv(predictions);
+        final int column = PREDICTION_HEADER.indexOf("probability");
+        for (int row = 1; row < table.size(); row++) {
+            final String cell = table.get(row).get(column);
+            if (!cell.isEmpty()) {
+                try {
+                    probability(cell);
+                } catch (final IllegalArgumentException invalid) {
+                    throw new IllegalArgumentException(predictions + " row " + row + ": " + invalid.getMessage(),
+                            invalid);
+                }
+            }
+        }
     }
 
     private static void verifyTables(final Path path, final long declared) {
@@ -1629,8 +1649,7 @@ final class ElliottResearchCalibration {
     }
 
     private static double probabilityOf(final Map<String, String> record) {
-        return record.get("probability").isEmpty() ? Double.NEGATIVE_INFINITY
-                : decimal("probability", record.get("probability"));
+        return record.get("probability").isEmpty() ? Double.NEGATIVE_INFINITY : probability(record.get("probability"));
     }
 
     private static String availableText(final String index) {
@@ -1650,13 +1669,19 @@ final class ElliottResearchCalibration {
         }
     }
 
-    private static double decimal(final String column, final String cell) {
+    private static double probability(final String cell) {
+        final double value;
         try {
-            return Double.parseDouble(cell);
+            value = Double.parseDouble(cell);
         } catch (final NumberFormatException e) {
             throw new IllegalArgumentException(
-                    "calibration table column " + column + " holds '" + cell + "', not a number", e);
+                    "calibration table column probability holds '" + cell + "', not a number", e);
         }
+        if (!(value >= 0.0 && value <= 1.0)) {
+            throw new IllegalArgumentException(
+                    "calibration table column probability holds '" + cell + "', outside [0, 1]");
+        }
+        return value;
     }
 
     private static void printEvaluationSupport(final PrintStream out, final Path reliabilityCsv, final String dataset,

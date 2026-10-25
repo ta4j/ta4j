@@ -64,9 +64,7 @@ class ElliottResearchTraceBindingTest {
     @Test
     public void selectedNullMemberRunWritesNullTraceUsedByInspect() throws Exception {
         final Path run = work.resolve("null-member");
-        final Result result = launch("run", "smoke", "--trace", "selected-null-member", "--block", "20", "--member",
-                "3", "--out", run.toString());
-        assertEquals(0, result.code(), result.err());
+        copyTree(nullMemberRun, run);
         final Path nullTrace = run.resolve("traces/smoke-null-b20-m3.jsonl");
         assertTrue(Files.isRegularFile(nullTrace));
         assertFalse(Files.exists(run.resolve("traces/smoke-real.jsonl")));
