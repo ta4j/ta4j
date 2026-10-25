@@ -576,8 +576,8 @@ final class ElliottResearch {
                 + "RSI14; competing 3+3,5+5,change-point-baseline; null block 20 ensemble 8 seed 5252026; "
                 + "outcomes horizons 5,20,60 all-rules origin-pivot";
         return new Setup(sha256(description.getBytes(StandardCharsets.UTF_8)), partitions, w5, List.of(w3, w5),
-                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L, null, null, Setup.structuralModes(RULE_IDS, 14),
-                ElliottResearchOutcomes.Settings.defaults(), null);
+                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L, null, null,
+                Setup.structuralModes(RULE_IDS, 14), ElliottResearchOutcomes.Settings.defaults(), null);
     }
 
     private static BarSeries smokeSeries() {

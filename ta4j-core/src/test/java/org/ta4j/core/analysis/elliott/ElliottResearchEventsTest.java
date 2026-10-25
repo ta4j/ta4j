@@ -117,8 +117,7 @@ final class ElliottResearchEventsTest {
                 }
 
                 @Override
-                public void nullBar(final Scope scope, final String partition, final int recordedIndex,
-                        final Bar bar) {
+                public void nullBar(final Scope scope, final String partition, final int recordedIndex, final Bar bar) {
                     count[1]++;
                 }
 
