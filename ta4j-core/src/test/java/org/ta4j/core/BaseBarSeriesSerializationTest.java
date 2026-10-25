@@ -197,8 +197,10 @@ class BaseBarSeriesSerializationTest {
             state.seriesEndIndex = 1;
             state.barHistoryRevision = 17;
             BaseBarSeries restored = restoreSeriesState(state);
-            restored.addPrice(numFactory.numOf(42));
-            assertEquals(18, restored.getBarHistoryRevision());
+            long revision = restored.getBarHistoryRevision();
+            restored.getLastBar().addPrice(numFactory.numOf(42));
+            assertEquals(revision + 1, restored.getBarHistoryRevision());
+            assertEquals(1, restored.getBarSeriesChangeSnapshot(revision).earliestChangedIndex());
             assertNumEquals(42, restored.getLastBar().getClosePrice());
             appendBar(restored);
             assertEquals(1, restored.getBeginIndex());
