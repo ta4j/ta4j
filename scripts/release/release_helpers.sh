@@ -1427,6 +1427,18 @@ command_artifact_manifest() {
   done
   [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Release artifact version must be major.minor.patch: $version"
 
+  # GitHub Release uses current workflow helpers against a selected tag. Read
+  # that checkout's reactor, not existing target jars or this helper's location.
+  local include_acceleration
+  include_acceleration="$(python3 - <<'PY'
+import xml.etree.ElementTree as ET
+
+root = ET.parse("pom.xml").getroot()
+modules = {(node.text or "").strip() for node in root.findall("./{*}modules/{*}module")}
+print("true" if "ta4j-acceleration" in modules else "false")
+PY
+)" || die "Unable to read release reactor modules from pom.xml"
+
   local expected_file existing_file present_file missing_file unexpected_file
   expected_file="$(new_tmp_file)"
   existing_file="$(new_tmp_file)"
@@ -1451,6 +1463,14 @@ ta4j-examples/target/ta4j-examples-${version}.jar
 ta4j-examples/target/ta4j-examples-${version}-sources.jar
 ta4j-examples/target/ta4j-examples-${version}-javadoc.jar
 EOF
+  if [[ "$include_acceleration" == true ]]; then
+    # The default reactor publishes Java artifacts, not profile-built binaries.
+    cat >> "$expected_file" <<EOF
+ta4j-acceleration/target/ta4j-acceleration-${version}.jar
+ta4j-acceleration/target/ta4j-acceleration-${version}-sources.jar
+ta4j-acceleration/target/ta4j-acceleration-${version}-javadoc.jar
+EOF
+  fi
   while IFS= read -r file; do
     [[ -e "$file" ]] || printf '%s\n' "$file"
   done < "$expected_file" | sort > "$missing_file"

@@ -59,6 +59,7 @@
         <module>ta4j-charting</module>
         <module>ta4j-catalog</module>
         <module>ta4j-examples</module>
+        <module>ta4j-acceleration</module>
     </modules>
 
     <properties>
@@ -69,7 +70,7 @@
         <!-- Build -->
         <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
-        <ta4j.excludedTestTags>integration,analysis-demo,benchmark,requires-display,requires-headless</ta4j.excludedTestTags>
+        <ta4j.excludedTestTags>integration,analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless</ta4j.excludedTestTags>
         <java.awt.headless>true</java.awt.headless>
         <ta4j.chart.disableDisplay>true</ta4j.chart.disableDisplay>
         <!-- Bounded test JVM forks; each test class still runs sequentially inside one JVM.
@@ -184,6 +185,11 @@
             <dependency>
                 <groupId>org.ta4j</groupId>
                 <artifactId>ta4j-catalog</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.ta4j</groupId>
+                <artifactId>ta4j-acceleration</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
