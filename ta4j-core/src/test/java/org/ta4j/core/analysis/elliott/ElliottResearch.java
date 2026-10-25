@@ -89,6 +89,7 @@ import com.google.gson.JsonPrimitive;
  * summarize &lt;runDir&gt;
  * inspect &lt;runDir&gt; &lt;key&gt; [--as-of IDX] [--candidate KEY] [--limit N]
  * relations &lt;runDir&gt; &lt;dataset&gt; [--as-of IDX] [--limit N] [--edge KEY]
+ * families &lt;runDir&gt; &lt;dataset&gt; [--as-of IDX] [--limit N] [--verdict KEY]
  * </pre>
  *
  * <p>
@@ -127,7 +128,7 @@ final class ElliottResearch {
     private static final String TRACES_DIR = "traces";
     private static final List<String> MANAGED_FILES = List.of(RUN_FILE, COMPARISONS_FILE, COVERAGE_FILE, SUMMARY_FILE);
     private static final List<String> MANAGED_DIRECTORIES = List.of(REPORTS_DIR, TRACES_DIR,
-            ElliottResearchRelations.RELATIONS_DIR);
+            ElliottResearchRelations.RELATIONS_DIR, ElliottResearchFamilies.FAMILIES_DIR);
     /**
      * Consecutive in-window bars further apart than this many bar periods mark
      * coverage partial.
@@ -195,6 +196,9 @@ final class ElliottResearch {
             case "relations" -> {
                 return relationsCommand(List.of(args).subList(1, args.length), out);
             }
+            case "families" -> {
+                return familiesCommand(List.of(args).subList(1, args.length), out);
+            }
             default -> throw new IllegalArgumentException("unknown command: " + args[0]);
             }
         } catch (final Diagnostic diagnostic) {
@@ -227,6 +231,8 @@ final class ElliottResearch {
                 "                           list the recorded observations behind one comparison key", "",
                 "  relations <runDir> <dataset> [--as-of IDX] [--limit N] [--edge KEY]",
                 "                           list the parent/child scale relations recorded for a dataset",
+                "  families <runDir> <dataset> [--as-of IDX] [--limit N] [--verdict KEY]",
+                "                           list the corrective-family verdicts recorded for a dataset",
                 "Run status: complete = every dataset evaluated (coverage.csv marks datasets whose data cover",
                 "less than the requested window as partial), partial = some dataset failed, failed = all failed.",
                 "Exit codes: 0 ok; 1 usage error or run failure; 2 missing, truncated or corrupt trace, or failed",
@@ -372,7 +378,7 @@ final class ElliottResearch {
     private record Setup(String fingerprint, StudyRunner.Partitions partitions, DetectorRecipe primary,
             List<DetectorRecipe> robustness, List<String> activeRules, int momentumBarCount,
             List<String> competingModes, List<Integer> blockLengths, int ensembleSize, long seed,
-            ElliottResearchRelations.Hierarchy hierarchy) {
+            ElliottResearchRelations.Hierarchy hierarchy, ElliottResearchFamilies.Families families) {
 
         List<RelationshipRule> rules() {
             final Function<BarSeries, Indicator<Num>> momentum = series -> new RSIIndicator(
@@ -469,6 +475,9 @@ final class ElliottResearch {
             if (hierarchy != null) {
                 json.add("hierarchy", hierarchy.toJson());
             }
+            if (families != null) {
+                json.add("families", families.toJson());
+            }
             return json;
         }
     }
@@ -506,7 +515,7 @@ final class ElliottResearch {
                 + " synthetic daily bars from 2020-01-01 (StrictMath sine mix); primary fractal-w5; robustness fractal-w3,fractal-w5; "
                 + "RSI14; competing 3+3,5+5,change-point-baseline; null block 20 ensemble 8 seed 5252026";
         return new Setup(sha256(description.getBytes(StandardCharsets.UTF_8)), partitions, w5, List.of(w3, w5),
-                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L, null);
+                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L, null, null);
     }
 
     private static BarSeries smokeSeries() {
@@ -556,12 +565,12 @@ final class ElliottResearch {
         return new Setup(protocol.fingerprintSha256(), runnerPartitions, primary, detectors, RULE_IDS,
                 protocol.momentumIndicator().barCount(), protocol.competingGrammars(),
                 protocol.nullEnsemble().blockLengths(), protocol.nullEnsemble().ensembleSize(),
-                protocol.nullEnsemble().seed(), null);
+                protocol.nullEnsemble().seed(), null, null);
     }
 
     private static final Set<String> RECIPE_FIELDS = Set.of("datasetId", "asset", "partitions",
             "forbiddenCalibrationStart", "detector", "robustnessDetectors", "activeRules", "momentum", "competingModes",
-            "null", "hierarchy");
+            "null", "hierarchy", "families");
 
     /** Parsed explore recipe plus the setup it describes. */
     private record ExploreRecipe(String datasetId, String asset, Setup setup, JsonObject definition) {
@@ -662,8 +671,11 @@ final class ElliottResearch {
         final ElliottResearchRelations.Hierarchy hierarchy = root.has("hierarchy")
                 ? hierarchy(root.get("hierarchy"), datasetId, primary, robustness)
                 : null;
+        final ElliottResearchFamilies.Families families = root.has("families")
+                ? families(root.get("families"), hierarchy)
+                : null;
         final Setup setup = new Setup("explore-" + sha256(recipeBytes), runnerPartitions, primary, robustness,
-                activeRules, barCount, competing, blockLengths, ensembleSize, seed, hierarchy);
+                activeRules, barCount, competing, blockLengths, ensembleSize, seed, hierarchy, families);
         try {
             setup.runner();
             primary.supplier().get();
@@ -748,6 +760,69 @@ final class ElliottResearch {
         final int edgeCap = object.has("edgeCap") ? integer(object.get("edgeCap"), "recipe.hierarchy.edgeCap")
                 : ScaleRelation.DEFAULT_EDGE_CAP;
         return new ElliottResearchRelations.Hierarchy(scales, interior, edgeCap);
+    }
+
+    /**
+     * Parses the optional corrective-family experiments: an explicit list of
+     * profiles, each independently selectable, judged over the declared hierarchy.
+     * Bands exist only where a profile defines them and are never fitted.
+     */
+    private static ElliottResearchFamilies.Families families(final JsonElement element,
+            final ElliottResearchRelations.Hierarchy hierarchy) {
+        if (hierarchy == null) {
+            throw new IllegalArgumentException(
+                    "recipe.families requires recipe.hierarchy: family verdicts read the declared parent/child relations");
+        }
+        if (hierarchy.interior() != ScaleRelation.Interior.CONTIGUOUS) {
+            throw new IllegalArgumentException(
+                    "recipe.families requires recipe.hierarchy.interiorAnchors to be contiguous: a family child sequence may not skip interior pivots, and allow-skipped would hide extra waves inside a leg");
+        }
+        final JsonObject object = objectOf(element, "recipe.families");
+        rejectUnknown(object, "recipe.families", Set.of("profiles", "maxCompositions"));
+        final JsonArray array = arrayOf(required(object, "profiles", "recipe.families"), "recipe.families.profiles");
+        final List<CorrectiveFamily.Spec> specs = new ArrayList<>();
+        for (int index = 0; index < array.size(); index++) {
+            final String where = "recipe.families.profiles[" + index + "]";
+            final JsonObject entry = objectOf(array.get(index), where);
+            rejectUnknown(entry, where, Set.of("id", "minRetracement", "maxOvershoot"));
+            final CorrectiveFamily.Profile profile;
+            try {
+                profile = CorrectiveFamily.Profile.fromId(text(required(entry, "id", where), where + ".id"));
+            } catch (final IllegalArgumentException e) {
+                throw new IllegalArgumentException(where + ": " + e.getMessage());
+            }
+            try {
+                final CorrectiveFamily.Spec defaults = CorrectiveFamily.Spec.defaults(profile);
+                specs.add(new CorrectiveFamily.Spec(profile,
+                        entry.has("minRetracement") ? decimal(entry.get("minRetracement"), where + ".minRetracement")
+                                : defaults.minRetracement(),
+                        entry.has("maxOvershoot") ? decimal(entry.get("maxOvershoot"), where + ".maxOvershoot")
+                                : defaults.maxOvershoot()));
+            } catch (final IllegalArgumentException e) {
+                throw new IllegalArgumentException(where + ": " + e.getMessage());
+            }
+        }
+        final int maxCompositions = object.has("maxCompositions")
+                ? integer(object.get("maxCompositions"), "recipe.families.maxCompositions")
+                : CorrectiveFamily.DEFAULT_MAX_COMPOSITIONS;
+        try {
+            return new ElliottResearchFamilies.Families(maxCompositions, specs);
+        } catch (final IllegalArgumentException e) {
+            throw new IllegalArgumentException(e.getMessage().startsWith("recipe.") ? e.getMessage()
+                    : "recipe.families.profiles: " + e.getMessage());
+        }
+    }
+
+    private static BigDecimal decimal(final JsonElement element, final String where) {
+        try {
+            if (element.isJsonPrimitive()
+                    && (element.getAsJsonPrimitive().isNumber() || element.getAsJsonPrimitive().isString())) {
+                return element.getAsBigDecimal();
+            }
+        } catch (final NumberFormatException e) {
+            // reported below with the declared text
+        }
+        throw new IllegalArgumentException(where + " must be a decimal number, was " + element);
     }
 
     private static List<String> strings(final JsonElement element, final String where, final List<String> allowed) {
@@ -1119,6 +1194,8 @@ final class ElliottResearch {
         private final List<String> traces = new ArrayList<>();
         private String relations;
         private ElliottResearchRelations.Totals relationTotals;
+        private String families;
+        private ElliottResearchFamilies.Totals familyTotals;
         private final Map<String, String> traceSha256 = new LinkedHashMap<>();
 
         DatasetEntry(final String id, final String asset, final JsonObject source) {
@@ -1191,6 +1268,9 @@ final class ElliottResearch {
                 if (setup.hierarchy() != null) {
                     writeRelations(id, series, replays);
                 }
+                if (setup.families() != null) {
+                    writeFamilies(id, series, replays);
+                }
             } catch (final IOException | RuntimeException failure) {
                 fail(id, failure);
                 return;
@@ -1206,6 +1286,16 @@ final class ElliottResearch {
                     sourceSha256(id), setup.hierarchy(), setup.hierarchyInputs(), setup.rules(), setup.partitions(),
                     series, series.getBeginIndex(), series.getEndIndex(), replays);
             entry.relations = relative(file);
+        }
+
+        private void writeFamilies(final String id, final BarSeries series, final DetectorReplays replays)
+                throws IOException {
+            final Path file = dir.resolve(ElliottResearchFamilies.fileName(id));
+            final DatasetEntry entry = entries.get(id);
+            entry.familyTotals = ElliottResearchFamilies.write(file, id, revision, setup.fingerprint(),
+                    sourceSha256(id), setup.hierarchy(), setup.families(), setup.hierarchyInputs(), setup.rules(),
+                    setup.partitions(), series, series.getBeginIndex(), series.getEndIndex(), replays);
+            entry.families = relative(file);
         }
 
         void evaluateFrozen(final ElliottStudyProtocol protocol) throws IOException {
@@ -1382,6 +1472,7 @@ final class ElliottResearch {
                 }
                 Files.deleteIfExists(dir.resolve(REPORTS_DIR).resolve(id + ".json"));
                 Files.deleteIfExists(dir.resolve(ElliottResearchRelations.fileName(id)));
+                Files.deleteIfExists(dir.resolve(ElliottResearchFamilies.fileName(id)));
             } catch (final IOException ignored) {
                 // best effort: run.json records no trace or report for a failed dataset
             }
@@ -1391,6 +1482,8 @@ final class ElliottResearch {
             entry.report = null;
             entry.relations = null;
             entry.relationTotals = null;
+            entry.families = null;
+            entry.familyTotals = null;
             entry.bars = 0;
             entry.effectiveFrom = null;
             entry.effectiveTo = null;
@@ -1487,6 +1580,17 @@ final class ElliottResearch {
                     relations.addProperty("incompleteFrames", entry.relationTotals.incompleteFrames());
                     relations.addProperty("peakRetainedEdges", entry.relationTotals.peakRetainedEdges());
                     dataset.add("relations", relations);
+                }
+                if (entry.families != null) {
+                    final JsonObject families = new JsonObject();
+                    families.addProperty("file", entry.families);
+                    families.addProperty("frames", entry.familyTotals.frames());
+                    families.addProperty("events", entry.familyTotals.events());
+                    families.addProperty("truncatedFrames", entry.familyTotals.truncatedFrames());
+                    families.addProperty("incompleteFrames", entry.familyTotals.incompleteFrames());
+                    families.addProperty("peakRetainedEdges", entry.familyTotals.peakRetainedEdges());
+                    families.addProperty("truncatedCompositions", entry.familyTotals.truncatedCompositions());
+                    dataset.add("families", families);
                 }
                 final JsonObject traceSha256 = new JsonObject();
                 entry.traceSha256.forEach(traceSha256::addProperty);
@@ -1725,7 +1829,7 @@ final class ElliottResearch {
         for (final JsonElement element : run.getAsJsonArray("datasets")) {
             final JsonObject dataset = element.getAsJsonObject();
             if (dataset.has("relations") && dataset.get("relations").isJsonObject()) {
-                relationLines.addAll(relationSummaryLines(dir, run, dataset));
+                relationLines.addAll(sidecarSummaryLines(Sidecar.RELATIONS, dir, run, dataset));
             }
         }
         if (!relationLines.isEmpty()) {
@@ -1733,24 +1837,56 @@ final class ElliottResearch {
             relationLines.forEach(line -> markdown.append(line).append('\n'));
             markdown.append("\nInspect a dataset with `relations ").append(displayPath(dir)).append(" <dataset>`.\n");
         }
+        final List<String> familyLines = new ArrayList<>();
+        for (final JsonElement element : run.getAsJsonArray("datasets")) {
+            final JsonObject dataset = element.getAsJsonObject();
+            if (dataset.has("families") && dataset.get("families").isJsonObject()) {
+                familyLines.addAll(sidecarSummaryLines(Sidecar.FAMILIES, dir, run, dataset));
+            }
+        }
+        if (!familyLines.isEmpty()) {
+            markdown.append("\n## Corrective families (experimental)\n\n");
+            familyLines.forEach(line -> markdown.append(line).append('\n'));
+            markdown.append(
+                    "\nVerdicts are structural evidence under declared experimental profiles; they are not forecasts"
+                            + " and do not rescue or replace a base grammar count.\n");
+            markdown.append("Inspect a dataset with `families ").append(displayPath(dir)).append(" <dataset>`.\n");
+        }
         markdown.append("\nInspect any key with `inspect ").append(displayPath(dir)).append(" <key>`.\n");
         return markdown.toString();
     }
 
     /**
-     * Summary lines for one dataset's relation file. A recorded name that leaves
-     * the run directory is refused instead of read.
+     * Summary lines for one dataset's relation or family file. A recorded name that
+     * leaves the run directory is refused instead of read.
      */
-    private static List<String> relationSummaryLines(final Path dir, final JsonObject run, final JsonObject dataset) {
+    private static List<String> sidecarSummaryLines(final Sidecar sidecar, final Path dir, final JsonObject run,
+            final JsonObject dataset) {
         final String id = dataset.get("id").getAsString();
         final Path file;
         try {
-            file = resolveInside(dir, dataset.getAsJsonObject("relations").get("file").getAsString());
+            file = resolveInside(dir, dataset.getAsJsonObject(sidecar.command).get("file").getAsString());
         } catch (final IOException | IllegalArgumentException unreadable) {
-            return List
-                    .of("- `" + id + "`: relation file unreadable (" + unreadable.getMessage() + "); rerun the recipe");
+            return List.of("- `" + id + "`: " + sidecar.fileNoun + " unreadable (" + unreadable.getMessage()
+                    + "); rerun the recipe");
         }
-        return ElliottResearchRelations.summaryLines(file, id, expectedRelationsHeader(run, dataset));
+        final JsonObject expected = expectedSidecarHeader(run, dataset);
+        return sidecar == Sidecar.RELATIONS ? ElliottResearchRelations.summaryLines(file, id, expected)
+                : ElliottResearchFamilies.summaryLines(file, id, expected);
+    }
+
+    /**
+     * The relation or family file a dataset recorded, refused when its recorded
+     * name leaves the run directory.
+     */
+    private static Path sidecarFile(final Sidecar sidecar, final Path dir, final JsonObject dataset)
+            throws IOException {
+        try {
+            return resolveInside(dir, dataset.getAsJsonObject(sidecar.command).get("file").getAsString());
+        } catch (final IllegalArgumentException outside) {
+            throw new Diagnostic(
+                    sidecar.fileNoun + " " + outside.getMessage() + "; refusing to read it; rerun the recipe");
+        }
     }
 
     /**
@@ -1808,9 +1944,10 @@ final class ElliottResearch {
     }
 
     /**
-     * Header fields a relation file must carry to belong to this run and dataset.
+     * Header fields a relation or family file must carry to belong to this run and
+     * dataset.
      */
-    private static JsonObject expectedRelationsHeader(final JsonObject run, final JsonObject dataset) {
+    private static JsonObject expectedSidecarHeader(final JsonObject run, final JsonObject dataset) {
         final JsonObject expected = new JsonObject();
         expected.add("dataset", dataset.get("id"));
         expected.add("revision", run.get("revision"));
@@ -1916,23 +2053,54 @@ final class ElliottResearch {
         }
     }
 
-    // ------------------------------------------------------------ relations
+    // ------------------------------------------------- relations and families
+
+    /** The two research sidecars an inspection command can print. */
+    private enum Sidecar {
+        RELATIONS("relations", "--edge", "scale relations", "relation file", "the recipe declares no hierarchy"),
+        FAMILIES("families", "--verdict", "corrective-family verdicts", "family file",
+                "the recipe declares no families");
+
+        private final String command;
+        private final String itemOption;
+        private final String noun;
+        private final String fileNoun;
+        private final String absentCause;
+
+        Sidecar(final String command, final String itemOption, final String noun, final String fileNoun,
+                final String absentCause) {
+            this.command = command;
+            this.itemOption = itemOption;
+            this.noun = noun;
+            this.fileNoun = fileNoun;
+            this.absentCause = absentCause;
+        }
+    }
 
     private static int relationsCommand(final List<String> args, final PrintStream out) throws IOException {
+        return sidecarCommand(Sidecar.RELATIONS, args, out);
+    }
+
+    private static int familiesCommand(final List<String> args, final PrintStream out) throws IOException {
+        return sidecarCommand(Sidecar.FAMILIES, args, out);
+    }
+
+    private static int sidecarCommand(final Sidecar sidecar, final List<String> args, final PrintStream out)
+            throws IOException {
         Path dir = null;
         String datasetId = null;
-        String edge = null;
+        String item = null;
         Integer asOf = null;
         int limit = DEFAULT_LIMIT;
         for (int index = 0; index < args.size(); index++) {
             final String argument = args.get(index);
-            if (Set.of("--as-of", "--edge", "--limit").contains(argument)) {
+            if (Set.of("--as-of", sidecar.itemOption, "--limit").contains(argument)) {
                 if (index + 1 >= args.size()) {
                     throw new IllegalArgumentException("option " + argument + " requires a value");
                 }
                 final String value = args.get(++index);
-                if ("--edge".equals(argument)) {
-                    edge = value;
+                if (sidecar.itemOption.equals(argument)) {
+                    item = value;
                 } else {
                     final int number;
                     try {
@@ -1963,33 +2131,33 @@ final class ElliottResearch {
             }
         }
         if (dir == null || datasetId == null) {
-            throw new IllegalArgumentException("relations needs a run directory and a dataset id");
+            throw new IllegalArgumentException(sidecar.command + " needs a run directory and a dataset id");
         }
         final JsonObject run = loadRun(dir);
         final JsonObject dataset = findDataset(run, datasetId);
-        if (!dataset.has("relations") || !dataset.get("relations").isJsonObject()) {
-            throw new Diagnostic("dataset '" + datasetId + "' recorded no scale relations (status "
-                    + dataset.get("status").getAsString()
-                    + "); the recipe declares no hierarchy or the dataset failed");
+        if (!dataset.has(sidecar.command) || !dataset.get(sidecar.command).isJsonObject()) {
+            throw new Diagnostic("dataset '" + datasetId + "' recorded no " + sidecar.noun + " (status "
+                    + dataset.get("status").getAsString() + "); " + sidecar.absentCause + " or the dataset failed");
         }
-        final Path file;
-        try {
-            file = resolveInside(dir, dataset.getAsJsonObject("relations").get("file").getAsString());
-        } catch (final IllegalArgumentException outside) {
-            throw new Diagnostic("relation file " + outside.getMessage() + "; refusing to read it; rerun the recipe");
-        }
+        final Path file = sidecarFile(sidecar, dir, dataset);
         if (!Files.isRegularFile(file)) {
-            throw new Diagnostic("relation file " + file + " is missing; rerun the recipe");
+            throw new Diagnostic(sidecar.fileNoun + " " + file + " is missing; rerun the recipe");
         }
         try {
-            final ElliottResearchRelations.Meta meta = ElliottResearchRelations.read(file, frame -> {
-            });
-            final String mismatch = headerMismatch(meta.header(), expectedRelationsHeader(run, dataset));
+            final ElliottResearchRelations.Meta meta = sidecar == Sidecar.RELATIONS
+                    ? ElliottResearchRelations.read(file, frame -> {
+                    })
+                    : ElliottResearchFamilies.read(file, frame -> {
+                    });
+            final String mismatch = headerMismatch(meta.header(), expectedSidecarHeader(run, dataset));
             if (mismatch != null) {
-                throw new Diagnostic("relation file " + file + " does not belong to this run (header " + mismatch
+                throw new Diagnostic(sidecar.fileNoun + " " + file + " does not belong to this run (header " + mismatch
                         + " differs); rerun the recipe");
             }
-            return ElliottResearchRelations.print(out, file, asOf, limit, edge) ? 0 : 2;
+            final boolean complete = sidecar == Sidecar.RELATIONS
+                    ? ElliottResearchRelations.print(out, file, asOf, limit, item)
+                    : ElliottResearchFamilies.print(out, file, asOf, limit, item);
+            return complete ? 0 : 2;
         } catch (final IllegalArgumentException corrupt) {
             throw new Diagnostic(corrupt.getMessage() + "; rerun the recipe");
         }
