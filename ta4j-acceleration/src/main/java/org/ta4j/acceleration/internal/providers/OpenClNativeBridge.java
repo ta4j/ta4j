@@ -93,6 +93,10 @@ final class JniOpenClNativeBridge implements OpenClNativeBridge {
                 request.horizon(), request.iterationCount(), request.lookbackBarCount(), request.seed(),
                 request.shockModel(), request.volatilityMode(), request.volatilityDecayFactor(), request.means(),
                 request.drifts(), request.variances(), request.historicalReturns());
+        return parseEvaluationPayload(payload);
+    }
+
+    static OpenClEvaluationResult parseEvaluationPayload(double[] payload) {
         if (payload == null || payload.length < HEADER_LENGTH) {
             throw new IllegalStateException("OpenCL evaluation returned no result payload");
         }

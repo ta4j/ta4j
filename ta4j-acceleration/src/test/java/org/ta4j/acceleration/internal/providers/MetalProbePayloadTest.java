@@ -4,6 +4,7 @@
 package org.ta4j.acceleration.internal.providers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
@@ -38,5 +39,35 @@ class MetalProbePayloadTest {
 
         assertThat(result.available()).isFalse();
         assertThat(result.detail()).isEqualTo("Metal probe returned no metadata");
+    }
+
+    @Test
+    public void rejectsBlankTruncatedAndNonnumericMetalMetadata() {
+        for (String payload : new String[] { "", " \t", "OK|device", "OK|device|not-a-number|ready" }) {
+            MetalProbeResult result = JniMetalNativeBridge.parseProbePayload(payload);
+
+            assertThat(result.available()).as("payload %s", payload).isFalse();
+            assertThat(result.detail()).contains(payload.isBlank() ? "no metadata" : "Malformed Metal probe");
+        }
+    }
+
+    @Test
+    public void rejectsMissingMetalSamplesBeforeReconstruction() {
+        assertThat(assertThrows(IllegalStateException.class,
+                () -> JniMetalNativeBridge.parseEvaluationPayload(null, new long[3])))
+                .hasMessage("Metal evaluation returned no samples");
+    }
+
+    @Test
+    public void keepsMetalTimingHeaderSeparateFromSamples() {
+        float[] samples = { 0.125f, -0.25f };
+
+        MetalEvaluationResult result = JniMetalNativeBridge.parseEvaluationPayload(samples,
+                new long[] { 123L, 20L, 100L });
+
+        assertThat(result.totalMicros()).isEqualTo(123d);
+        assertThat(result.transferMicros()).isEqualTo(20d);
+        assertThat(result.kernelMicros()).isEqualTo(100d);
+        assertThat(result.logReturns()).containsExactly(0.125f, -0.25f);
     }
 }

@@ -70,4 +70,21 @@ class ShockPathQualificationTest {
         System.setProperty(ShockPathQualification.minStepsProperty(Backend.METAL), "-1");
         assertThat(MEASURED.minimumSteps(Backend.METAL, 1, "fixture")).isEqualTo(1L << 24);
     }
+
+    @Test
+    public void absentRowsHaveAnUnboundedFloorEvenWithARequestedFamily() {
+        assertThat(ShockPathQualification.QUALIFIED.minimumSteps(Backend.METAL, 1, "m5max")).isEqualTo(Long.MAX_VALUE);
+    }
+
+    @Test
+    public void overflowsAndNonfiniteEstimatesNeverQualifyAnOffload() {
+        for (double cost : new double[] { Double.MAX_VALUE, Double.POSITIVE_INFINITY, Double.NaN,
+                (double) Long.MAX_VALUE }) {
+            ShockPathQualification qualification = ShockPathQualification.of(Backend.METAL, 1, "fixture",
+                    new ShockPathQualification.Coefficients(0L, 0L, cost, 0d, 1L));
+
+            assertThat(qualification.predictedTotalNanos(Backend.METAL, 1, "fixture", 2L, 0L, true)).as("cost %s", cost)
+                    .isEqualTo(Long.MAX_VALUE);
+        }
+    }
 }

@@ -350,16 +350,18 @@ abstract class ShockPathKernelProvider implements Provider {
         int horizon = (int) params[PARAM_HORIZON];
         int iterations = (int) params[PARAM_ITERATIONS];
         int lookback = (int) params[PARAM_LOOKBACK];
-        if (horizon < 1 || iterations < 1 || lookback < 1) {
-            throw new ArithmeticException("kernel params must be positive");
+        if (horizon < 1 || horizon != params[PARAM_HORIZON] || iterations < 1 || iterations != params[PARAM_ITERATIONS]
+                || lookback < 1 || lookback != params[PARAM_LOOKBACK]) {
+            throw new ArithmeticException("kernel dimensions must be positive integers");
         }
         int decisions = request.size();
-        long steps = Math.multiplyExact(Math.multiplyExact((long) decisions, iterations), horizon);
+        int outputCells = Math.multiplyExact(decisions, iterations);
+        long steps = Math.multiplyExact((long) outputCells, horizon);
         long perDecisionInputs = 4L * Double.BYTES;
         long fixedBytes = Math.multiplyExact(lookback - 1L, 2L * Double.BYTES);
         long stagedBytes = Math
                 .addExact(Math.multiplyExact(Math.multiplyExact((long) decisions, perDecisionInputs), 2L), fixedBytes);
-        long outputBytes = Math.multiplyExact(Math.multiplyExact((long) decisions, iterations), (long) Double.BYTES);
+        long outputBytes = Math.multiplyExact((long) outputCells, Double.BYTES);
         long bytesPerDecision = Math.addExact(perDecisionInputs * 2L,
                 Math.multiplyExact((long) iterations, Double.BYTES + WORKSPACE_BYTES_PER_PATH));
         long peakBytes = Math.addExact(Math.addExact(stagedBytes, outputBytes), 256L);

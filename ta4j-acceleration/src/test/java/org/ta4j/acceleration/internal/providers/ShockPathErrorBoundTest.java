@@ -118,6 +118,19 @@ class ShockPathErrorBoundTest {
         }
     }
 
+    @Test
+    public void nonfiniteNumericalBoundsCannotCertifyNativeOutputs() {
+        for (double nonfinite : new double[] { Double.NaN, Double.POSITIVE_INFINITY }) {
+            List<double[]> malformed = inputs(new double[] { 0d }, new double[] { 0d }, new double[] { nonfinite },
+                    new double[] { 0.01d });
+
+            assertThat(ShockPathErrorBound.uncertifiableReason(Precision.FP64, SHOCK_NORMAL, VOLATILITY_CONSTANT, 1,
+                    malformed)).contains("exponent guard");
+            assertThat(ShockPathErrorBound.maxRelativePriceError(Precision.FP64, SHOCK_NORMAL, 1, malformed))
+                    .isEqualTo(Double.POSITIVE_INFINITY);
+        }
+    }
+
     private static List<double[]> inputs(double price, double[] returns) {
         List<double[]> base = inputs(new double[] { 0d }, new double[] { 0d }, new double[] { 0d }, returns);
         return List.of(new double[] { price }, base.get(1), base.get(2), base.get(3), base.get(4));

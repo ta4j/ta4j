@@ -454,6 +454,8 @@ Exact execution is the default. Metal is approximate-only, and approximate reque
 
 Direct `AccelerationRuntime.Provider.execute(...)` calls can exercise native kernels for qualification, but bypass the automatic cost-selection and scalar-fallback policy; callers own failure handling. A successful direct-SPI Metal run proves that kernel and workload on that host, not accelerated forecast/backtest routing, a speedup, or CUDA/OpenCL/Windows qualification. Automatic offload requires recorded cold/warm native-versus-scalar timings for matching workload shapes and device families before a qualification row can ship.
 
+Direct requests must supply finite positive integer horizon, iteration, and lookback counts within the Java `int` range, and the complete output vector must also fit a Java array. Providers reject malformed or overflowing dimensions before native initialization rather than silently truncating, saturating, or allocating the values.
+
 ## Real-world examples
 
 The `ta4j-examples` module is organized as progressive learning tracks:

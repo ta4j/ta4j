@@ -33,7 +33,10 @@ final class JniCudaNativeBridge implements CudaNativeBridge {
      */
     @Override
     public CudaProbeResult probe() {
-        String payload = nativeProbe(ABI_VERSION);
+        return parseProbePayload(nativeProbe(ABI_VERSION));
+    }
+
+    static CudaProbeResult parseProbePayload(String payload) {
         if (payload == null || payload.isBlank()) {
             return new CudaProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, "CUDA probe returned no metadata");
         }
@@ -73,6 +76,10 @@ final class JniCudaNativeBridge implements CudaNativeBridge {
                 request.horizon(), request.iterationCount(), request.lookbackBarCount(), request.seed(),
                 request.shockModel(), request.volatilityMode(), request.volatilityDecayFactor(), request.means(),
                 request.drifts(), request.variances(), request.historicalReturns());
+        return parseEvaluationPayload(payload);
+    }
+
+    static CudaEvaluationResult parseEvaluationPayload(double[] payload) {
         if (payload == null || payload.length < HEADER_LENGTH) {
             throw new IllegalStateException("CUDA evaluation returned no result payload");
         }

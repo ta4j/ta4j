@@ -68,6 +68,10 @@ final class JniMetalNativeBridge implements MetalNativeBridge {
                 request.horizon(), request.iterationCount(), request.lookbackBarCount(), request.seed(),
                 request.shockModel(), request.volatilityMode(), request.volatilityDecayFactor(), request.means(),
                 request.drifts(), request.variances(), request.historicalReturns(), timings);
+        return parseEvaluationPayload(logReturns, timings);
+    }
+
+    static MetalEvaluationResult parseEvaluationPayload(float[] logReturns, long[] timings) {
         if (logReturns == null) {
             throw new IllegalStateException("Metal evaluation returned no samples");
         }

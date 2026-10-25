@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -31,7 +33,7 @@ class MetalAccelerationProviderTest {
     Path temporary;
 
     @AfterEach
-    void reset() {
+    public void reset() {
         System.clearProperty(MetalAccelerationProvider.MAX_MEMORY_PROPERTY);
         System.clearProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY);
         System.clearProperty(MetalNativeLibrary.LIBRARY_PROPERTY);
@@ -40,7 +42,7 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
-    void declinesExactRequestsWithoutTouchingNative() {
+    public void declinesExactRequestsWithoutTouchingNative() {
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), bridgeFailing());
 
         Assessment assessment = provider.assess(request(Double.NaN));
@@ -52,8 +54,7 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
-    void absentLibraryDeclinesApproximate() {
-        org.junit.jupiter.api.Assumptions.assumeFalse(MetalNativeLibrary.packagedResourcePresent());
+    public void absentLibraryDeclinesApproximate() {
         System.setProperty(MetalNativeLibrary.LIBRARY_PROPERTY, temporary.resolve("missing.dylib").toString());
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(false), new FakeBridge());
 
@@ -65,7 +66,7 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
-    void rejectsConfiguredDirectoryAsLibrary() throws Exception {
+    public void rejectsConfiguredDirectoryAsLibrary() throws Exception {
         System.setProperty(MetalNativeLibrary.LIBRARY_PROPERTY,
                 Files.createDirectory(temporary.resolve("not-a-library")).toString());
 
@@ -77,36 +78,179 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
-    void executeRejectsInfeasibleMemoryCeilingBeforeNativeInitialization() {
-        System.setProperty(MetalAccelerationProvider.MAX_MEMORY_PROPERTY, "0");
-        AtomicInteger loads = new AtomicInteger();
-        MetalAccelerationProvider provider = new MetalAccelerationProvider(() -> {
-            loads.incrementAndGet();
-            return new MetalNativeLibrary.LoadResult(true, null, "test");
-        }, bridgeFailing());
+    public void rejectsInvalidParameterCountBeforeNativeWork() {
+        KernelRequest valid = request(0.01d);
+        double[] params = Arrays.copyOf(valid.params(), MonteCarloKernel.PARAM_COUNT - 1);
 
-        NativeProviderException failure = assertThrows(NativeProviderException.class,
-                () -> provider.execute(request(0.01d)));
-
-        assertThat(failure.getMessage()).contains("must be > 0");
-        assertThat(loads.get()).isZero();
+        assertRejectedBeforeNativeWork(request(valid, params, valid.inputs()),
+                "expects " + MonteCarloKernel.PARAM_COUNT + " kernel params");
     }
 
     @Test
-    void unqualifiedFamilyPredictsUnboundedCostForCoreCrossover() throws Exception {
+    public void rejectsUnsupportedAndFractionalShockCodesBeforeNativeWork() {
+        for (double shock : new double[] { MonteCarloKernel.SHOCK_SMOOTHED_EMPIRICAL, 0.5d, Double.NaN }) {
+            assertRejectedBeforeNativeWork(withParam(request(0.01d), MonteCarloKernel.PARAM_SHOCK_MODEL, shock),
+                    "supports historical bootstrap, standardized empirical, and normal shocks");
+        }
+    }
+
+    @Test
+    public void rejectsInvalidVolatilityModesAndDecayBeforeNativeWork() {
+        for (double mode : new double[] { 2d, 0.5d }) {
+            assertRejectedBeforeNativeWork(withParam(request(0.01d), MonteCarloKernel.PARAM_VOLATILITY_MODE, mode),
+                    "constant or EWMA volatility mode with a decay in (0, 1)");
+        }
+        for (double decay : new double[] { 0d, 1d, Double.NaN }) {
+            assertRejectedBeforeNativeWork(withParam(request(0.01d), MonteCarloKernel.PARAM_DECAY, decay),
+                    "constant or EWMA volatility mode with a decay in (0, 1)");
+        }
+    }
+
+    @Test
+    public void rejectsNonpositiveDimensionsBeforeNativeWork() {
+        for (int parameter : new int[] { MonteCarloKernel.PARAM_HORIZON, MonteCarloKernel.PARAM_ITERATIONS,
+                MonteCarloKernel.PARAM_LOOKBACK }) {
+            assertRejectedBeforeNativeWork(withParam(request(0.01d), parameter, 0d), "positive");
+        }
+    }
+
+    @Test
+    public void rejectsFractionalNonfiniteAndOutOfRangeDimensionsBeforeNativeWork() {
+        for (int parameter : new int[] { MonteCarloKernel.PARAM_HORIZON, MonteCarloKernel.PARAM_ITERATIONS,
+                MonteCarloKernel.PARAM_LOOKBACK }) {
+            for (double value : new double[] { 1.5d, Double.POSITIVE_INFINITY, Double.NaN,
+                    (double) Integer.MAX_VALUE + 1d }) {
+                assertRejectedBeforeNativeWork(withParam(request(0.01d), parameter, value), "positive integers");
+            }
+        }
+    }
+
+    @Test
+    public void rejectsDimensionArithmeticOverflowBeforeInspectingBuffers() {
+        KernelRequest valid = request(0.01d);
+        double[] params = valid.params();
+        params[MonteCarloKernel.PARAM_HORIZON] = Integer.MAX_VALUE;
+        params[MonteCarloKernel.PARAM_ITERATIONS] = Integer.MAX_VALUE;
+
+        assertRejectedBeforeNativeWork(request(valid, params, List.of()), "request dimensions overflow");
+
+        KernelRequest overflowingRange = new KernelRequest(valid.operation(), Integer.MIN_VALUE, Integer.MAX_VALUE,
+                valid.outputsPerIndex(), valid.numeric(), valid.determinism(), valid.seed(), valid.tolerance(),
+                valid.params(), List.of(), valid.estimatedScalarNanos(), valid.peakDeviceBytesEstimate());
+
+        assertRejectedBeforeNativeWork(overflowingRange, "request dimensions overflow");
+    }
+
+    @Test
+    public void rejectsOutputVectorLengthOverflowBeforeNativeWork() {
+        int decisions = 50_000;
+        KernelRequest overflowingOutput = request(Determinism.APPROXIMATE, 0.01d,
+                MonteCarloKernel.SHOCK_HISTORICAL_BOOTSTRAP, MonteCarloKernel.VOLATILITY_CONSTANT, 1, 1, 50_000,
+                new double[decisions], new double[decisions], new double[decisions]);
+
+        assertRejectedBeforeNativeWork(overflowingOutput, "request dimensions overflow");
+    }
+
+    @Test
+    public void rejectsOutputArityBeforeNativeWork() {
+        KernelRequest valid = request(0.01d);
+        KernelRequest wrongArity = new KernelRequest(valid.operation(), valid.fromInclusive(), valid.toInclusive(), 3,
+                valid.numeric(), valid.determinism(), valid.seed(), valid.tolerance(), valid.params(), valid.inputs(),
+                valid.estimatedScalarNanos(), valid.peakDeviceBytesEstimate());
+
+        assertRejectedBeforeNativeWork(wrongArity, "returns 2 outputs per index, not 3");
+    }
+
+    @Test
+    public void rejectsMalformedStateAndSharedHistoryBuffersBeforeNativeWork() {
+        KernelRequest valid = request(0.01d);
+        List<double[]> inputs = valid.inputs();
+
+        assertRejectedBeforeNativeWork(request(valid, valid.params(), inputs.subList(0, inputs.size() - 1)),
+                "expects 5 input buffers, not 4");
+        for (int buffer : new int[] { MonteCarloKernel.INPUT_PRICES, MonteCarloKernel.INPUT_MEANS,
+                MonteCarloKernel.INPUT_DRIFTS, MonteCarloKernel.INPUT_VARIANCES }) {
+            List<double[]> malformed = new ArrayList<>(inputs);
+            malformed.set(buffer, new double[valid.size() - 1]);
+            assertRejectedBeforeNativeWork(request(valid, valid.params(), malformed),
+                    "expects 4 values in input buffer " + buffer + ", not 3");
+        }
+        for (int length : new int[] { 6, 8 }) {
+            List<double[]> malformed = new ArrayList<>(inputs);
+            malformed.set(MonteCarloKernel.INPUT_RETURNS, new double[length]);
+            assertRejectedBeforeNativeWork(request(valid, valid.params(), malformed),
+                    "expects a shared returns buffer of 7 values, not " + length);
+        }
+    }
+
+    @Test
+    public void assessmentAndExecutionRejectUnusableMemoryCeilings() throws Exception {
         useLibraryFile();
         System.setProperty(ShockPathQualification.familyProperty(Backend.METAL), "generic");
-        MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), new FakeBridge());
+        MetalAccelerationProvider provider = new MetalAccelerationProvider(() -> {
+            throw new AssertionError("an infeasible request must not load native code");
+        }, bridgeFailing());
+        for (long ceiling : new long[] { 0L, -1L, 263L }) {
+            System.setProperty(MetalAccelerationProvider.MAX_MEMORY_PROPERTY, Long.toString(ceiling));
+            String expected = ceiling > 0L ? "needs 216 bytes per decision plus 48 shared bytes" : "must be > 0";
 
-        Assessment assessment = provider.assess(request(0.01d));
+            Assessment assessment = provider.assess(request(0.01d));
+            NativeProviderException failure = assertThrows(NativeProviderException.class,
+                    () -> provider.execute(request(0.01d)));
 
-        assertThat(assessment.supported()).isTrue();
-        assertThat(assessment.backend()).isEqualTo(Backend.METAL);
-        assertThat(assessment.predictedTotalNanos()).isEqualTo(Long.MAX_VALUE);
+            assertThat(assessment.supported()).isFalse();
+            assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
+            assertThat(assessment.diagnostic().detail()).contains(expected);
+            assertThat(failure.getMessage()).contains(expected);
+        }
     }
 
     @Test
-    void measuredFamilyPredictsFiniteTotalCost() throws Exception {
+    public void assessmentRejectsRelativeAndMalformedLibraryPathsWithoutLoading() {
+        MetalAccelerationProvider provider = new MetalAccelerationProvider(() -> {
+            throw new AssertionError("assessment must not load native code");
+        }, bridgeFailing());
+        for (String path : new String[] { "relative-metal.dylib", "invalid\0metal.dylib" }) {
+            System.setProperty(MetalNativeLibrary.LIBRARY_PROPERTY, path);
+
+            Assessment assessment = provider.assess(request(0.01d));
+
+            assertThat(assessment.supported()).isFalse();
+            assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
+            assertThat(assessment.diagnostic().detail()).contains("Metal library not found");
+        }
+    }
+
+    @Test
+    public void unidentifiedColdFamilyStaysUnqualifiedWithoutNativeLoading() throws Exception {
+        useLibraryFile();
+        System.setProperty(ShockPathQualification.familyProperty(Backend.METAL), " ");
+        String originalOs = System.getProperty("os.name");
+        try {
+            System.setProperty("os.name", "Linux");
+            MetalAccelerationProvider provider = new MetalAccelerationProvider(() -> {
+                throw new AssertionError("an unidentified assessment must not initialize native code");
+            }, bridgeFailing());
+
+            for (int index = 0; index < 2; index++) {
+                Assessment assessment = provider.assess(request(0.01d));
+
+                assertThat(assessment.supported()).isTrue();
+                assertThat(assessment.backend()).isEqualTo(Backend.METAL);
+                assertThat(assessment.deviceId()).isEqualTo("metal/generic");
+                assertThat(assessment.predictedTotalNanos()).isEqualTo(Long.MAX_VALUE);
+            }
+        } finally {
+            if (originalOs == null) {
+                System.clearProperty("os.name");
+            } else {
+                System.setProperty("os.name", originalOs);
+            }
+        }
+    }
+
+    @Test
+    public void measuredFamilyPredictsFiniteTotalCost() throws Exception {
         useLibraryFile();
         System.setProperty(ShockPathQualification.familyProperty(Backend.METAL), "m5max");
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), new FakeBridge(),
@@ -123,7 +267,7 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
-    void fp32InputRoundingCounterexampleIsDeclinedAtAMicroTolerance() throws Exception {
+    public void fp32InputRoundingCounterexampleIsDeclinedAtAMicroTolerance() throws Exception {
         useLibraryFile();
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), new FakeBridge());
         // One decision, horizon 1, standardized empirical: mean 32 and history
@@ -144,7 +288,7 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
-    void ewmaAndFp32NormalRequestsAreNotCertified() throws Exception {
+    public void ewmaAndFp32NormalRequestsAreNotCertified() throws Exception {
         useLibraryFile();
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), new FakeBridge());
 
@@ -160,9 +304,9 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
-    void executeMapsSamplesDecisionMajorAcrossChunks() throws Exception {
+    public void executeMapsSamplesDecisionMajorAcrossChunks() throws Exception {
         useLibraryFile();
-        System.setProperty(MetalAccelerationProvider.MAX_MEMORY_PROPERTY, "400");
+        System.setProperty(MetalAccelerationProvider.MAX_MEMORY_PROPERTY, "264");
         AtomicInteger evaluations = new AtomicInteger();
         FakeBridge bridge = new FakeBridge() {
             @Override
@@ -186,7 +330,7 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
-    void executeRejectsShortSamples() throws Exception {
+    public void executeRejectsShortSamples() throws Exception {
         useLibraryFile();
         MetalNativeBridge shortBridge = new FakeBridge() {
             @Override
@@ -196,11 +340,14 @@ class MetalAccelerationProviderTest {
         };
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), shortBridge);
 
-        assertThrows(NativeProviderException.class, () -> provider.execute(request(0.01d)));
+        NativeProviderException failure = assertThrows(NativeProviderException.class,
+                () -> provider.execute(request(0.01d)));
+
+        assertThat(failure.getMessage()).isEqualTo("metal returned 1 samples, expected 8 for 4 decisions");
     }
 
     @Test
-    void executeFailureSurfacesNativeCause() throws Exception {
+    public void executeFailureSurfacesNativeCause() throws Exception {
         useLibraryFile();
         MetalNativeBridge failing = new FakeBridge() {
             @Override
@@ -216,7 +363,7 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
-    void probeFailureSurfacesAsNativeError() throws Exception {
+    public void probeFailureSurfacesAsNativeError() throws Exception {
         useLibraryFile();
         MetalNativeBridge unavailable = new FakeBridge() {
             @Override
@@ -226,7 +373,158 @@ class MetalAccelerationProviderTest {
         };
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), unavailable);
 
-        assertThrows(NativeProviderException.class, () -> provider.execute(request(0.01d)));
+        NativeProviderException failure = assertThrows(NativeProviderException.class,
+                () -> provider.execute(request(0.01d)));
+
+        assertThat(failure.getMessage()).contains("metal", "no device");
+    }
+
+    @Test
+    public void loadFailureRejectsExecutionBeforeProbing() {
+        MetalAccelerationProvider provider = new MetalAccelerationProvider(
+                () -> new MetalNativeLibrary.LoadResult(false, null, "incompatible Metal ABI"), bridgeFailing());
+
+        NativeProviderException failure = assertThrows(NativeProviderException.class,
+                () -> provider.execute(request(0.01d)));
+
+        assertThat(failure.getMessage()).contains("metal native execution failed", "incompatible Metal ABI");
+    }
+
+    @Test
+    public void probeLinkageErrorRetainsNativeCause() {
+        UnsatisfiedLinkError cause = new UnsatisfiedLinkError("missing Metal probe symbol");
+        FakeBridge bridge = new FakeBridge() {
+            @Override
+            public MetalProbeResult probe() {
+                throw cause;
+            }
+
+            @Override
+            public MetalEvaluationResult evaluate(NativeForecastRequest request) {
+                throw new AssertionError("a failed probe must not evaluate");
+            }
+        };
+        MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), bridge);
+
+        NativeProviderException failure = assertThrows(NativeProviderException.class,
+                () -> provider.execute(request(0.01d)));
+
+        assertThat(failure).hasCause(cause).hasMessageContaining("missing Metal probe symbol");
+    }
+
+    @Test
+    public void probeMemoryCeilingRejectsExecutionBeforeStagingAnyChunk() throws Exception {
+        useLibraryFile();
+        FakeBridge bridge = new FakeBridge() {
+            @Override
+            public MetalProbeResult probe() {
+                return new MetalProbeResult(true, "Portable Metal GPU", 526L, "test");
+            }
+
+            @Override
+            public MetalEvaluationResult evaluate(NativeForecastRequest request) {
+                throw new AssertionError("the probed budget cannot fit one decision");
+            }
+        };
+        MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), bridge);
+
+        NativeProviderException failure = assertThrows(NativeProviderException.class,
+                () -> provider.execute(request(0.01d)));
+        Assessment assessment = provider.assess(request(0.01d));
+
+        assertThat(failure.getMessage()).contains("216 bytes per decision plus 48 shared bytes", "263-byte");
+        assertThat(assessment.supported()).isFalse();
+        assertThat(assessment.deviceId()).isEqualTo("metal/Portable Metal GPU");
+        assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
+        assertThat(assessment.diagnostic().detail()).contains("263-byte");
+        assertThat(provider.deviceFamily()).isEqualTo("portablemetalgpu");
+    }
+
+    @Test
+    public void failedEvaluationStaysColdUntilSuccessfulRetryAndReusesKernel() throws Exception {
+        useLibraryFile();
+        System.setProperty(ShockPathQualification.familyProperty(Backend.METAL), " M5MAX ");
+        AtomicInteger loads = new AtomicInteger();
+        AtomicInteger probes = new AtomicInteger();
+        AtomicInteger evaluations = new AtomicInteger();
+        IllegalStateException cause = new IllegalStateException("transient Metal command-buffer fault");
+        FakeBridge bridge = new FakeBridge() {
+            @Override
+            public MetalProbeResult probe() {
+                probes.incrementAndGet();
+                return new MetalProbeResult(true, "Apple M5 Max", 960L, "test");
+            }
+
+            @Override
+            public MetalEvaluationResult evaluate(NativeForecastRequest request) {
+                if (evaluations.getAndIncrement() == 0) {
+                    throw cause;
+                }
+                assertThat(request.decisionCount()).isEqualTo(2);
+                return super.evaluate(request);
+            }
+        };
+        MetalAccelerationProvider provider = new MetalAccelerationProvider(() -> {
+            loads.incrementAndGet();
+            return new MetalNativeLibrary.LoadResult(true, null, "test");
+        }, bridge, ShockPathQualification.of(Backend.METAL, 1, "m5max",
+                new ShockPathQualification.Coefficients(1_000L, 100L, 1d, 0d, 8L)));
+        KernelRequest request = request(0.01d);
+
+        Assessment cold = provider.assess(request);
+        NativeProviderException failure = assertThrows(NativeProviderException.class, () -> provider.execute(request));
+        System.clearProperty(ShockPathQualification.familyProperty(Backend.METAL));
+        Assessment failed = provider.assess(request);
+        KernelResult first = provider.execute(request);
+        Assessment warm = provider.assess(request);
+        KernelResult second = provider.execute(request);
+
+        assertThat(cold.supported()).isTrue();
+        assertThat(cold.deviceId()).isEqualTo("metal/m5max");
+        assertThat(cold.predictedTotalNanos()).isEqualTo(1_016L);
+        assertThat(cold.peakDeviceBytes()).isEqualTo(624L);
+        assertThat(failure).hasCause(cause);
+        assertThat(failed.supported()).isTrue();
+        assertThat(failed.deviceId()).isEqualTo("metal/Apple M5 Max");
+        assertThat(failed.predictedTotalNanos()).isEqualTo(1_016L);
+        assertThat(failed.peakDeviceBytes()).isEqualTo(480L);
+        assertThat(warm.deviceId()).isEqualTo("metal/Apple M5 Max");
+        assertThat(warm.predictedTotalNanos()).isEqualTo(116L);
+        assertThat(warm.peakDeviceBytes()).isEqualTo(480L);
+        assertThat(first.outputs()).containsExactly(0d, 1d, 100d, 101d, 200d, 201d, 300d, 301d);
+        assertThat(second.outputs()).containsExactly(first.outputs());
+        assertThat(loads.get()).isEqualTo(1);
+        assertThat(probes.get()).isEqualTo(1);
+        assertThat(evaluations.get()).isEqualTo(5);
+    }
+
+    private static void assertRejectedBeforeNativeWork(KernelRequest request, String detail) {
+        System.setProperty(ShockPathQualification.familyProperty(Backend.METAL), "generic");
+        MetalAccelerationProvider provider = new MetalAccelerationProvider(() -> {
+            throw new AssertionError("request validation must precede native loading");
+        }, bridgeFailing());
+
+        Assessment assessment = provider.assess(request);
+        NativeProviderException failure = assertThrows(NativeProviderException.class, () -> provider.execute(request));
+
+        assertThat(assessment.supported()).isFalse();
+        assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.UNSUPPORTED);
+        assertThat(assessment.diagnostic().providerId()).isEqualTo("metal");
+        assertThat(assessment.diagnostic().detail()).contains(detail);
+        assertThat(failure.getMessage()).contains(detail);
+    }
+
+    private static KernelRequest withParam(KernelRequest template, int parameter, double value) {
+        double[] params = template.params();
+        params[parameter] = value;
+        return request(template, params, template.inputs());
+    }
+
+    private static KernelRequest request(KernelRequest template, double[] params, List<double[]> inputs) {
+        return new KernelRequest(template.operation(), template.fromInclusive(), template.toInclusive(),
+                template.outputsPerIndex(), template.numeric(), template.determinism(), template.seed(),
+                template.tolerance(), params, inputs, template.estimatedScalarNanos(),
+                template.peakDeviceBytesEstimate());
     }
 
     private void useLibraryFile() throws Exception {
