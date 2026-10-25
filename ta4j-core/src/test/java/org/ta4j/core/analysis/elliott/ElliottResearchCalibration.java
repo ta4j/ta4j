@@ -544,7 +544,7 @@ final class ElliottResearchCalibration {
     private static Row row(final String dataset, final Label label, final Map<String, Integer> lastObserved,
             final int horizon, final boolean cohort, final Function<Event, List<RuleEvidence>> evidence) {
         final Event event = label.event();
-        final int windowEnd = event.enrollIndex + horizon;
+        final int windowEnd = label.windowEnd();
         final boolean observed = windowEnd <= lastObserved.getOrDefault(event.stream.partition(), -1);
         final Outcome outcome = switch (label.structural()) {
         case ALREADY_RESOLVED -> Outcome.ALREADY_RESOLVED;

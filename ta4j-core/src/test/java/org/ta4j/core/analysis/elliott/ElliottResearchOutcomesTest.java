@@ -508,6 +508,35 @@ class ElliottResearchOutcomesTest {
                 new Settings(List.of(5, 20), "all-rules", Invalidation.ORIGIN_PIVOT));
     }
 
+    @Test
+    void labelWindowsSaturateInsteadOfWrappingForHorizonsBeyondTheIndexRange() {
+        final Price unavailable = Price.unavailable("HORIZON_BEYOND_PARTITION");
+        final Label near = new Label(bullishEvent(40), 5, Structural.HORIZON_EXPIRED, "none", -1, unavailable);
+        final Label unbounded = new Label(bullishEvent(40), Integer.MAX_VALUE, Structural.HORIZON_EXPIRED, "none", -1,
+                unavailable);
+
+        assertEquals(45, near.windowEnd());
+        assertEquals(45, near.structuralAvailableIndex());
+        assertEquals(Integer.MAX_VALUE, unbounded.windowEnd());
+        assertEquals(Integer.MAX_VALUE, unbounded.structuralAvailableIndex());
+    }
+
+    @Test
+    void placementIsAvailableOnlyOnceItsLatestPivotIsConfirmed() {
+        final Event monotonic = bullishEvent(20);
+        final List<ConfirmedPivot> pivots = new ArrayList<>(monotonic.pivots);
+        final ConfirmedPivot interior = pivots.get(2);
+        pivots.set(2, new ConfirmedPivot(interior.pivotIndex(), 20, interior.price(), interior.type()));
+        final Event lateInterior = new Event(REAL, monotonic.candidateKey, monotonic.version, monotonic.direction,
+                pivots, monotonic.direction + "|20", 20, monotonic.enrollTime, monotonic.status,
+                monotonic.tiedCandidateKeys);
+
+        assertEquals(19, monotonic.availableIndex());
+        assertTrue(monotonic.carriedIn());
+        assertEquals(20, lateInterior.availableIndex(), "an interior pivot confirmed after the endpoint delays it");
+        assertFalse(lateInterior.carriedIn());
+    }
+
     // --------------------------------------------------------------- helpers
 
     private static Event bullishEvent(final int enrollIndex) {

@@ -512,12 +512,18 @@ final class ElliottResearchEvents implements StudyObserver {
         }
 
         /**
-         * @return first index at which the whole placement was confirmed; earlier than
-         *         {@link #enrollIndex} when the placement was already confirmed before
-         *         the partition's first observation
+         * @return first index at which the whole placement was confirmed, the latest
+         *         confirmation among its pivots because an older pivot can be confirmed
+         *         after a newer one; earlier than {@link #enrollIndex} when the
+         *         placement was already confirmed before the partition's first
+         *         observation
          */
         int availableIndex() {
-            return end().confirmationIndex();
+            int available = Integer.MIN_VALUE;
+            for (final ConfirmedPivot pivot : pivots) {
+                available = Math.max(available, pivot.confirmationIndex());
+            }
+            return available;
         }
 
         boolean carriedIn() {

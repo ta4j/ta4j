@@ -310,6 +310,15 @@ final class ElliottResearchOutcomes {
     record Label(Event event, int horizon, Structural structural, String cause, int resolutionIndex, Price price) {
 
         /**
+         * @return last bar of the label's window, saturating at
+         *         {@link Integer#MAX_VALUE} so a horizon beyond the index range ends
+         *         after every observable bar instead of wrapping negative
+         */
+        int windowEnd() {
+            return (int) Math.min((long) event.enrollIndex + horizon, Integer.MAX_VALUE);
+        }
+
+        /**
          * @return first index at which the structural label is administratively known,
          *         or {@link Integer#MAX_VALUE} for a censored label that never resolves
          *         inside its stream
@@ -318,7 +327,7 @@ final class ElliottResearchOutcomes {
             return switch (structural) {
             case CORRECTION_COMPLETED, INVALIDATED_OR_WITHDRAWN -> resolutionIndex;
             case ALREADY_RESOLVED -> Math.max(resolutionIndex, event.enrollIndex);
-            case HORIZON_EXPIRED -> event.enrollIndex + horizon;
+            case HORIZON_EXPIRED -> windowEnd();
             case CENSORED -> Integer.MAX_VALUE;
             };
         }
@@ -328,7 +337,7 @@ final class ElliottResearchOutcomes {
          *         {@link Integer#MAX_VALUE} when it is unavailable
          */
         int priceAvailableIndex() {
-            return price.available() ? event.enrollIndex + horizon : Integer.MAX_VALUE;
+            return price.available() ? windowEnd() : Integer.MAX_VALUE;
         }
     }
 
