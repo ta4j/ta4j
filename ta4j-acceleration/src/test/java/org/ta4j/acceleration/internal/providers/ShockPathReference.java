@@ -35,16 +35,16 @@ public final class ShockPathReference {
     }
 
     /**
-     * Skips the calling test unless the CUDA lane is usable: a library override is
-     * configured and exists, and the native probe reports a device. A library that
-     * is configured but does not load is a real defect and fails.
+     * Skips the calling test when no CUDA library override is configured. An
+     * explicit override requests hardware validation: the file must exist and load,
+     * and the native probe, including its self-tests, must succeed.
      */
     public static void assumeCudaLane() {
         assumeLibraryConfigured(CudaNativeLibrary.LIBRARY_PROPERTY);
         CudaNativeLibrary.LoadResult loaded = CudaNativeLibrary.load();
         assertThat(loaded.loaded()).as(loaded.detail()).isTrue();
         CudaProbeResult probe = new JniCudaNativeBridge().probe();
-        assumeTrue(probe.available(), probe.detail());
+        requireNativeProbe(probe.available(), probe.detail());
     }
 
     /** OpenCL counterpart of {@link #assumeCudaLane()}. */
@@ -53,13 +53,18 @@ public final class ShockPathReference {
         OpenClNativeLibrary.LoadResult loaded = OpenClNativeLibrary.load();
         assertThat(loaded.loaded()).as(loaded.detail()).isTrue();
         OpenClProbeResult probe = new JniOpenClNativeBridge().probe();
-        assumeTrue(probe.available(), probe.detail());
+        requireNativeProbe(probe.available(), probe.detail());
     }
 
-    private static void assumeLibraryConfigured(String property) {
+    static void assumeLibraryConfigured(String property) {
         String configured = System.getProperty(property, "").trim();
         assumeTrue(!configured.isEmpty(), "-D" + property + " is not configured");
-        assumeTrue(Files.isRegularFile(Path.of(configured)), "-D" + property + " does not name an existing file");
+        assertThat(Files.isRegularFile(Path.of(configured))).as("-D%s does not name an existing file", property)
+                .isTrue();
+    }
+
+    static void requireNativeProbe(boolean available, String detail) {
+        assertThat(available).as(detail).isTrue();
     }
 
     /**

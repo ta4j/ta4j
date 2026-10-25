@@ -4,6 +4,7 @@
 package org.ta4j.acceleration.internal.providers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.ta4j.core.indicators.forecast.MonteCarloKernel.SHOCK_HISTORICAL_BOOTSTRAP;
 import static org.ta4j.core.indicators.forecast.MonteCarloKernel.SHOCK_NORMAL;
 import static org.ta4j.core.indicators.forecast.MonteCarloKernel.SHOCK_STANDARDIZED_EMPIRICAL;
@@ -88,6 +89,27 @@ class ShockPathErrorBoundTest {
                 .isNull();
         assertThat(ShockPathErrorBound.uncertifiableReason(Precision.FP64, SHOCK_STANDARDIZED_EMPIRICAL,
                 VOLATILITY_CONSTANT, 1, underflowing)).isNull();
+    }
+
+    @Test
+    public void fp32VarianceOverflowCannotBeCertifiedWhenVolatilityWouldCancel() {
+        for (double variance : new double[] { 1e40d, Double.MAX_VALUE }) {
+            List<double[]> inputs = inputs(new double[] { 0d }, new double[] { 0d }, new double[] { variance },
+                    new double[] { 0.01d });
+
+            assertThat(ShockPathReference.cumulativeLogReturn(false, SHOCK_STANDARDIZED_EMPIRICAL, 0d, 0d, variance,
+                    new double[] { 0.01d }, 1, 42L, 0, 0)).isCloseTo(0.01d, within(1e-16d));
+            assertThat(ShockPathReference.cumulativeLogReturn(true, SHOCK_STANDARDIZED_EMPIRICAL, 0d, 0d, variance,
+                    new double[] { 0.01d }, 1, 42L, 0, 0)).isNaN();
+            assertThat(ShockPathErrorBound.uncertifiableReason(Precision.FP32, SHOCK_STANDARDIZED_EMPIRICAL,
+                    VOLATILITY_CONSTANT, 1, inputs)).contains("overflows single precision");
+            assertThat(ShockPathErrorBound.uncertifiableReason(Precision.FP64, SHOCK_STANDARDIZED_EMPIRICAL,
+                    VOLATILITY_CONSTANT, 1, inputs)).isNull();
+        }
+        List<double[]> finiteBoundary = inputs(new double[] { 0d }, new double[] { 0d },
+                new double[] { Math.nextUp((double) Float.MAX_VALUE) }, new double[] { 0.01d });
+        assertThat(ShockPathErrorBound.uncertifiableReason(Precision.FP32, SHOCK_STANDARDIZED_EMPIRICAL,
+                VOLATILITY_CONSTANT, 1, finiteBoundary)).isNull();
     }
 
     @Test

@@ -15,6 +15,7 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.opentest4j.TestAbortedException;
 import org.ta4j.core.acceleration.AccelerationRuntime.Assessment;
 import org.ta4j.core.acceleration.AccelerationRuntime.Determinism;
 import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
@@ -70,6 +71,44 @@ class CudaAccelerationProviderTest {
         CudaAccelerationProvider provider = new CudaAccelerationProvider();
 
         assertThrows(NativeProviderException.class, () -> provider.execute(request(0.01d)));
+    }
+
+    @Test
+    public void configuredHardwareProbeFailuresFailRatherThanSkipValidation() {
+        for (String detail : new String[] { "kernel compilation failed", "ABI mismatch",
+                "deterministic RNG self-test mismatch", "forecast kernel self-test mismatch", "no device" }) {
+            AssertionError failure = assertThrows(AssertionError.class,
+                    () -> ShockPathReference.requireNativeProbe(false, detail));
+
+            assertThat(failure).hasMessageContaining(detail);
+        }
+        ShockPathReference.requireNativeProbe(true, "native self-tests passed");
+    }
+
+    @Test
+    public void hardwareValidationSkipsOnlyWithoutAnExplicitLibrary(@TempDir Path directory) throws IOException {
+        String property = "ta4j.acceleration.test.integration.library";
+        String original = System.getProperty(property);
+        try {
+            System.clearProperty(property);
+            assertThrows(TestAbortedException.class, () -> ShockPathReference.assumeLibraryConfigured(property));
+
+            for (Path invalid : List.of(directory.resolve("missing-library"), directory)) {
+                System.setProperty(property, invalid.toString());
+                assertThat(
+                        assertThrows(AssertionError.class, () -> ShockPathReference.assumeLibraryConfigured(property)))
+                        .hasMessageContaining("does not name an existing file");
+            }
+
+            System.setProperty(property, Files.createFile(directory.resolve("configured-library")).toString());
+            ShockPathReference.assumeLibraryConfigured(property);
+        } finally {
+            if (original == null) {
+                System.clearProperty(property);
+            } else {
+                System.setProperty(property, original);
+            }
+        }
     }
 
     @Test

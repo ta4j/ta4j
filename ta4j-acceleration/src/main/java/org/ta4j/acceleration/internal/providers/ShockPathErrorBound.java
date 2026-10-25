@@ -52,11 +52,12 @@ import org.ta4j.core.indicators.forecast.MonteCarloKernel;
  * volatility paths, whose step magnitudes depend on the simulated path; normal
  * shocks on FP32 lanes, whose clamped single-precision Box-Muller tail departs
  * from the scalar draw by more than rounding; and FP32 inputs whose variance
- * underflows single precision, which would silently zero the volatility; and
- * requests whose worst-case cumulative log-return, widened by its error bound,
- * could reach core's exponent guard or push the terminal price out of the
- * normal double range, where the bound on the smooth {@code exp(C)} mapping
- * does not describe the scalar lane's unstable result.
+ * underflows or overflows single precision, which would silently zero the
+ * volatility or make it nonfinite; and requests whose worst-case cumulative
+ * log-return, widened by its error bound, could reach core's exponent guard or
+ * push the terminal price out of the normal double range, where the bound on
+ * the smooth {@code exp(C)} mapping does not describe the scalar lane's
+ * unstable result.
  *
  * @since 0.27.1
  */
@@ -119,7 +120,11 @@ final class ShockPathErrorBound {
         }
         if (precision == Precision.FP32) {
             for (double variance : inputs.get(INPUT_VARIANCES)) {
-                if (variance > 0d && Math.abs((float) variance) < Float.MIN_NORMAL) {
+                float narrowedVariance = (float) variance;
+                if (!Float.isFinite(narrowedVariance)) {
+                    return "a variance of " + variance + " overflows single precision";
+                }
+                if (variance > 0d && Math.abs(narrowedVariance) < Float.MIN_NORMAL) {
                     return "a variance of " + variance + " underflows single precision";
                 }
             }

@@ -456,7 +456,9 @@ Exact execution is the default. Metal is approximate-only, and approximate reque
 
 Direct `AccelerationRuntime.Provider.execute(...)` calls can exercise native kernels for qualification, but bypass the automatic cost-selection and scalar-fallback policy; callers own failure handling. A successful direct-SPI Metal run proves that kernel and workload on that host, not accelerated forecast/backtest routing, a speedup, or CUDA/OpenCL/Windows qualification. Automatic offload requires recorded cold/warm native-versus-scalar timings for matching workload shapes and device families before a qualification row can ship.
 
-Direct requests must supply finite positive integer horizon, iteration, and lookback counts within the Java `int` range, and the complete output vector must also fit a Java array. Providers reject malformed or overflowing dimensions before native initialization rather than silently truncating, saturating, or allocating the values.
+Direct requests must supply finite positive integer horizon, iteration, and lookback counts within the Java `int` range, and the complete output vector must also fit a Java array. Providers reject malformed or overflowing dimensions before native initialization rather than silently truncating, saturating, or allocating the values. Metal also rejects variances that underflow or overflow its single-precision input representation.
+
+CUDA and OpenCL hardware validation tests skip only when no native-library override is configured. An explicit library path must name an existing file that loads and passes the native probe and self-tests; initialization, ABI, and self-test failures fail validation rather than being reported as skipped.
 
 ## Real-world examples
 

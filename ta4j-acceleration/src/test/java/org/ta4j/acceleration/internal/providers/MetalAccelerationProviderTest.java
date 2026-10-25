@@ -288,6 +288,14 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
+    public void rejectsOverflowingFp32VarianceBeforeNativeWork() {
+        KernelRequest overflowing = singleRow(1e-4d, MonteCarloKernel.SHOCK_STANDARDIZED_EMPIRICAL,
+                MonteCarloKernel.VOLATILITY_CONSTANT, 0d, 1e40d, 0.01d);
+
+        assertRejectedBeforeNativeWork(overflowing, "overflows single precision");
+    }
+
+    @Test
     public void ewmaAndFp32NormalRequestsAreNotCertified() throws Exception {
         useLibraryFile();
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), new FakeBridge());
