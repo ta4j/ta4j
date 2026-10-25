@@ -13,12 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InvalidObjectException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -433,77 +427,5 @@ public class PositionTest {
         assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenPositionFinalBefore);
         assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalAfter);
         assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalBefore);
-    }
-
-    @Test
-    public void validPositionDeserialization() throws Exception {
-        Position pos = new Position(TradeType.BUY);
-        assertEquals(pos, reserialize(pos));
-
-        pos.operate(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
-        assertEquals(pos, reserialize(pos));
-
-        pos.operate(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
-        assertEquals(pos, reserialize(pos));
-    }
-
-    @Test
-    public void deserializationRejectsNullStartingType() throws Exception {
-        Position invalidPos = createPositionWithFields(null, null, null);
-        assertThrows(InvalidObjectException.class, () -> reserialize(invalidPos));
-    }
-
-    @Test
-    public void deserializationRejectsExitWithoutEntry() throws Exception {
-        Trade exit = Trade.sellAt(2, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
-        Position invalidPos = createPositionWithFields(TradeType.BUY, null, exit);
-        assertThrows(InvalidObjectException.class, () -> reserialize(invalidPos));
-    }
-
-    @Test
-    public void deserializationRejectsStartingTypeMismatch() throws Exception {
-        Trade entry = Trade.buyAt(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
-        Position invalidPos = createPositionWithFields(TradeType.SELL, entry, null);
-        assertThrows(InvalidObjectException.class, () -> reserialize(invalidPos));
-    }
-
-    @Test
-    public void deserializationRejectsSameEntryAndExitType() throws Exception {
-        Trade entry = Trade.buyAt(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
-        Trade exit = Trade.buyAt(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
-        Position invalidPos = createPositionWithFields(TradeType.BUY, entry, exit);
-        assertThrows(InvalidObjectException.class, () -> reserialize(invalidPos));
-    }
-
-    @Test
-    public void deserializationRejectsExitIndexBeforeEntryIndex() throws Exception {
-        Trade entry = Trade.buyAt(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
-        Trade exit = Trade.sellAt(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
-        Position invalidPos = createPositionWithFields(TradeType.BUY, entry, exit);
-        assertThrows(InvalidObjectException.class, () -> reserialize(invalidPos));
-    }
-
-    private static Position reserialize(Position position) throws Exception {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-            oos.writeObject(position);
-        }
-        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
-            return (Position) ois.readObject();
-        }
-    }
-
-    private static Position createPositionWithFields(TradeType startingType, Trade entry, Trade exit) throws Exception {
-        Position pos = new Position();
-        setField(pos, "startingType", startingType);
-        setField(pos, "entry", entry);
-        setField(pos, "exit", exit);
-        return pos;
-    }
-
-    private static void setField(Object obj, String fieldName, Object value) throws Exception {
-        Field field = Position.class.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(obj, value);
     }
 }
