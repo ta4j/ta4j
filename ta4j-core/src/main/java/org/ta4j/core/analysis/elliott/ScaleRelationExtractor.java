@@ -171,8 +171,8 @@ final class ScaleRelationExtractor {
         }
 
         if ((atA != null && !startExact) || (atB != null && !endExact)) {
-            out.add(context.edge(ScaleRelation.State.NOT_NESTED, null, inside, anchorPredicates, null, null, List.of(),
-                    tape));
+            out.add(context.edge(ScaleRelation.State.NOT_NESTED, null, inside, anchorPredicates, null, null,
+                    List.of()));
             return false;
         }
         final List<TopologyGrammar> grammars = policy.childGrammars().forLeg(candidate.grammar(), leg);
@@ -182,14 +182,14 @@ final class ScaleRelationExtractor {
                 predicates.add(new ScaleRelation.Predicate("child-grammar", EvidenceState.NOT_APPLICABLE,
                         "no child grammar is declared for parent leg " + (leg + 1)));
                 out.add(context.edge(ScaleRelation.State.CONTAINED_ONLY, null, inside, predicates, null, null,
-                        List.of(), tape));
+                        List.of()));
             }
             return false;
         }
         if (!startExact) {
             if (!inside.isEmpty()) {
                 out.add(context.edge(ScaleRelation.State.CONTAINED_ONLY, grammars.get(0), inside, anchorPredicates,
-                        null, null, List.of(), tape));
+                        null, null, List.of()));
             }
             return false;
         }
@@ -198,11 +198,11 @@ final class ScaleRelationExtractor {
                 // The child tape moved past the parent end without a pivot on
                 // it: the fine scale does not share that anchor. Never snap.
                 out.add(context.edge(ScaleRelation.State.NOT_NESTED, grammars.get(0), inside, anchorPredicates, null,
-                        null, List.of(), tape));
+                        null, List.of()));
                 return false;
             }
             for (final TopologyGrammar grammar : grammars) {
-                out.add(pending(context, grammar, a, inside, anchorPredicates, tape));
+                out.add(pending(context, grammar, a, inside, anchorPredicates));
             }
             return false;
         }
@@ -218,7 +218,7 @@ final class ScaleRelationExtractor {
                         "bounded " + grammar + " search over " + inside.size()
                                 + " interior pivots stopped at its budget before finding a sequence"));
                 out.add(context.edge(ScaleRelation.State.CONTAINED_ONLY, grammar, inside, predicates, null, null,
-                        List.of(), tape));
+                        List.of()));
                 continue;
             }
             if (found.candidates().isEmpty()) {
@@ -228,11 +228,11 @@ final class ScaleRelationExtractor {
                                 + describe(b) + " among " + inside.size() + " interior pivots"));
                 final ScaleRelation.State state = inside.isEmpty() ? ScaleRelation.State.NOT_NESTED
                         : ScaleRelation.State.CONFLICTING_EVIDENCE;
-                out.add(context.edge(state, grammar, inside, predicates, null, null, List.of(), tape));
+                out.add(context.edge(state, grammar, inside, predicates, null, null, List.of()));
                 continue;
             }
             for (final TopologyCandidate child : found.candidates()) {
-                out.add(decomposed(context, grammar, child, anchorPredicates, series, tape));
+                out.add(decomposed(context, grammar, child, anchorPredicates, series));
             }
         }
         return truncated;
@@ -265,8 +265,7 @@ final class ScaleRelationExtractor {
     }
 
     private ScaleRelation.Edge pending(final LegContext context, final TopologyGrammar grammar, final ConfirmedPivot a,
-            final List<ConfirmedPivot> inside, final List<ScaleRelation.Predicate> anchorPredicates,
-            final List<ConfirmedPivot> tape) {
+            final List<ConfirmedPivot> inside, final List<ScaleRelation.Predicate> anchorPredicates) {
         final List<ScaleRelation.Predicate> predicates = new ArrayList<>(anchorPredicates);
         final boolean contiguousPrefixBroken;
         if (policy.interior() == ScaleRelation.Interior.CONTIGUOUS && !inside.isEmpty()) {
@@ -281,17 +280,17 @@ final class ScaleRelationExtractor {
             predicates.add(new ScaleRelation.Predicate("interior-shape", EvidenceState.FAIL,
                     "interior pivots already contradict an ordered " + grammar + " prefix"));
             return context.edge(ScaleRelation.State.CONFLICTING_EVIDENCE, grammar, inside, predicates, null, null,
-                    List.of(), tape);
+                    List.of());
         }
         predicates.add(new ScaleRelation.Predicate("interior-shape", EvidenceState.PENDING,
                 inside.size() + " interior pivots confirmed; " + grammar + " is not yet decidable"));
         return context.edge(ScaleRelation.State.PENDING_CONFIRMATION, grammar, inside, predicates, null, null,
-                List.of(), tape);
+                List.of());
     }
 
     private ScaleRelation.Edge decomposed(final LegContext context, final TopologyGrammar grammar,
-            final TopologyCandidate child, final List<ScaleRelation.Predicate> anchorPredicates, final BarSeries series,
-            final List<ConfirmedPivot> tape) {
+            final TopologyCandidate child, final List<ScaleRelation.Predicate> anchorPredicates,
+            final BarSeries series) {
         final List<ScaleRelation.Predicate> predicates = new ArrayList<>(anchorPredicates);
         predicates.add(new ScaleRelation.Predicate("interior-shape", EvidenceState.PASS,
                 grammar + " " + child.direction() + " over child bars " + child.startBarIndex() + "-"
@@ -324,7 +323,7 @@ final class ScaleRelationExtractor {
             state = ScaleRelation.State.SUBDIVISION_SUPPORTED;
         }
         return context.edge(state, grammar, child.pivots().subList(1, child.pivots().size() - 1), predicates, childKey,
-                identity.version(child, evaluated), child.pivots(), tape);
+                identity.version(child, evaluated), child.pivots());
     }
 
     private List<RuleEvidence> evaluateRules(final TopologyCandidate child, final BarSeries series) {
@@ -513,7 +512,7 @@ final class ScaleRelationExtractor {
         return tape.subList(low, end);
     }
 
-    private final class LegContext {
+    private static final class LegContext {
         private final ScaleRelation.Scale parentScale;
         private final ScaleRelation.Scale childScale;
         private final Parent parent;
@@ -545,11 +544,10 @@ final class ScaleRelationExtractor {
          * @param childKey     child candidate key, or {@code null}
          * @param childVersion child candidate version, or {@code null}
          * @param fullSequence complete child sequence when one exists, else empty
-         * @param tape         child tape at the cursor (for availability only)
          */
         ScaleRelation.Edge edge(final ScaleRelation.State state, final TopologyGrammar grammar,
                 final List<ConfirmedPivot> used, final List<ScaleRelation.Predicate> predicates, final String childKey,
-                final String childVersion, final List<ConfirmedPivot> fullSequence, final List<ConfirmedPivot> tape) {
+                final String childVersion, final List<ConfirmedPivot> fullSequence) {
             final List<ConfirmedPivot> evidence;
             if (fullSequence.isEmpty()) {
                 final TreeMap<Integer, ConfirmedPivot> byIndex = new TreeMap<>();

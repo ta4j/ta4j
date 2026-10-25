@@ -610,7 +610,6 @@ final class ElliottResearchOutcomes {
      */
     static Result evaluate(final String dataset, final ElliottResearchEvents recorder, final Settings settings) {
         final List<Evaluated> evaluated = new ArrayList<>();
-        final Map<String, Map<Integer, Tally>> totals = new LinkedHashMap<>();
         final List<SummaryRow> rows = new ArrayList<>();
         final Map<String, List<Stream>> byStream = new LinkedHashMap<>();
         for (final Stream stream : recorder.streams()) {
@@ -618,7 +617,6 @@ final class ElliottResearchOutcomes {
         }
         for (final Map.Entry<String, List<Stream>> entry : byStream.entrySet()) {
             final Map<Integer, Tally> streamTotals = new LinkedHashMap<>();
-            totals.put(entry.getKey(), streamTotals);
             for (final Stream stream : entry.getValue()) {
                 final Tape tape = recorder.tapeOf(stream);
                 final List<List<Label>> labels = new ArrayList<>();
@@ -756,15 +754,15 @@ final class ElliottResearchOutcomes {
         final boolean bullish = event.direction == WaveDirection.BULLISH;
         final Num target = event.wave4().price();
         final Num invalidation = event.end().price();
-        Num maxHigh = null;
-        Num minLow = null;
+        Num maxHigh = high(tape, decision + 1);
+        Num minLow = low(tape, decision + 1);
         Touch research = Touch.NEITHER;
         Touch legacy = Touch.NEITHER;
         for (int index = decision + 1; index <= decision + horizon; index++) {
             final Num high = high(tape, index);
             final Num low = low(tape, index);
-            maxHigh = maxHigh == null || high.isGreaterThan(maxHigh) ? high : maxHigh;
-            minLow = minLow == null || low.isLessThan(minLow) ? low : minLow;
+            maxHigh = high.isGreaterThan(maxHigh) ? high : maxHigh;
+            minLow = low.isLessThan(minLow) ? low : minLow;
             if (research == Touch.NEITHER) {
                 final boolean targetTouched = bullish ? !low.isGreaterThan(target) : !high.isLessThan(target);
                 final boolean invalidationTouched = bullish ? !high.isLessThan(invalidation)

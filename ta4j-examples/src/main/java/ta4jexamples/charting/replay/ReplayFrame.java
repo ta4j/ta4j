@@ -6,6 +6,7 @@ package ta4jexamples.charting.replay;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -209,25 +210,18 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
 
     private static Axis axis(final List<PriceBar> bars, final int from, final int to, final List<Pivot> pivots,
             final List<Candidate> candidates) {
-        BigDecimal low = null;
-        BigDecimal high = null;
-        final List<String> values = new ArrayList<>();
+        final List<BigDecimal> values = new ArrayList<>();
         for (int i = from; i <= to; i++) {
-            values.add(bars.get(i).low());
-            values.add(bars.get(i).high());
+            values.add(new BigDecimal(bars.get(i).low()));
+            values.add(new BigDecimal(bars.get(i).high()));
         }
-        pivots.stream().filter(Pivot::inWindow).forEach(pivot -> values.add(pivot.price()));
+        pivots.stream().filter(Pivot::inWindow).forEach(pivot -> values.add(new BigDecimal(pivot.price())));
         candidates.stream()
                 .filter(Candidate::overlayed)
                 .flatMap(candidate -> candidate.placement().stream())
                 .filter(Point::inWindow)
-                .forEach(point -> values.add(point.price()));
-        for (final String value : values) {
-            final BigDecimal number = new BigDecimal(value);
-            low = low == null || number.compareTo(low) < 0 ? number : low;
-            high = high == null || number.compareTo(high) > 0 ? number : high;
-        }
-        return new Axis(low.toPlainString(), high.toPlainString());
+                .forEach(point -> values.add(new BigDecimal(point.price())));
+        return new Axis(Collections.min(values).toPlainString(), Collections.max(values).toPlainString());
     }
 
     /**

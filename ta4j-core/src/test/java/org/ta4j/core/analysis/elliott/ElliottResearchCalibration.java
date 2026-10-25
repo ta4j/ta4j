@@ -1496,7 +1496,15 @@ final class ElliottResearchCalibration {
     }
 
     private static String binLabel(final String bin) {
-        final int at = Integer.parseInt(bin);
+        final int at;
+        try {
+            at = Integer.parseInt(bin);
+        } catch (final NumberFormatException e) {
+            throw new IllegalArgumentException("calibration bin cell is not an integer: '" + bin + "'", e);
+        }
+        if (at < 0 || at >= BINS) {
+            throw new IllegalArgumentException("calibration bin index " + at + " is outside [0," + BINS + ")");
+        }
         return "[" + ElliottResearchReport.plain(EDGES[at]) + "," + ElliottResearchReport.plain(EDGES[at + 1])
                 + (at == BINS - 1 ? "]" : ")");
     }

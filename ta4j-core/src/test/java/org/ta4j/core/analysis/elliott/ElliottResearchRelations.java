@@ -522,10 +522,10 @@ final class ElliottResearchRelations {
     }
 
     static String requireDigest(final JsonObject owner, final String field) {
-        return requireDigest(owner.get(field), field);
+        return requireDigestValue(owner.get(field), field);
     }
 
-    static String requireDigest(final JsonElement value, final String field) {
+    static String requireDigestValue(final JsonElement value, final String field) {
         final String digest = value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()
                 ? value.getAsString()
                 : null;

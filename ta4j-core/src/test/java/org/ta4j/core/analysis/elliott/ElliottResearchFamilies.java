@@ -374,7 +374,7 @@ final class ElliottResearchFamilies {
                         ElliottResearchRelations.requireIdentity(edgeObject, "key", "version");
                         final JsonElement childKey = edgeObject.get("childCandidateKey");
                         if (childKey != null && !childKey.isJsonNull()) {
-                            ElliottResearchRelations.requireDigest(childKey, "childCandidateKey");
+                            ElliottResearchRelations.requireDigestValue(childKey, "childCandidateKey");
                         }
                         ElliottResearchRelations.requireInt(edgeObject, "childPivotCount");
                         ElliottResearchRelations.requireInt(edgeObject, "availableAt");
@@ -390,7 +390,7 @@ final class ElliottResearchFamilies {
                     final JsonObject composition = element.getAsJsonObject();
                     ElliottResearchRelations.requireDigest(composition, "key");
                     for (final JsonElement edgeKey : composition.getAsJsonArray("edgeKeys")) {
-                        ElliottResearchRelations.requireDigest(edgeKey, "edgeKeys");
+                        ElliottResearchRelations.requireDigestValue(edgeKey, "edgeKeys");
                     }
                 }
             }
