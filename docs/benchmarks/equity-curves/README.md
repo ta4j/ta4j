@@ -80,6 +80,11 @@ are needed. The test writes `ta4j-core/target/equity-curve-benchmark.csv` and
 `equity-curve-benchmark-environment.txt`. Preserve both before `clean`.
 The committed CSV retains every measured repetition; summarize with medians.
 
+Before each timing run, save the hardware model/chip, active power source and
+power/performance mode alongside the generated environment file. On macOS, use
+`sysctl -n machdep.cpu.brand_string`, `pmset -g batt` and `pmset -g custom`;
+capture them at measurement time rather than reconstructing settings afterward.
+
 Each operation has an untimed reference evaluation, two untimed warmups and
 four timed repetitions by default. Ranking warmups and measured repetitions
 execute as pairs: baseline first on even repetitions, candidate first on odd
@@ -247,6 +252,13 @@ Artifact validation confirms 32 rows, chronological positions 1/2 for each pair,
 and equal first/second counts for each operation. No production criterion or
 fixture behavior changed, so the individual-criterion table remains valid at
 its original pinned revision.
+
+The original run did not capture the chip identity or power mode. A dated
+observation on the originating workstation identifies an Apple M5 Max, but its
+current power settings cannot establish the settings used on 2026-10-23. The
+paired environment record preserves that distinction. Treat the timing ratio as
+an observation for this run, not a portable or power-mode-controlled guarantee;
+requalify it with contemporaneous hardware and power metadata before Phase 1.
 
 **Final Phase-0 decision:** the retained wall-time design threshold is met on
 DoubleNum at 100,000 bars (1.598x); DecimalNum improves 1.432x but remains below

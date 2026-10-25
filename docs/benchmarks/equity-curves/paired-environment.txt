@@ -7,6 +7,9 @@ monteCarloPathBlocks=16
 java=25.0.5
 vm=OpenJDK 64-Bit Server VM
 os=Mac OS X 26.6.2 aarch64
+hardwareChip=Apple M5 Max (originating workstation; observed 2026-10-25, not captured during the run)
+powerMode=not recorded during the run; historical setting cannot be established
+powerModeObservation=2026-10-25: pmset -g custom reported powermode=0 for AC and battery; not evidence of the 2026-10-23 setting
 jvmArgs=[-javaagent:<HOME>/.m2/repository/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar=destfile=<MODULE>/target/jacoco.exec, -XX:+EnableDynamicAgentLoading, -Xshare:off, -Djdk.instrument.traceUsage=false]
 rankingOrder=paired; even repetition: baseline,candidate; odd: candidate,baseline
 warmupOrder=paired alternating in the same way
