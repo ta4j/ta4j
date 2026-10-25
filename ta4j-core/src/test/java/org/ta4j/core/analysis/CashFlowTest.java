@@ -105,9 +105,11 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         String details = context + ", end=" + end + ", mode=" + mode + ", handling=" + handling;
         assertEquals(actualCash.getBeginIndex(), incrementalCash.getBeginIndex(), details);
         assertEquals(actualCash.getEndIndex(), incrementalCash.getEndIndex(), details);
+        assertEquals(actualCash.getBaselineValue(), incrementalCash.getBaselineValue(), details + " cash baseline");
         assertEquals(actualCash.stream().toList(), incrementalCash.stream().toList(), details + " cash flow");
         assertEquals(actualPnl.getBeginIndex(), incrementalPnl.getBeginIndex(), details);
         assertEquals(actualPnl.getEndIndex(), incrementalPnl.getEndIndex(), details);
+        assertEquals(actualPnl.getBaselineValue(), incrementalPnl.getBaselineValue(), details + " PnL baseline");
         assertEquals(actualPnl.stream().toList(), incrementalPnl.stream().toList(), details + " cumulative PnL");
 
         // CashFlow also owns an explicit start-index constructor. Exercise an
@@ -122,6 +124,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             }
         }
         assertEquals(start, bounded.getBeginIndex(), details);
+        assertEquals(bounded.getBaselineValue(), incrementalBounded.getBaselineValue(), details + " bounded baseline");
         assertEquals(bounded.stream().toList(), incrementalBounded.stream().toList(), details + " bounded cash flow");
     }
 

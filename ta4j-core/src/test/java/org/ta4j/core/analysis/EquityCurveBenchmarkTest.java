@@ -60,7 +60,7 @@ class EquityCurveBenchmarkTest {
     private static volatile Object consumed;
 
     @Test
-    void measuresCriteriaAndRanking() throws IOException {
+    public void measuresCriteriaAndRanking() throws IOException {
         int warmups = Integer.getInteger("equity.benchmark.warmups", 2);
         boolean rankingOnly = Boolean.getBoolean("equity.benchmark.rankingOnly");
         int repetitions = Integer.getInteger("equity.benchmark.repetitions", 4);

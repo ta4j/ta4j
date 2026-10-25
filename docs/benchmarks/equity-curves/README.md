@@ -26,7 +26,9 @@ exhaustive constructor/incremental matrix for CashFlow and CumulativePnL:
 The same generator supplies both the small equivalence inputs and benchmark
 records. AVG_COST combines the two final open fills into one open position.
 An independent eligibility rule selects the positions for incremental pricing;
-the test compares every value exactly and covers CashFlow's explicit start bound.
+the test compares every value and the entering-window baseline exactly and covers
+CashFlow's explicit start bound. Baseline parity matters to return and drawdown
+consumers even when the streamed values match.
 The earliest end clips a recorded closed position before its exit; the other
 ends include one or both final open entries.
 Existing narrow CumulativePnLTest and CashFlowTest cases remain their owners.
@@ -56,8 +58,10 @@ prove that every wider sharing design would lose.
 
 ## Reproduce
 
-Use JDK 25, one test fork, a quiet machine and the pinned source revision. From
-the repository root:
+Use JDK 25 for comparison with the committed measurements, one test fork, a quiet
+machine and the pinned source revision. A different supported JDK can exercise the
+harness but is a separate measurement environment, not a replacement for those
+timing results. From the repository root:
 
 ```sh
 mvn -pl ta4j-core test -Dtest=CashFlowTest,CumulativePnLTest
