@@ -210,6 +210,7 @@ final class ReplayTraceIndex {
                     footer = record;
                 } else {
                     validateRecord(display, lineNumber, record);
+                    requireHeaderCoordinates(display, lineNumber, header, record);
                     final Family family = Family.of(record);
                     final List<String> rules = expectedRules.get(family);
                     if (rules != null) {
@@ -411,6 +412,24 @@ final class ReplayTraceIndex {
         return new PriceBar(record.get("asOfIndex").getAsInt(), Instant.parse(text(bar, "begin")),
                 Instant.parse(text(bar, "end")), text(bar, "open"), text(bar, "high"), text(bar, "low"),
                 text(bar, "close"), text(bar, "volume"));
+    }
+
+    /**
+     * Rejects a record whose dataset, null block length or null member index
+     * differs from the trace header, so a foreign or mis-assembled observation is
+     * never indexed as evidence for the dataset and member the header declares.
+     */
+    private static void requireHeaderCoordinates(final String display, final long line, final JsonObject header,
+            final JsonObject record) {
+        for (final String field : List.of("dataset", "nullBlockLength", "nullMemberIndex")) {
+            if (!record.get(field).equals(header.get(field))) {
+                throw corrupt(display, line,
+                        "record coordinates dataset=" + record.get("dataset") + ", nullBlockLength="
+                                + record.get("nullBlockLength") + ", nullMemberIndex=" + record.get("nullMemberIndex")
+                                + " do not match header dataset=" + header.get("dataset") + ", nullBlockLength="
+                                + header.get("nullBlockLength") + ", nullMemberIndex=" + header.get("nullMemberIndex"));
+            }
+        }
     }
 
     /**

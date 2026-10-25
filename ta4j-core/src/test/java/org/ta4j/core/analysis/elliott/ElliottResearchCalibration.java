@@ -536,13 +536,13 @@ final class ElliottResearchCalibration {
         byPartition.values().forEach(group -> cohort.addAll(ElliottResearchOutcomes.cohortLabels(group, horizon)));
         final List<Row> rows = new ArrayList<>(labels.size());
         for (final Label label : labels) {
-            rows.add(row(result.dataset(), label, lastObserved, horizon, cohort.contains(label), evidence));
+            rows.add(row(result.dataset(), label, lastObserved, cohort.contains(label), evidence));
         }
         return rows;
     }
 
     private static Row row(final String dataset, final Label label, final Map<String, Integer> lastObserved,
-            final int horizon, final boolean cohort, final Function<Event, List<RuleEvidence>> evidence) {
+            final boolean cohort, final Function<Event, List<RuleEvidence>> evidence) {
         final Event event = label.event();
         final int windowEnd = label.windowEnd();
         final boolean observed = windowEnd <= lastObserved.getOrDefault(event.stream.partition(), -1);

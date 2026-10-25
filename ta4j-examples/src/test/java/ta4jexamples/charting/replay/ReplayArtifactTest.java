@@ -600,6 +600,38 @@ class ReplayArtifactTest {
     }
 
     @Test
+    public void recordsMustCarryTheCoordinatesDeclaredByTheirTraceHeader() throws IOException {
+        int fixture = 0;
+        for (final boolean nullMember : List.of(false, true)) {
+            for (final String field : List.of("dataset", "nullBlockLength", "nullMemberIndex")) {
+                final Path run = ReplayFixture.write(temp.resolve("header-coordinates-" + fixture++), options -> {
+                    options.nullTrace = nullMember;
+                    return options;
+                });
+                final String relative = nullMember ? "traces/d1-null.jsonl" : "traces/d1-real.jsonl";
+                final Path trace = run.resolve(relative);
+                final List<String> lines = Files.readAllLines(trace);
+                final JsonObject record = JsonParser.parseString(lines.get(2)).getAsJsonObject();
+                if ("dataset".equals(field)) {
+                    record.addProperty(field, "foreign");
+                } else {
+                    record.addProperty(field, record.get(field).getAsInt() + 1);
+                }
+                lines.set(2, record.toString());
+                Files.write(trace, lines, StandardCharsets.UTF_8);
+                ReplayFixture.refreshTraceDigest(run, relative);
+
+                final String mode = nullMember ? ReplayArtifact.TRACE_MODE_NULL_MEMBER : ReplayArtifact.TRACE_MODE_REAL;
+                final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
+                        () -> ReplaySession.open(ReplayArtifact.open(run), ReplayFixture.RULES_KEY, mode, 120, 8));
+
+                assertTrue(e.getMessage().contains("do not match header") && e.getMessage().contains("line 3")
+                        && e.getMessage().contains(relative), mode + " " + field + ": " + e.getMessage());
+            }
+        }
+    }
+
+    @Test
     public void unknownTraceStatusesAndRuleStatesAreRejectedAtTheirLine() throws IOException {
         int fixture = 0;
         for (final String scope : List.of("topology", "alternative", "rule")) {
