@@ -824,7 +824,14 @@ final class ElliottResearchReport {
     }
 
     private static double number(final String cell) {
-        return cell.isEmpty() ? Double.NaN : Double.parseDouble(cell);
+        if (cell.isEmpty()) {
+            return Double.NaN;
+        }
+        try {
+            return Double.parseDouble(cell);
+        } catch (final NumberFormatException e) {
+            throw new IllegalArgumentException("report table cell '" + cell + "' is not a number", e);
+        }
     }
 
     static void writeTable(final Path path, final List<String> header, final List<List<String>> table) {

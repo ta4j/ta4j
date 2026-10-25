@@ -1566,7 +1566,7 @@ final class ElliottResearchCalibration {
             if (record.get("dataset").equals(dataset) && record.get("partition").equals(partition)
                     && (candidate == null || ElliottResearchTrace.selects(candidate, record.get("candidateKey"),
                             record.get("version")))
-                    && (asOf == null || Integer.parseInt(record.get("enrollIndex")) <= asOf)) {
+                    && (asOf == null || integer("enrollIndex", record.get("enrollIndex")) <= asOf)) {
                 matching.add(record);
             }
         }
@@ -1630,15 +1630,33 @@ final class ElliottResearchCalibration {
 
     private static double probabilityOf(final Map<String, String> record) {
         return record.get("probability").isEmpty() ? Double.NEGATIVE_INFINITY
-                : Double.parseDouble(record.get("probability"));
+                : decimal("probability", record.get("probability"));
     }
 
     private static String availableText(final String index) {
-        return Integer.parseInt(index) == Integer.MAX_VALUE ? "never (censored)" : index;
+        return integer("availableIndex", index) == Integer.MAX_VALUE ? "never (censored)" : index;
     }
 
     private static String resolutionText(final String index) {
-        return Integer.parseInt(index) < 0 ? "none" : index;
+        return integer("resolutionIndex", index) < 0 ? "none" : index;
+    }
+
+    private static int integer(final String column, final String cell) {
+        try {
+            return Integer.parseInt(cell);
+        } catch (final NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "calibration table column " + column + " holds '" + cell + "', not an integer", e);
+        }
+    }
+
+    private static double decimal(final String column, final String cell) {
+        try {
+            return Double.parseDouble(cell);
+        } catch (final NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "calibration table column " + column + " holds '" + cell + "', not a number", e);
+        }
     }
 
     private static void printEvaluationSupport(final PrintStream out, final Path reliabilityCsv, final String dataset,

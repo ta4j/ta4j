@@ -327,7 +327,7 @@ class ReplayArtifactTest {
 
             final String message = failureOf(run, ReplayFixture.TOPOLOGY_KEY);
             assertTrue(message.contains("row 2") && message.contains("invalid numeric comparison fields")
-                    && message.contains("Regenerate"), message);
+                    && message.contains(field) && message.contains("Regenerate"), message);
         }
     }
 

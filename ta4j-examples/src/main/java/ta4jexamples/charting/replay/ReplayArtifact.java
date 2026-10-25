@@ -531,7 +531,7 @@ final class ReplayArtifact {
                         row.get(column.get("mode")), row.get(column.get("grammar")),
                         rules.isEmpty() ? List.of() : List.of(rules.split(";")), row.get(column.get("detector")),
                         row.get(column.get("partition")), row.get(column.get("metric")),
-                        nullBlockLength(row.get(column.get("nullBlockLength"))),
+                        nullBlockLength(csv, i + 1, row.get(column.get("nullBlockLength"))),
                         observed.isEmpty() ? Double.NaN : Double.parseDouble(observed),
                         numerator.isEmpty() ? null : Long.valueOf(numerator),
                         denominator.isEmpty() ? null : Long.valueOf(denominator));
@@ -770,8 +770,17 @@ final class ReplayArtifact {
     /**
      * Block length is empty for rows that have no bootstrap null; those carry 0.
      */
-    private static int nullBlockLength(final String value) {
-        return value.isEmpty() ? 0 : Integer.parseInt(value);
+    private static int nullBlockLength(final Path csv, final int line, final String value) {
+        return value.isEmpty() ? 0 : integerCell(csv, line, "nullBlockLength", value);
+    }
+
+    private static int integerCell(final Path csv, final int line, final String field, final String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new ReplayArtifactException(csv + " row " + line + " has invalid numeric comparison fields: " + field
+                    + " '" + value + "' is not an integer. " + REGENERATE, e);
+        }
     }
 
     private static int validateNullComparison(final Path csv, final int line, final List<String> row,
@@ -784,9 +793,12 @@ final class ReplayArtifact {
                 }
             }
         }
-        final int valid = block == 0 ? 0 : Integer.parseInt(row.get(column.get("validNullMembers")));
-        final int requested = block == 0 ? 0 : Integer.parseInt(row.get(column.get("requestedNullMembers")));
-        final int unavailable = block == 0 ? 0 : Integer.parseInt(row.get(column.get("unavailableNullMembers")));
+        final int valid = block == 0 ? 0
+                : integerCell(csv, line, "validNullMembers", row.get(column.get("validNullMembers")));
+        final int requested = block == 0 ? 0
+                : integerCell(csv, line, "requestedNullMembers", row.get(column.get("requestedNullMembers")));
+        final int unavailable = block == 0 ? 0
+                : integerCell(csv, line, "unavailableNullMembers", row.get(column.get("unavailableNullMembers")));
         final double median = optionalNumber(row.get(column.get("nullMedian")));
         final double low = optionalNumber(row.get(column.get("nullLow")));
         final double high = optionalNumber(row.get(column.get("nullHigh")));

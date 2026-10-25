@@ -139,8 +139,7 @@ public final class ElliottReplayInspector {
                 + session.window() + " bars  overlay cap " + session.overlayCap());
         out.println("  " + session.comparisonEvidence());
         if (options.at != null) {
-            current = isNumber(options.at) ? session.seek(Integer.parseInt(options.at))
-                    : session.seek(parseInstant(options.at));
+            current = seekTo(options.at);
         } else {
             current = session.frame();
         }
@@ -152,6 +151,18 @@ public final class ElliottReplayInspector {
 
     private ReplayFrame follow(final String key) {
         return session.follow(key);
+    }
+
+    private ReplayFrame seekTo(final String target) {
+        return isNumber(target) ? session.seek(barIndex(target)) : session.seek(parseInstant(target));
+    }
+
+    private static int barIndex(final String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new ReplayArtifactException("bar index '" + value + "' is not a supported integer", e);
+        }
     }
 
     private void interact(final InputStream in, final PrintStream err) {
@@ -184,7 +195,7 @@ public final class ElliottReplayInspector {
         switch (parts[0]) {
         case "seek" -> {
             require(argument, "seek <bar index|ISO instant>");
-            move(isNumber(argument) ? session.seek(Integer.parseInt(argument)) : session.seek(parseInstant(argument)));
+            move(seekTo(argument));
         }
         case "next" -> move(session.stepBar(1));
         case "prev" -> move(session.stepBar(-1));
