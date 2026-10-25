@@ -143,6 +143,8 @@ Then add the [matching classifier dependency](README.md#optional-native-accelera
 
 No release/snapshot job activates these native profiles or collects SDK-built binaries. Strict release manifests reject unexpected direct target JARs, including local classifier builds; use a clean publication checkout rather than treating those files as release assets. A successful source build is not CUDA/OpenCL/Metal hardware or performance qualification: runtime drivers, devices, workload eligibility, and the provider's conservative checks remain separate requirements.
 
+The shipped workload qualification table is intentionally empty. Applications using `-Dta4j.acceleration.enabled=auto` therefore remain scalar even when a native classifier is installed and approximate execution is allowed. Neither `family` nor `minSteps` overrides qualify a missing row. Before shipping a qualified row, record its source revision, workload shapes, and cold/warm total native-versus-scalar timings on the same host. Direct provider-SPI execution is kernel qualification evidence only: it bypasses automatic selection/fallback and does not establish automatic forecast acceleration or qualification of other platforms.
+
 
 ---
 
