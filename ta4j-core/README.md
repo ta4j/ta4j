@@ -327,6 +327,57 @@ and `summary.md` is replaced rather than written through, so a link planted at t
 name never redirects the write. A run directory received from someone else is still
 an untrusted local artifact; read it with the care you give any downloaded file.
 
+### Parent/child scale relations (`CF-588`)
+
+An `explore` recipe may add a `hierarchy` to ask whether a coarse-scale impulse
+is subdivided at a finer scale:
+
+```json
+"hierarchy": {
+  "scales": [
+    {"detector": "fractal-w8", "degree": "intermediate", "timeframe": "PT24H"},
+    {"detector": "fractal-w3", "degree": "minor", "timeframe": "PT24H"}
+  ],
+  "interiorAnchors": "contiguous",
+  "edgeCap": 256
+}
+```
+
+Scales are ordered coarse to fine (at most three); each `detector` names the
+recipe's primary or a robustness detector; a name used by both must carry one
+identical definition, otherwise the recipe is rejected. `degree` is an optional
+informational label that is recorded as given and never validated or inferred.
+`timeframe` (an ISO-8601 duration) is optional and, when present, must match the
+dataset's bar period; scales are not resampled. The scales share one detector
+replay per detector with the study sections, so enabling a hierarchy does not
+re-run detection. For every completed parent motive leg the run records the
+child pivots strictly inside it and the child grammar they form, tests the
+interior with the wave rules (wave 2 origin, wave 3 not shortest, wave 4
+non-overlap, wave 5 divergence) and stores an edge with a state:
+`contained-only`, `pending-confirmation`, `subdivision-supported`,
+`conflicting-evidence` or `not-nested`. `interiorAnchors: allow-skipped` tolerates
+skipped child anchors; the default `contiguous` does not.
+
+Relations are causal. An edge exists only from the bar where the parent leg and
+every child anchor it uses are confirmed (`availableAt`), and the replayed state at
+any bar equals what a run truncated to that bar would have produced. A parent
+revision or retirement ends its edges with `parent-revised` or `parent-retired`.
+Artifacts are bounded by `edgeCap`; every frame reports retained, omitted and
+unexamined counts. Relations are research evidence only, not trading signals.
+
+Artifacts: `relations/<dataset>.jsonl` (header, `frame` lines, footer with totals)
+and a "Scale relations" section in `summary.md`. Inspect with
+`ElliottResearch relations <runDir> <dataset> [--as-of IDX] [--limit N] [--edge KEY]`
+(exit 2 when the file is missing, incomplete, corrupt or from another run). Replay
+checks integer indices, counters and limits without narrowing, including footer statistics;
+the footer's frame count must match exactly. Opaque edge and candidate references must keep
+their 32-digit lowercase-hex keys and matching `key@hash` versions; this checks
+stored references, not candidate contents absent from the sidecar. Dataset, partition
+and parent/child scale labels must be nonblank JSON strings. Each printed edge
+lists its child pivots with their confirmation bars and every predicate with its
+explanation, and says so when more child pivots exist than the sidecar stores. Runs without a
+`hierarchy` write no `relations/` directory.
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html

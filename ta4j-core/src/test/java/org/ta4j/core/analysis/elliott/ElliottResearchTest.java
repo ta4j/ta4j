@@ -24,6 +24,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import org.ta4j.core.BarSeries;
@@ -572,7 +573,8 @@ class ElliottResearchTest {
         Files.writeString(recipe, toyRecipe("overwrite"));
         final String recordedRun = Files.readString(smokeRun.resolve("run.json"));
         int caseIndex = 0;
-        for (final String artifact : List.of("traces/input.json", "reports/input.json", "summary.md")) {
+        for (final String artifact : List.of("traces/input.json", "reports/input.json", "summary.md",
+                "relations/input.json")) {
             for (final boolean recipeInput : List.of(false, true)) {
                 for (final boolean symlink : List.of(false, true)) {
                     final Path out = work.resolve("overwrite-managed-" + caseIndex++);
@@ -1709,6 +1711,213 @@ class ElliottResearchTest {
         assertEquals(1, recipeChanged.code());
         assertTrue(recipeChanged.err().contains("the recipe changed since the run"), recipeChanged.err());
         assertFalse(Files.exists(editedRecipe));
+    }
+
+    private static String hierarchyRecipe(final String hierarchy) {
+        return """
+                {"datasetId":"toy","asset":"TOY",
+                 "partitions":[{"name":"calibration","start":"2020-01-01","end":"2020-06-30"},
+                               {"name":"validation","start":"2020-07-01","end":"2020-09-30"},
+                               {"name":"holdout","start":"2020-10-01","end":"2020-12-31"}],
+                 "forbiddenCalibrationStart":"2024-01-01",
+                 "detector":{"name":"fractal-w3","factory":"fractal","params":[3]},
+                 "robustnessDetectors":[{"name":"fractal-w5","factory":"fractal","params":[5]}],
+                 "momentum":{"type":"RSI","barCount":14},
+                 "null":{"blockLengths":[10],"ensembleSize":2,"seed":7}%s}
+                """.formatted(hierarchy == null ? "" : ",\"hierarchy\":" + hierarchy);
+    }
+
+    private Path hierarchyRun(final String name, final String hierarchy) throws IOException {
+        final Path candles = work.resolve(name + "-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve(name + "-recipe.json");
+        Files.writeString(recipe, hierarchyRecipe(hierarchy));
+        final Path out = work.resolve(name);
+        final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--out", out.toString());
+        assertEquals(0, result.code(), result.err());
+        return out;
+    }
+
+    @Test
+    void hierarchyRecipeWritesRelationArtifactAndOperatorCanReplayIt() throws Exception {
+        final Path out = hierarchyRun("hier",
+                "{\"scales\":[{\"detector\":\"fractal-w5\",\"degree\":\"intermediate\",\"timeframe\":\"PT24H\"},"
+                        + "{\"detector\":\"fractal-w3\",\"degree\":\"minor\"}],\"edgeCap\":50}");
+        assertTrue(Files.isRegularFile(out.resolve("relations/toy.jsonl")));
+        final JsonObject relations = readJson(out.resolve("run.json")).getAsJsonArray("datasets")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("relations");
+        assertEquals("relations/toy.jsonl", relations.get("file").getAsString());
+        assertTrue(relations.get("frames").getAsLong() > 0, relations.toString());
+        assertTrue(relations.get("peakRetainedEdges").getAsInt() <= 50, relations.toString());
+        final String summary = Files.readString(out.resolve("summary.md"));
+        assertTrue(summary.contains("## Scale relations"), summary);
+        assertTrue(summary.contains("fractal-w5 > fractal-w3"), summary);
+
+        final Result print = launch("relations", out.toString(), "toy", "--limit", "5");
+        assertEquals(0, print.code(), print.err());
+        assertTrue(print.out().contains("As of index"), print.out());
+        assertTrue(print.out().contains("Active by state:"), print.out());
+
+        final Result early = launch("relations", out.toString(), "toy", "--as-of", "1");
+        assertEquals(0, early.code(), early.err());
+        assertTrue(early.out().contains("no relation was observable yet"), early.out());
+
+        final Result missing = launch("relations", out.toString(), "nope");
+        assertEquals(1, missing.code());
+    }
+
+    @Test
+    void runWithoutHierarchyWritesNoRelationArtifacts() throws Exception {
+        final Path out = hierarchyRun("no-hier", null);
+        assertFalse(Files.exists(out.resolve("relations")));
+        assertFalse(
+                readJson(out.resolve("run.json")).getAsJsonArray("datasets").get(0).getAsJsonObject().has("relations"));
+        assertFalse(Files.readString(out.resolve("summary.md")).contains("Scale relations"));
+        final Result none = launch("relations", out.toString(), "toy");
+        assertEquals(2, none.code());
+        assertTrue(none.err().contains("recorded no scale relations"), none.err());
+    }
+
+    @Test
+    void hierarchyRecipeIsRejectedBeforeCreatingArtifacts() throws Exception {
+        final Path candles = work.resolve("hier-bad-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Map<String, String> cases = new java.util.LinkedHashMap<>();
+        cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"ghost\"}]}",
+                "recipe.hierarchy.scales[1].detector 'ghost'");
+        cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"}]}", "needs 2 to");
+        cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w5\"}]}",
+                "a scale cannot be related");
+        cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\",\"dataset\":\"other\"}]}",
+                "cross-source hierarchies are not supported");
+        cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\",\"timeframe\":\"PT1H\"}]}",
+                "does not match the bar period");
+        cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}],\"edgeCap\":0}",
+                "edgeCap must be positive");
+        cases.put(
+                "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}],\"interiorAnchors\":\"x\"}",
+                "interiorAnchors must be contiguous or allow-skipped");
+        cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}],\"extra\":1}",
+                "unknown field recipe.hierarchy.extra");
+        int index = 0;
+        for (final Map.Entry<String, String> entry : cases.entrySet()) {
+            final Path recipe = work.resolve("hier-bad-recipe.json");
+            Files.writeString(recipe, hierarchyRecipe(entry.getKey()));
+            final Path out = work.resolve("hier-bad-" + index++);
+            final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                    recipe.toString(), "--out", out.toString());
+            assertEquals(1, result.code(), entry.getKey());
+            assertTrue(result.err().contains(entry.getValue()), entry.getValue() + " in " + result.err());
+            assertFalse(Files.exists(out), entry.getKey());
+        }
+    }
+
+    private Result runRecipeWithRobustnessDetector(final String name, final String detector) throws Exception {
+        final Path candles = work.resolve(name + "-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve(name + "-recipe.json");
+        Files.writeString(recipe, hierarchyRecipe(null)
+                .replace("{\"name\":\"fractal-w5\",\"factory\":\"fractal\",\"params\":[5]}", detector));
+        return launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(), "--out",
+                work.resolve(name).toString());
+    }
+
+    @Test
+    void sameDetectorNameWithAnotherDefinitionIsRejectedBeforeCreatingArtifacts() throws Exception {
+        final Result result = runRecipeWithRobustnessDetector("clash",
+                "{\"name\":\"fractal-w3\",\"factory\":\"fractal\",\"params\":[5]}");
+
+        assertEquals(1, result.code());
+        assertTrue(result.err().contains("already used by recipe.detector with a different definition"), result.err());
+        assertFalse(Files.exists(work.resolve("clash")));
+    }
+
+    @Test
+    void sameDetectorNameWithTheIdenticalDefinitionIsAccepted() throws Exception {
+        final Result result = runRecipeWithRobustnessDetector("twin",
+                "{\"name\":\"fractal-w3\",\"factory\":\"fractal\",\"params\":[3]}");
+
+        assertEquals(0, result.code(), result.err());
+    }
+
+    @Test
+    void incompleteOrForeignRelationFileIsReportedNotTrusted() throws Exception {
+        final Path out = hierarchyRun("hier-damage",
+                "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}]}");
+        final Path file = out.resolve("relations/toy.jsonl");
+        final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+
+        Files.write(file, lines.subList(0, lines.size() - 1), StandardCharsets.UTF_8);
+        final Result truncated = launch("relations", out.toString(), "toy");
+        assertEquals(2, truncated.code());
+        assertTrue(truncated.out().contains("no footer"), truncated.out());
+        assertEquals(0, launch("summarize", out.toString()).code());
+        assertTrue(Files.readString(out.resolve("summary.md")).contains("relation file is incomplete"));
+
+        final List<String> foreign = new java.util.ArrayList<>(lines);
+        final JsonObject header = JsonParser.parseString(foreign.get(0)).getAsJsonObject();
+        header.addProperty("fingerprint", "someone-else");
+        foreign.set(0, header.toString());
+        Files.write(file, foreign, StandardCharsets.UTF_8);
+        final Result other = launch("relations", out.toString(), "toy");
+        assertEquals(2, other.code());
+        assertEquals(0, launch("summarize", out.toString()).code());
+        assertTrue(Files.readString(out.resolve("summary.md")).contains("does not belong to this run"));
+
+        Files.writeString(file, "not json\n");
+        assertEquals(2, launch("relations", out.toString(), "toy").code());
+    }
+
+    @Test
+    void relationReferencesThatLeaveTheRunDirectoryAreRefusedNotRead() throws Exception {
+        // Regression: the relation file name recorded in run.json was resolved against
+        // the run directory without containment, so a received run could make
+        // `relations` and `summarize` read whatever file the name pointed at.
+        final Path out = hierarchyRun("hier-escape",
+                "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}]}");
+        final Path outside = work.resolve("outside-relations.jsonl");
+        Files.copy(out.resolve("relations/toy.jsonl"), outside, StandardCopyOption.REPLACE_EXISTING);
+        final List<String> references = List.of("../outside-relations.jsonl", outside.toString());
+        for (int index = 0; index < references.size(); index++) {
+            final Path copy = work.resolve("escaping-relations-" + index);
+            copyTree(out, copy);
+            final JsonObject run = readJson(copy.resolve("run.json"));
+            run.getAsJsonArray("datasets")
+                    .get(0)
+                    .getAsJsonObject()
+                    .getAsJsonObject("relations")
+                    .addProperty("file", references.get(index));
+            Files.writeString(copy.resolve("run.json"), run.toString(), StandardCharsets.UTF_8);
+
+            final Result print = launch("relations", copy.toString(), "toy");
+            assertEquals(2, print.code(), references.get(index));
+            assertTrue(print.err().contains("lies outside the run directory"), print.err());
+            assertEquals(0, launch("summarize", copy.toString()).code());
+            final String summary = Files.readString(copy.resolve("summary.md"));
+            assertTrue(summary.contains("lies outside the run directory"), summary);
+            assertFalse(summary.contains("fractal-w5 > fractal-w3"), summary);
+        }
+    }
+
+    @Test
+    void relationFileLinkedFromOutsideTheRunDirectoryIsNotRead() throws Exception {
+        final Path out = hierarchyRun("hier-linked",
+                "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}]}");
+        final Path file = out.resolve("relations/toy.jsonl");
+        final Path outside = work.resolve("linked-relations.jsonl");
+        Files.move(file, outside);
+        Files.createSymbolicLink(file, outside);
+
+        final Result print = launch("relations", out.toString(), "toy");
+        assertEquals(2, print.code());
+        assertTrue(print.err().contains("lies outside the run directory"), print.err());
+        assertEquals(0, launch("summarize", out.toString()).code());
+        final String summary = Files.readString(out.resolve("summary.md"));
+        assertTrue(summary.contains("lies outside the run directory"), summary);
+        assertFalse(summary.contains("fractal-w5 > fractal-w3"), summary);
     }
 
     @Test
