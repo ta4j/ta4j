@@ -258,6 +258,28 @@ class ElliottResearchExploreTest {
     }
 
     @Test
+    public void exploreRecipeReservesTheAggregatePartitionNameBeforeCreatingArtifacts() throws Exception {
+        final Path candles = work.resolve("reserved-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 3, date -> true);
+        final Path recipe = work.resolve("reserved-recipe.json");
+        final JsonObject definition = JsonParser.parseString(toyRecipe("reserved")).getAsJsonObject();
+        final JsonObject extra = new JsonObject();
+        extra.addProperty("name", ElliottResearchOutcomes.ALL_PARTITIONS);
+        extra.addProperty("start", "2021-01-01");
+        extra.addProperty("end", "2021-02-01");
+        definition.getAsJsonArray("partitions").add(extra);
+        Files.writeString(recipe, definition.toString());
+        final Path out = work.resolve("reserved-out");
+
+        final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--out", out.toString());
+
+        assertEquals(1, result.code(), result.err());
+        assertTrue(result.err().contains("recipe.partitions[3].name 'ALL' is reserved"), result.err());
+        assertFalse(Files.exists(out));
+    }
+
+    @Test
     void exploreRecipeRejectsStructuralModeTheRunDoesNotEvaluate() throws Exception {
         final Path candles = work.resolve("mode-candles.json");
         writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);

@@ -675,6 +675,10 @@ final class ElliottResearch {
             rejectUnknown(entry, where, Set.of("name", "start", "end"));
             final String name = csvLabel(required(entry, "name", where), where + ".name");
             ElliottResearchReport.requireKeyPart(name, where + ".name");
+            if (ElliottResearchOutcomes.ALL_PARTITIONS.equals(name)) {
+                throw new IllegalArgumentException(where + ".name '" + name
+                        + "' is reserved for the whole-stream outcome aggregate; choose another partition name");
+            }
             partitions.add(new StudyRunner.Partition(name, date(required(entry, "start", where), where + ".start"),
                     date(required(entry, "end", where), where + ".end")));
         }
