@@ -358,9 +358,18 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
      * placement.
      */
     static String candidateKey(final TopologyCandidate candidate) {
+        return candidateKey(candidate.grammar().name(), candidate.direction().name(), candidate.pivots());
+    }
+
+    /**
+     * Identity of a named grammar and direction over a full pivot placement.
+     *
+     * @since 0.26.1
+     */
+    static String candidateKey(final String grammar, final String direction, final List<ConfirmedPivot> pivots) {
         final StringBuilder identity = new StringBuilder();
-        identity.append(candidate.grammar().name()).append('|').append(candidate.direction().name());
-        for (final ConfirmedPivot pivot : candidate.pivots()) {
+        identity.append(grammar).append('|').append(direction);
+        for (final ConfirmedPivot pivot : pivots) {
             identity.append('|')
                     .append(pivot.pivotIndex())
                     .append(':')
