@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import java.io.Serializable;
+import java.math.MathContext;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -168,8 +169,8 @@ public interface OrderBook extends Serializable {
     }
 
     /**
-     * Averages quotes in their numeric context without first rounding the sum of
-     * same-sign decimal prices.
+     * Averages quotes in their numeric context, rounding decimal averages only
+     * after both quotes have been halved exactly.
      *
      * @return quote midpoint for synchronized, two-sided, noncrossed quotes, or NaN
      *         otherwise or when calculation cannot complete in the numeric context
@@ -184,10 +185,8 @@ public interface OrderBook extends Serializable {
         Num two = numFactory().two();
         try {
             Num midpoint;
-            if (ask instanceof DecimalNum && ask.isNegative() == bid.isNegative()) {
-                // Adding same-sign decimal quotes can round before division.
-                Num halfSpread = ask.minus(bid).dividedBy(two);
-                midpoint = ask.isNegative() ? ask.minus(halfSpread) : bid.plus(halfSpread);
+            if (ask instanceof DecimalNum decimalAsk) {
+                midpoint = decimalMidpoint((DecimalNum) bid, decimalAsk, (DecimalNum) two);
             } else {
                 // Sum primitive quotes first to preserve subnormal prices.
                 Num sum = ask.plus(bid);
@@ -197,6 +196,21 @@ public interface OrderBook extends Serializable {
         } catch (ArithmeticException unrepresentable) {
             return NaN.NaN;
         }
+    }
+
+    private static Num decimalMidpoint(DecimalNum bid, DecimalNum ask, DecimalNum two) {
+        MathContext context = ask.getMathContext();
+        if (bid.getMathContext().getPrecision() > context.getPrecision()) {
+            context = bid.getMathContext();
+        }
+        if (two.getMathContext().getPrecision() > context.getPrecision()) {
+            context = two.getMathContext();
+        }
+        // Num division rounds each half too early; exact delegate halving is
+        // bounded by the input precision and leaves only the final sum to round.
+        Num halfAsk = DecimalNum.valueOf(ask.getDelegate().divide(two.getDelegate()), context);
+        Num halfBid = DecimalNum.valueOf(bid.getDelegate().divide(two.getDelegate()), context);
+        return halfAsk.plus(halfBid);
     }
 
     /**

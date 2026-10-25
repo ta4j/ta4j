@@ -145,6 +145,44 @@ class OrderBookTest {
     }
 
     @Test
+    public void decimalMidpointsRoundOnlyAfterAveragingUnequalQuotes() {
+        Metadata metadata = new Metadata("V", "I", "base", null, TIME, null, State.SYNCHRONIZED, true, true);
+        for (RoundingMode rounding : RoundingMode.values()) {
+            NumFactory factory = DecimalNumFactory.getInstance(new MathContext(1, rounding));
+            BaseOrderBook positive = new BaseOrderBook(factory, metadata,
+                    List.of(new OrderBookLevel(factory.numOf(6), factory.one())),
+                    List.of(new OrderBookLevel(factory.numOf(80), factory.one())));
+            BaseOrderBook negative = new BaseOrderBook(factory, metadata,
+                    List.of(new OrderBookLevel(factory.numOf(-80), factory.one())),
+                    List.of(new OrderBookLevel(factory.numOf(-6), factory.one())));
+            if (rounding == RoundingMode.UNNECESSARY) {
+                assertTrue(positive.getMidPrice().isNaN());
+                assertTrue(negative.getMidPrice().isNaN());
+            } else {
+                int positiveMidpoint = rounding == RoundingMode.UP || rounding == RoundingMode.CEILING ? 50 : 40;
+                int negativeMidpoint = rounding == RoundingMode.UP || rounding == RoundingMode.FLOOR ? -50 : -40;
+                assertNumEquals(positiveMidpoint, positive.getMidPrice());
+                assertNumEquals(negativeMidpoint, negative.getMidPrice());
+            }
+        }
+    }
+
+    @Test
+    public void decimalMidpointsPreserveTheGreaterQuoteOrFactoryPrecision() {
+        Metadata metadata = new Metadata("V", "I", "base", null, TIME, null, State.SYNCHRONIZED, true, true);
+        NumFactory oneDigit = DecimalNumFactory.getInstance(new MathContext(1, RoundingMode.UNNECESSARY));
+        NumFactory twoDigits = DecimalNumFactory.getInstance(new MathContext(2, RoundingMode.UNNECESSARY));
+        BaseOrderBook preciseQuotes = new BaseOrderBook(oneDigit, metadata,
+                List.of(new OrderBookLevel(twoDigits.numOf(6), twoDigits.one())),
+                List.of(new OrderBookLevel(oneDigit.numOf(80), oneDigit.one())));
+        BaseOrderBook preciseFactory = new BaseOrderBook(twoDigits, metadata,
+                List.of(new OrderBookLevel(oneDigit.numOf(6), oneDigit.one())),
+                List.of(new OrderBookLevel(oneDigit.numOf(80), oneDigit.one())));
+        assertNumEquals(43, preciseQuotes.getMidPrice());
+        assertNumEquals(43, preciseFactory.getMidPrice());
+    }
+
+    @Test
     void decimalContextsFollowFactoryProducesWithoutConvertingInputValues() {
         NumFactory owner = DecimalNumFactory.getInstance(16);
         NumFactory higherPrecision = DecimalNumFactory.getInstance(32);
