@@ -13,6 +13,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -404,6 +410,68 @@ public class PositionTest {
 
         assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPosition);
         assertNumEquals(DoubleNum.valueOf(0), proftOfOpenPosition);
+    }
+
+    @Test
+    public void serializationValidationTest() throws Exception {
+        Position validOpen = new Position(TradeType.BUY);
+        validOpen.operate(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(validOpen);
+        }
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+            Position deserialized = (Position) ois.readObject();
+            assertEquals(validOpen, deserialized);
+        }
+
+        // Test null startingType
+        Position invalidStartingType = new Position(TradeType.BUY);
+        setField(invalidStartingType, "startingType", null);
+        assertDeserializationFails(invalidStartingType, InvalidObjectException.class);
+
+        // Test exit without entry
+        Position exitWithoutEntry = new Position(TradeType.BUY);
+        setField(exitWithoutEntry, "exit", exitSameType);
+        assertDeserializationFails(exitWithoutEntry, InvalidObjectException.class);
+
+        // Test mismatched entry type
+        Position mismatchedEntry = new Position(TradeType.BUY);
+        mismatchedEntry.operate(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        setField(mismatchedEntry, "startingType", TradeType.SELL);
+        assertDeserializationFails(mismatchedEntry, InvalidObjectException.class);
+
+        // Test mismatched exit type
+        Position mismatchedExit = new Position(TradeType.BUY);
+        mismatchedExit.operate(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        mismatchedExit.operate(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+        setField(mismatchedExit, "exit", enter); // enter is BUY, but exit should complement BUY -> SELL
+        assertDeserializationFails(mismatchedExit, InvalidObjectException.class);
+
+        // Test exit index before entry index
+        Position invalidExitIndex = new Position(TradeType.BUY);
+        invalidExitIndex.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade earlyExit = Trade.sellAt(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+        setField(invalidExitIndex, "exit", earlyExit);
+        assertDeserializationFails(invalidExitIndex, InvalidObjectException.class);
+    }
+
+    private static void setField(Object target, String fieldName, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
+    private static void assertDeserializationFails(Object target, Class<? extends Exception> expectedException)
+            throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(target);
+        }
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+            assertThrows(expectedException, ois::readObject);
+        }
     }
 
     @Test
