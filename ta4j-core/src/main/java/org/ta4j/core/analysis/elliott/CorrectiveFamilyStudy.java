@@ -261,8 +261,8 @@ final class CorrectiveFamilyStudy {
                 final Map<String, CorrectiveFamily.Verdict> current = new TreeMap<>();
                 final List<GroupCoverage> coverage = new ArrayList<>(groups.size());
                 for (int g = 0; g < groups.size(); g++) {
-                    coverage.add(observeGroup(g, extractors.get(g), analyzer, series, index, tapes, invalidated,
-                            current));
+                    coverage.add(
+                            observeGroup(g, extractors.get(g), analyzer, series, index, tapes, invalidated, current));
                 }
                 final List<Event> events = advance(index, active, current, invalidated);
                 if (!events.isEmpty() || !coverage.equals(lastCoverage)) {
