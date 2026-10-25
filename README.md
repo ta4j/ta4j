@@ -448,6 +448,8 @@ Then add the locally installed platform classifier at the same ta4j version as y
 
 Classifier JARs contain provider classes and the matching native library, not `ta4j-core` or its dependencies. The unclassified JAR contains provider classes only. Substitute the profile for your platform in the install command; CUDA and OpenCL builds require their platform toolchains. A profile's `package` goal creates a classifier under `ta4j-acceleration/target` but does not install it for another application's Maven dependency resolution.
 
+When running the provider JAR on the classpath with JDK 25 or newer, launch Java with `--enable-native-access=ALL-UNNAMED` to grant its JNI access explicitly. Acceleration properties do not grant JVM native access.
+
 Automatic offload is **not currently qualified for any shipped provider**. The qualification table deliberately contains no measured workload/device rows, so `-Dta4j.acceleration.enabled=auto` keeps forecasts on the scalar CPU path even with a matching classifier and an approximate tolerance. A supported request reports `CPU_FASTER` when its unqualified native cost is unbounded; unavailable or unsupported requests can report an earlier rejection. Inspect `AccelerationRuntime.lastDiagnostic()` for the decision. Setting a provider's `family` or `minSteps` property does not qualify a missing row.
 
 Exact execution is the default. Metal is approximate-only, and approximate requests must explicitly set `-Dta4j.acceleration.approximateTolerance=<tolerance>` and pass the provider's error-bound checks. That setting permits approximation; it does not enable automatic native selection. Set `ta4j.acceleration.<metal|cuda|opencl>.library` to an absolute, trusted native-library path instead of using the bundled resource.

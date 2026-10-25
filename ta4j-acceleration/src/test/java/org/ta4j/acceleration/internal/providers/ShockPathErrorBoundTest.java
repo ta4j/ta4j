@@ -121,7 +121,7 @@ class ShockPathErrorBoundTest {
     @Test
     public void nonfiniteNumericalBoundsCannotCertifyNativeOutputs() {
         for (double nonfinite : new double[] { Double.NaN, Double.POSITIVE_INFINITY }) {
-            List<double[]> malformed = inputs(new double[] { 0d }, new double[] { 0d }, new double[] { nonfinite },
+            List<double[]> malformed = inputs(new double[] { 0d }, new double[] { nonfinite }, new double[] { 0d },
                     new double[] { 0.01d });
 
             assertThat(ShockPathErrorBound.uncertifiableReason(Precision.FP64, SHOCK_NORMAL, VOLATILITY_CONSTANT, 1,
