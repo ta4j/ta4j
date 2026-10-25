@@ -36,16 +36,19 @@ import org.ta4j.core.num.Num;
  * <p>
  * Java deserialization requires a non-null starting type, an entry before any
  * exit, an entry type matching the starting type, complementary entry/exit
- * types, and matching non-null trade cost models. Missing class data and
- * inconsistent saved states are rejected with {@link InvalidObjectException};
- * valid new, open, and closed positions remain supported, including
- * constructor-created pairs whose exit index precedes their entry index.
+ * types, and non-null trade cost models. Missing class data, inconsistent saved
+ * states, and conflicting retained models are rejected with
+ * {@link InvalidObjectException}; valid new, open, and closed positions remain
+ * supported, including constructor-created pairs whose exit index precedes
+ * their entry index.
  * </p>
  * <p>
- * Cost models are transient. After loading, transaction costs use the entry
- * trade's effective model (normally zero for {@link BaseTrade}); holding costs
- * use a zero-cost model. Custom trades retaining their own serializable models
- * continue to use those models, provided both trades agree.
+ * Cost models are transient. After loading, transaction costs use a retained
+ * trade model when available, preferring the entry model. A {@link BaseTrade}
+ * whose transient model is lost defaults to zero and does not conflict with a
+ * retained counterpart model, including in mixed legacy/live trade pairs.
+ * Positions without a retained trade model and holding costs use zero-cost
+ * models. Custom trades retaining serializable models continue to use them.
  * </p>
  */
 public class Position implements Serializable {
@@ -512,8 +515,8 @@ public class Position implements Serializable {
     }
 
     /**
-     * @return the transaction cost model, or the entry trade's effective model
-     *         after deserialization (zero when there is no entry)
+     * @return the transaction cost model, or a retained trade model after
+     *         deserialization, preferring the entry model (otherwise zero)
      *
      * @since 0.22.2
      */
@@ -521,7 +524,22 @@ public class Position implements Serializable {
         if (transactionCostModel != null) {
             return transactionCostModel;
         }
-        return entry == null ? ZERO_COST_MODEL : entry.getCostModel();
+        if (entry == null) {
+            return ZERO_COST_MODEL;
+        }
+        CostModel entryModel = entry.getCostModel();
+        if (exit != null && hasRestoredDefaultCostModel(entry, entryModel)) {
+            CostModel exitModel = exit.getCostModel();
+            if (!hasRestoredDefaultCostModel(exit, exitModel)) {
+                return exitModel;
+            }
+        }
+        return entryModel;
+    }
+
+    private static boolean hasRestoredDefaultCostModel(Trade trade, CostModel model) {
+        // BaseTrade does not persist its configured model, unlike retained models.
+        return trade instanceof BaseTrade && model instanceof ZeroCostModel;
     }
 
     /**
@@ -661,7 +679,10 @@ public class Position implements Serializable {
             if (exit.getType() != startingType.complementType()) {
                 throw new InvalidObjectException("Exit trade type must complement the entry trade type");
             }
-            if (exit.getCostModel() == null || !entryCostModel.equals(exit.getCostModel())) {
+            CostModel exitCostModel = exit.getCostModel();
+            if (exitCostModel == null
+                    || (!entryCostModel.equals(exitCostModel) && !hasRestoredDefaultCostModel(entry, entryCostModel)
+                            && !hasRestoredDefaultCostModel(exit, exitCostModel))) {
                 throw new InvalidObjectException("Trades must incorporate the same trading cost model");
             }
         }
