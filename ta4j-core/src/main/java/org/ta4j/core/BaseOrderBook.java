@@ -133,6 +133,11 @@ public final class BaseOrderBook implements OrderBook {
         return asks;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
     @Override
     public String toString() {
         return "BaseOrderBook[" + metadata.venue() + "/" + metadata.instrument() + ", " + metadata.availableTime()

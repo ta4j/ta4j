@@ -116,6 +116,32 @@ class OrderBookTest {
             BaseOrderBook locked = new BaseOrderBook(factory, metadata, List.of(level), List.of(level));
             assertEquals(price, locked.getMidPrice().doubleValue());
         }
+        BaseOrderBook subnormal = new BaseOrderBook(factory, metadata,
+                List.of(new OrderBookLevel(factory.numOf(Double.MIN_VALUE), factory.one())),
+                List.of(new OrderBookLevel(factory.numOf(4 * Double.MIN_VALUE), factory.one())));
+        assertEquals(2 * Double.MIN_VALUE, subnormal.getMidPrice().doubleValue());
+    }
+
+    @Test
+    public void decimalMidpointsAvoidRoundingTheQuoteSumBeforeDivision() {
+        Metadata metadata = new Metadata("V", "I", "base", null, TIME, null, State.SYNCHRONIZED, true, true);
+        for (RoundingMode rounding : List.of(RoundingMode.HALF_UP, RoundingMode.UNNECESSARY)) {
+            NumFactory factory = DecimalNumFactory.getInstance(new MathContext(1, rounding));
+            for (int price : new int[] { 9, -9 }) {
+                OrderBookLevel level = new OrderBookLevel(factory.numOf(price), factory.one());
+                BaseOrderBook locked = new BaseOrderBook(factory, metadata, List.of(level), List.of(level));
+                assertNumEquals(level.price(), locked.getMidPrice());
+            }
+        }
+        NumFactory factory = DecimalNumFactory.getInstance(new MathContext(1, RoundingMode.HALF_UP));
+        BaseOrderBook positive = new BaseOrderBook(factory, metadata,
+                List.of(new OrderBookLevel(factory.numOf(8), factory.one())),
+                List.of(new OrderBookLevel(factory.numOf(9), factory.one())));
+        BaseOrderBook negative = new BaseOrderBook(factory, metadata,
+                List.of(new OrderBookLevel(factory.numOf(-9), factory.one())),
+                List.of(new OrderBookLevel(factory.numOf(-8), factory.one())));
+        assertNumEquals(9, positive.getMidPrice());
+        assertNumEquals(-9, negative.getMidPrice());
     }
 
     @Test

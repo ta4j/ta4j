@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -167,6 +168,9 @@ public interface OrderBook extends Serializable {
     }
 
     /**
+     * Averages quotes in their numeric context without first rounding the sum of
+     * same-sign decimal prices.
+     *
      * @return quote midpoint for synchronized, two-sided, noncrossed quotes, or NaN
      *         otherwise or when calculation cannot complete in the numeric context
      * @since 0.27.1
@@ -179,9 +183,16 @@ public interface OrderBook extends Serializable {
         Num bid = getBids().getFirst().price();
         Num two = numFactory().two();
         try {
-            Num sum = ask.plus(bid);
-            // Halve first only when the primitive-backed sum overflows.
-            Num midpoint = Num.isFinite(sum) ? sum.dividedBy(two) : ask.dividedBy(two).plus(bid.dividedBy(two));
+            Num midpoint;
+            if (ask instanceof DecimalNum && ask.isNegative() == bid.isNegative()) {
+                // Adding same-sign decimal quotes can round before division.
+                Num halfSpread = ask.minus(bid).dividedBy(two);
+                midpoint = ask.isNegative() ? ask.minus(halfSpread) : bid.plus(halfSpread);
+            } else {
+                // Sum primitive quotes first to preserve subnormal prices.
+                Num sum = ask.plus(bid);
+                midpoint = Num.isFinite(sum) ? sum.dividedBy(two) : ask.dividedBy(two).plus(bid.dividedBy(two));
+            }
             return Num.isFinite(midpoint) ? midpoint : NaN.NaN;
         } catch (ArithmeticException unrepresentable) {
             return NaN.NaN;
