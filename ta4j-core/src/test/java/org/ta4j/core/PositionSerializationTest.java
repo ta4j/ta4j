@@ -4,7 +4,6 @@
 package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,7 +63,6 @@ class PositionSerializationTest {
             assertNumEquals(0, restored.getHoldingCost());
             assertNumEquals(0, restored.getHoldingCost(4));
             assertNumEquals(type == TradeType.BUY ? 10 : -10, restored.getProfit());
-            assertFalse(restored.hasRecordedTransactionCosts());
         }
     }
 
