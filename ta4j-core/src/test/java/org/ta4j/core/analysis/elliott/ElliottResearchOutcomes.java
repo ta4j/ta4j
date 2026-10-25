@@ -823,23 +823,42 @@ final class ElliottResearchOutcomes {
      * Deterministic non-overlapping sensitivity cohort: prospective events in
      * decision order with the candidate key breaking same-time ties; an event is
      * skipped while the previously kept event's horizon is still running.
+     *
+     * @param labels  one stream's labels at {@code horizon}
+     * @param horizon horizon in bars
+     * @return kept labels in decision order
      */
-    static void cohort(final List<Label> labels, final int horizon, final Tally tally) {
+    static List<Label> cohortLabels(final List<Label> labels, final int horizon) {
         final List<Label> prospective = labels.stream()
                 .filter(label -> label.structural() != Structural.ALREADY_RESOLVED)
                 .sorted(Comparator.comparingInt((Label label) -> label.event().enrollIndex)
                         .thenComparing(label -> label.event().candidateKey))
                 .toList();
+        final List<Label> kept = new ArrayList<>();
         long nextFree = Long.MIN_VALUE;
         for (final Label label : prospective) {
             if (label.event().enrollIndex >= nextFree) {
-                tally.cohortKept++;
-                tally.structural(label.structural(), true);
+                kept.add(label);
                 nextFree = (long) label.event().enrollIndex + horizon;
-            } else {
-                tally.cohortDiscarded++;
             }
         }
+        return kept;
+    }
+
+    /**
+     * Tallies the {@link #cohortLabels sensitivity cohort} of one stream and
+     * horizon.
+     */
+    static void cohort(final List<Label> labels, final int horizon, final Tally tally) {
+        final long prospective = labels.stream()
+                .filter(label -> label.structural() != Structural.ALREADY_RESOLVED)
+                .count();
+        final List<Label> kept = cohortLabels(labels, horizon);
+        for (final Label label : kept) {
+            tally.cohortKept++;
+            tally.structural(label.structural(), true);
+        }
+        tally.cohortDiscarded += prospective - kept.size();
     }
 
     /**
@@ -1139,7 +1158,15 @@ final class ElliottResearchOutcomes {
         verifyRows(summary, SUMMARY_HEADER, declaredCount(declared, "summary"), SUMMARY_IDENTITY_FIELDS);
     }
 
-    private static long declaredCount(final JsonObject declared, final String name) {
+    /**
+     * The record count a run declares for one artifact.
+     *
+     * @param declared record counts a run declared
+     * @param name     artifact name inside {@code declared}
+     * @return the declared count
+     * @throws IllegalArgumentException when the run declares no numeric count
+     */
+    static long declaredCount(final JsonObject declared, final String name) {
         final JsonElement count = declared.get(name);
         if (count == null || !count.isJsonPrimitive() || !count.getAsJsonPrimitive().isNumber()) {
             throw new IllegalArgumentException("the run declares no " + name + " record count");
@@ -1201,7 +1228,17 @@ final class ElliottResearchOutcomes {
         }
     }
 
-    private static void verifyRows(final Path path, final List<String> header, final long declared,
+    /**
+     * Checks one written CSV artifact against its declared record count, exact
+     * header, complete rows, and nonblank required scope identities.
+     *
+     * @param path             artifact to check
+     * @param header           header the artifact must start with
+     * @param declared         row count the run recorded
+     * @param requiredIdentity columns whose identity values must not be blank
+     * @throws IllegalArgumentException naming the first disagreement
+     */
+    static void verifyRows(final Path path, final List<String> header, final long declared,
             final List<String> requiredIdentity) {
         final List<List<String>> table = ElliottResearchReport.parseCsv(path);
         if (table.isEmpty() || !table.get(0).equals(header)) {
