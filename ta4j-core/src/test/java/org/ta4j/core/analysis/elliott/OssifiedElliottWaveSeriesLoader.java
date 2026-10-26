@@ -50,30 +50,69 @@ final class OssifiedElliottWaveSeriesLoader {
                         actualSha256);
                 return null;
             }
-            final JsonObject root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
-            final BarSeries series = new BaseBarSeriesBuilder().withName(seriesName).build();
-            final List<JsonObject> candles = new ArrayList<>();
-            for (final JsonElement element : root.getAsJsonArray("candles")) {
-                candles.add(element.getAsJsonObject());
-            }
-            candles.sort(Comparator.comparingLong(candle -> candle.get("start").getAsLong()));
-            for (final JsonObject candle : candles) {
-                final Instant endTime = Instant.ofEpochSecond(candle.get("start").getAsLong()).plus(Duration.ofDays(1));
-                series.addBar(series.barBuilder()
-                        .timePeriod(Duration.ofDays(1))
-                        .endTime(endTime)
-                        .openPrice(candle.get("open").getAsString())
-                        .highPrice(candle.get("high").getAsString())
-                        .lowPrice(candle.get("low").getAsString())
-                        .closePrice(candle.get("close").getAsString())
-                        .volume(candle.get("volume").getAsString())
-                        .trades(0)
-                        .build());
-            }
-            return series;
+            return parseCandles(bytes, seriesName);
         } catch (Exception ex) {
             logger.error("Failed to load dataset from {}: {}", resource, ex.getMessage(), ex);
             return null;
+        }
+    }
+
+    /**
+     * Parses the bundled candle JSON layout ({@code {"candles":[{start, open, high,
+     * low, close, volume}]}}, {@code start} in epoch seconds) into daily bars.
+     * Missing days are allowed, but starts must be distinct and separated by whole
+     * multiples of one day. A consistent non-midnight daily offset is preserved.
+     *
+     * @param bytes      UTF-8 candle JSON
+     * @param seriesName name of the created series
+     * @return series ordered by candle start
+     * @throws IllegalArgumentException when candle starts are incompatible with
+     *                                  daily bars
+     * @since 0.25.1
+     */
+    static BarSeries parseCandles(final byte[] bytes, final String seriesName) {
+        final JsonObject root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
+        final List<JsonObject> candles = new ArrayList<>();
+        for (final JsonElement element : root.getAsJsonArray("candles")) {
+            candles.add(element.getAsJsonObject());
+        }
+        candles.sort(Comparator.comparingLong(OssifiedElliottWaveSeriesLoader::startEpochSecond));
+        final Duration period = Duration.ofDays(1);
+        for (int index = 1; index < candles.size(); index++) {
+            final long previous = startEpochSecond(candles.get(index - 1));
+            final long current = startEpochSecond(candles.get(index));
+            if (current == previous
+                    || Math.floorMod(current, period.getSeconds()) != Math.floorMod(previous, period.getSeconds())) {
+                throw new IllegalArgumentException("daily candle cadence requires distinct starts separated by whole "
+                        + "multiples of " + period.getSeconds() + " seconds; found " + previous + " and " + current);
+            }
+        }
+        final BarSeries series = new BaseBarSeriesBuilder().withName(seriesName).build();
+        for (final JsonObject candle : candles) {
+            final Instant endTime = Instant.ofEpochSecond(startEpochSecond(candle)).plus(period);
+            series.addBar(series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(endTime)
+                    .openPrice(candle.get("open").getAsString())
+                    .highPrice(candle.get("high").getAsString())
+                    .lowPrice(candle.get("low").getAsString())
+                    .closePrice(candle.get("close").getAsString())
+                    .volume(candle.get("volume").getAsString())
+                    .trades(0)
+                    .build());
+        }
+        return series;
+    }
+
+    private static long startEpochSecond(final JsonObject candle) {
+        final JsonElement start = candle.get("start");
+        if (start == null || !start.isJsonPrimitive()) {
+            throw new IllegalArgumentException("daily candle start must be an integer epoch second: " + start);
+        }
+        try {
+            return start.getAsBigDecimal().longValueExact();
+        } catch (final ArithmeticException | NumberFormatException ex) {
+            throw new IllegalArgumentException("daily candle start must be an integer epoch second: " + start, ex);
         }
     }
 }
