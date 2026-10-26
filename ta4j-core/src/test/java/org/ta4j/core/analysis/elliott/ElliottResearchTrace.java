@@ -1,0 +1,1006 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.core.analysis.elliott;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.function.Predicate;
+
+import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
+import org.ta4j.core.num.DecimalNum;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
+
+import org.ta4j.core.Bar;
+
+/**
+ * Streaming JSONL witness of the observations a study run recorded.
+ *
+ * <p>
+ * The trace is a {@link StudyObserver}: it serialises the exact analyses, rule
+ * evidence, and alternative outcomes the runner hands it and never recomputes
+ * recognition. Each observation is written as one line as soon as it arrives
+ * and the writer keeps no per-candidate state, so memory stays bounded by one
+ * observation rather than by members times bars or distinct candidates. A file
+ * is complete only when its footer line exists; a crashed run leaves a readable
+ * but truncated file.
+ * </p>
+ *
+ * <p>
+ * Layout: a header line naming the dataset, the capture coordinates and the
+ * originating run's configuration fingerprint and source digest, one object per
+ * observation, then the footer {@code {"complete":true,"records":N}}.
+ * </p>
+ *
+ * <p>
+ * A candidate's identity ({@code candidateKey}) hashes grammar, direction and
+ * the full pivot placement (indices, types, price text), so a placement that
+ * shares only its start and end with another is a different candidate. Its
+ * {@code version} is {@code <candidateKey>@<evidenceKey>}, where the evidence
+ * key hashes the candidate's serialised rule evidence: identical evidence
+ * always yields the same version, in any file and in any emission order, and
+ * changed evidence yields a new one. Earlier lines are never rewritten.
+ * Instances are not thread-safe.
+ * </p>
+ *
+ * @since 0.25.1
+ */
+final class ElliottResearchTrace implements StudyObserver, Closeable {
+
+    static final String SCHEMA = "elliott-research-trace/1";
+    static final String MODE_REAL = "real";
+    static final String MODE_SELECTED_NULL_MEMBER = "selected-null-member";
+
+    private static final List<String> RECORD_TEXT_FIELDS = List.of("dataset", "section", "mode", "grammar", "detector",
+            "partition", "asOfTime", "status");
+
+    private static final Set<String> ALTERNATIVE_STATUSES = Set.of("insufficient-history", "no-match", "forming",
+            "complete", "ambiguous");
+
+    private static final StudyRunner.AlternativeGrammar THREE_PLUS_THREE = StudyRunner.AlternativeGrammar.of("3+3");
+    private static final StudyRunner.AlternativeGrammar FIVE_PLUS_FIVE = StudyRunner.AlternativeGrammar.of("5+5");
+
+    private static final Comparator<ConfirmedPivot> PIVOT_INDEX_ORDER = Comparator
+            .comparingInt(ConfirmedPivot::pivotIndex);
+
+    private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
+
+    private final Path file;
+    private final String datasetId;
+    private final int nullBlockLength;
+    private final int nullMemberIndex;
+    private final BufferedWriter writer;
+    private long records;
+    private boolean closed;
+    private JsonObject pendingBar;
+
+    private ElliottResearchTrace(final Path file, final String datasetId, final int nullBlockLength,
+            final int nullMemberIndex, final BufferedWriter writer) {
+        this.file = file;
+        this.datasetId = datasetId;
+        this.nullBlockLength = nullBlockLength;
+        this.nullMemberIndex = nullMemberIndex;
+        this.writer = writer;
+    }
+
+    /**
+     * Creates the file (and parent directories) and writes the header.
+     *
+     * @param file            trace destination
+     * @param datasetId       dataset identifier stored on every record
+     * @param revision        code revision of the originating run
+     * @param fingerprint     configuration fingerprint of the originating run
+     * @param sourceSha256    SHA-256 of the dataset's source candles, or
+     *                        {@code null} for generated data
+     * @param traceMode       {@code real} or {@code selected-null-member}
+     * @param nullBlockLength null block length, or {@code -1} for real traces
+     * @param nullMemberIndex null member index, or {@code -1} for real traces
+     * @return open trace; close it to write the footer
+     * @throws IOException on filesystem failure
+     */
+    static ElliottResearchTrace open(final Path file, final String datasetId, final String revision,
+            final String fingerprint, final String sourceSha256, final String traceMode, final int nullBlockLength,
+            final int nullMemberIndex) throws IOException {
+        Objects.requireNonNull(file, "file");
+        Objects.requireNonNull(datasetId, "datasetId");
+        Objects.requireNonNull(revision, "revision");
+        Objects.requireNonNull(fingerprint, "fingerprint");
+        Objects.requireNonNull(traceMode, "traceMode");
+        validateTraceCoordinates(traceMode, nullBlockLength, nullMemberIndex);
+        final Path parent = file.toAbsolutePath().getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+        final BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8);
+        final ElliottResearchTrace trace = new ElliottResearchTrace(file, datasetId, nullBlockLength, nullMemberIndex,
+                writer);
+        try {
+            final JsonObject header = new JsonObject();
+            header.addProperty("schema", SCHEMA);
+            header.addProperty("dataset", datasetId);
+            header.addProperty("revision", revision);
+            header.addProperty("fingerprint", fingerprint);
+            header.addProperty("sourceSha256", sourceSha256);
+            header.addProperty("traceMode", traceMode);
+            header.addProperty("nullBlockLength", nullBlockLength);
+            header.addProperty("nullMemberIndex", nullMemberIndex);
+            trace.writeLine(header);
+        } catch (final IOException | RuntimeException e) {
+            writer.close();
+            throw e;
+        }
+        return trace;
+    }
+
+    private static void validateTraceCoordinates(final String traceMode, final int nullBlockLength,
+            final int nullMemberIndex) {
+        if (MODE_REAL.equals(traceMode)) {
+            if (nullBlockLength != -1 || nullMemberIndex != -1) {
+                throw new IllegalArgumentException("real traces carry no null block length or member index");
+            }
+        } else if (MODE_SELECTED_NULL_MEMBER.equals(traceMode)) {
+            if (nullBlockLength < 1 || nullMemberIndex < 0) {
+                throw new IllegalArgumentException("selected-null-member traces need a block length and member index");
+            }
+        } else {
+            throw new IllegalArgumentException("unsupported trace mode: " + traceMode);
+        }
+    }
+
+    /** @return observation records written so far, excluding header and footer */
+    long records() {
+        return records;
+    }
+
+    @Override
+    public void nullBar(final Scope scope, final String partition, final int recordedIndex, final Bar bar) {
+        Objects.requireNonNull(bar, "bar");
+        final JsonObject json = new JsonObject();
+        json.addProperty("begin", bar.getBeginTime().toString());
+        json.addProperty("end", bar.getEndTime().toString());
+        json.addProperty("open", String.valueOf(bar.getOpenPrice()));
+        json.addProperty("high", String.valueOf(bar.getHighPrice()));
+        json.addProperty("low", String.valueOf(bar.getLowPrice()));
+        json.addProperty("close", String.valueOf(bar.getClosePrice()));
+        json.addProperty("volume", String.valueOf(bar.getVolume()));
+        pendingBar = json;
+    }
+
+    @Override
+    public void topology(final Scope scope, final String partition, final int recordedIndex, final Instant asOfEnd,
+            final List<ConfirmedPivot> visiblePivots, final TopologyAnalysis analysis,
+            final List<List<RuleEvidence>> candidateEvidence) {
+        Objects.requireNonNull(analysis, "analysis");
+        Objects.requireNonNull(candidateEvidence, "candidateEvidence");
+        if (candidateEvidence.size() != analysis.candidates().size()) {
+            throw new IllegalArgumentException("candidate evidence must align with analysis candidates: "
+                    + candidateEvidence.size() + " vs " + analysis.candidates().size());
+        }
+        final JsonObject record = base(scope, partition, recordedIndex, asOfEnd, visiblePivots, "topology",
+                analysis.status().name());
+        record.add("direction", analysis.direction() == null ? null : new JsonPrimitive(analysis.direction().name()));
+        record.addProperty("formingStartBarIndex", analysis.formingStartBarIndex());
+        record.addProperty("formingEndBarIndex", analysis.formingEndBarIndex());
+        record.addProperty("explanation", analysis.explanation());
+        record.add("pivots", pivotsJson(visiblePivots));
+        final JsonArray candidates = new JsonArray();
+        for (int i = 0; i < analysis.candidates().size(); i++) {
+            candidates.add(candidateJson(analysis.candidates().get(i), candidateEvidence.get(i)));
+        }
+        record.add("candidates", candidates);
+        record.add("labels", labelsJson(StudyRunner.topologyStabilityLabels(analysis)));
+        emit(record);
+    }
+
+    @Override
+    public void alternative(final Scope scope, final String partition, final int recordedIndex, final Instant asOfEnd,
+            final List<ConfirmedPivot> visiblePivots, final String outcome, final Set<String> labels) {
+        Objects.requireNonNull(outcome, "outcome");
+        Objects.requireNonNull(labels, "labels");
+        final JsonObject record = base(scope, partition, recordedIndex, asOfEnd, visiblePivots, "alternative", outcome);
+        record.add("direction", null);
+        record.add("pivots", pivotsJson(visiblePivots));
+        record.add("candidates", new JsonArray());
+        record.add("labels", labelsJson(labels));
+        emit(record);
+    }
+
+    private static JsonArray labelsJson(final Set<String> labels) {
+        final JsonArray array = new JsonArray();
+        new TreeSet<>(labels).forEach(array::add);
+        return array;
+    }
+
+    /** Writes the footer and releases the file; further observations fail. */
+    @Override
+    public void close() throws IOException {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        try {
+            final JsonObject footer = new JsonObject();
+            footer.addProperty("complete", true);
+            footer.addProperty("records", records);
+            writeLine(footer);
+        } finally {
+            writer.close();
+        }
+    }
+
+    private JsonObject base(final Scope scope, final String partition, final int recordedIndex, final Instant asOfEnd,
+            final List<ConfirmedPivot> visiblePivots, final String kind, final String status) {
+        Objects.requireNonNull(scope, "scope");
+        Objects.requireNonNull(partition, "partition");
+        Objects.requireNonNull(asOfEnd, "asOfEnd");
+        Objects.requireNonNull(visiblePivots, "visiblePivots");
+        if (scope.nullBlockLength() != nullBlockLength || scope.nullMemberIndex() != nullMemberIndex) {
+            throw new IllegalArgumentException("scope null coordinates " + scope.nullBlockLength() + "/"
+                    + scope.nullMemberIndex() + " do not match trace " + nullBlockLength + "/" + nullMemberIndex);
+        }
+        final JsonObject record = new JsonObject();
+        record.addProperty("dataset", datasetId);
+        record.addProperty("section", scope.section());
+        record.addProperty("mode", scope.mode());
+        record.addProperty("grammar", scope.grammar());
+        final JsonArray activeRules = new JsonArray();
+        scope.activeRules().forEach(activeRules::add);
+        record.add("activeRules", activeRules);
+        record.addProperty("detector", scope.detector());
+        record.addProperty("nullBlockLength", scope.nullBlockLength());
+        record.addProperty("nullMemberIndex", scope.nullMemberIndex());
+        record.addProperty("partition", partition);
+        record.addProperty("asOfIndex", recordedIndex);
+        record.addProperty("asOfTime", asOfEnd.toString());
+        record.addProperty("kind", kind);
+        record.addProperty("status", status);
+        if (pendingBar != null) {
+            record.add("bar", pendingBar);
+            pendingBar = null;
+        }
+        return record;
+    }
+
+    private void emit(final JsonObject record) {
+        if (closed) {
+            throw new IllegalStateException("trace already closed: " + file);
+        }
+        try {
+            writeLine(record);
+        } catch (final IOException e) {
+            throw new UncheckedIOException("failed writing trace " + file, e);
+        }
+        records++;
+    }
+
+    private void writeLine(final JsonObject line) throws IOException {
+        JSON.toJson(line, writer);
+        writer.write('\n');
+    }
+
+    private static JsonArray pivotsJson(final List<ConfirmedPivot> pivots) {
+        final JsonArray array = new JsonArray();
+        for (final ConfirmedPivot pivot : pivots) {
+            final JsonObject json = placementJson(pivot);
+            json.addProperty("confirmationIndex", pivot.confirmationIndex());
+            array.add(json);
+        }
+        return array;
+    }
+
+    private static JsonObject placementJson(final ConfirmedPivot pivot) {
+        final JsonObject json = new JsonObject();
+        json.addProperty("index", pivot.pivotIndex());
+        json.addProperty("price", pivot.price().toString());
+        json.addProperty("type", pivot.type().name());
+        return json;
+    }
+
+    private JsonObject candidateJson(final TopologyCandidate candidate, final List<RuleEvidence> evidence) {
+        final String key = candidateKey(candidate);
+        final JsonArray placement = new JsonArray();
+        candidate.pivots().forEach(pivot -> placement.add(placementJson(pivot)));
+        final JsonArray rules = rulesJson(evidence);
+        final JsonObject json = new JsonObject();
+        json.addProperty("candidateKey", key);
+        json.addProperty("version", versionOf(key, rules));
+        json.addProperty("direction", candidate.direction().name());
+        json.add("placement", placement);
+        json.add("rules", rules);
+        return json;
+    }
+
+    private static JsonArray rulesJson(final List<RuleEvidence> evidence) {
+        final JsonArray rules = new JsonArray();
+        for (final RuleEvidence rule : evidence) {
+            final JsonObject json = new JsonObject();
+            json.addProperty("id", rule.ruleId());
+            json.addProperty("state", rule.state().name());
+            json.add("score", rule.score().isPresent() ? new JsonPrimitive(rule.score().get()) : null);
+            final JsonArray observations = new JsonArray();
+            rule.observations().forEach(observations::add);
+            json.add("observations", observations);
+            json.addProperty("explanation", rule.explanation());
+            rules.add(json);
+        }
+        return rules;
+    }
+
+    private static String versionOf(final String key, final JsonArray rules) {
+        return key + "@" + digest(rules.toString());
+    }
+
+    /**
+     * Deterministic version of a candidate under one rule-evidence ledger, exactly
+     * as written to the observation trace. Relation records reuse it so a parent or
+     * child version names the same evidence in both files.
+     *
+     * @param candidate candidate to version
+     * @param evidence  its rule evidence, empty for topology-only observations
+     * @return {@code <candidateKey>@<evidenceKey>}
+     */
+    static String candidateVersion(final TopologyCandidate candidate, final List<RuleEvidence> evidence) {
+        return versionOf(candidateKey(candidate), rulesJson(evidence));
+    }
+
+    /**
+     * Whether an inspection selector names a candidate: a prefix of its
+     * {@code candidateKey} or its exact {@code version}.
+     *
+     * @since 0.26.1
+     */
+    static boolean selects(final String selector, final String candidateKey, final String version) {
+        return candidateKey.startsWith(selector) || version.equals(selector);
+    }
+
+    /**
+     * Deterministic identity of a candidate's grammar, direction and full pivot
+     * placement.
+     */
+    static String candidateKey(final TopologyCandidate candidate) {
+        return candidateKey(candidate.grammar().name(), candidate.direction().name(), candidate.pivots());
+    }
+
+    /**
+     * Identity of a named grammar and direction over a full pivot placement.
+     *
+     * @since 0.26.1
+     */
+    static String candidateKey(final String grammar, final String direction, final List<ConfirmedPivot> pivots) {
+        final StringBuilder identity = new StringBuilder();
+        identity.append(grammar).append('|').append(direction);
+        for (final ConfirmedPivot pivot : pivots) {
+            identity.append('|')
+                    .append(pivot.pivotIndex())
+                    .append(':')
+                    .append(pivot.type().name())
+                    .append(':')
+                    .append(pivot.price());
+        }
+        return digest(identity.toString());
+    }
+
+    private static String candidateKey(final String grammar, final String direction, final JsonArray placement) {
+        final StringBuilder identity = new StringBuilder(grammar).append('|').append(direction);
+        for (final JsonElement entry : placement) {
+            final JsonObject pivot = entry.getAsJsonObject();
+            identity.append('|')
+                    .append(pivot.get("index").getAsInt())
+                    .append(':')
+                    .append(pivot.get("type").getAsString())
+                    .append(':')
+                    .append(pivot.get("price").getAsString());
+        }
+        return digest(identity.toString());
+    }
+
+    /** First 128 bits of the text's SHA-256, as lowercase hex. */
+    private static String digest(final String text) {
+        try {
+            final byte[] digest = MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest, 0, 16);
+        } catch (final NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
+    /**
+     * Parsed trace file.
+     *
+     * @param header      header object
+     * @param records     retained observation records in file order
+     * @param recordCount number of observation records in the file, retained or not
+     * @param complete    whether the footer was present and consistent
+     * @since 0.25.1
+     */
+    record TraceFile(JsonObject header, List<JsonObject> records, long recordCount, boolean complete) {
+        TraceFile {
+            Objects.requireNonNull(header, "header");
+            records = List.copyOf(records);
+        }
+    }
+
+    /**
+     * Reads a trace file, retaining every record.
+     *
+     * @param path trace file
+     * @return parsed file
+     * @throws IOException              when the file cannot be read
+     * @throws IllegalArgumentException naming file and line when the schema is
+     *                                  unsupported or a line is corrupt
+     * @see #read(Path, Predicate)
+     */
+    static TraceFile read(final Path path) throws IOException {
+        return read(path, record -> true);
+    }
+
+    /**
+     * Streams a trace file line by line, validating every line and binding each
+     * observation to the header's dataset and capture coordinates before retaining
+     * only the records {@code retain} accepts, so memory is bounded by the retained
+     * records rather than the file size. A file without a footer, or whose final
+     * unterminated line is a partial write before any footer, is returned with
+     * {@code complete == false}; any content after a footer is corrupt.
+     *
+     * @param path   trace file
+     * @param retain records to keep in {@link TraceFile#records()}
+     * @return parsed file
+     * @throws IOException              when the file cannot be read
+     * @throws IllegalArgumentException naming file and line when the schema is
+     *                                  unsupported or a line is corrupt
+     */
+    static TraceFile read(final Path path, final Predicate<JsonObject> retain) throws IOException {
+        Objects.requireNonNull(retain, "retain");
+        final boolean newlineTerminated = endsWithNewline(path);
+        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            final String headerLine = reader.readLine();
+            if (headerLine == null) {
+                throw corrupt(path, 1, "missing header");
+            }
+            final JsonObject header = parseObject(path, 1, headerLine);
+            final JsonElement schema = header.get("schema");
+            if (schema == null || !schema.isJsonPrimitive() || !SCHEMA.equals(schema.getAsString())) {
+                throw corrupt(path, 1, "unsupported schema " + schema);
+            }
+            requireText(path, 1, header, "dataset", "header field ");
+            requireText(path, 1, header, "traceMode", "header field ");
+            final String datasetId = header.get("dataset").getAsString();
+            final String traceMode = header.get("traceMode").getAsString();
+            final int nullBlockLength = requireCoordinate(path, 1, header, "nullBlockLength", "header field ");
+            final int nullMemberIndex = requireCoordinate(path, 1, header, "nullMemberIndex", "header field ");
+            try {
+                validateTraceCoordinates(traceMode, nullBlockLength, nullMemberIndex);
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, 1, "header " + e.getMessage() + ": traceMode=" + traceMode + ", nullBlockLength="
+                        + nullBlockLength + ", nullMemberIndex=" + nullMemberIndex);
+            }
+            final List<JsonObject> records = new ArrayList<>();
+            final Map<ObservationScope, Integer> lastAsOfByScope = new HashMap<>();
+            long recordCount = 0;
+            boolean complete = false;
+            long lineNumber = 1;
+            String line = reader.readLine();
+            while (line != null) {
+                lineNumber++;
+                final String next = reader.readLine();
+                final boolean unterminatedTail = next == null && !newlineTerminated;
+                final JsonObject object;
+                try {
+                    object = parseObject(path, lineNumber, line);
+                } catch (final IllegalArgumentException e) {
+                    if (unterminatedTail && !complete) {
+                        break;
+                    }
+                    throw e;
+                }
+                if (complete) {
+                    throw corrupt(path, lineNumber, "content after footer");
+                }
+                if (object.has("complete") && !object.has("kind")) {
+                    final BigDecimal count = requireInteger(path, lineNumber, object, "records", "footer field ");
+                    if (count.compareTo(BigDecimal.valueOf(recordCount)) != 0) {
+                        throw corrupt(path, lineNumber, "footer record count " + count + " but read " + recordCount);
+                    }
+                    // The writer only emits complete:true; any other flag would let records
+                    // follow a footer marker unchecked.
+                    final JsonElement flag = object.get("complete");
+                    if (!flag.isJsonPrimitive() || !flag.getAsJsonPrimitive().isBoolean() || !flag.getAsBoolean()) {
+                        throw corrupt(path, lineNumber, "footer complete flag " + flag + " is not true");
+                    }
+                    complete = true;
+                } else if (object.has("kind")) {
+                    validateRecord(path, lineNumber, object, datasetId, traceMode, nullBlockLength, nullMemberIndex);
+                    final ObservationScope scope = new ObservationScope(object.get("section").getAsString(),
+                            object.get("mode").getAsString(), object.get("grammar").getAsString(),
+                            object.get("detector").getAsString(), object.get("partition").getAsString());
+                    final int asOf = object.get("asOfIndex").getAsInt();
+                    final Integer previous = lastAsOfByScope.put(scope, asOf);
+                    if (previous != null && asOf <= previous) {
+                        throw corrupt(path, lineNumber, "asOfIndex " + asOf + " must strictly increase within scope "
+                                + scope + " after " + previous);
+                    }
+                    recordCount++;
+                    try {
+                        if (retain.test(object)) {
+                            records.add(object);
+                        }
+                    } catch (final IllegalArgumentException e) {
+                        throw corrupt(path, lineNumber, e.getMessage());
+                    }
+                } else {
+                    throw corrupt(path, lineNumber, "line is neither a record nor a footer");
+                }
+                line = next;
+            }
+            return new TraceFile(header, records, recordCount, complete);
+        }
+    }
+
+    private record ObservationScope(String section, String mode, String grammar, String detector, String partition) {
+    }
+
+    private static boolean endsWithNewline(final Path path) throws IOException {
+        try (SeekableByteChannel channel = Files.newByteChannel(path)) {
+            final long size = channel.size();
+            if (size == 0) {
+                return false;
+            }
+            channel.position(size - 1);
+            final ByteBuffer last = ByteBuffer.allocate(1);
+            return channel.read(last) == 1 && last.get(0) == '\n';
+        }
+    }
+
+    private static JsonObject parseObject(final Path path, final long lineNumber, final String text) {
+        try {
+            final JsonElement element = JsonParser.parseString(text);
+            if (!element.isJsonObject()) {
+                throw corrupt(path, lineNumber, "not a JSON object");
+            }
+            return element.getAsJsonObject();
+        } catch (final JsonParseException | UnsupportedOperationException | IllegalStateException e) {
+            throw corrupt(path, lineNumber, "invalid JSON: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Rejects an observation line that deviates from the shape {@link #base} and
+     * the kind's writer emit, down to every nested pivot, candidate, rule and
+     * label, so a hand-edited or foreign line cannot count toward the footer or
+     * crash inspection that reads those elements.
+     */
+    private static void validateRecord(final Path path, final long lineNumber, final JsonObject record,
+            final String datasetId, final String traceMode, final int nullBlockLength, final int nullMemberIndex) {
+        final String kind = text(record, "kind");
+        if (!"topology".equals(kind) && !"alternative".equals(kind)) {
+            throw corrupt(path, lineNumber, "record kind " + record.get("kind") + " is not topology or alternative");
+        }
+        final String where = kind + " record field ";
+        for (final String field : RECORD_TEXT_FIELDS) {
+            requireText(path, lineNumber, record, field, where);
+            if (record.get(field).getAsString().isBlank()) {
+                throw corrupt(path, lineNumber, where + field + " is blank");
+            }
+        }
+        final String status = record.get("status").getAsString();
+        TopologyStatus topologyStatus = null;
+        if ("topology".equals(kind)) {
+            try {
+                topologyStatus = TopologyStatus.valueOf(status);
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber, where + "status " + record.get("status") + " is not a topology status");
+            }
+        } else if (!ALTERNATIVE_STATUSES.contains(status)) {
+            throw corrupt(path, lineNumber, where + "status " + record.get("status") + " is not an alternative status");
+        }
+        final int recordBlockLength = requireCoordinate(path, lineNumber, record, "nullBlockLength", where);
+        final int recordMemberIndex = requireCoordinate(path, lineNumber, record, "nullMemberIndex", where);
+        final int asOfIndex = requireCoordinate(path, lineNumber, record, "asOfIndex", where);
+        if (!datasetId.equals(record.get("dataset").getAsString()) || recordBlockLength != nullBlockLength
+                || recordMemberIndex != nullMemberIndex) {
+            throw corrupt(path, lineNumber,
+                    "record coordinates dataset=" + record.get("dataset") + ", nullBlockLength=" + recordBlockLength
+                            + ", nullMemberIndex=" + recordMemberIndex + " do not match header dataset=" + datasetId
+                            + ", nullBlockLength=" + nullBlockLength + ", nullMemberIndex=" + nullMemberIndex);
+        }
+        if ("null".equals(record.get("section").getAsString()) != MODE_SELECTED_NULL_MEMBER.equals(traceMode)) {
+            throw corrupt(path, lineNumber,
+                    where + "section " + record.get("section") + " is inconsistent with header traceMode=" + traceMode);
+        }
+        final JsonElement direction = record.get("direction");
+        if (direction == null || !direction.isJsonNull() && text(record, "direction") == null) {
+            throw corrupt(path, lineNumber, where + "direction is missing or not a string or null");
+        }
+        if ("topology".equals(kind) && (!direction.isJsonNull() && !"BULLISH".equals(direction.getAsString())
+                && !"BEARISH".equals(direction.getAsString()) || direction.isJsonNull() && "FORMING".equals(status))) {
+            throw corrupt(path, lineNumber,
+                    where + "direction must be BULLISH or BEARISH for FORMING, otherwise null or a wave direction");
+        }
+        if ("alternative".equals(kind) && !direction.isJsonNull()) {
+            throw corrupt(path, lineNumber, where + "direction must be null for an alternative outcome");
+        }
+        requireTexts(path, lineNumber, record, "activeRules", where);
+        final JsonElement bar = record.get("bar");
+        if (bar != null) {
+            final JsonObject barObject = requireObject(path, lineNumber, bar, where + "bar");
+            for (final String field : List.of("begin", "end", "open", "high", "low", "close", "volume")) {
+                requireText(path, lineNumber, barObject, field, where + "bar.");
+            }
+        }
+        final JsonArray pivots = requireArray(path, lineNumber, record, "pivots", where);
+        final List<ConfirmedPivot> visiblePivots = new ArrayList<>(pivots.size());
+        for (int i = 0; i < pivots.size(); i++) {
+            final String at = where + "pivots[" + i + "]";
+            final ConfirmedPivot pivot = requirePlacement(path, lineNumber, pivots.get(i), at, true);
+            if (pivot.confirmationIndex() > asOfIndex) {
+                throw corrupt(path, lineNumber, at + ".confirmationIndex must not exceed asOfIndex " + asOfIndex);
+            }
+            if (i > 0 && pivot.pivotIndex() <= visiblePivots.get(i - 1).pivotIndex()) {
+                throw corrupt(path, lineNumber, at + ".index must strictly increase in the visible pivot view");
+            }
+            if (i > 0 && pivot.type() == visiblePivots.get(i - 1).type()) {
+                throw corrupt(path, lineNumber, at + ".type must alternate in the visible pivot view");
+            }
+            visiblePivots.add(pivot);
+        }
+        final JsonArray candidates = requireArray(path, lineNumber, record, "candidates", where);
+        if (topologyStatus != null) {
+            try {
+                TopologyAnalysis.validateCandidateCount(topologyStatus, candidates.size());
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber, where + "candidates: " + e.getMessage());
+            }
+        }
+        TopologyGrammar grammar = null;
+        WaveDirection candidateDirection = null;
+        final List<TopologyCandidate> topologyCandidates = new ArrayList<>(candidates.size());
+        final Set<String> candidateKeys = candidates.size() > 1 ? new HashSet<>(candidates.size()) : null;
+        for (int i = 0; i < candidates.size(); i++) {
+            final String at = where + "candidates[" + i + "]";
+            final JsonObject candidate = requireObject(path, lineNumber, candidates.get(i), at);
+            for (final String field : List.of("candidateKey", "version", "direction")) {
+                requireText(path, lineNumber, candidate, field, at + ".");
+            }
+            final JsonArray placement = requireArray(path, lineNumber, candidate, "placement", at + ".");
+            final List<ConfirmedPivot> candidatePivots = new ArrayList<>(placement.size());
+            for (int p = 0; p < placement.size(); p++) {
+                candidatePivots
+                        .add(requirePlacement(path, lineNumber, placement.get(p), at + ".placement[" + p + "]", false));
+            }
+            final JsonArray rules = requireArray(path, lineNumber, candidate, "rules", at + ".");
+            for (int r = 0; r < rules.size(); r++) {
+                final String ruleAt = at + ".rules[" + r + "]";
+                final JsonObject rule = requireObject(path, lineNumber, rules.get(r), ruleAt);
+                for (final String field : List.of("id", "state", "explanation")) {
+                    requireText(path, lineNumber, rule, field, ruleAt + ".");
+                }
+                try {
+                    EvidenceState.valueOf(rule.get("state").getAsString());
+                } catch (final IllegalArgumentException e) {
+                    throw corrupt(path, lineNumber,
+                            ruleAt + ".state " + rule.get("state") + " is not an evidence state");
+                }
+                final JsonElement score = rule.get("score");
+                if (score == null
+                        || !score.isJsonNull() && !(score.isJsonPrimitive() && score.getAsJsonPrimitive().isNumber())) {
+                    throw corrupt(path, lineNumber, ruleAt + ".score is missing or not a number or null");
+                }
+                requireTexts(path, lineNumber, rule, "observations", ruleAt + ".");
+            }
+            final String key = candidateKey(record.get("grammar").getAsString(),
+                    candidate.get("direction").getAsString(), placement);
+            if (!key.equals(candidate.get("candidateKey").getAsString())) {
+                throw corrupt(path, lineNumber,
+                        at + ".candidateKey does not match grammar, direction and full placement");
+            }
+            if (candidateKeys != null && !candidateKeys.add(key)) {
+                throw corrupt(path, lineNumber, at + ".candidateKey duplicates a retained candidate");
+            }
+            if (!(key + "@" + digest(rules.toString())).equals(candidate.get("version").getAsString())) {
+                throw corrupt(path, lineNumber, at + ".version does not match the candidate key and rule evidence");
+            }
+            final JsonArray activeRules = record.getAsJsonArray("activeRules");
+            if (rules.size() != activeRules.size()) {
+                throw corrupt(path, lineNumber, at + ".rules must match activeRules in size and order");
+            }
+            for (int r = 0; r < rules.size(); r++) {
+                final JsonObject rule = rules.get(r).getAsJsonObject();
+                final String ruleAt = at + ".rules[" + r + "]";
+                if (!rule.get("id").equals(activeRules.get(r))) {
+                    throw corrupt(path, lineNumber, ruleAt + ".id does not match activeRules[" + r + "]");
+                }
+                final JsonElement score = rule.get("score");
+                if (!score.isJsonNull()) {
+                    try {
+                        final BigDecimal value = score.getAsBigDecimal();
+                        if (!"PASS".equals(rule.get("state").getAsString()) || value.signum() < 0
+                                || value.compareTo(BigDecimal.ONE) > 0) {
+                            throw corrupt(path, lineNumber,
+                                    ruleAt + ".score must be null unless PASS and otherwise within [0, 1]");
+                        }
+                    } catch (final NumberFormatException | ArithmeticException e) {
+                        throw corrupt(path, lineNumber, ruleAt + ".score is not a supported finite number");
+                    }
+                }
+            }
+            if (grammar == null) {
+                grammar = requireGrammar(path, lineNumber, record, where);
+            }
+            try {
+                candidateDirection = WaveDirection.valueOf(candidate.get("direction").getAsString());
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber, at + ".direction is not a wave direction");
+            }
+            try {
+                topologyCandidates.add(new TopologyCandidate(grammar, candidateDirection, candidatePivots));
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber, at + ".placement: " + e.getMessage());
+            }
+            if (!TopologyAnalyzer.startsInExpectedDirection(grammar, candidateDirection, candidatePivots)
+                    || !TopologyAnalyzer.matchesShape(grammar, candidateDirection, candidatePivots)) {
+                throw corrupt(path, lineNumber,
+                        at + ".placement does not match its grammar, direction and strict leg-price shape");
+            }
+            final int visibleStart = Collections.binarySearch(visiblePivots, candidatePivots.getFirst(),
+                    PIVOT_INDEX_ORDER);
+            for (int p = 0; p < candidatePivots.size(); p++) {
+                final ConfirmedPivot placed = candidatePivots.get(p);
+                final int visibleIndex = visibleStart + p;
+                if (visibleStart < 0 || visibleIndex >= visiblePivots.size()
+                        || visiblePivots.get(visibleIndex).pivotIndex() != placed.pivotIndex()
+                        || visiblePivots.get(visibleIndex).type() != placed.type()
+                        || !visiblePivots.get(visibleIndex).price().isEqual(placed.price())) {
+                    throw corrupt(path, lineNumber,
+                            at + ".placement[" + p + "] does not match a visible pivot in its contiguous window");
+                }
+            }
+        }
+        if (topologyStatus != null) {
+            if (grammar == null) {
+                grammar = requireGrammar(path, lineNumber, record, where);
+            }
+            if ((visiblePivots.size() < 2) != (topologyStatus == TopologyStatus.INSUFFICIENT_HISTORY)) {
+                throw corrupt(path, lineNumber,
+                        where + "status must be INSUFFICIENT_HISTORY exactly when fewer than two pivots are visible");
+            }
+            try {
+                TopologyAnalysis.validateDirection(topologyStatus,
+                        direction.isJsonNull() ? null : WaveDirection.valueOf(direction.getAsString()),
+                        candidateDirection);
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber, where + "direction: " + e.getMessage());
+            }
+        }
+        requireTexts(path, lineNumber, record, "labels", where);
+        final JsonArray recordedLabels = record.getAsJsonArray("labels");
+        final Set<String> labels = new HashSet<>(recordedLabels.size());
+        for (int i = 0; i < recordedLabels.size(); i++) {
+            if (!labels.add(recordedLabels.get(i).getAsString())) {
+                throw corrupt(path, lineNumber, where + "labels[" + i + "] duplicates a label");
+            }
+        }
+        final Set<String> expectedLabels;
+        if (topologyStatus != null) {
+            final int formingStart = requireCoordinate(path, lineNumber, record, "formingStartBarIndex", where);
+            final int formingEnd = requireCoordinate(path, lineNumber, record, "formingEndBarIndex", where);
+            requireText(path, lineNumber, record, "explanation", where);
+            final TopologyAnalysis analysis;
+            try {
+                analysis = new TopologyAnalysis(topologyStatus,
+                        direction.isJsonNull() ? null : WaveDirection.valueOf(direction.getAsString()),
+                        topologyCandidates, record.get("explanation").getAsString(), formingStart, formingEnd);
+            } catch (final IllegalArgumentException e) {
+                throw corrupt(path, lineNumber, where + "formingStartBarIndex/formingEndBarIndex: " + e.getMessage());
+            }
+            if (topologyStatus == TopologyStatus.FORMING) {
+                if (formingEnd > asOfIndex) {
+                    throw corrupt(path, lineNumber,
+                            where + "formingEndBarIndex must not exceed asOfIndex " + asOfIndex);
+                }
+                int startPosition = visiblePivots.size() - 1;
+                while (startPosition >= 0 && visiblePivots.get(startPosition).pivotIndex() > formingStart) {
+                    startPosition--;
+                }
+                final int suffixSize = visiblePivots.size() - startPosition;
+                if (startPosition < 0 || visiblePivots.get(startPosition).pivotIndex() != formingStart
+                        || visiblePivots.getLast().pivotIndex() != formingEnd || suffixSize < 3
+                        || suffixSize >= grammar.requiredPivots()) {
+                    throw corrupt(path, lineNumber, where
+                            + "formingStartBarIndex/formingEndBarIndex must identify a contiguous trailing suffix "
+                            + "of 3 to " + (grammar.requiredPivots() - 1)
+                            + " visible pivots ending at the newest pivot");
+                }
+                final List<ConfirmedPivot> suffix = visiblePivots.subList(startPosition, visiblePivots.size());
+                if (!TopologyAnalyzer.startsInExpectedDirection(grammar, analysis.direction(), suffix)
+                        || !TopologyAnalyzer.matchesShape(grammar, analysis.direction(), suffix)) {
+                    throw corrupt(path, lineNumber, where
+                            + "formingStartBarIndex/formingEndBarIndex suffix must match its grammar and direction");
+                }
+            }
+            expectedLabels = StudyRunner.topologyStabilityLabels(analysis);
+        } else {
+            expectedLabels = alternativeLabels(path, lineNumber, record, visiblePivots, asOfIndex, where);
+        }
+        if (!labels.equals(expectedLabels)) {
+            throw corrupt(path, lineNumber,
+                    where + "labels do not match the recorded outcome: expected " + new TreeSet<>(expectedLabels));
+        }
+    }
+
+    private static Set<String> alternativeLabels(final Path path, final long lineNumber, final JsonObject record,
+            final List<ConfirmedPivot> visiblePivots, final int asOfIndex, final String where) {
+        final String status = record.get("status").getAsString();
+        final String grammarName = record.get("grammar").getAsString();
+        if ("change-point-baseline".equals(grammarName)) {
+            if (!visiblePivots.isEmpty()) {
+                throw corrupt(path, lineNumber, where + "pivots must be empty for change-point-baseline");
+            }
+            // The trace does not capture closes: bind labels to the recorded outcome,
+            // not to a new price-based classification.
+            return switch (status) {
+            case "insufficient-history" -> Set.of("insufficient-history");
+            case "complete" -> Set.of("change@" + asOfIndex);
+            case "no-match" -> Set.of("stable");
+            default -> throw corrupt(path, lineNumber, where + "status is not a change-point-baseline outcome");
+            };
+        }
+        final StudyRunner.AlternativeGrammar grammar;
+        switch (grammarName) {
+        case "3+3" -> grammar = THREE_PLUS_THREE;
+        case "5+5" -> grammar = FIVE_PLUS_FIVE;
+        case "MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3" ->
+            throw corrupt(path, lineNumber, where + "grammar is a topology grammar but kind is alternative");
+        default -> throw corrupt(path, lineNumber, where + "grammar is not a supported alternative grammar");
+        }
+        final String expectedStatus;
+        final Set<String> labels;
+        if (visiblePivots.size() < 2) {
+            expectedStatus = "insufficient-history";
+            labels = Set.of("insufficient-history");
+        } else {
+            final List<String> matches = grammar.matches(visiblePivots);
+            if (!matches.isEmpty()) {
+                expectedStatus = matches.size() == 1 ? "complete" : "ambiguous";
+                labels = Set.copyOf(matches);
+            } else {
+                final Set<String> partialMatches = grammar.partialMatches(visiblePivots);
+                expectedStatus = partialMatches.isEmpty() ? "no-match"
+                        : partialMatches.size() == 1 ? "forming" : "ambiguous";
+                labels = partialMatches.isEmpty() ? Set.of("no-match") : partialMatches;
+            }
+        }
+        if (!status.equals(expectedStatus)) {
+            throw corrupt(path, lineNumber,
+                    where + "status does not match the visible pivots: expected " + expectedStatus);
+        }
+        return labels;
+    }
+
+    private static TopologyGrammar requireGrammar(final Path path, final long lineNumber, final JsonObject record,
+            final String where) {
+        try {
+            return TopologyGrammar.valueOf(record.get("grammar").getAsString());
+        } catch (final IllegalArgumentException e) {
+            throw corrupt(path, lineNumber, where + "grammar is not a topology grammar");
+        }
+    }
+
+    private static ConfirmedPivot requirePlacement(final Path path, final long lineNumber, final JsonElement element,
+            final String at, final boolean confirmed) {
+        final JsonObject placement = requireObject(path, lineNumber, element, at);
+        final int index = requireCoordinate(path, lineNumber, placement, "index", at + ".");
+        final int confirmation = confirmed
+                ? requireCoordinate(path, lineNumber, placement, "confirmationIndex", at + ".")
+                : index;
+        requireText(path, lineNumber, placement, "price", at + ".");
+        requireText(path, lineNumber, placement, "type", at + ".");
+        try {
+            return new ConfirmedPivot(index, confirmation, DecimalNum.valueOf(placement.get("price").getAsString()),
+                    SwingPivotType.valueOf(placement.get("type").getAsString()));
+        } catch (final IllegalArgumentException e) {
+            throw corrupt(path, lineNumber, at + " is not a valid pivot: " + e.getMessage());
+        }
+    }
+
+    private static JsonObject requireObject(final Path path, final long lineNumber, final JsonElement element,
+            final String at) {
+        if (element == null || !element.isJsonObject()) {
+            throw corrupt(path, lineNumber, at + " is not an object");
+        }
+        return element.getAsJsonObject();
+    }
+
+    private static JsonArray requireArray(final Path path, final long lineNumber, final JsonObject owner,
+            final String field, final String where) {
+        final JsonElement value = owner.get(field);
+        if (value == null || !value.isJsonArray()) {
+            throw corrupt(path, lineNumber, where + field + " is missing or not an array");
+        }
+        return value.getAsJsonArray();
+    }
+
+    private static void requireTexts(final Path path, final long lineNumber, final JsonObject owner, final String field,
+            final String where) {
+        final JsonArray values = requireArray(path, lineNumber, owner, field, where);
+        for (int i = 0; i < values.size(); i++) {
+            final JsonElement value = values.get(i);
+            if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+                throw corrupt(path, lineNumber, where + field + "[" + i + "] is not a string");
+            }
+        }
+    }
+
+    private static void requireText(final Path path, final long lineNumber, final JsonObject owner, final String field,
+            final String where) {
+        if (text(owner, field) == null) {
+            throw corrupt(path, lineNumber, where + field + " is missing or not a string");
+        }
+    }
+
+    private static BigDecimal requireInteger(final Path path, final long lineNumber, final JsonObject owner,
+            final String field, final String where) {
+        final JsonElement value = owner.get(field);
+        try {
+            final BigDecimal integer = value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber()
+                    ? value.getAsBigDecimal()
+                    : null;
+            if (integer == null || integer.stripTrailingZeros().scale() > 0) {
+                throw corrupt(path, lineNumber, where + field + " is missing or not an integer");
+            }
+            return integer;
+        } catch (final ArithmeticException | NumberFormatException e) {
+            throw corrupt(path, lineNumber, where + field + " " + value + " is not a supported integer");
+        }
+    }
+
+    private static int requireCoordinate(final Path path, final long lineNumber, final JsonObject owner,
+            final String field, final String where) {
+        final BigDecimal coordinate = requireInteger(path, lineNumber, owner, field, where);
+        try {
+            return coordinate.intValueExact();
+        } catch (final ArithmeticException e) {
+            throw corrupt(path, lineNumber, where + field + " " + owner.get(field) + " is outside the integer range");
+        }
+    }
+
+    private static String text(final JsonObject record, final String field) {
+        final JsonElement value = record.get(field);
+        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() ? value.getAsString()
+                : null;
+    }
+
+    private static IllegalArgumentException corrupt(final Path path, final long lineNumber, final String reason) {
+        return new IllegalArgumentException(path + ": line " + lineNumber + ": " + reason);
+    }
+}
