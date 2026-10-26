@@ -247,6 +247,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @return short-term volume-weighted EMA indicator
      * @since 0.19
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Existing API deliberately returns the shared VWMA helper; a copy would change its identity and consumed history.")
     public VWMAIndicator getShortTermVolumeWeightedEma() {
         return shortTermVwema;
     }
@@ -255,6 +256,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @return long-term volume-weighted EMA indicator
      * @since 0.19
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Existing API deliberately returns the shared VWMA helper; a copy would change its identity and consumed history.")
     public VWMAIndicator getLongTermVolumeWeightedEma() {
         return longTermVwema;
     }
