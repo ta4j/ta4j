@@ -5,6 +5,7 @@ package org.ta4j.core;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.time.Instant;
@@ -1116,5 +1117,46 @@ class BaseTradingRecordTest {
             TradingRecord liveRecord) {
         assertEquals(criterion.calculate(series, baseRecord), criterion.calculate(series, liveRecord),
                 criterion.getClass().getSimpleName());
+    }
+
+    @Test
+    void deserializationValidatesInvariants() throws Exception {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY);
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(record);
+        }
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
+            BaseTradingRecord restored = (BaseTradingRecord) ois.readObject();
+            assertNotNull(restored);
+            assertEquals(TradeType.BUY, restored.getStartingType());
+        }
+
+        BaseTradingRecord recordNullType = new BaseTradingRecord(TradeType.BUY);
+        var startingTypeField = BaseTradingRecord.class.getDeclaredField("startingType");
+        startingTypeField.setAccessible(true);
+        startingTypeField.set(recordNullType, null);
+
+        ByteArrayOutputStream baosNullType = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(baosNullType)) {
+            oos.writeObject(recordNullType);
+        }
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baosNullType.toByteArray()))) {
+            assertThrows(InvalidObjectException.class, ois::readObject);
+        }
+
+        BaseTradingRecord recordNegIndex = new BaseTradingRecord(TradeType.BUY);
+        var nextTradeIndexField = BaseTradingRecord.class.getDeclaredField("nextTradeIndex");
+        nextTradeIndexField.setAccessible(true);
+        nextTradeIndexField.setInt(recordNegIndex, -1);
+
+        ByteArrayOutputStream baosNegIndex = new ByteArrayOutputStream();
+        try (ObjectOutputStream oos = new ObjectOutputStream(baosNegIndex)) {
+            oos.writeObject(recordNegIndex);
+        }
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baosNegIndex.toByteArray()))) {
+            assertThrows(InvalidObjectException.class, ois::readObject);
+        }
     }
 }
