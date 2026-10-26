@@ -5,6 +5,7 @@ package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -44,6 +45,16 @@ public class MassIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         data.barBuilder().openPrice(43.07).closePrice(43.55).highPrice(43.65).lowPrice(43.06).add();
         data.barBuilder().openPrice(43.56).closePrice(43.95).highPrice(43.99).lowPrice(43.53).add();
         data.barBuilder().openPrice(43.93).closePrice(44.47).highPrice(44.58).lowPrice(43.93).add();
+    }
+
+    @Test
+    public void dependenciesExposeBothCalculatedAverages() {
+        MassIndexIndicator mass = new MassIndexIndicator(data, 2, 1);
+        assertThat(mass.getDependencies()).hasSize(2);
+        EMAIndicator single = (EMAIndicator) mass.getDependencies().get(0);
+        EMAIndicator twice = (EMAIndicator) mass.getDependencies().get(1);
+        assertThat(twice.getDependencies()).containsExactly(single);
+        assertThat(mass.getValue(10)).isEqualByComparingTo(single.getValue(10).dividedBy(twice.getValue(10)));
     }
 
     @Test
