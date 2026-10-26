@@ -13,8 +13,6 @@ import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.num.DoubleNumFactory;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Benchmark for MinimumVarianceOptimizer covariance calculation and
@@ -30,8 +28,7 @@ class MinimumVarianceOptimizerBenchmarkTest {
     private static final int ITERATIONS = 100;
 
     @Test
-    void benchmarkMinimumVarianceOptimization() {
-        NumFactory numFactory = DoubleNumFactory.getInstance();
+    public void benchmarkMinimumVarianceOptimization() {
         List<BarSeries> assets = new ArrayList<>(ASSET_COUNT);
 
         for (int i = 0; i < ASSET_COUNT; i++) {
@@ -61,7 +58,7 @@ class MinimumVarianceOptimizerBenchmarkTest {
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
         assertNotNull(lastAllocation);
-        LOG.info("MinimumVarianceOptimizer benchmark: {} assets x {} bars x {} iterations -> {} ms", ASSET_COUNT,
+        LOG.debug("MinimumVarianceOptimizer benchmark: {} assets x {} bars x {} iterations -> {} ms", ASSET_COUNT,
                 BAR_COUNT, ITERATIONS, elapsedMs);
     }
 }
