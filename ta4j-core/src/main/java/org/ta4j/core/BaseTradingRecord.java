@@ -799,9 +799,6 @@ public class BaseTradingRecord implements TradingRecord {
         if (nextSequence < 0) {
             throw new InvalidObjectException("nextSequence must be >= 0");
         }
-        if (startIndex != null && endIndex != null && startIndex > endIndex) {
-            throw new InvalidObjectException("startIndex cannot be greater than endIndex");
-        }
         lock = new ReentrantReadWriteLock();
         transactionCostModel = defaultCostModel(transactionCostModel);
         holdingCostModel = defaultCostModel(holdingCostModel);

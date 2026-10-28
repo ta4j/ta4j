@@ -5,8 +5,8 @@ package org.ta4j.core;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.InvalidObjectException;
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
@@ -1126,44 +1126,62 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    void testInvalidDeserializedRecordStatesAreRejected() {
-        Object validPositionBook = new SerializedPositionBookState(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+    public void deserializationRejectsInvalidRecordState() {
+        Object positionBook = new SerializedPositionBookState(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ArrayDeque<>(), new ArrayList<>());
 
-        assertThrows(InvalidObjectException.class, () -> restoreRecord(
-                new SerializedRecordState(null, ExecutionMatchPolicy.FIFO, validPositionBook, null, null, 0, 0L)));
-        assertThrows(InvalidObjectException.class, () -> restoreRecord(
-                new SerializedRecordState(TradeType.BUY, null, validPositionBook, null, null, 0, 0L)));
-        assertThrows(InvalidObjectException.class, () -> restoreRecord(
-                new SerializedRecordState(TradeType.BUY, ExecutionMatchPolicy.FIFO, null, null, null, 0, 0L)));
-        assertThrows(InvalidObjectException.class, () -> restoreRecord(new SerializedRecordState(TradeType.BUY,
-                ExecutionMatchPolicy.FIFO, validPositionBook, null, null, -1, 0L)));
-        assertThrows(InvalidObjectException.class, () -> restoreRecord(new SerializedRecordState(TradeType.BUY,
-                ExecutionMatchPolicy.FIFO, validPositionBook, null, null, 0, -1L)));
-        assertThrows(InvalidObjectException.class, () -> restoreRecord(
-                new SerializedRecordState(TradeType.BUY, ExecutionMatchPolicy.FIFO, validPositionBook, 10, 5, 0, 0L)));
+        assertRestoreRejected("startingType must not be null",
+                new SerializedRecordState(null, ExecutionMatchPolicy.FIFO, positionBook, 0, 0L));
+        assertRestoreRejected("matchPolicy must not be null",
+                new SerializedRecordState(TradeType.BUY, null, positionBook, 0, 0L));
+        assertRestoreRejected("positionBook must not be null",
+                new SerializedRecordState(TradeType.BUY, ExecutionMatchPolicy.FIFO, null, 0, 0L));
+        assertRestoreRejected("nextTradeIndex must be >= 0",
+                new SerializedRecordState(TradeType.BUY, ExecutionMatchPolicy.FIFO, positionBook, -1, 0L));
+        assertRestoreRejected("nextSequence must be >= 0",
+                new SerializedRecordState(TradeType.BUY, ExecutionMatchPolicy.FIFO, positionBook, 0, -1L));
+    }
 
-        assertThrows(InvalidObjectException.class,
-                () -> restoreRecord(
-                        new SerializedRecordState(
-                                TradeType.BUY, ExecutionMatchPolicy.FIFO, new SerializedPositionBookState(null,
-                                        ExecutionMatchPolicy.FIFO, new ArrayDeque<>(), new ArrayList<>()),
-                                null, null, 0, 0L)));
-        assertThrows(InvalidObjectException.class,
-                () -> restoreRecord(new SerializedRecordState(TradeType.BUY, ExecutionMatchPolicy.FIFO,
-                        new SerializedPositionBookState(TradeType.BUY, null, new ArrayDeque<>(), new ArrayList<>()),
-                        null, null, 0, 0L)));
-        assertThrows(InvalidObjectException.class, () -> restoreRecord(new SerializedRecordState(TradeType.BUY,
-                ExecutionMatchPolicy.FIFO,
-                new SerializedPositionBookState(TradeType.BUY, ExecutionMatchPolicy.FIFO, null, new ArrayList<>()),
-                null, null, 0, 0L)));
-        assertThrows(InvalidObjectException.class, () -> restoreRecord(new SerializedRecordState(TradeType.BUY,
-                ExecutionMatchPolicy.FIFO,
-                new SerializedPositionBookState(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ArrayDeque<>(), null),
-                null, null, 0, 0L)));
+    @Test
+    public void deserializationRejectsInvalidPositionBookState() {
+        Object openLots = new ArrayDeque<>();
+        Object closedPositions = new ArrayList<>();
+
+        assertPositionBookRejected("PositionBook.startingType must not be null",
+                new SerializedPositionBookState(null, ExecutionMatchPolicy.FIFO, openLots, closedPositions));
+        assertPositionBookRejected("PositionBook.matchPolicy must not be null",
+                new SerializedPositionBookState(TradeType.BUY, null, openLots, closedPositions));
+        assertPositionBookRejected("PositionBook.openLots must not be null",
+                new SerializedPositionBookState(TradeType.BUY, ExecutionMatchPolicy.FIFO, null, closedPositions));
+        assertPositionBookRejected("PositionBook.closedPositions must not be null",
+                new SerializedPositionBookState(TradeType.BUY, ExecutionMatchPolicy.FIFO, openLots, null));
+    }
+
+    @Test
+    public void deserializationKeepsEmptyRunWindow() throws Exception {
+        // Non-overlapping BarSeriesManager windows yield startIndex > endIndex.
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, 10, 3, null, null);
+
+        BaseTradingRecord restored = restoreRecord(record);
+
+        assertEquals(10, restored.getStartIndex().intValue());
+        assertEquals(3, restored.getEndIndex().intValue());
+    }
+
+    private static void assertRestoreRejected(String expectedMessage, Object state) {
+        InvalidObjectException exception = assertThrows(InvalidObjectException.class, () -> restoreRecord(state));
+        assertEquals(expectedMessage, exception.getMessage());
+    }
+
+    private static void assertPositionBookRejected(String expectedMessage, Object positionBook) {
+        assertRestoreRejected(expectedMessage,
+                new SerializedRecordState(TradeType.BUY, ExecutionMatchPolicy.FIFO, positionBook, 0, 0L));
     }
 
     private static BaseTradingRecord restoreRecord(Object state) throws Exception {
+        ObjectStreamClass recordDescriptor = ObjectStreamClass.lookup(BaseTradingRecord.class);
+        Class<?> positionBookType = recordDescriptor.getField("positionBook").getType();
+        ObjectStreamClass positionBookDescriptor = ObjectStreamClass.lookup(positionBookType);
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (ObjectOutputStream output = new ObjectOutputStream(bytes)) {
             output.writeObject(state);
@@ -1173,10 +1191,10 @@ class BaseTradingRecordTest {
             protected ObjectStreamClass readClassDescriptor() throws IOException, ClassNotFoundException {
                 ObjectStreamClass descriptor = super.readClassDescriptor();
                 if (descriptor.getName().equals(SerializedRecordState.class.getName())) {
-                    return ObjectStreamClass.lookup(BaseTradingRecord.class);
+                    return recordDescriptor;
                 }
                 if (descriptor.getName().equals(SerializedPositionBookState.class.getName())) {
-                    return ObjectStreamClass.lookup(Class.forName("org.ta4j.core.BaseTradingRecord$PositionBook"));
+                    return positionBookDescriptor;
                 }
                 return descriptor;
             }
@@ -1185,6 +1203,7 @@ class BaseTradingRecordTest {
         }
     }
 
+    // Mirrors the serialized fields of BaseTradingRecord.
     private static final class SerializedRecordState implements Serializable {
         @Serial
         private static final long serialVersionUID = 7960596064337713648L;
@@ -1201,12 +1220,12 @@ class BaseTradingRecordTest {
         private final long nextSequence;
 
         private SerializedRecordState(TradeType startingType, ExecutionMatchPolicy matchPolicy, Object positionBook,
-                Integer startIndex, Integer endIndex, int nextTradeIndex, long nextSequence) {
+                int nextTradeIndex, long nextSequence) {
             this.startingType = startingType;
             this.matchPolicy = matchPolicy;
             this.positionBook = positionBook;
-            this.startIndex = startIndex;
-            this.endIndex = endIndex;
+            this.startIndex = null;
+            this.endIndex = null;
             this.name = "TestRecord";
             this.nextTradeIndex = nextTradeIndex;
             this.modificationCount = 0L;
@@ -1215,6 +1234,7 @@ class BaseTradingRecordTest {
         }
     }
 
+    // Mirrors the serialized fields of BaseTradingRecord.PositionBook.
     private static final class SerializedPositionBookState implements Serializable {
         @Serial
         private static final long serialVersionUID = -6897162194206253952L;
