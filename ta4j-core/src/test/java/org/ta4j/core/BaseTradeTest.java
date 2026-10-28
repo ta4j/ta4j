@@ -10,8 +10,10 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -191,5 +193,56 @@ class BaseTradeTest {
         assertEquals(earlierTime, trade.getTime());
         assertEquals("order-earlier", trade.getOrderId());
         assertEquals("corr-earlier", trade.getCorrelationId());
+    }
+
+    @Test
+    void deserializationValidatesInvariants() throws Exception {
+        BaseTrade validTrade = new BaseTrade(1, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(),
+                NUM_FACTORY.zero(), ExecutionSide.BUY, null, null);
+
+        assertDeserializationFails(validTrade, "index", -1);
+        assertDeserializationFails(validTrade, "type", null);
+        assertDeserializationFails(validTrade, "pricePerAsset", null);
+        assertDeserializationFails(validTrade, "amount", null);
+        assertDeserializationFails(validTrade, "amount", NUM_FACTORY.zero());
+        assertDeserializationFails(validTrade, "amount", NUM_FACTORY.one().negate());
+        assertDeserializationFails(validTrade, "fills", null);
+        assertDeserializationFails(validTrade, "cost", null);
+        assertDeserializationFails(validTrade, "netPrice", null);
+    }
+
+    private void assertDeserializationFails(BaseTrade original, String fieldName, Object invalidValue)
+            throws Exception {
+        BaseTrade tampered = copyTrade(original);
+        Field field = BaseTrade.class.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(tampered, invalidValue);
+
+        byte[] serialized;
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream();
+                ObjectOutputStream objectOutput = new ObjectOutputStream(output)) {
+            objectOutput.writeObject(tampered);
+            objectOutput.flush();
+            serialized = output.toByteArray();
+        }
+
+        try (ByteArrayInputStream input = new ByteArrayInputStream(serialized);
+                ObjectInputStream objectInput = new ObjectInputStream(input)) {
+            assertThrows(InvalidObjectException.class, objectInput::readObject);
+        }
+    }
+
+    private BaseTrade copyTrade(BaseTrade original) throws Exception {
+        byte[] serialized;
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream();
+                ObjectOutputStream objectOutput = new ObjectOutputStream(output)) {
+            objectOutput.writeObject(original);
+            objectOutput.flush();
+            serialized = output.toByteArray();
+        }
+        try (ByteArrayInputStream input = new ByteArrayInputStream(serialized);
+                ObjectInputStream objectInput = new ObjectInputStream(input)) {
+            return (BaseTrade) objectInput.readObject();
+        }
     }
 }

@@ -5,6 +5,9 @@ package org.ta4j.core;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -650,6 +653,37 @@ public class BaseTrade implements Trade {
             }
             return preservedCost.equals(other.preservedCost);
         }
+    }
+
+    @Serial
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (index < 0) {
+            throw new InvalidObjectException("Index must be non-negative");
+        }
+        if (type == null) {
+            throw new InvalidObjectException("Type must not be null");
+        }
+        if (pricePerAsset == null) {
+            throw new InvalidObjectException("Price per asset must not be null");
+        }
+        if (amount == null || amount.isZero() || amount.isNegative()) {
+            throw new InvalidObjectException("Amount must be positive");
+        }
+        if (fills == null) {
+            throw new InvalidObjectException("Fills list must not be null");
+        }
+        if (cost == null) {
+            throw new InvalidObjectException("Cost must not be null");
+        }
+        if (netPrice == null) {
+            throw new InvalidObjectException("Net price must not be null");
+        }
+    }
+
+    @Serial
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("BaseTrade class data is required");
     }
 
 }
