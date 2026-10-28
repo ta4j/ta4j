@@ -9,7 +9,7 @@
 
 ### Changed
 
-- **Custom bar mutation contract (CF-727)**: `Bar` and `BarSeries.addBar` now document that retained bars must publish mutations to their series or remain unchanged after a newer bar is appended. Non-publishing custom bars are fingerprinted only while latest; `BaseBar` and `BaseRealtimeBar` retain their notification support for historical mutations in the built-in series.
+- **Custom bar mutation contract (CF-727)**: `Bar` and `BarSeries.addBar` now document that retained bars must publish mutations to their series or remain unchanged after a newer bar is appended. Non-publishing custom bars are fingerprinted only while they are terminal; `BaseBar` and `BaseRealtimeBar` retain their notification support for historical mutations in the built-in series.
 
 - **Moving-series guidance for 0.27.0**: the [moving-series continuation example](https://ta4j.github.io/ta4j-wiki/Bar-series-and-bars.html#moving-series-and-continued-indicator-state) and [indicator cache policies](https://ta4j.github.io/ta4j-wiki/Technical-indicators.html#moving-series-cache-policies) explain continued versus fresh indicator state, mutation-aware latest-bar caching and retained-window exceptions in 0.27.0. Later releases extend continuation to additional indicators; consult their changelog entries for those changes.
 - **Leaner `DoubleNum` forecast summaries**: Monte Carlo summaries retain primitive-double sorting for `DoubleNum` samples and skip unused higher moments while keeping moment calculations in `Num` arithmetic and preserving the series' numeric ownership.
