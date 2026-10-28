@@ -62,6 +62,7 @@ import org.ta4j.core.num.Num;
  * not consume evaluation budget.
  * </p>
  *
+ * <p>
  * <b>Budget semantics.</b> {@code maxEvaluations} is the exact budget of unique
  * objective evaluations across training and holdout: cache hits and duplicate
  * proposals never consume it, and the final generation or swarm batch is
