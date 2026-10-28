@@ -24,6 +24,8 @@
 
 ### Fixed
 
+- **Safer saved trades**: Java deserialization rejects missing `BaseTrade` state and indices below -1, while preserving zero and negative scalar amounts and the deferred index -1 supported by trade construction.
+
 - **Complete composite indicator dependency graphs (CF-729)**: MACD, PPO, Mass Index, RWI high/low, MACD-V, volatility-normalized MACD and Chaikin Oscillator expose their internal averages through `getDependencies()`. Dependency inspection and explicit-reset traversal can reach those helpers immediately after construction; read-every-bar smoothing continuation is unchanged.
 
 - **Safer saved positions**: Java deserialization rejects missing class data, null/mismatched trade directions, exits without entries and conflicting retained trade cost models. Valid new/open/closed positions, constructor-supported index orderings and mixed legacy/live trade implementations still round-trip; restored cost queries reuse a retained trade model where available, including serializable custom models.

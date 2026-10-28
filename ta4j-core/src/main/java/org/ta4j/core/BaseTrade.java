@@ -658,8 +658,8 @@ public class BaseTrade implements Trade {
     @Serial
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         stream.defaultReadObject();
-        if (index < 0) {
-            throw new InvalidObjectException("Index must be non-negative");
+        if (index < -1) {
+            throw new InvalidObjectException("Index must be at least -1");
         }
         if (type == null) {
             throw new InvalidObjectException("Type must not be null");
@@ -667,8 +667,8 @@ public class BaseTrade implements Trade {
         if (pricePerAsset == null) {
             throw new InvalidObjectException("Price per asset must not be null");
         }
-        if (amount == null || amount.isZero() || amount.isNegative()) {
-            throw new InvalidObjectException("Amount must be positive");
+        if (amount == null) {
+            throw new InvalidObjectException("Amount must not be null");
         }
         if (fills == null) {
             throw new InvalidObjectException("Fills list must not be null");
