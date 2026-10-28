@@ -47,8 +47,8 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 
 ## Retained bar mutation contract
 
-- Follow `Bar` and `BarSeries.addBar`: retained bars must publish their mutations
-  to the retaining series, or must not be mutated after a newer bar is appended.
+- Retained bars must publish their mutations to the retaining series, or must
+  not be mutated after a newer bar is appended.
   `CachedIndicator` fingerprints non-publishing custom bars only while terminal;
   the former-terminal promotion recheck does not provide ongoing historical
   mutation detection.

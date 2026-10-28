@@ -302,12 +302,6 @@ public interface BarSeries extends Serializable {
      * The {@code endIndex} is set to {@code 0} if not already initialized, or
      * incremented if it matches the end of the series.<br>
      * Exceeding bars are removed.
-     * <p>
-     * Retained bars must publish their mutations to this series, or must not be
-     * mutated after a newer bar is appended. In particular, a custom {@link Bar}
-     * that does not publish mutations must remain unchanged once it is no longer
-     * terminal; cached indicators do not fingerprint it after that point. See
-     * {@link Bar} for the mutation contract and built-in notification support.
      *
      * @param bar the bar to be added
      * @see BarSeries#setMaximumBarCount(int)
@@ -324,12 +318,6 @@ public interface BarSeries extends Serializable {
      * The {@code endIndex} is set to {@code 0} if not already initialized, or
      * incremented if it matches the end of the series.<br>
      * Exceeding bars are removed.
-     * <p>
-     * Retained bars must publish their mutations to this series, or must not be
-     * mutated after a newer bar is appended. In particular, a custom {@link Bar}
-     * that does not publish mutations must remain unchanged once it is no longer
-     * terminal; cached indicators do not fingerprint it after that point. See
-     * {@link Bar} for the mutation contract and built-in notification support.
      *
      * @param bar     the bar to be added
      * @param replace true to replace the latest bar. Some exchanges continuously
