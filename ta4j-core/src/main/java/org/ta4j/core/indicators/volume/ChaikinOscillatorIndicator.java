@@ -31,12 +31,15 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
      * @param longBarCount  the bar count for {@link #emaLong} (usually 10)
      */
     public ChaikinOscillatorIndicator(BarSeries series, int shortBarCount, int longBarCount) {
-        super(series);
+        AccumulationDistributionIndicator cumulative = new AccumulationDistributionIndicator(series);
+        EMAIndicator shortEma = new EMAIndicator(cumulative, shortBarCount);
+        EMAIndicator longEma = new EMAIndicator(cumulative, longBarCount);
+        super(shortEma, longEma);
         this.shortBarCount = shortBarCount;
         this.longBarCount = longBarCount;
-        this.accumulationDistributionIndicator = new AccumulationDistributionIndicator(series);
-        this.emaShort = new EMAIndicator(accumulationDistributionIndicator, shortBarCount);
-        this.emaLong = new EMAIndicator(accumulationDistributionIndicator, longBarCount);
+        this.accumulationDistributionIndicator = cumulative;
+        this.emaShort = shortEma;
+        this.emaLong = longEma;
     }
 
     /**

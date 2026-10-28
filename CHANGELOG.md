@@ -24,6 +24,8 @@
 
 ### Fixed
 
+- **Complete composite indicator dependency graphs (CF-729)**: MACD, PPO, Mass Index, RWI high/low, MACD-V, volatility-normalized MACD and Chaikin Oscillator expose their internal averages through `getDependencies()`. Dependency inspection and explicit-reset traversal can reach those helpers immediately after construction; read-every-bar smoothing continuation is unchanged.
+
 - **Safer saved positions**: Java deserialization rejects missing class data, null/mismatched trade directions, exits without entries and conflicting retained trade cost models. Valid new/open/closed positions, constructor-supported index orderings and mixed legacy/live trade implementations still round-trip; restored cost queries reuse a retained trade model where available, including serializable custom models.
 - **Reject invalid saved bars and series**: Java object loading validates `BaseBar` prices, period, volume, amount and trade count, and `BaseBarSeries` retained indices and appendability. Corrupt state fails with `InvalidObjectException`; valid series and all-NaN placeholder bars still round-trip normally.
 - **Safer saved trading records**: Java deserialization of `BaseTradingRecord` rejects a missing starting type, match policy, position book, open-lot or closed-position collection, or a negative next trade index with `InvalidObjectException`. Valid records still round-trip.
