@@ -784,6 +784,21 @@ public class BaseTradingRecord implements TradingRecord {
     @Serial
     private void readObject(ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
         inputStream.defaultReadObject();
+        if (startingType == null) {
+            throw new InvalidObjectException("startingType must not be null");
+        }
+        if (matchPolicy == null) {
+            throw new InvalidObjectException("matchPolicy must not be null");
+        }
+        if (positionBook == null) {
+            throw new InvalidObjectException("positionBook must not be null");
+        }
+        if (nextTradeIndex < 0) {
+            throw new InvalidObjectException("nextTradeIndex must be >= 0");
+        }
+        if (nextSequence < 0) {
+            throw new InvalidObjectException("nextSequence must be >= 0");
+        }
         lock = new ReentrantReadWriteLock();
         transactionCostModel = defaultCostModel(transactionCostModel);
         holdingCostModel = defaultCostModel(holdingCostModel);
@@ -1373,6 +1388,18 @@ public class BaseTradingRecord implements TradingRecord {
         @Serial
         private void readObject(ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
             inputStream.defaultReadObject();
+            if (startingType == null) {
+                throw new InvalidObjectException("PositionBook.startingType must not be null");
+            }
+            if (matchPolicy == null) {
+                throw new InvalidObjectException("PositionBook.matchPolicy must not be null");
+            }
+            if (openLots == null) {
+                throw new InvalidObjectException("PositionBook.openLots must not be null");
+            }
+            if (closedPositions == null) {
+                throw new InvalidObjectException("PositionBook.closedPositions must not be null");
+            }
             if (transactionCostModel == null) {
                 transactionCostModel = RecordedTradeCostModel.INSTANCE;
             }
