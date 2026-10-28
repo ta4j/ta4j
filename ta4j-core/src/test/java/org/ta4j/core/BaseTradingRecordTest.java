@@ -5,10 +5,17 @@ package org.ta4j.core;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -1120,43 +1127,137 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    void deserializationValidatesInvariants() throws Exception {
-        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY);
+    public void deserializationRestoresWellFormedStandInState() throws Exception {
+        BaseTradingRecord restored = restoreRecord(new SerializedRecordState());
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-            oos.writeObject(record);
-        }
-        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()))) {
-            BaseTradingRecord restored = (BaseTradingRecord) ois.readObject();
-            assertNotNull(restored);
-            assertEquals(TradeType.BUY, restored.getStartingType());
-        }
+        assertEquals(TradeType.BUY, restored.getStartingType());
+        assertEquals(ExecutionMatchPolicy.FIFO, restored.getMatchPolicy());
+        assertTrue(restored.getTrades().isEmpty());
+        assertTrue(restored.getPositions().isEmpty());
+    }
 
-        BaseTradingRecord recordNullType = new BaseTradingRecord(TradeType.BUY);
-        var startingTypeField = BaseTradingRecord.class.getDeclaredField("startingType");
-        startingTypeField.setAccessible(true);
-        startingTypeField.set(recordNullType, null);
+    @Test
+    public void deserializationRejectsNullStartingType() {
+        SerializedRecordState state = new SerializedRecordState();
+        state.startingType = null;
 
-        ByteArrayOutputStream baosNullType = new ByteArrayOutputStream();
-        try (ObjectOutputStream oos = new ObjectOutputStream(baosNullType)) {
-            oos.writeObject(recordNullType);
-        }
-        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baosNullType.toByteArray()))) {
-            assertThrows(InvalidObjectException.class, ois::readObject);
-        }
+        assertRejected("startingType must not be null", state);
+    }
 
-        BaseTradingRecord recordNegIndex = new BaseTradingRecord(TradeType.BUY);
-        var nextTradeIndexField = BaseTradingRecord.class.getDeclaredField("nextTradeIndex");
-        nextTradeIndexField.setAccessible(true);
-        nextTradeIndexField.setInt(recordNegIndex, -1);
+    @Test
+    public void deserializationRejectsNullMatchPolicy() {
+        SerializedRecordState state = new SerializedRecordState();
+        state.matchPolicy = null;
 
-        ByteArrayOutputStream baosNegIndex = new ByteArrayOutputStream();
-        try (ObjectOutputStream oos = new ObjectOutputStream(baosNegIndex)) {
-            oos.writeObject(recordNegIndex);
+        assertRejected("matchPolicy must not be null", state);
+    }
+
+    @Test
+    public void deserializationRejectsNullPositionBook() {
+        SerializedRecordState state = new SerializedRecordState();
+        state.positionBook = null;
+
+        assertRejected("positionBook must not be null", state);
+    }
+
+    @Test
+    public void deserializationRejectsNegativeNextTradeIndex() {
+        SerializedRecordState state = new SerializedRecordState();
+        state.nextTradeIndex = -1;
+
+        assertRejected("nextTradeIndex must be >= 0", state);
+    }
+
+    @Test
+    public void deserializationRejectsNullPositionBookStartingType() {
+        SerializedRecordState state = new SerializedRecordState();
+        state.positionBook.startingType = null;
+
+        assertRejected("startingType must not be null", state);
+    }
+
+    @Test
+    public void deserializationRejectsNullPositionBookMatchPolicy() {
+        SerializedRecordState state = new SerializedRecordState();
+        state.positionBook.matchPolicy = null;
+
+        assertRejected("matchPolicy must not be null", state);
+    }
+
+    @Test
+    public void deserializationRejectsNullOpenLots() {
+        SerializedRecordState state = new SerializedRecordState();
+        state.positionBook.openLots = null;
+
+        assertRejected("openLots must not be null", state);
+    }
+
+    @Test
+    public void deserializationRejectsNullClosedPositions() {
+        SerializedRecordState state = new SerializedRecordState();
+        state.positionBook.closedPositions = null;
+
+        assertRejected("closedPositions must not be null", state);
+    }
+
+    private static void assertRejected(String message, Object state) {
+        InvalidObjectException exception = assertThrows(InvalidObjectException.class, () -> restoreRecord(state));
+
+        assertEquals(message, exception.getMessage());
+    }
+
+    private static BaseTradingRecord restoreRecord(Object state) throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ObjectOutputStream output = new ObjectOutputStream(bytes)) {
+            output.writeObject(state);
         }
-        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baosNegIndex.toByteArray()))) {
-            assertThrows(InvalidObjectException.class, ois::readObject);
+        ObjectStreamClass recordDescriptor = ObjectStreamClass.lookup(BaseTradingRecord.class);
+        Class<?> positionBookType = recordDescriptor.getField("positionBook").getType();
+        ObjectStreamClass positionBookDescriptor = ObjectStreamClass.lookup(positionBookType);
+        try (ObjectInputStream input = new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray())) {
+            @Override
+            protected ObjectStreamClass readClassDescriptor() throws IOException, ClassNotFoundException {
+                ObjectStreamClass descriptor = super.readClassDescriptor();
+                if (descriptor.getName().equals(SerializedRecordState.class.getName())) {
+                    return recordDescriptor;
+                }
+                if (descriptor.getName().equals(SerializedPositionBookState.class.getName())) {
+                    return positionBookDescriptor;
+                }
+                return descriptor;
+            }
+        }) {
+            return (BaseTradingRecord) input.readObject();
         }
+    }
+
+    /**
+     * Mirrors BaseTradingRecord's persisted fields without private reflection.
+     */
+    private static final class SerializedRecordState implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 1L;
+        private Integer endIndex;
+        private ExecutionMatchPolicy matchPolicy = ExecutionMatchPolicy.FIFO;
+        private long modificationCount;
+        private String name;
+        private long nextSequence;
+        private int nextTradeIndex;
+        private SerializedPositionBookState positionBook = new SerializedPositionBookState();
+        private Integer startIndex;
+        private TradeType startingType = TradeType.BUY;
+        private Num totalFees;
+    }
+
+    /**
+     * Mirrors PositionBook's persisted fields without private reflection.
+     */
+    private static final class SerializedPositionBookState implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 1L;
+        private List<Object> closedPositions = new ArrayList<>();
+        private ExecutionMatchPolicy matchPolicy = ExecutionMatchPolicy.FIFO;
+        private Deque<Object> openLots = new ArrayDeque<>();
+        private TradeType startingType = TradeType.BUY;
     }
 }
