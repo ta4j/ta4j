@@ -21,16 +21,18 @@ import org.ta4j.core.num.NumFactory;
  * period. It represents the "end bar" of a time period.
  * <p>
  * A bar retained by a {@link BarSeries} must publish its mutations to the
- * retaining series, or must not be mutated after a newer bar is appended. Custom
- * implementations that do not publish mutations may be updated while they are
- * the terminal (latest) bar, but must remain unchanged once they are no longer
- * terminal. Cached indicators fingerprint a non-publishing bar only while it is
- * terminal; later unannounced mutations can leave cached indicator values stale.
+ * retaining series, or must not be mutated after a newer bar is appended.
+ * Custom implementations that do not publish mutations may be updated while
+ * they are the terminal (latest) bar, but must remain unchanged once they are
+ * no longer terminal. Cached indicators fingerprint a non-publishing bar only
+ * while it is terminal; later unannounced mutations can leave cached indicator
+ * values stale.
  * <p>
  * {@link BaseBar} and {@link BaseRealtimeBar} publish their supported mutations
- * when retained by {@link BaseBarSeries} (including {@link ConcurrentBarSeries}),
- * even after a newer bar is appended. The restriction on non-publishing custom
- * bars does not remove this support for historical mutations.
+ * when retained by {@link BaseBarSeries} (including
+ * {@link ConcurrentBarSeries}), even after a newer bar is appended. The
+ * restriction on non-publishing custom bars does not remove this support for
+ * historical mutations.
  *
  * @see BarSeries#addBar(Bar)
  */
