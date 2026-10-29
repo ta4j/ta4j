@@ -452,8 +452,8 @@ public class PortfolioSeriesManagerTest {
     @Test
     public void removedAssetDiscardsNextOpenExitBeyondLastProcessedBar() {
         LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", series("ALPHA", 10, 11, 12)));
-        PortfolioStrategy strategy = new BasePortfolioStrategy("removed-next-exit", (asset, index, record) -> index == 0,
-                (asset, index, record) -> {
+        PortfolioStrategy strategy = new BasePortfolioStrategy("removed-next-exit",
+                (asset, index, record) -> index == 0, (asset, index, record) -> {
                     view.removeAsset(asset);
                     return true;
                 });
