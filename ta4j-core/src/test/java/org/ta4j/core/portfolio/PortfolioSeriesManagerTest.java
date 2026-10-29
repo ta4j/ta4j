@@ -450,8 +450,44 @@ public class PortfolioSeriesManagerTest {
     }
 
     @Test
+    public void removedAssetDiscardsNextOpenExitBeyondLastProcessedBar() {
+        LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", series("ALPHA", 10, 11, 12)));
+        PortfolioStrategy strategy = new BasePortfolioStrategy("removed-next-exit", (asset, index, record) -> index == 0,
+                (asset, index, record) -> {
+                    view.removeAsset(asset);
+                    return true;
+                });
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(),
+                new TradeOnNextOpenModel());
+
+        Position position = result.record("ALPHA").getPositions().getFirst();
+        assertEquals(1, position.getEntry().getIndex());
+        assertEquals(1, position.getExit().getIndex());
+        assertEquals(0, result.openPositionCount());
+    }
+
+    @Test
+    public void removedAssetDiscardsNextOpenEntryBeyondLastProcessedBar() {
+        LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", series("ALPHA", 10, 11, 12)));
+        PortfolioStrategy strategy = new BasePortfolioStrategy("removed-next-entry", (asset, index, record) -> {
+            view.removeAsset(asset);
+            return true;
+        }, (asset, index, record) -> false);
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(),
+                new TradeOnNextOpenModel());
+
+        assertTrue(result.record("ALPHA").getPositions().isEmpty());
+        assertEquals(0, result.openPositionCount());
+        assertTrue(result.enter("ALPHA", 1, view.numFactory().one(), view.numFactory().one()));
+        assertEquals(1, result.openPositionCount());
+    }
+
+    @Test
     public void emptyRunReturnsImmediateRecordsForLaterAssets() {
-        BarSeries alpha = new BaseBarSeriesBuilder().withName("ALPHA").withNumFactory(DoubleNumFactory.getInstance())
+        BarSeries alpha = new BaseBarSeriesBuilder().withName("ALPHA")
+                .withNumFactory(DoubleNumFactory.getInstance())
                 .build();
         LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", alpha));
         PortfolioStrategy strategy = new BasePortfolioStrategy("empty", (asset, index, record) -> false,
@@ -467,7 +503,8 @@ public class PortfolioSeriesManagerTest {
 
     @Test
     public void skippedAndLazyRecordsAreImmediateAfterNonemptyRun() {
-        BarSeries alpha = new BaseBarSeriesBuilder().withName("ALPHA").withNumFactory(DoubleNumFactory.getInstance())
+        BarSeries alpha = new BaseBarSeriesBuilder().withName("ALPHA")
+                .withNumFactory(DoubleNumFactory.getInstance())
                 .build();
         LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", alpha, "BETA", series("BETA", 10)));
         PortfolioStrategy strategy = new BasePortfolioStrategy("skipped", (asset, index, record) -> {

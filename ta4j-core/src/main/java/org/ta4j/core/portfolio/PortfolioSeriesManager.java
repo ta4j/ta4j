@@ -335,6 +335,7 @@ public final class PortfolioSeriesManager {
         }
         for (AssetExecution asset : assets) {
             if (!asset.finished && asset.lastProcessedIndex >= 0) {
+                asset.record.discardUnprocessedTrades();
                 closingModel.onRunEnd(asset.lastProcessedIndex, asset.record, asset.window);
                 asset.record.finish();
             }
@@ -474,6 +475,10 @@ public final class PortfolioSeriesManager {
             if (deferred.isEmpty()) {
                 deferred = null;
             }
+        }
+
+        private void discardUnprocessedTrades() {
+            deferred = null;
         }
 
         private void finish() {
