@@ -22,7 +22,7 @@ import org.ta4j.core.num.NumFactory;
  * A volume bar is sampled after a fixed number of contracts (volume) have been
  * traded.
  */
-public class VolumeBarBuilder implements BarBuilder {
+public final class VolumeBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
     private final RemainderCarryOverPolicy carryOverPolicy;

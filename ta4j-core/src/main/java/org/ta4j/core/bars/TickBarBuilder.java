@@ -21,7 +21,7 @@ import org.ta4j.core.num.NumFactory;
 /**
  * A tick bar is sampled after a fixed number of ticks.
  */
-public class TickBarBuilder implements BarBuilder {
+public final class TickBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
     private final boolean realtimeBars;

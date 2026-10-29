@@ -22,7 +22,7 @@ import org.ta4j.core.num.NumFactory;
  * An amount bar is sampled after a fixed number of amount (= price * volume)
  * have been traded.
  */
-public class AmountBarBuilder implements BarBuilder {
+public final class AmountBarBuilder implements BarBuilder {
 
     private Num distinctVolume;
     private final Num amountThreshold;

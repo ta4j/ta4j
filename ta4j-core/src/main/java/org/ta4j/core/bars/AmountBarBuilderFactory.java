@@ -16,7 +16,7 @@ import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 
-public class AmountBarBuilderFactory implements BarBuilderFactory {
+public final class AmountBarBuilderFactory implements BarBuilderFactory {
 
     private static final long serialVersionUID = 1L;
 
