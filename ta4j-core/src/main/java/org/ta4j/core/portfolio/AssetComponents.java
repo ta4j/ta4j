@@ -20,15 +20,17 @@ final class AssetComponents<T> {
         this.factory = Objects.requireNonNull(factory, "factory");
     }
 
-    void bind(PortfolioSeriesView newView) {
+    synchronized void bind(PortfolioSeriesView newView) {
         Objects.requireNonNull(newView, "view");
         if (view != newView) {
             entries.clear();
             view = newView;
+        } else if (!(newView instanceof PortfolioSeries)) {
+            entries.keySet().retainAll(newView.assets());
         }
     }
 
-    T get(PortfolioSeriesView newView, String asset) {
+    synchronized T get(PortfolioSeriesView newView, String asset) {
         bind(newView);
         Entry<T> entry = entries.get(asset);
         // Snapshot views return detached copies on each call; other views may
@@ -42,6 +44,10 @@ final class AssetComponents<T> {
             entries.put(asset, entry);
         }
         return entry.component();
+    }
+
+    synchronized int size() {
+        return entries.size();
     }
 
     private record Entry<T>(BarSeries series, T component) {

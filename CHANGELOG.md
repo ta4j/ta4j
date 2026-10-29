@@ -26,6 +26,8 @@
 
 ### Fixed
 
+- **Live portfolio cache retention**: per-asset strategy and rule caches discard removed members on subsequent cache access; re-added members receive fresh components after eviction.
+
 - **Safer saved trades**: Java deserialization rejects missing `BaseTrade` state and indices below -1, while preserving zero and negative scalar amounts and the deferred index -1 supported by trade construction.
 
 - **Complete composite indicator dependency graphs (CF-729)**: MACD, PPO, Mass Index, RWI high/low, MACD-V, volatility-normalized MACD and Chaikin Oscillator expose their internal averages through `getDependencies()`. Dependency inspection and explicit-reset traversal can reach those helpers immediately after construction; read-every-bar smoothing continuation is unchanged.

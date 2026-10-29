@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.portfolio.PortfolioFixtures.series;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -56,6 +57,29 @@ public class PerAssetStrategyTest {
         assertTrue(view.removeAsset("A"));
         view.addAsset("A", series("replacement", 3, 3));
         assertTrue(strategy.shouldEnter("A", 0, record));
+    }
+
+    @Test
+    public void evictsRemovedAssetsDuringLiveViewAccess() {
+        BarSeries original = series("original", 3);
+        LivePortfolioSeries view = new LivePortfolioSeries(Map.of("A", original, "B", series("other", 3)));
+        PortfolioTradingRecord record = new BasePortfolioTradingRecord(view);
+        AtomicInteger created = new AtomicInteger();
+        PerAssetStrategy strategy = PerAssetStrategy.of(source -> {
+            created.incrementAndGet();
+            return strategyFor(source, TradeType.BUY, 0);
+        });
+        strategy.bind(view);
+        assertEquals(2, strategy.cachedStrategyCount());
+
+        assertTrue(view.removeAsset("A"));
+        assertTrue(strategy.shouldEnter("B", 0, record));
+        assertEquals(1, strategy.cachedStrategyCount());
+
+        view.addAsset("A", original);
+        assertTrue(strategy.shouldEnter("A", 0, record));
+        assertEquals(3, created.get());
+        assertEquals(2, strategy.cachedStrategyCount());
     }
 
     @Test

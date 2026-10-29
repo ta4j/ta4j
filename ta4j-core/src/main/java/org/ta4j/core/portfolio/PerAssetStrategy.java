@@ -24,7 +24,11 @@ import com.google.gson.JsonParser;
  * strategy is available immediately; a JSON or arbitrary factory must be bound
  * before requesting its starting type or unstable bars. All assets must have
  * the same entry type and unstable-bar count. Instances cache per-asset
- * strategies and are not thread-safe.
+ * strategies and are not thread-safe. On subsequent cache access or binding,
+ * components for assets no longer in the view are discarded. An asset re-added
+ * after eviction receives a newly constructed strategy, even if it uses the
+ * same series; re-addition before eviction retains it only if the series is
+ * unchanged.
  *
  * <p>
  * Arbitrary factories can depend on the asset series in ways a descriptor
@@ -153,10 +157,10 @@ public final class PerAssetStrategy implements PortfolioStrategy {
         Objects.requireNonNull(newView, "view");
         if (view != newView) {
             view = newView;
-            strategies.bind(newView);
             startingType = expectedType;
             unstableBars = expectedUnstableBars;
         }
+        strategies.bind(newView);
         try {
             if (newView.assets().isEmpty()) {
                 throw new IllegalStateException("Cannot determine per-asset strategy metadata from an empty view");
@@ -189,6 +193,10 @@ public final class PerAssetStrategy implements PortfolioStrategy {
             invalidateBinding();
             throw new IllegalArgumentException("Serialized per-asset strategy metadata does not match asset " + asset);
         }
+    }
+
+    int cachedStrategyCount() {
+        return strategies.size();
     }
 
     private void invalidateBinding() {
