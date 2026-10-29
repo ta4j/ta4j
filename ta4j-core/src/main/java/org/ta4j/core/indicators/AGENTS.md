@@ -45,21 +45,6 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 - For EMA-like smoothing, prefer extending `AbstractEMAIndicator` to preserve NaN reset behavior and unstable-period handling.
 - Prefer exposing helper methods (for example returning the source index of a detected event) when they improve testing and downstream reuse.
 
-## Retained bar mutation contract
-
-- Retained bars must publish their mutations to the retaining series, or must
-  not be mutated after a newer bar is appended.
-  `CachedIndicator` fingerprints non-publishing custom bars only while terminal;
-  the former-terminal promotion recheck does not provide ongoing historical
-  mutation detection.
-- Preserve `BaseBar` and `BaseRealtimeBar` notifications for supported mutations
-  at any retained index in `BaseBarSeries` and `ConcurrentBarSeries`. Do not
-  impose historical immutability on these publishing bars or weaken an
-  indicator's explicitly stronger mutation guarantees.
-- Test supported publication and terminal-promotion behavior in existing test
-  classes. Do not assert stale results from unsupported, unannounced historical
-  mutations as the expected indicator contract.
-
 ## Unstable bar contract
 
 - `getCountOfUnstableBars()` must represent the first index with stable output.

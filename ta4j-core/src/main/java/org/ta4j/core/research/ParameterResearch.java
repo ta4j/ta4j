@@ -62,7 +62,6 @@ import org.ta4j.core.num.Num;
  * not consume evaluation budget.
  * </p>
  *
- * <p>
  * <b>Budget semantics.</b> {@code maxEvaluations} is the exact budget of unique
  * objective evaluations across training and holdout: cache hits and duplicate
  * proposals never consume it, and the final generation or swarm batch is
@@ -73,17 +72,15 @@ import org.ta4j.core.num.Num;
  * an {@link IllegalArgumentException}. The report separates training attempts
  * from holdout attempts in {@link RunCounts#attempted()} and
  * {@link RunCounts#holdoutAttempted()}. A budget-limited grid run reports
- * {@link TerminationReason#EVALUATION_BUDGET_EXHAUSTED} when it has valid
- * candidates, or {@link TerminationReason#NO_VALID_CANDIDATES} when none are
- * valid, and never claims exhaustive optimality; when fewer than {@code topK}
- * valid training candidates exist, holdout reservation points that can no
- * longer run stay visible as {@link RunCounts#budgetRemaining()}. Objective or
- * candidate-factory failures that occur after an attempted evaluation do
- * consume budget and are ranked below every valid evaluation. The run
- * configuration — including {@code topK} and the search plan — is snapshotted
- * when {@code run()} starts, so callbacks that retain the builder and mutate it
- * during a run never change the running search's budget, holdout reservation,
- * or reported plan.
+ * {@link TerminationReason#EVALUATION_BUDGET_EXHAUSTED} and never claims
+ * exhaustive optimality; when fewer than {@code topK} valid training candidates
+ * exist, holdout reservation points that can no longer run stay visible as
+ * {@link RunCounts#budgetRemaining()}. Objective or candidate-factory failures
+ * that occur after an attempted evaluation do consume budget and are ranked
+ * below every valid evaluation. The run configuration — including {@code topK}
+ * and the search plan — is snapshotted when {@code run()} starts, so callbacks
+ * that retain the builder and mutate it during a run never change the running
+ * search's budget, holdout reservation, or reported plan.
  * </p>
  *
  * <p>
