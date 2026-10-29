@@ -8,6 +8,8 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
@@ -21,7 +23,8 @@ import org.ta4j.core.num.NumFactory;
 /**
  * A tick bar is sampled after a fixed number of ticks.
  */
-public final class TickBarBuilder implements BarBuilder {
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of tick count is a documented constructor contract; subclassing remains supported.")
+public class TickBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
     private final boolean realtimeBars;

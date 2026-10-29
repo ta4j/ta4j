@@ -8,6 +8,8 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
@@ -22,7 +24,8 @@ import org.ta4j.core.num.NumFactory;
  * A volume bar is sampled after a fixed number of contracts (volume) have been
  * traded.
  */
-public final class VolumeBarBuilder implements BarBuilder {
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of volume threshold is a documented constructor contract; subclassing remains supported.")
+public class VolumeBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
     private final RemainderCarryOverPolicy carryOverPolicy;

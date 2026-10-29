@@ -11,12 +11,15 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 
-public final class TickBarBuilderFactory implements BarBuilderFactory {
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of tick count is a documented constructor contract; subclassing remains supported.")
+public class TickBarBuilderFactory implements BarBuilderFactory {
 
     private static final long serialVersionUID = 1L;
 

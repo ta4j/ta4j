@@ -8,6 +8,8 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
@@ -22,7 +24,8 @@ import org.ta4j.core.num.NumFactory;
  * An amount bar is sampled after a fixed number of amount (= price * volume)
  * have been traded.
  */
-public final class AmountBarBuilder implements BarBuilder {
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of amount threshold is a documented constructor contract; subclassing remains supported.")
+public class AmountBarBuilder implements BarBuilder {
 
     private Num distinctVolume;
     private final Num amountThreshold;
