@@ -14,8 +14,21 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.backtest.ExitOnRunEndModel;
+import org.ta4j.core.backtest.PositionSizer;
+import org.ta4j.core.backtest.RunWindowBarSeries;
+import org.ta4j.core.backtest.TradeExecutionModel;
+import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
+import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.portfolio.PortfolioSnapshot.RebalanceStatus;
@@ -72,6 +85,7 @@ public final class PortfolioSeriesManager {
     private static final int MAX_FIXED_POINT_ITERATIONS = 32;
 
     private final PortfolioSeries series;
+    private final PortfolioSeriesView view;
     private final CostModel transactionCostModel;
 
     /**
@@ -92,15 +106,42 @@ public final class PortfolioSeriesManager {
      * @since 0.25.1
      */
     public PortfolioSeriesManager(PortfolioSeries series, CostModel transactionCostModel) {
-        this.series = Objects.requireNonNull(series, "series");
+        this((PortfolioSeriesView) series, transactionCostModel);
+    }
+
+    /**
+     * Creates a strategy manager over an aligned snapshot or live view with zero
+     * transaction costs. Allocation runs require a {@link PortfolioSeries}.
+     *
+     * @param view aligned portfolio view
+     * @since 0.27.1
+     */
+    public PortfolioSeriesManager(PortfolioSeriesView view) {
+        this(view, new ZeroCostModel());
+    }
+
+    /**
+     * Creates a strategy manager over an aligned view.
+     *
+     * @param view aligned portfolio view
+     * @param transactionCostModel transaction cost model applied to each trade
+     * @since 0.27.1
+     */
+    public PortfolioSeriesManager(PortfolioSeriesView view, CostModel transactionCostModel) {
+        this.view = Objects.requireNonNull(view, "view");
+        this.series = view instanceof PortfolioSeries snapshot ? snapshot : null;
         this.transactionCostModel = Objects.requireNonNull(transactionCostModel, "transactionCostModel");
     }
 
     /**
      * @return managed portfolio series
+     * @throws IllegalStateException if the managed view is not a snapshot
      * @since 0.25.1
      */
     public PortfolioSeries getPortfolioSeries() {
+        if (series == null) {
+            throw new IllegalStateException("Allocation runs require a PortfolioSeries snapshot");
+        }
         return series;
     }
 
@@ -152,7 +193,7 @@ public final class PortfolioSeriesManager {
     public PortfolioExecutionResult run(PortfolioAllocation allocation, Number initialCash,
             RebalancePolicy rebalancePolicy) {
         Objects.requireNonNull(initialCash, "initialCash");
-        return run(allocation, series.numFactory().numOf(initialCash), rebalancePolicy);
+        return run(allocation, getPortfolioSeries().numFactory().numOf(initialCash), rebalancePolicy);
     }
 
     /**
@@ -168,7 +209,165 @@ public final class PortfolioSeriesManager {
      */
     public PortfolioExecutionResult run(PortfolioAllocation allocation, Num initialCash,
             RebalancePolicy rebalancePolicy) {
+        getPortfolioSeries();
         return new Execution(allocation, initialCash, rebalancePolicy).run();
+    }
+
+    /**
+     * Runs a strategy with a fixed amount, executing on each asset's current
+     * close and closing any remaining position at that asset's last processed
+     * close.
+     *
+     * @param strategy strategy to evaluate
+     * @param amount fixed entry amount
+     * @return per-asset trading records
+     * @since 0.27.1
+     */
+    public PortfolioTradingRecord run(PortfolioStrategy strategy, Num amount) {
+        validateAmount(amount);
+        return runPortfolio(strategy, null, new TradeOnCurrentCloseModel(), amount);
+    }
+
+    /**
+     * Runs an asset-scoped strategy over aligned bars. Assets without a bar at
+     * an aligned time are skipped. The execution model receives source-series
+     * indexes and its usual per-bar and run-end callbacks; an
+     * {@link ExitOnRunEndModel} closes any remaining position at the asset's
+     * last processed close. Sizing is called only for entries. Its single-series
+     * strategy context exposes this portfolio strategy projected onto the asset.
+     * Execution and sizing cannot see bars beyond the captured run window.
+     *
+     * @param strategy strategy to evaluate
+     * @param positionSizer entry position sizing
+     * @param executionModel execution model, shared across asset records
+     * @return per-asset trading records
+     * @since 0.27.1
+     */
+    public PortfolioTradingRecord run(PortfolioStrategy strategy, PositionSizer positionSizer,
+            TradeExecutionModel executionModel) {
+        Objects.requireNonNull(positionSizer, "positionSizer");
+        return runPortfolio(strategy, positionSizer, executionModel, null);
+    }
+
+    private PortfolioTradingRecord runPortfolio(PortfolioStrategy strategy, PositionSizer positionSizer,
+            TradeExecutionModel executionModel, Num fixedAmount) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(executionModel, "executionModel");
+        strategy.bind(view);
+        TradeType tradeType = strategy.getStartingType();
+        CostModel holdingCost = new ZeroCostModel();
+        PortfolioTradingRecord record = new BasePortfolioTradingRecord(view,
+                asset -> new BaseTradingRecord(tradeType, transactionCostModel, holdingCost));
+        List<AssetExecution> assets = new ArrayList<>();
+        int begin = view.getBeginIndex();
+        int end = view.getEndIndex();
+        if (end < begin) {
+            return record;
+        }
+        for (String asset : view.assets()) {
+            int sourceEnd = view.getSourceIndex(asset, end);
+            if (sourceEnd >= 0) {
+                RunWindowBarSeries window = new RunWindowBarSeries(view.getBarSeries(asset), sourceEnd);
+                Strategy projection = positionSizer == null ? null : projectStrategy(strategy, record, asset);
+                assets.add(new AssetExecution(asset, window, record.record(asset), projection));
+            }
+        }
+        TradeExecutionModel closingModel = new ExitOnRunEndModel(executionModel);
+        for (int index = begin;; index++) {
+            for (AssetExecution asset : assets) {
+                if (!view.hasBar(asset.name, index)) {
+                    continue;
+                }
+                int sourceIndex = view.getSourceIndex(asset.name, index);
+                asset.window.markBarProcessed();
+                asset.lastProcessed = sourceIndex;
+                closingModel.onBar(sourceIndex, asset.record, asset.window);
+                if (asset.record.isClosed()) {
+                    if (strategy.shouldEnter(asset.name, index, record)) {
+                        Num amount = positionSizer == null ? fixedAmount
+                                : entryAmount(positionSizer, closingModel, asset.projection, asset.record,
+                                        asset.window, sourceIndex);
+                        closingModel.execute(sourceIndex, asset.record, asset.window, amount);
+                    }
+                } else if (strategy.shouldExit(asset.name, index, record)) {
+                    closingModel.execute(sourceIndex, asset.record, asset.window,
+                            asset.record.getCurrentPosition().amount());
+                }
+            }
+            if (index == end) {
+                break;
+            }
+        }
+        for (AssetExecution asset : assets) {
+            if (asset.lastProcessed >= 0) {
+                closingModel.onRunEnd(asset.lastProcessed, asset.record, asset.window);
+            }
+        }
+        return record;
+    }
+
+    private Num entryAmount(PositionSizer sizer, TradeExecutionModel model, Strategy strategy,
+            TradingRecord record, BarSeries window, int sourceIndex) {
+        TradeType type = record.getStartingType();
+        ExecutionTarget target = model.estimateEntryTarget(sourceIndex, window, type);
+        if (target == null) {
+            target = new ExecutionTarget(sourceIndex, window.getBar(sourceIndex).getClosePrice());
+        }
+        Num amount = sizer.amount(new PositionSizer.Context(sourceIndex, target.index(), target.price(), strategy,
+                window, type, record, record.getTransactionCostModel(), record.getHoldingCostModel()));
+        validateAmount(amount);
+        return amount;
+    }
+
+    private static void validateAmount(Num amount) {
+        if (amount == null || amount.isNaN() || amount.isNegativeOrZero() || !Double.isFinite(amount.doubleValue())) {
+            throw new IllegalArgumentException("Amount must be positive and finite");
+        }
+    }
+
+    private static final class AssetExecution {
+        private final String name;
+        private final RunWindowBarSeries window;
+        private final TradingRecord record;
+        private final Strategy projection;
+        private int lastProcessed = -1;
+
+        private AssetExecution(String name, RunWindowBarSeries window, TradingRecord record, Strategy projection) {
+            this.name = name;
+            this.window = window;
+            this.record = record;
+            this.projection = projection;
+        }
+    }
+
+    private Strategy projectStrategy(PortfolioStrategy strategy, PortfolioTradingRecord record, String asset) {
+        Rule entry = (sourceIndex, ignored) -> projectedDecision(strategy, record, asset, sourceIndex, true);
+        Rule exit = (sourceIndex, ignored) -> projectedDecision(strategy, record, asset, sourceIndex, false);
+        return new BaseStrategy(strategy.getName(), entry, exit, strategy.getUnstableBars(), strategy.getStartingType());
+    }
+
+    private boolean projectedDecision(PortfolioStrategy strategy, PortfolioTradingRecord record, String asset,
+            int sourceIndex, boolean entry) {
+        BarSeries assetSeries = view.getBarSeries(asset);
+        if (sourceIndex < assetSeries.getBeginIndex() || sourceIndex > assetSeries.getEndIndex()) {
+            return false;
+        }
+        Instant time = assetSeries.getBar(sourceIndex).getEndTime();
+        int low = view.getBeginIndex();
+        int high = view.getEndIndex();
+        while (low <= high) {
+            int middle = low + (high - low) / 2;
+            int comparison = view.getEndTime(middle).compareTo(time);
+            if (comparison < 0) {
+                low = middle + 1;
+            } else if (comparison > 0) {
+                high = middle - 1;
+            } else {
+                return view.hasBar(asset, middle) && (entry ? strategy.shouldEnter(asset, middle, record)
+                        : strategy.shouldExit(asset, middle, record));
+            }
+        }
+        return false;
     }
 
     /** One run's mutable state; assets are addressed by portfolio position. */

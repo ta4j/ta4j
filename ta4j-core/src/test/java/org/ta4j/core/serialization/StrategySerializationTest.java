@@ -25,6 +25,12 @@ import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.portfolio.BasePortfolioTradingRecord;
+import org.ta4j.core.portfolio.PerAssetStrategy;
+import org.ta4j.core.portfolio.PortfolioSeries;
+import org.ta4j.core.portfolio.PortfolioSeriesView;
+import org.ta4j.core.portfolio.PortfolioStrategy;
+import org.ta4j.core.portfolio.PortfolioTradingRecord;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
@@ -1055,6 +1061,45 @@ public class StrategySerializationTest {
 
         assertThat(restored.shouldEnter(3, record)).isEqualTo(original.shouldEnter(3, originalRecord));
         assertThat(restored.shouldExit(3, record)).isEqualTo(original.shouldExit(3, originalRecord));
+    }
+
+    @Test
+    public void roundTripPerAssetNamedStrategyRestoredFromJson() {
+        BarSeries alpha = new MockBarSeriesBuilder().withData(1, 3, 1, 3).build();
+        BarSeries beta = new MockBarSeriesBuilder().withData(3, 1, 3, 1).build();
+        PortfolioSeriesView view = PortfolioSeries.union(Map.of("ALPHA", alpha, "BETA", beta));
+        String innerJson = NamedStrategyFixture.create(alpha, alpha.numFactory().numOf(2), 1).toJson();
+        Strategy restoredInner = Strategy.fromJson(alpha, innerJson);
+        assertThat(restoredInner).isInstanceOf(NamedStrategyFixture.class);
+
+        for (PerAssetStrategy original : List.of(PerAssetStrategy.of(restoredInner), PerAssetStrategy.ofJson(innerJson))) {
+            original.bind(view);
+            PortfolioStrategy restored = PortfolioStrategy.fromJson(view, original.toJson());
+            assertThat(restored.toDescriptor()).isEqualTo(original.toDescriptor());
+            assertThat(restored.getStartingType()).isEqualTo(restoredInner.getStartingType());
+            assertThat(restored.getUnstableBars()).isEqualTo(restoredInner.getUnstableBars());
+            PortfolioTradingRecord originalRecord = new BasePortfolioTradingRecord(view);
+            PortfolioTradingRecord restoredRecord = new BasePortfolioTradingRecord(view);
+            int entries = 0;
+            int exits = 0;
+            for (String asset : view.assets()) {
+                Strategy expected = Strategy.fromJson(view.getBarSeries(asset), innerJson);
+                TradingRecord expectedRecord = new BaseTradingRecord();
+                for (int index = view.getBeginIndex(); index <= view.getEndIndex(); index++) {
+                    int sourceIndex = view.getSourceIndex(asset, index);
+                    boolean expectedEntry = expected.shouldEnter(sourceIndex, expectedRecord);
+                    boolean expectedExit = expected.shouldExit(sourceIndex, expectedRecord);
+                    assertThat(original.shouldEnter(asset, index, originalRecord)).isEqualTo(expectedEntry);
+                    assertThat(restored.shouldEnter(asset, index, restoredRecord)).isEqualTo(expectedEntry);
+                    assertThat(original.shouldExit(asset, index, originalRecord)).isEqualTo(expectedExit);
+                    assertThat(restored.shouldExit(asset, index, restoredRecord)).isEqualTo(expectedExit);
+                    entries += expectedEntry ? 1 : 0;
+                    exits += expectedExit ? 1 : 0;
+                }
+            }
+            assertThat(entries).isPositive();
+            assertThat(exits).isPositive();
+        }
     }
 
     @Test

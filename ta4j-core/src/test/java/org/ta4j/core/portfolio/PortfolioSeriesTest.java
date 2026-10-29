@@ -4,7 +4,9 @@
 package org.ta4j.core.portfolio;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.portfolio.PortfolioFixtures.START;
 import static org.ta4j.core.portfolio.PortfolioFixtures.series;
@@ -137,6 +139,94 @@ public class PortfolioSeriesTest {
         assertThrows(IllegalArgumentException.class, () -> portfolio.getClosePrice("MISSING", 0));
         assertThrows(IndexOutOfBoundsException.class, () -> portfolio.getClosePrice("ALPHA", 2));
         assertThrows(IndexOutOfBoundsException.class, () -> portfolio.getSourceIndex("ALPHA", -1));
+    }
+
+    @Test
+    public void unionAlignsStaggeredSourcesAndDistinguishesExactBarsFromAsOfIndexes() {
+        BarSeries alpha = new BaseBarSeriesBuilder().withName("ALPHA")
+                .withNumFactory(DOUBLE)
+                .withBeginIndex(10)
+                .withBars(List.of(series("a0", DOUBLE, 0, "100").getFirstBar(),
+                        series("a2", DOUBLE, 2, "120").getFirstBar(),
+                        series("a4", DOUBLE, 4, "140").getFirstBar()))
+                .build();
+        BarSeries beta = new BaseBarSeriesBuilder().withName("BETA")
+                .withNumFactory(DOUBLE)
+                .withBeginIndex(20)
+                .withBars(series("b", DOUBLE, 1, "50", "55", "60").getBarData())
+                .build();
+        BarSeries gamma = series("GAMMA", DOUBLE, 3, "30");
+        Map<String, BarSeries> sources = new LinkedHashMap<>();
+        sources.put("ALPHA", alpha);
+        sources.put("BETA", beta);
+        sources.put("GAMMA", gamma);
+
+        PortfolioSeriesView view = PortfolioSeries.union(sources);
+        sources.clear();
+
+        assertEquals(List.of("ALPHA", "BETA", "GAMMA"), view.assets());
+        assertEquals(0, view.getBeginIndex());
+        assertEquals(4, view.getEndIndex());
+        assertEquals(START.plus(Duration.ofDays(4)), view.getEndTime(4));
+        assertFalse(view.hasBar("BETA", 0));
+        assertEquals(-1, view.getSourceIndex("BETA", 0));
+        assertFalse(view.hasBar("GAMMA", 2));
+        assertEquals(-1, view.getSourceIndex("GAMMA", 2));
+        assertFalse(view.hasBar("ALPHA", 1));
+        assertEquals(10, view.getSourceIndex("ALPHA", 1));
+        assertTrue(view.hasBar("ALPHA", 2));
+        assertEquals(11, view.getSourceIndex("ALPHA", 2));
+        assertTrue(view.hasBar("GAMMA", 3));
+        assertEquals(0, view.getSourceIndex("GAMMA", 4));
+        assertFalse(view.hasBar("GAMMA", 4));
+        assertFalse(view.hasBar("UNKNOWN", 0));
+        assertEquals(-1, view.getSourceIndex("UNKNOWN", 0));
+        assertEquals(20, view.getBarSeries("BETA").getBeginIndex());
+        assertThrows(IndexOutOfBoundsException.class, () -> view.hasBar("ALPHA", -1));
+        assertThrows(IndexOutOfBoundsException.class, () -> view.getEndTime(5));
+        assertThrows(UnsupportedOperationException.class, () -> view.assets().add("NO"));
+        PortfolioSeries snapshot = (PortfolioSeries) view;
+        assertNumEquals(100, snapshot.getClosePrice("ALPHA", 1));
+        assertThrows(IllegalStateException.class, () -> snapshot.getBar("BETA", 0));
+        assertThrows(IllegalStateException.class, () -> snapshot.getClosePrice("BETA", 0));
+
+        alpha.addPrice(DOUBLE.numOf(999));
+        beta.clear();
+        assertEquals(22, snapshot.getSourceIndex("BETA", 3));
+        assertNumEquals(140, snapshot.getClosePrice("ALPHA", 4));
+    }
+
+    @Test
+    public void unionAcceptsEmptyMembersAndAWhollyEmptyTimeline() {
+        BarSeries empty = new BaseBarSeriesBuilder().withName("EMPTY").withNumFactory(DOUBLE).build();
+        PortfolioSeries snapshot = PortfolioSeries.union(Map.of("EMPTY", empty));
+
+        assertEquals(List.of("EMPTY"), snapshot.assets());
+        assertEquals(0, snapshot.getBeginIndex());
+        assertEquals(-1, snapshot.getEndIndex());
+        assertEquals(0, snapshot.getBarCount());
+        assertTrue(snapshot.getBarSeries("EMPTY").isEmpty());
+        assertEquals("PortfolioSeries{assets=[EMPTY], bars=0}", snapshot.toString());
+        assertThrows(IndexOutOfBoundsException.class, () -> snapshot.hasBar("EMPTY", 0));
+        assertThrows(IllegalArgumentException.class, () -> PortfolioSeries.union(Map.of()));
+    }
+
+    @Test
+    public void unionRequiresMatchingFactoriesButAcceptsEqualDecimalContexts() {
+        NumFactory decimal = DecimalNumFactory.getInstance(8);
+        NumFactory equivalent = DecimalNumFactory.getInstance(8);
+        BarSeries alpha = series("ALPHA", decimal, 0, "1.25");
+        BarSeries beta = series("BETA", equivalent, 1, "2.50");
+
+        PortfolioSeries snapshot = PortfolioSeries.union(Map.of("ALPHA", alpha, "BETA", beta));
+
+        assertEquals(2, snapshot.getBarCount());
+        assertThrows(IllegalArgumentException.class, () -> PortfolioSeries.union(
+                Map.of("ALPHA", alpha, "BETA", series("BETA", DecimalNumFactory.getInstance(9), 0, "2"))));
+        assertThrows(IllegalArgumentException.class,
+                () -> PortfolioSeries.union(Map.of("ALPHA", alpha, "BETA", series("BETA", 2))));
+        assertThrows(IllegalArgumentException.class,
+                () -> new PortfolioSeries(series("ALPHA", 1)).getSourceIndex("MISSING", 0));
     }
 
     @Test

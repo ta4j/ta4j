@@ -7,9 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.portfolio.PortfolioFixtures.START;
 import static org.ta4j.core.portfolio.PortfolioFixtures.assertNumClose;
 import static org.ta4j.core.portfolio.PortfolioFixtures.series;
 
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,10 +19,18 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
+import org.ta4j.core.backtest.PositionSizer;
+import org.ta4j.core.backtest.TradeExecutionModel;
+import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
+import org.ta4j.core.backtest.TradeOnNextOpenModel;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -284,6 +294,108 @@ public class PortfolioSeriesManagerTest {
                 () -> manager.run(weights(0.5, 0.5), 1000));
 
         assertTrue(exception.getMessage().contains("ALPHA at 2026-01-02T00:00:00Z"));
+    }
+
+    @Test
+    public void strategyRunRanksAlignedBarsAndLimitsOpenAssets() {
+        Map<String, BarSeries> members = new LinkedHashMap<>();
+        members.put("BETA", series("BETA", 50, 60, 20, 21));
+        members.put("ALPHA", series("ALPHA", 50, 40, 20, 22));
+        members.put("GAMMA", series("GAMMA", 30, 30, 99, 23));
+        members.put("DELTA", series("DELTA", 10, 20, 30, 24));
+        members.put("EPSILON", series("EPSILON", DoubleNumFactory.getInstance(), 2, "100", "25"));
+        PortfolioSeriesView view = PortfolioSeries.union(members);
+        List<Integer> observedOpenCounts = new ArrayList<>();
+        PortfolioRule schedule = new EndTimeRule(time -> ChronoUnit.DAYS.between(START, time) < 3);
+        PortfolioRule rank = new AssetRankRule(new IndicatorAssetRanker(ClosePriceIndicator::new, true), 1);
+        PortfolioRule track = (asset, index, record) -> {
+            observedOpenCounts.add(record.openPositionCount());
+            return true;
+        };
+        PortfolioStrategy strategy = new BasePortfolioStrategy("rotation",
+                schedule.and(rank).and(track).and(new MaxOpenPositionsRule(2)),
+                (asset, index, record) -> false, 0, TradeType.BUY);
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, view.numFactory().two());
+
+        assertEquals(List.of(0, 1, 2), observedOpenCounts);
+        Position alpha = result.record("ALPHA").getPositions().getFirst();
+        Position beta = result.record("BETA").getPositions().getFirst();
+        assertEquals(0, alpha.getEntry().getIndex());
+        assertEquals(1, beta.getEntry().getIndex());
+        assertNumEquals(50, alpha.getEntry().getPricePerAsset());
+        assertNumEquals(60, beta.getEntry().getPricePerAsset());
+        assertNumEquals(22, alpha.getExit().getPricePerAsset());
+        assertNumEquals(21, beta.getExit().getPricePerAsset());
+        assertNumEquals(2, alpha.getEntry().getAmount());
+        assertTrue(result.record("GAMMA").getPositions().isEmpty());
+        assertTrue(result.record("DELTA").getPositions().isEmpty());
+        assertTrue(result.record("EPSILON").getPositions().isEmpty());
+        assertEquals(0, result.openPositionCount());
+    }
+
+    @Test
+    public void executionAndSizingCannotSeeBarsAfterIntersectionWindow() {
+        BarSeries alpha = series("ALPHA", 10, 11, 1000);
+        BarSeries beta = series("BETA", 20, 21);
+        PortfolioSeriesView view = new PortfolioSeries(alpha, beta);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("window",
+                (asset, index, record) -> index == 1, (asset, index, record) -> false);
+        List<String> sized = new ArrayList<>();
+        PositionSizer sizer = context -> {
+            sized.add(context.barSeries().getName());
+            assertEquals(1, context.signalIndex());
+            assertEquals(1, context.barSeries().getEndIndex());
+            assertEquals("window", context.strategy().getName());
+            assertTrue(context.strategy().shouldEnter(1, context.tradingRecord()));
+            return context.numFactory().one();
+        };
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, sizer,
+                new TradeOnNextOpenModel());
+
+        assertEquals(List.of("ALPHA", "BETA"), sized);
+        assertTrue(result.record("ALPHA").getPositions().isEmpty());
+        assertTrue(result.record("BETA").getPositions().isEmpty());
+        assertEquals(0, result.openPositionCount());
+    }
+
+    @Test
+    public void strategyRunDispatchesExecutionLifecyclePerAvailableAssetBar() {
+        Map<String, BarSeries> members = new LinkedHashMap<>();
+        members.put("ALPHA", series("ALPHA", 10, 11, 12));
+        members.put("BETA", series("BETA", DoubleNumFactory.getInstance(), 1, "20", "21"));
+        PortfolioSeriesView view = PortfolioSeries.union(members);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("source-index",
+                (asset, index, record) -> record.series().getSourceIndex(asset, index) == 0,
+                (asset, index, record) -> record.series().getSourceIndex(asset, index) == 1);
+        List<String> calls = new ArrayList<>();
+        TradeExecutionModel immediate = new TradeOnCurrentCloseModel();
+        TradeExecutionModel execution = new TradeExecutionModel() {
+            @Override
+            public void onBar(int index, TradingRecord record, BarSeries bars) {
+                calls.add("bar:" + bars.getName() + ":" + index);
+            }
+
+            @Override
+            public void execute(int index, TradingRecord record, BarSeries bars, Num amount) {
+                immediate.execute(index, record, bars, amount);
+            }
+
+            @Override
+            public void onRunEnd(int index, TradingRecord record, BarSeries bars) {
+                calls.add("end:" + bars.getName() + ":" + index);
+            }
+        };
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(),
+                execution);
+
+        assertEquals(List.of("bar:ALPHA:0", "bar:ALPHA:1", "bar:BETA:0", "bar:ALPHA:2", "bar:BETA:1",
+                "end:ALPHA:2", "end:BETA:1"), calls);
+        assertNumEquals(11, result.record("ALPHA").getPositions().getFirst().getExit().getPricePerAsset());
+        assertNumEquals(21, result.record("BETA").getPositions().getFirst().getExit().getPricePerAsset());
+        assertEquals(0, result.openPositionCount());
     }
 
     private static PortfolioSnapshot scaledRun(NumFactory numFactory, String price, String capital) {
