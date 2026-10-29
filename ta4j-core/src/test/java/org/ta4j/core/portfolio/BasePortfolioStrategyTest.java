@@ -25,8 +25,8 @@ public class BasePortfolioStrategyTest {
 
     @Test
     public void roundTripsCompositeStrategyAndUsesEachAssetsSourceStability() {
-        PortfolioSeriesView view = PortfolioSeries.union(Map.of("A", series("a", 1, 2, 3, 4), "B",
-                series("b", DoubleNumFactory.getInstance(), 2, "3", "4")));
+        PortfolioSeriesView view = PortfolioSeries.union(
+                Map.of("A", series("a", 1, 2, 3, 4), "B", series("b", DoubleNumFactory.getInstance(), 2, "3", "4")));
         PortfolioRule entry = new EndTimeRule(START.plus(Duration.ofDays(2))).and(new MaxOpenPositionsRule(1));
         PortfolioRule exit = new EndTimeRule(START.plus(Duration.ofDays(3)));
         PortfolioStrategy original = new BasePortfolioStrategy("sample", entry, exit, 1, TradeType.SELL);
@@ -59,8 +59,8 @@ public class BasePortfolioStrategyTest {
 
     @Test
     public void compositeRulesShortCircuitAndPredicatesRequireExactBars() {
-        PortfolioSeriesView view = PortfolioSeries.union(Map.of("A", series("a", 1, 2), "B",
-                series("b", DoubleNumFactory.getInstance(), 1, "3")));
+        PortfolioSeriesView view = PortfolioSeries
+                .union(Map.of("A", series("a", 1, 2), "B", series("b", DoubleNumFactory.getInstance(), 1, "3")));
         PortfolioTradingRecord record = new BasePortfolioTradingRecord(view);
         AtomicInteger calls = new AtomicInteger();
         PortfolioRule no = (asset, index, state) -> false;
@@ -96,8 +96,11 @@ public class BasePortfolioStrategyTest {
         assertThrows(IllegalArgumentException.class, () -> new MaxOpenPositionsRule(-1));
         assertThrows(IllegalArgumentException.class, () -> new BasePortfolioStrategy(limit, limit, -1));
 
-        ComponentDescriptor invalid = ComponentDescriptor.builder().withType(MaxOpenPositionsRule.class.getName())
-                .withLabel("bad").withParameters(Map.of("maximum", 1, "unknown", true)).build();
+        ComponentDescriptor invalid = ComponentDescriptor.builder()
+                .withType(MaxOpenPositionsRule.class.getName())
+                .withLabel("bad")
+                .withParameters(Map.of("maximum", 1, "unknown", true))
+                .build();
         assertThrows(IllegalArgumentException.class,
                 () -> PortfolioRule.fromJson(view, ComponentSerialization.toJson(invalid)));
         ComponentDescriptor unknown = ComponentDescriptor.builder().withType("unknown.rule").withLabel("bad").build();

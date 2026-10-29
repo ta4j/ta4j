@@ -19,7 +19,7 @@ public interface AssetRanker {
      * Ranks assets at a portfolio time. Implementations define eligibility and
      * ordering and should return each eligible asset at most once.
      *
-     * @param view aligned portfolio series view
+     * @param view  aligned portfolio series view
      * @param index portfolio timeline index
      * @return assets in descending preference order
      * @since 0.27.1

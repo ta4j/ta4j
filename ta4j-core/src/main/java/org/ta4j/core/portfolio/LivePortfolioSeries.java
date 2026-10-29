@@ -25,10 +25,10 @@ import org.ta4j.core.num.NumFactory;
  * timeline tail; it never inserts or removes a published portfolio index. A
  * newly added asset can resolve against existing timeline times, but its older
  * end times do not change that timeline. Removing an asset leaves all published
- * times intact. Stage source updates before advancing if all simultaneous
- * asset end times must appear in the timeline. The caller is responsible for
- * publishing only bars ready for strategy evaluation: a {@link BarSeries}
- * does not expose a general closed-bar flag.
+ * times intact. Stage source updates before advancing if all simultaneous asset
+ * end times must appear in the timeline. The caller is responsible for
+ * publishing only bars ready for strategy evaluation: a {@link BarSeries} does
+ * not expose a general closed-bar flag.
  * </p>
  *
  * <p>
@@ -38,12 +38,12 @@ import org.ta4j.core.num.NumFactory;
  * are supported; as-of ties select the greatest source index. Lookups scan the
  * retained source history rather than relying on end times remaining ordered
  * after a replacement. Retained bar values, including corrections to an
- * existing bar, are visible through the
- * returned source series. Mutating a bar directly has the concurrency limits
- * documented by its owning series. For concurrent updates use series with a
- * coherent {@link BarSeries#withReadLock(java.util.function.Supplier)} scope,
- * such as {@link org.ta4j.core.ConcurrentBarSeries}; ordinary single-threaded
- * series require external synchronization.
+ * existing bar, are visible through the returned source series. Mutating a bar
+ * directly has the concurrency limits documented by its owning series. For
+ * concurrent updates use series with a coherent
+ * {@link BarSeries#withReadLock(java.util.function.Supplier)} scope, such as
+ * {@link org.ta4j.core.ConcurrentBarSeries}; ordinary single-threaded series
+ * require external synchronization.
  * </p>
  *
  * <p>
@@ -68,9 +68,9 @@ public final class LivePortfolioSeries implements PortfolioSeriesView {
     /**
      * Creates a live view using the map's encounter order. At least one asset is
      * required to establish the portfolio numeric factory, although individual
-     * sources may initially be empty. Factories must match: decimal factories
-     * must have equal math contexts, while other factories must be equal according
-     * to {@link Object#equals}.
+     * sources may initially be empty. Factories must match: decimal factories must
+     * have equal math contexts, while other factories must be equal according to
+     * {@link Object#equals}.
      *
      * @param seriesByAsset non-empty map of non-blank asset names to caller-owned
      *                      source series
@@ -96,17 +96,17 @@ public final class LivePortfolioSeries implements PortfolioSeriesView {
             sources.put(asset, source);
         }
         this.numFactory = firstFactory;
-        this.state = new AtomicReference<>(new State(Collections.unmodifiableMap(sources), List.copyOf(sources.keySet()),
-                List.of()));
+        this.state = new AtomicReference<>(
+                new State(Collections.unmodifiableMap(sources), List.copyOf(sources.keySet()), List.of()));
         advance();
     }
 
     /**
      * Observes all current members and appends their retained end times that are
-     * strictly later than the published tail, sorted and deduplicated. Times at
-     * or before the tail are never inserted, including late-arriving bars or
-     * corrected historical end times. Each source is captured independently;
-     * appends occurring after its capture can be observed by a later advance.
+     * strictly later than the published tail, sorted and deduplicated. Times at or
+     * before the tail are never inserted, including late-arriving bars or corrected
+     * historical end times. Each source is captured independently; appends
+     * occurring after its capture can be observed by a later advance.
      *
      * @return number of newly appended portfolio times
      * @since 0.27.1
@@ -130,14 +130,14 @@ public final class LivePortfolioSeries implements PortfolioSeriesView {
 
     /**
      * Adds an asset without copying its source. Its end times later than the
-     * current tail are appended immediately, while historical bars can resolve
-     * at already published times. Adding an already present name is rejected;
-     * a removed name can be added again.
+     * current tail are appended immediately, while historical bars can resolve at
+     * already published times. Adding an already present name is rejected; a
+     * removed name can be added again.
      *
      * @param asset  non-blank asset name
      * @param source caller-owned series with a matching numeric factory
-     * @throws IllegalArgumentException if the name is blank or already present,
-     *                                  or the numeric factory does not match
+     * @throws IllegalArgumentException if the name is blank or already present, or
+     *                                  the numeric factory does not match
      * @since 0.27.1
      */
     public void addAsset(String asset, BarSeries source) {
@@ -239,7 +239,8 @@ public final class LivePortfolioSeries implements PortfolioSeriesView {
         }
         return source.withReadLock(() -> {
             int endIndex = source.getEndIndex();
-            for (long sourceIndex = source.getBeginIndex(); sourceIndex >= 0 && sourceIndex <= endIndex; sourceIndex++) {
+            for (long sourceIndex = source.getBeginIndex(); sourceIndex >= 0
+                    && sourceIndex <= endIndex; sourceIndex++) {
                 if (source.getBar((int) sourceIndex).getEndTime().equals(time)) {
                     return true;
                 }
@@ -265,7 +266,8 @@ public final class LivePortfolioSeries implements PortfolioSeriesView {
             Instant latest = null;
             int latestIndex = -1;
             int endIndex = source.getEndIndex();
-            for (long sourceIndex = source.getBeginIndex(); sourceIndex >= 0 && sourceIndex <= endIndex; sourceIndex++) {
+            for (long sourceIndex = source.getBeginIndex(); sourceIndex >= 0
+                    && sourceIndex <= endIndex; sourceIndex++) {
                 Instant candidate = source.getBar((int) sourceIndex).getEndTime();
                 if (!candidate.isAfter(time) && (latest == null || !candidate.isBefore(latest))) {
                     latest = candidate;
@@ -314,8 +316,8 @@ public final class LivePortfolioSeries implements PortfolioSeriesView {
 
     private static Instant endTime(State state, int index) {
         if (index < 0 || index >= state.endTimes().size()) {
-            throw new IndexOutOfBoundsException("index must be between 0 and " + (state.endTimes().size() - 1)
-                    + " but was " + index);
+            throw new IndexOutOfBoundsException(
+                    "index must be between 0 and " + (state.endTimes().size() - 1) + " but was " + index);
         }
         return state.endTimes().get(index);
     }

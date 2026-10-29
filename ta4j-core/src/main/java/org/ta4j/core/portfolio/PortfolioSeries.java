@@ -30,9 +30,9 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * The constructors align on the intersection of end times; {@link #union(Map)}
- * instead includes every end time. Neither mode synthesizes missing bars.
- * All prices must be quoted in one common currency and include any
- * split/dividend adjustments the experiment requires.
+ * instead includes every end time. Neither mode synthesizes missing bars. All
+ * prices must be quoted in one common currency and include any split/dividend
+ * adjustments the experiment requires.
  * </p>
  *
  * <p>
@@ -104,16 +104,16 @@ public final class PortfolioSeries implements PortfolioSeriesView {
     }
 
     /**
-     * Creates a detached portfolio snapshot whose timeline is the sorted union
-     * of retained source bar end times. Sources may be empty; if all are empty
-     * the timeline has end index {@code -1}. An asset has an exact bar only
-     * where its end time matches the timeline, while its source index is an
-     * as-of index even across gaps.
+     * Creates a detached portfolio snapshot whose timeline is the sorted union of
+     * retained source bar end times. Sources may be empty; if all are empty the
+     * timeline has end index {@code -1}. An asset has an exact bar only where its
+     * end time matches the timeline, while its source index is an as-of index even
+     * across gaps.
      *
      * <p>
-     * Factories must match: decimal factories must have equal math contexts,
-     * while other factories must be equal according to {@link Object#equals}.
-     * Encounter order of the supplied map is preserved.
+     * Factories must match: decimal factories must have equal math contexts, while
+     * other factories must be equal according to {@link Object#equals}. Encounter
+     * order of the supplied map is preserved.
      * </p>
      *
      * @param seriesByAsset non-empty map of non-blank asset names to source series
@@ -301,8 +301,8 @@ public final class PortfolioSeries implements PortfolioSeriesView {
     }
 
     /**
-     * Returns the retained source-series index as of an aligned portfolio time.
-     * At a gap the index identifies the latest earlier bar, although
+     * Returns the retained source-series index as of an aligned portfolio time. At
+     * a gap the index identifies the latest earlier bar, although
      * {@link #hasBar(String, int)} is false. For a union snapshot the result is
      * {@code -1} before the asset's first bar or for an unknown asset. Legacy
      * intersection snapshots continue to reject unknown assets.
@@ -326,8 +326,8 @@ public final class PortfolioSeries implements PortfolioSeriesView {
     }
 
     /**
-     * Returns a fresh, detached copy of an asset's as-of bar at an aligned index.
-     * A gap resolves to the latest earlier bar; before the first bar this method
+     * Returns a fresh, detached copy of an asset's as-of bar at an aligned index. A
+     * gap resolves to the latest earlier bar; before the first bar this method
      * throws rather than creating a synthetic bar.
      *
      * @param asset asset name

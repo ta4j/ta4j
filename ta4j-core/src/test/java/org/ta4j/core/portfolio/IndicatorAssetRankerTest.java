@@ -34,10 +34,13 @@ public class IndicatorAssetRankerTest {
         sources.put("ALPHA", series("alpha", 5, 5));
         sources.put("LATE", series("late", DoubleNumFactory.getInstance(), 1, "9"));
         PortfolioSeriesView view = PortfolioSeries.union(sources);
-        IndicatorAssetRanker descending = new IndicatorAssetRanker(source -> source.getName().equals("nan")
-                ? new ConstantIndicator<Num>(source, NaN.NaN) : new ClosePriceIndicator(source));
-        IndicatorAssetRanker ascending = new IndicatorAssetRanker(source -> source.getName().equals("nan")
-                ? new ConstantIndicator<Num>(source, NaN.NaN) : new ClosePriceIndicator(source), false);
+        IndicatorAssetRanker descending = new IndicatorAssetRanker(
+                source -> source.getName().equals("nan") ? new ConstantIndicator<Num>(source, NaN.NaN)
+                        : new ClosePriceIndicator(source));
+        IndicatorAssetRanker ascending = new IndicatorAssetRanker(
+                source -> source.getName().equals("nan") ? new ConstantIndicator<Num>(source, NaN.NaN)
+                        : new ClosePriceIndicator(source),
+                false);
 
         assertEquals(List.of("ALPHA", "BETA", "GAMMA"), descending.rank(view, 0));
         assertEquals(List.of("GAMMA", "ALPHA", "BETA"), ascending.rank(view, 0));

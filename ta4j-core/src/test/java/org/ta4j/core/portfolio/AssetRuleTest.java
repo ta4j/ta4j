@@ -23,8 +23,8 @@ public class AssetRuleTest {
 
     @Test
     public void evaluatesSourceIndexAndOwnTradingRecordOnlyOnExactBars() {
-        PortfolioSeriesView view = PortfolioSeries.union(Map.of("A", series("a", 1, 1, 1), "B",
-                series("b", DoubleNumFactory.getInstance(), 1, "2", "3")));
+        PortfolioSeriesView view = PortfolioSeries.union(
+                Map.of("A", series("a", 1, 1, 1), "B", series("b", DoubleNumFactory.getInstance(), 1, "2", "3")));
         PortfolioTradingRecord record = new BasePortfolioTradingRecord(view);
         AssetRule rule = new AssetRule(source -> (index, tradingRecord) -> index == 1 && !tradingRecord.isClosed());
         assertTrue(record.enter("B", 0, view.numFactory().numOf(2), view.numFactory().one()));
@@ -39,7 +39,8 @@ public class AssetRuleTest {
     @Test
     public void doesNotEvaluateAnAsOfSourceIndexAtAnInteriorGap() {
         DoubleNumFactory factory = DoubleNumFactory.getInstance();
-        BarSeries sparse = new BaseBarSeriesBuilder().withName("sparse").withNumFactory(factory)
+        BarSeries sparse = new BaseBarSeriesBuilder().withName("sparse")
+                .withNumFactory(factory)
                 .withBars(List.of(series("a0", factory, 0, "4").getFirstBar(),
                         series("a2", factory, 2, "4").getFirstBar()))
                 .build();
@@ -75,8 +76,8 @@ public class AssetRuleTest {
     public void replacesCachedRuleForReaddedLiveSource() {
         LivePortfolioSeries view = new LivePortfolioSeries(Map.of("A", series("old", 1)));
         PortfolioTradingRecord record = new BasePortfolioTradingRecord(view);
-        AssetRule rule = new AssetRule(source -> (index, tradingRecord) -> source.getBar(index).getClosePrice()
-                .doubleValue() > 2);
+        AssetRule rule = new AssetRule(
+                source -> (index, tradingRecord) -> source.getBar(index).getClosePrice().doubleValue() > 2);
         assertFalse(rule.isSatisfied("A", 0, record));
         assertTrue(view.removeAsset("A"));
         view.addAsset("A", series("new", 4));

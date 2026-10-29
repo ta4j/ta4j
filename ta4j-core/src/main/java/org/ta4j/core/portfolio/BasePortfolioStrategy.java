@@ -11,8 +11,8 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.serialization.ComponentDescriptor;
 
 /**
- * Portfolio strategy defined by entry and exit rules. Unstable bars are
- * checked against each asset's source index, not the aligned timeline index.
+ * Portfolio strategy defined by entry and exit rules. Unstable bars are checked
+ * against each asset's source index, not the aligned timeline index.
  *
  * @since 0.27.1
  */
@@ -27,7 +27,7 @@ public final class BasePortfolioStrategy implements PortfolioStrategy {
      * Creates a long strategy with no unstable bars.
      *
      * @param entryRule entry condition
-     * @param exitRule exit condition
+     * @param exitRule  exit condition
      * @since 0.27.1
      */
     public BasePortfolioStrategy(PortfolioRule entryRule, PortfolioRule exitRule) {
@@ -37,8 +37,8 @@ public final class BasePortfolioStrategy implements PortfolioStrategy {
     /**
      * Creates a long strategy with the specified unstable-bar count.
      *
-     * @param entryRule entry condition
-     * @param exitRule exit condition
+     * @param entryRule    entry condition
+     * @param exitRule     exit condition
      * @param unstableBars initial source bars to ignore
      * @since 0.27.1
      */
@@ -49,8 +49,8 @@ public final class BasePortfolioStrategy implements PortfolioStrategy {
     /**
      * Creates a strategy with explicit unstable-bar count and entry direction.
      *
-     * @param entryRule entry condition
-     * @param exitRule exit condition
+     * @param entryRule    entry condition
+     * @param exitRule     exit condition
      * @param unstableBars initial source bars to ignore
      * @param startingType entry trade type
      * @since 0.27.1
@@ -63,9 +63,9 @@ public final class BasePortfolioStrategy implements PortfolioStrategy {
     /**
      * Creates a named long strategy with no unstable bars.
      *
-     * @param name strategy name
+     * @param name      strategy name
      * @param entryRule entry condition
-     * @param exitRule exit condition
+     * @param exitRule  exit condition
      * @since 0.27.1
      */
     public BasePortfolioStrategy(String name, PortfolioRule entryRule, PortfolioRule exitRule) {
@@ -75,12 +75,13 @@ public final class BasePortfolioStrategy implements PortfolioStrategy {
     /**
      * Creates a named strategy.
      *
-     * @param name strategy name
-     * @param entryRule entry condition
-     * @param exitRule exit condition
+     * @param name         strategy name
+     * @param entryRule    entry condition
+     * @param exitRule     exit condition
      * @param unstableBars initial source bars to ignore
      * @param startingType entry trade type
-     * @throws IllegalArgumentException if unstable bars are negative or name is blank
+     * @throws IllegalArgumentException if unstable bars are negative or name is
+     *                                  blank
      * @since 0.27.1
      */
     public BasePortfolioStrategy(String name, PortfolioRule entryRule, PortfolioRule exitRule, int unstableBars,
@@ -127,6 +128,7 @@ public final class BasePortfolioStrategy implements PortfolioStrategy {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -136,6 +138,7 @@ public final class BasePortfolioStrategy implements PortfolioStrategy {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -143,9 +146,9 @@ public final class BasePortfolioStrategy implements PortfolioStrategy {
         return unstableBars;
     }
 
-
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -153,8 +156,12 @@ public final class BasePortfolioStrategy implements PortfolioStrategy {
         Map<String, Object> parameters = new LinkedHashMap<>();
         parameters.put("unstableBars", unstableBars);
         parameters.put("startingType", startingType.name());
-        return ComponentDescriptor.builder().withType(BasePortfolioStrategy.class.getName()).withLabel(name)
-                .withParameters(parameters).addComponent(entryRule.toDescriptor()).addComponent(exitRule.toDescriptor())
+        return ComponentDescriptor.builder()
+                .withType(BasePortfolioStrategy.class.getName())
+                .withLabel(name)
+                .withParameters(parameters)
+                .addComponent(entryRule.toDescriptor())
+                .addComponent(exitRule.toDescriptor())
                 .build();
     }
 }

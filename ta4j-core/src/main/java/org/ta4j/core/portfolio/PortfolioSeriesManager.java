@@ -123,7 +123,7 @@ public final class PortfolioSeriesManager {
     /**
      * Creates a strategy manager over an aligned view.
      *
-     * @param view aligned portfolio view
+     * @param view                 aligned portfolio view
      * @param transactionCostModel transaction cost model applied to each trade
      * @since 0.27.1
      */
@@ -214,12 +214,11 @@ public final class PortfolioSeriesManager {
     }
 
     /**
-     * Runs a strategy with a fixed amount, executing on each asset's current
-     * close and closing any remaining position at that asset's last processed
-     * close.
+     * Runs a strategy with a fixed amount, executing on each asset's current close
+     * and closing any remaining position at that asset's last processed close.
      *
      * @param strategy strategy to evaluate
-     * @param amount fixed entry amount
+     * @param amount   fixed entry amount
      * @return per-asset trading records
      * @since 0.27.1
      */
@@ -229,16 +228,16 @@ public final class PortfolioSeriesManager {
     }
 
     /**
-     * Runs an asset-scoped strategy over aligned bars. Assets without a bar at
-     * an aligned time are skipped. The execution model receives source-series
-     * indexes and its usual per-bar and run-end callbacks; an
-     * {@link ExitOnRunEndModel} closes any remaining position at the asset's
-     * last processed close. Sizing is called only for entries. Its single-series
-     * strategy context exposes this portfolio strategy projected onto the asset.
-     * Execution and sizing cannot see bars beyond the captured run window.
+     * Runs an asset-scoped strategy over aligned bars. Assets without a bar at an
+     * aligned time are skipped. The execution model receives source-series indexes
+     * and its usual per-bar and run-end callbacks; an {@link ExitOnRunEndModel}
+     * closes any remaining position at the asset's last processed close. Sizing is
+     * called only for entries. Its single-series strategy context exposes this
+     * portfolio strategy projected onto the asset. Execution and sizing cannot see
+     * bars beyond the captured run window.
      *
-     * @param strategy strategy to evaluate
-     * @param positionSizer entry position sizing
+     * @param strategy       strategy to evaluate
+     * @param positionSizer  entry position sizing
      * @param executionModel execution model, shared across asset records
      * @return per-asset trading records
      * @since 0.27.1
@@ -285,8 +284,8 @@ public final class PortfolioSeriesManager {
                 if (asset.record.isClosed()) {
                     if (strategy.shouldEnter(asset.name, index, record)) {
                         Num amount = positionSizer == null ? fixedAmount
-                                : entryAmount(positionSizer, closingModel, asset.projection, asset.record,
-                                        asset.window, sourceIndex);
+                                : entryAmount(positionSizer, closingModel, asset.projection, asset.record, asset.window,
+                                        sourceIndex);
                         closingModel.execute(sourceIndex, asset.record, asset.window, amount);
                     }
                 } else if (strategy.shouldExit(asset.name, index, record)) {
@@ -306,8 +305,8 @@ public final class PortfolioSeriesManager {
         return record;
     }
 
-    private Num entryAmount(PositionSizer sizer, TradeExecutionModel model, Strategy strategy,
-            TradingRecord record, BarSeries window, int sourceIndex) {
+    private Num entryAmount(PositionSizer sizer, TradeExecutionModel model, Strategy strategy, TradingRecord record,
+            BarSeries window, int sourceIndex) {
         TradeType type = record.getStartingType();
         ExecutionTarget target = model.estimateEntryTarget(sourceIndex, window, type);
         if (target == null) {
@@ -343,7 +342,8 @@ public final class PortfolioSeriesManager {
     private Strategy projectStrategy(PortfolioStrategy strategy, PortfolioTradingRecord record, String asset) {
         Rule entry = (sourceIndex, ignored) -> projectedDecision(strategy, record, asset, sourceIndex, true);
         Rule exit = (sourceIndex, ignored) -> projectedDecision(strategy, record, asset, sourceIndex, false);
-        return new BaseStrategy(strategy.getName(), entry, exit, strategy.getUnstableBars(), strategy.getStartingType());
+        return new BaseStrategy(strategy.getName(), entry, exit, strategy.getUnstableBars(),
+                strategy.getStartingType());
     }
 
     private boolean projectedDecision(PortfolioStrategy strategy, PortfolioTradingRecord record, String asset,

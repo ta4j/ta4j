@@ -14,10 +14,10 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * {@link #hasBar(String, int)} tests for a bar ending exactly at the portfolio
- * time, whereas {@link #getSourceIndex(String, int)} is an as-of lookup and
- * can return an earlier bar across a gap. Neither operation forward-fills a
- * bar. In particular, an as-of index does not mean that an asset can be
- * traded at the aligned time.
+ * time, whereas {@link #getSourceIndex(String, int)} is an as-of lookup and can
+ * return an earlier bar across a gap. Neither operation forward-fills a bar. In
+ * particular, an as-of index does not mean that an asset can be traded at the
+ * aligned time.
  * </p>
  *
  * <p>
@@ -42,8 +42,8 @@ public interface PortfolioSeriesView {
     List<String> assets();
 
     /**
-     * Returns the first portfolio index. An empty timeline has begin index zero
-     * and end index minus one.
+     * Returns the first portfolio index. An empty timeline has begin index zero and
+     * end index minus one.
      *
      * @return first portfolio index
      * @since 0.27.1
@@ -79,13 +79,13 @@ public interface PortfolioSeriesView {
     boolean hasBar(String asset, int index);
 
     /**
-     * Returns the source index of the retained bar with the greatest end time at
-     * or before the aligned time. Ties are resolved by the greatest source index.
-     * Returns {@code -1} before the first retained bar and for a removed or
-     * unknown asset, except that legacy intersection snapshots reject unknown
-     * assets with {@link IllegalArgumentException}. A returned index can become
-     * invalid after this method returns when a live source removes or replaces
-     * bars; callers must coordinate subsequent source access when necessary.
+     * Returns the source index of the retained bar with the greatest end time at or
+     * before the aligned time. Ties are resolved by the greatest source index.
+     * Returns {@code -1} before the first retained bar and for a removed or unknown
+     * asset, except that legacy intersection snapshots reject unknown assets with
+     * {@link IllegalArgumentException}. A returned index can become invalid after
+     * this method returns when a live source removes or replaces bars; callers must
+     * coordinate subsequent source access when necessary.
      *
      * @param asset asset name
      * @param index portfolio index
@@ -97,8 +97,8 @@ public interface PortfolioSeriesView {
 
     /**
      * Returns an asset's source series. Snapshot views may return a detached copy;
-     * live views may return the caller-owned series. Unknown and removed assets
-     * are rejected.
+     * live views may return the caller-owned series. Unknown and removed assets are
+     * rejected.
      *
      * @param asset asset name
      * @return the asset's source series

@@ -33,6 +33,7 @@ public final class MaxOpenPositionsRule implements PortfolioRule {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -42,11 +43,15 @@ public final class MaxOpenPositionsRule implements PortfolioRule {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
     public ComponentDescriptor toDescriptor() {
-        return ComponentDescriptor.builder().withType(MaxOpenPositionsRule.class.getName())
-                .withLabel("MaxOpenPositionsRule").withParameters(Map.of("maximum", maximum)).build();
+        return ComponentDescriptor.builder()
+                .withType(MaxOpenPositionsRule.class.getName())
+                .withLabel("MaxOpenPositionsRule")
+                .withParameters(Map.of("maximum", maximum))
+                .build();
     }
 }

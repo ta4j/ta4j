@@ -313,8 +313,8 @@ public class PortfolioSeriesManagerTest {
             return true;
         };
         PortfolioStrategy strategy = new BasePortfolioStrategy("rotation",
-                schedule.and(rank).and(track).and(new MaxOpenPositionsRule(2)),
-                (asset, index, record) -> false, 0, TradeType.BUY);
+                schedule.and(rank).and(track).and(new MaxOpenPositionsRule(2)), (asset, index, record) -> false, 0,
+                TradeType.BUY);
 
         PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, view.numFactory().two());
 
@@ -339,8 +339,8 @@ public class PortfolioSeriesManagerTest {
         BarSeries alpha = series("ALPHA", 10, 11, 1000);
         BarSeries beta = series("BETA", 20, 21);
         PortfolioSeriesView view = new PortfolioSeries(alpha, beta);
-        PortfolioStrategy strategy = new BasePortfolioStrategy("window",
-                (asset, index, record) -> index == 1, (asset, index, record) -> false);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("window", (asset, index, record) -> index == 1,
+                (asset, index, record) -> false);
         List<String> sized = new ArrayList<>();
         PositionSizer sizer = context -> {
             sized.add(context.barSeries().getName());
@@ -391,8 +391,8 @@ public class PortfolioSeriesManagerTest {
         PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(),
                 execution);
 
-        assertEquals(List.of("bar:ALPHA:0", "bar:ALPHA:1", "bar:BETA:0", "bar:ALPHA:2", "bar:BETA:1",
-                "end:ALPHA:2", "end:BETA:1"), calls);
+        assertEquals(List.of("bar:ALPHA:0", "bar:ALPHA:1", "bar:BETA:0", "bar:ALPHA:2", "bar:BETA:1", "end:ALPHA:2",
+                "end:BETA:1"), calls);
         assertNumEquals(11, result.record("ALPHA").getPositions().getFirst().getExit().getPricePerAsset());
         assertNumEquals(21, result.record("BETA").getPositions().getFirst().getExit().getPricePerAsset());
         assertEquals(0, result.openPositionCount());

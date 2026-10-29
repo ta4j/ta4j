@@ -54,7 +54,7 @@ public final class RunWindowBarSeries implements BarSeries {
     /**
      * Creates a read-only window ending at the specified source-series index.
      *
-     * @param delegate source series
+     * @param delegate       source series
      * @param windowEndIndex inclusive end index
      * @since 0.27.1
      */

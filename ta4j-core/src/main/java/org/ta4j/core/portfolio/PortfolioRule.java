@@ -20,8 +20,8 @@ public interface PortfolioRule {
     /**
      * Evaluates this rule.
      *
-     * @param asset asset name
-     * @param index portfolio timeline index
+     * @param asset  asset name
+     * @param index  portfolio timeline index
      * @param record portfolio trading state and series view
      * @return whether the rule is satisfied
      * @since 0.27.1
@@ -61,8 +61,8 @@ public interface PortfolioRule {
     }
 
     /**
-     * Describes a reconstructible rule. Opaque custom rules and factories cannot
-     * be represented automatically.
+     * Describes a reconstructible rule. Opaque custom rules and factories cannot be
+     * represented automatically.
      *
      * @return rule descriptor
      * @throws UnsupportedOperationException if the rule has no descriptor
@@ -122,8 +122,10 @@ final class CompositePortfolioRule implements PortfolioRule {
     /** @since 0.27.1 */
     @Override
     public ComponentDescriptor toDescriptor() {
-        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(CompositePortfolioRule.class.getName())
-                .withLabel("CompositePortfolioRule").withParameters(java.util.Map.of("operator", operator))
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder()
+                .withType(CompositePortfolioRule.class.getName())
+                .withLabel("CompositePortfolioRule")
+                .withParameters(java.util.Map.of("operator", operator))
                 .addComponent(left.toDescriptor());
         if (right != null) {
             builder.addComponent(right.toDescriptor());

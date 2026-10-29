@@ -44,7 +44,7 @@ public final class IndicatorAssetRanker implements AssetRanker {
     /**
      * Creates a ranker with an explicit score direction.
      *
-     * @param factory creates an indicator for each asset series
+     * @param factory    creates an indicator for each asset series
      * @param descending true to rank higher values first, false for lower values
      * @since 0.27.1
      */
@@ -60,8 +60,8 @@ public final class IndicatorAssetRanker implements AssetRanker {
     }
 
     /**
-     * Creates a ranker that reconstructs the indicator descriptor for every
-     * asset, independently of the sample indicator's original series.
+     * Creates a ranker that reconstructs the indicator descriptor for every asset,
+     * independently of the sample indicator's original series.
      *
      * @param indicator descriptor-supported indicator template
      * @return descriptor-backed ranker
@@ -74,7 +74,7 @@ public final class IndicatorAssetRanker implements AssetRanker {
     /**
      * Creates a descriptor-backed ranker with an explicit score direction.
      *
-     * @param indicator descriptor-supported indicator template
+     * @param indicator  descriptor-supported indicator template
      * @param descending true to rank higher values first, false for lower values
      * @return descriptor-backed ranker
      * @since 0.27.1
@@ -95,6 +95,7 @@ public final class IndicatorAssetRanker implements AssetRanker {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -136,6 +137,7 @@ public final class IndicatorAssetRanker implements AssetRanker {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -143,8 +145,11 @@ public final class IndicatorAssetRanker implements AssetRanker {
         if (template == null) {
             throw new UnsupportedOperationException("Cannot serialize an opaque indicator factory");
         }
-        return ComponentDescriptor.builder().withType(IndicatorAssetRanker.class.getName())
-                .withLabel("IndicatorAssetRanker").withParameters(Map.of("descending", descending))
-                .addComponent(template).build();
+        return ComponentDescriptor.builder()
+                .withType(IndicatorAssetRanker.class.getName())
+                .withLabel("IndicatorAssetRanker")
+                .withParameters(Map.of("descending", descending))
+                .addComponent(template)
+                .build();
     }
 }

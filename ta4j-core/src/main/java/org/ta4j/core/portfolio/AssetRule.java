@@ -14,8 +14,7 @@ import org.ta4j.core.serialization.RuleSerialization;
 /**
  * Adapts a single-series rule to each asset. It evaluates the rule at that
  * asset's source index and supplies its own trading record. Missing bars never
- * satisfy the rule.
- * Instances cache per-asset rules and are not thread-safe.
+ * satisfy the rule. Instances cache per-asset rules and are not thread-safe.
  *
  * @since 0.27.1
  */
@@ -59,6 +58,7 @@ public final class AssetRule implements PortfolioRule {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -72,6 +72,7 @@ public final class AssetRule implements PortfolioRule {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -79,7 +80,10 @@ public final class AssetRule implements PortfolioRule {
         if (template == null) {
             throw new UnsupportedOperationException("Cannot serialize an opaque asset rule factory");
         }
-        return ComponentDescriptor.builder().withType(AssetRule.class.getName()).withLabel("AssetRule")
-                .addComponent(template).build();
+        return ComponentDescriptor.builder()
+                .withType(AssetRule.class.getName())
+                .withLabel("AssetRule")
+                .addComponent(template)
+                .build();
     }
 }

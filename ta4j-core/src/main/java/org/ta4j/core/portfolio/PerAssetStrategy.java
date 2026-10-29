@@ -14,11 +14,11 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.serialization.ComponentDescriptor;
 
 /**
- * Runs one ordinary strategy per asset, translating portfolio indices to
- * source indices and supplying that asset's trading record. Bind explicitly
- * before requesting metadata, or let a decision bind lazily from its record.
- * All assets must have the same entry type and unstable-bar count.
- * Instances cache per-asset strategies and are not thread-safe.
+ * Runs one ordinary strategy per asset, translating portfolio indices to source
+ * indices and supplying that asset's trading record. Bind explicitly before
+ * requesting metadata, or let a decision bind lazily from its record. All
+ * assets must have the same entry type and unstable-bar count. Instances cache
+ * per-asset strategies and are not thread-safe.
  *
  * <p>
  * Arbitrary factories can depend on the asset series in ways a descriptor
@@ -65,9 +65,9 @@ public final class PerAssetStrategy implements PortfolioStrategy {
     }
 
     /**
-     * Uses a strategy's descriptor as the template for independently
-     * reconstructing each asset's strategy. This intentionally uses descriptor
-     * semantics, rather than retaining the sample strategy or its series.
+     * Uses a strategy's descriptor as the template for independently reconstructing
+     * each asset's strategy. This intentionally uses descriptor semantics, rather
+     * than retaining the sample strategy or its series.
      *
      * @param strategy serializable single-series strategy template
      * @return descriptor-backed portfolio strategy
@@ -79,10 +79,10 @@ public final class PerAssetStrategy implements PortfolioStrategy {
 
     /**
      * Uses {@link Strategy#fromJson(BarSeries, String)} on each asset's series.
-     * Both canonical and version-2 strategy JSON are accepted. The original JSON
-     * is retained in the portfolio descriptor so that each asset is restored
-     * from the same input even when numeric factories differ. The canonical
-     * descriptor of the first bound strategy is also exposed as a child.
+     * Both canonical and version-2 strategy JSON are accepted. The original JSON is
+     * retained in the portfolio descriptor so that each asset is restored from the
+     * same input even when numeric factories differ. The canonical descriptor of
+     * the first bound strategy is also exposed as a child.
      *
      * @param strategyJson single-series strategy JSON
      * @return descriptor-backed portfolio strategy
@@ -98,12 +98,13 @@ public final class PerAssetStrategy implements PortfolioStrategy {
             Integer expectedUnstableBars, String strategyJson) {
         Objects.requireNonNull(descriptor, "descriptor");
         Objects.requireNonNull(strategyJson, "strategyJson");
-        return new PerAssetStrategy(series -> Strategy.fromJson(series, strategyJson), true,
-                descriptor, expectedType, expectedUnstableBars, strategyJson);
+        return new PerAssetStrategy(series -> Strategy.fromJson(series, strategyJson), true, descriptor, expectedType,
+                expectedUnstableBars, strategyJson);
     }
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -162,6 +163,7 @@ public final class PerAssetStrategy implements PortfolioStrategy {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -171,6 +173,7 @@ public final class PerAssetStrategy implements PortfolioStrategy {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -180,6 +183,7 @@ public final class PerAssetStrategy implements PortfolioStrategy {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -189,6 +193,7 @@ public final class PerAssetStrategy implements PortfolioStrategy {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -199,6 +204,7 @@ public final class PerAssetStrategy implements PortfolioStrategy {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -235,6 +241,7 @@ public final class PerAssetStrategy implements PortfolioStrategy {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -249,6 +256,7 @@ public final class PerAssetStrategy implements PortfolioStrategy {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -263,6 +271,7 @@ public final class PerAssetStrategy implements PortfolioStrategy {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -275,7 +284,11 @@ public final class PerAssetStrategy implements PortfolioStrategy {
         parameters.put("unstableBars", unstableBars);
         parameters.put("startingType", startingType.name());
         parameters.put("strategyJson", strategyJson);
-        return ComponentDescriptor.builder().withType(PerAssetStrategy.class.getName()).withLabel("PerAssetStrategy")
-                .withParameters(parameters).addComponent(template).build();
+        return ComponentDescriptor.builder()
+                .withType(PerAssetStrategy.class.getName())
+                .withLabel("PerAssetStrategy")
+                .withParameters(parameters)
+                .addComponent(template)
+                .build();
     }
 }

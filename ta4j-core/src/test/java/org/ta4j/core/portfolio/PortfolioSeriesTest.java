@@ -147,8 +147,7 @@ public class PortfolioSeriesTest {
                 .withNumFactory(DOUBLE)
                 .withBeginIndex(10)
                 .withBars(List.of(series("a0", DOUBLE, 0, "100").getFirstBar(),
-                        series("a2", DOUBLE, 2, "120").getFirstBar(),
-                        series("a4", DOUBLE, 4, "140").getFirstBar()))
+                        series("a2", DOUBLE, 2, "120").getFirstBar(), series("a4", DOUBLE, 4, "140").getFirstBar()))
                 .build();
         BarSeries beta = new BaseBarSeriesBuilder().withName("BETA")
                 .withNumFactory(DOUBLE)
@@ -221,8 +220,8 @@ public class PortfolioSeriesTest {
         PortfolioSeries snapshot = PortfolioSeries.union(Map.of("ALPHA", alpha, "BETA", beta));
 
         assertEquals(2, snapshot.getBarCount());
-        assertThrows(IllegalArgumentException.class, () -> PortfolioSeries.union(
-                Map.of("ALPHA", alpha, "BETA", series("BETA", DecimalNumFactory.getInstance(9), 0, "2"))));
+        assertThrows(IllegalArgumentException.class, () -> PortfolioSeries
+                .union(Map.of("ALPHA", alpha, "BETA", series("BETA", DecimalNumFactory.getInstance(9), 0, "2"))));
         assertThrows(IllegalArgumentException.class,
                 () -> PortfolioSeries.union(Map.of("ALPHA", alpha, "BETA", series("BETA", 2))));
         assertThrows(IllegalArgumentException.class,

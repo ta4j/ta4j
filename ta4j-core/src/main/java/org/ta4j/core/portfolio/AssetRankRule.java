@@ -10,8 +10,8 @@ import java.util.Objects;
 import org.ta4j.core.serialization.ComponentDescriptor;
 
 /**
- * Selects the first N assets returned by an asset ranker. An asset must have
- * an exact bar at the aligned portfolio time to be selected.
+ * Selects the first N assets returned by an asset ranker. An asset must have an
+ * exact bar at the aligned portfolio time to be selected.
  *
  * @since 0.27.1
  */
@@ -22,7 +22,7 @@ public final class AssetRankRule implements PortfolioRule {
     /**
      * Creates a top-N selection rule.
      *
-     * @param ranker function returning assets in preference order
+     * @param ranker   function returning assets in preference order
      * @param topCount maximum number of selected assets, at least one
      * @throws IllegalArgumentException if {@code topCount} is not positive
      * @since 0.27.1
@@ -37,6 +37,7 @@ public final class AssetRankRule implements PortfolioRule {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -56,11 +57,16 @@ public final class AssetRankRule implements PortfolioRule {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
     public ComponentDescriptor toDescriptor() {
-        return ComponentDescriptor.builder().withType(AssetRankRule.class.getName()).withLabel("AssetRankRule")
-                .withParameters(Map.of("topCount", topCount)).addComponent(ranker.toDescriptor()).build();
+        return ComponentDescriptor.builder()
+                .withType(AssetRankRule.class.getName())
+                .withLabel("AssetRankRule")
+                .withParameters(Map.of("topCount", topCount))
+                .addComponent(ranker.toDescriptor())
+                .build();
     }
 }

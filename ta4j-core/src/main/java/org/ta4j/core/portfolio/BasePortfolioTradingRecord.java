@@ -44,7 +44,7 @@ public final class BasePortfolioTradingRecord implements PortfolioTradingRecord 
     /**
      * Creates a portfolio with records supplied per asset.
      *
-     * @param series aligned portfolio view
+     * @param series  aligned portfolio view
      * @param factory creates or restores a non-null trading record for an asset
      * @since 0.27.1
      */

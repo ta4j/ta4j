@@ -10,9 +10,9 @@ import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.ComponentSerialization;
 
 /**
- * An asset-scoped strategy evaluated on a shared portfolio timeline and
- * trading record. Indices supplied to decision methods are portfolio indices,
- * not source-series indices.
+ * An asset-scoped strategy evaluated on a shared portfolio timeline and trading
+ * record. Indices supplied to decision methods are portfolio indices, not
+ * source-series indices.
  *
  * @since 0.27.1
  */
@@ -72,8 +72,8 @@ public interface PortfolioStrategy {
     /**
      * Evaluates an entry decision.
      *
-     * @param asset asset name
-     * @param index portfolio timeline index
+     * @param asset  asset name
+     * @param index  portfolio timeline index
      * @param record portfolio trading state and series view
      * @return true when entry is recommended
      * @since 0.27.1
@@ -87,8 +87,8 @@ public interface PortfolioStrategy {
     /**
      * Evaluates an exit decision.
      *
-     * @param asset asset name
-     * @param index portfolio timeline index
+     * @param asset  asset name
+     * @param index  portfolio timeline index
      * @param record portfolio trading state and series view
      * @return true when exit is recommended
      * @since 0.27.1
@@ -104,7 +104,7 @@ public interface PortfolioStrategy {
      *
      * @return strategy descriptor
      * @throws UnsupportedOperationException if the strategy contains opaque
-     *         components
+     *                                       components
      * @since 0.27.1
      */
     default ComponentDescriptor toDescriptor() {
@@ -116,7 +116,7 @@ public interface PortfolioStrategy {
      *
      * @return strategy JSON
      * @throws UnsupportedOperationException if the strategy contains opaque
-     *         components
+     *                                       components
      * @since 0.27.1
      */
     default String toJson() {

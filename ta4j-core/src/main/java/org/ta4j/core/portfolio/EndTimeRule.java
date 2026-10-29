@@ -45,6 +45,7 @@ public final class EndTimeRule implements PortfolioRule {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -55,6 +56,7 @@ public final class EndTimeRule implements PortfolioRule {
 
     /**
      * {@inheritDoc}
+     * 
      * @since 0.27.1
      */
     @Override
@@ -62,7 +64,10 @@ public final class EndTimeRule implements PortfolioRule {
         if (exactTime == null) {
             throw new UnsupportedOperationException("Cannot serialize an opaque end-time predicate");
         }
-        return ComponentDescriptor.builder().withType(EndTimeRule.class.getName()).withLabel("EndTimeRule")
-                .withParameters(Map.of("endTime", exactTime.toString())).build();
+        return ComponentDescriptor.builder()
+                .withType(EndTimeRule.class.getName())
+                .withLabel("EndTimeRule")
+                .withParameters(Map.of("endTime", exactTime.toString()))
+                .build();
     }
 }

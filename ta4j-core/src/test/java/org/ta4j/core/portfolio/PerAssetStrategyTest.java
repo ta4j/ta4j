@@ -26,7 +26,8 @@ public class PerAssetStrategyTest {
     public void bindsLazilyAndUsesSourceIndexesForUnstableBars() {
         PortfolioSeriesView view = PortfolioSeries.union(Map.of("EARLY", series("early", 1, 3, 1, 3), "LATE",
                 series("late", DoubleNumFactory.getInstance(), 2, "3", "3")));
-        PortfolioTradingRecord record = new BasePortfolioTradingRecord(view, asset -> new BaseTradingRecord(TradeType.SELL));
+        PortfolioTradingRecord record = new BasePortfolioTradingRecord(view,
+                asset -> new BaseTradingRecord(TradeType.SELL));
         PerAssetStrategy strategy = PerAssetStrategy.of(source -> strategyFor(source, TradeType.SELL, 1));
 
         assertThrows(IllegalStateException.class, strategy::getStartingType);
@@ -56,8 +57,8 @@ public class PerAssetStrategyTest {
     public void rejectsInconsistentMetadataAndInvalidatesFailedBinding() {
         LivePortfolioSeries view = new LivePortfolioSeries(Map.of("A", series("long", 3)));
         PortfolioTradingRecord record = new BasePortfolioTradingRecord(view);
-        PerAssetStrategy strategy = PerAssetStrategy.of(source -> strategyFor(source,
-                source.getName().equals("short") ? TradeType.SELL : TradeType.BUY, 0));
+        PerAssetStrategy strategy = PerAssetStrategy.of(
+                source -> strategyFor(source, source.getName().equals("short") ? TradeType.SELL : TradeType.BUY, 0));
         strategy.bind(view);
         assertEquals(TradeType.BUY, strategy.getStartingType());
 

@@ -1072,7 +1072,8 @@ public class StrategySerializationTest {
         Strategy restoredInner = Strategy.fromJson(alpha, innerJson);
         assertThat(restoredInner).isInstanceOf(NamedStrategyFixture.class);
 
-        for (PerAssetStrategy original : List.of(PerAssetStrategy.of(restoredInner), PerAssetStrategy.ofJson(innerJson))) {
+        for (PerAssetStrategy original : List.of(PerAssetStrategy.of(restoredInner),
+                PerAssetStrategy.ofJson(innerJson))) {
             original.bind(view);
             PortfolioStrategy restored = PortfolioStrategy.fromJson(view, original.toJson());
             assertThat(restored.toDescriptor()).isEqualTo(original.toDescriptor());

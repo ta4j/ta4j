@@ -50,9 +50,9 @@ public interface PortfolioTradingRecord {
     /**
      * Opens a position in one asset's record.
      *
-     * @param asset asset identifier
-     * @param index source-series index
-     * @param price entry price
+     * @param asset  asset identifier
+     * @param index  source-series index
+     * @param price  entry price
      * @param amount entry amount
      * @return whether the entry was placed
      * @since 0.27.1
@@ -64,9 +64,9 @@ public interface PortfolioTradingRecord {
     /**
      * Closes a position in one asset's record.
      *
-     * @param asset asset identifier
-     * @param index source-series index
-     * @param price exit price
+     * @param asset  asset identifier
+     * @param index  source-series index
+     * @param price  exit price
      * @param amount exit amount
      * @return whether the exit was placed
      * @since 0.27.1
