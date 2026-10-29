@@ -8,6 +8,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -218,5 +227,42 @@ public class TickBarBuilderTest {
         assertEquals(1, secondSeries.getBarCount());
         assertNumEquals(101, firstSeries.getBar(0).getClosePrice());
         assertNumEquals(201, secondSeries.getBar(0).getClosePrice());
+    }
+
+    @Test
+    public void constructorAndDeserializationRejectNonPositiveTickCount() {
+        assertThrows(IllegalArgumentException.class, () -> new TickBarBuilderFactory(0));
+        assertThrows(IllegalArgumentException.class, () -> new TickBarBuilderFactory(-1));
+        assertThrows(IllegalArgumentException.class, () -> new TickBarBuilder(DecimalNumFactory.getInstance(), 0));
+        assertThrows(IllegalArgumentException.class, () -> new TickBarBuilder(DecimalNumFactory.getInstance(), -1));
+
+        SerializedTickBarBuilderFactoryState state = new SerializedTickBarBuilderFactoryState();
+        state.tickCount = 0;
+        assertThrows(InvalidObjectException.class, () -> restoreFactoryState(state));
+    }
+
+    private static final class SerializedTickBarBuilderFactoryState implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 1L;
+        private boolean realtimeBars;
+        private int tickCount;
+    }
+
+    private static Object restoreFactoryState(SerializedTickBarBuilderFactoryState state) throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ObjectOutputStream output = new ObjectOutputStream(bytes)) {
+            output.writeObject(state);
+        }
+        try (ObjectInputStream input = new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray())) {
+            @Override
+            protected ObjectStreamClass readClassDescriptor() throws IOException, ClassNotFoundException {
+                ObjectStreamClass descriptor = super.readClassDescriptor();
+                return descriptor.getName().equals(SerializedTickBarBuilderFactoryState.class.getName())
+                        ? ObjectStreamClass.lookup(TickBarBuilderFactory.class)
+                        : descriptor;
+            }
+        }) {
+            return input.readObject();
+        }
     }
 }

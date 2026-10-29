@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.bars;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -82,10 +86,24 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume,
             final boolean realtimeBars, final RemainderCarryOverPolicy carryOverPolicy) {
+        if (amountThreshold <= 0) {
+            throw new IllegalArgumentException("amountThreshold must be positive");
+        }
         this.amountThreshold = amountThreshold;
         this.setAmountByVolume = setAmountByVolume;
         this.realtimeBars = realtimeBars;
         this.carryOverPolicy = carryOverPolicy == null ? RemainderCarryOverPolicy.NONE : carryOverPolicy;
+    }
+
+    @Serial
+    private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (amountThreshold <= 0) {
+            throw new InvalidObjectException("amountThreshold must be positive");
+        }
+        if (carryOverPolicy == null) {
+            throw new InvalidObjectException("carryOverPolicy must not be null");
+        }
     }
 
     @Override

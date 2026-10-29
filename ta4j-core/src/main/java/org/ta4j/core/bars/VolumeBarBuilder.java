@@ -104,7 +104,10 @@ public class VolumeBarBuilder implements BarBuilder {
      */
     public VolumeBarBuilder(final NumFactory numFactory, final int volumeThreshold, final boolean realtimeBars,
             final RemainderCarryOverPolicy carryOverPolicy) {
-        this.numFactory = numFactory;
+        if (volumeThreshold <= 0) {
+            throw new IllegalArgumentException("volumeThreshold must be positive");
+        }
+        this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
         this.carryOverPolicy = carryOverPolicy == null ? RemainderCarryOverPolicy.NONE : carryOverPolicy;
         this.realtimeBars = realtimeBars;
         this.volumeThreshold = numFactory.numOf(volumeThreshold);

@@ -1000,4 +1000,52 @@ class AmountBarBuilderTest {
         assertNumEquals(4, secondSeries.getBar(0).getAmount());
     }
 
+    @Test
+    void constructorAndDeserializationRejectNonPositiveAmountThreshold() {
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new AmountBarBuilderFactory(0, true));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new AmountBarBuilderFactory(-1, true));
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new AmountBarBuilder(DecimalNumFactory.getInstance(), 0, true));
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new AmountBarBuilder(DecimalNumFactory.getInstance(), -1, true));
+
+        SerializedAmountBarBuilderFactoryState state = new SerializedAmountBarBuilderFactoryState();
+        state.amountThreshold = 0;
+        Assertions.assertThrows(java.io.InvalidObjectException.class, () -> restoreFactoryState(state));
+
+        SerializedAmountBarBuilderFactoryState nullPolicyState = new SerializedAmountBarBuilderFactoryState();
+        nullPolicyState.amountThreshold = 10;
+        nullPolicyState.carryOverPolicy = null;
+        Assertions.assertThrows(java.io.InvalidObjectException.class, () -> restoreFactoryState(nullPolicyState));
+    }
+
+    private static final class SerializedAmountBarBuilderFactoryState implements java.io.Serializable {
+        @java.io.Serial
+        private static final long serialVersionUID = 1L;
+        private int amountThreshold;
+        private boolean setAmountByVolume;
+        private RemainderCarryOverPolicy carryOverPolicy = RemainderCarryOverPolicy.NONE;
+        private boolean realtimeBars;
+    }
+
+    private static Object restoreFactoryState(SerializedAmountBarBuilderFactoryState state) throws Exception {
+        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+        try (java.io.ObjectOutputStream output = new java.io.ObjectOutputStream(bytes)) {
+            output.writeObject(state);
+        }
+        try (java.io.ObjectInputStream input = new java.io.ObjectInputStream(
+                new java.io.ByteArrayInputStream(bytes.toByteArray())) {
+            @Override
+            protected java.io.ObjectStreamClass readClassDescriptor()
+                    throws java.io.IOException, ClassNotFoundException {
+                java.io.ObjectStreamClass descriptor = super.readClassDescriptor();
+                return descriptor.getName().equals(SerializedAmountBarBuilderFactoryState.class.getName())
+                        ? java.io.ObjectStreamClass.lookup(AmountBarBuilderFactory.class)
+                        : descriptor;
+            }
+        }) {
+            return input.readObject();
+        }
+    }
+
 }

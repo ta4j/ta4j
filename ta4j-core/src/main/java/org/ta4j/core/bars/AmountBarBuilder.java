@@ -120,7 +120,10 @@ public class AmountBarBuilder implements BarBuilder {
      */
     public AmountBarBuilder(final NumFactory numFactory, final int amountThreshold, final boolean setAmountByVolume,
             final boolean realtimeBars, final RemainderCarryOverPolicy carryOverPolicy) {
-        this.numFactory = numFactory;
+        if (amountThreshold <= 0) {
+            throw new IllegalArgumentException("amountThreshold must be positive");
+        }
+        this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
         this.amountThreshold = numFactory.numOf(amountThreshold);
         this.setAmountByVolume = setAmountByVolume;
         this.carryOverPolicy = carryOverPolicy == null ? RemainderCarryOverPolicy.NONE : carryOverPolicy;

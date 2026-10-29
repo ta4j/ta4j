@@ -19,3 +19,8 @@
 **Vulnerability:** Standard Java deserialization (`readObject`) bypasses constructors, allowing serialized payloads with trade indices below -1 or null required fields (type, price, amount, cost, netPrice, fills) to instantiate invalid `BaseTrade` domain objects. Scalar trades may have zero or negative amounts, and index -1 represents deferred assignment.
 **Learning:** `BaseTrade` implements `Serializable` but lacked `readObject` validation. Validating fields in `readObject` and throwing `InvalidObjectException` prevents corrupted streams from instantiating invalid trades.
 **Prevention:** Any `Serializable` domain model in ta4j must implement `readObject` to validate all constructor invariants upon deserialization.
+
+## 2026-10-29 - Invariant Validation in BarBuilderFactories and BarBuilders
+**Vulnerability:** `TickBarBuilderFactory`, `VolumeBarBuilderFactory`, and `AmountBarBuilderFactory` did not validate constructor parameters or deserialized object states, allowing zero/negative thresholds or null policies to cause arithmetic division-by-zero errors or invalid bar calculations when ingesting trade data.
+**Learning:** `BarBuilderFactory` implementations are `Serializable` components used by `BarSeries`. Because deserialization restores primitive fields directly without constructor checks, factory thresholds must be validated in `readObject()` throwing `InvalidObjectException`.
+**Prevention:** Every `BarBuilderFactory` and `BarBuilder` class with threshold limits or policy configurations must validate positive values (`threshold > 0`) and non-null enum references in constructors and `readObject()` methods.

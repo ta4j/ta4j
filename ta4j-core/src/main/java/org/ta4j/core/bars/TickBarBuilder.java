@@ -82,7 +82,10 @@ public class TickBarBuilder implements BarBuilder {
      * @since 0.22.0
      */
     public TickBarBuilder(final NumFactory numFactory, final int tickCount, final boolean realtimeBars) {
-        this.numFactory = numFactory;
+        if (tickCount <= 0) {
+            throw new IllegalArgumentException("tickCount must be positive");
+        }
+        this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
         this.realtimeBars = realtimeBars;
         this.tickCount = tickCount;
         reset();

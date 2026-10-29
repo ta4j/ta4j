@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.bars;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -38,8 +42,19 @@ public class TickBarBuilderFactory implements BarBuilderFactory {
      * @since 0.22.2
      */
     public TickBarBuilderFactory(final int tickCount, final boolean realtimeBars) {
+        if (tickCount <= 0) {
+            throw new IllegalArgumentException("tickCount must be positive");
+        }
         this.tickCount = tickCount;
         this.realtimeBars = realtimeBars;
+    }
+
+    @Serial
+    private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (tickCount <= 0) {
+            throw new InvalidObjectException("tickCount must be positive");
+        }
     }
 
     @Override
