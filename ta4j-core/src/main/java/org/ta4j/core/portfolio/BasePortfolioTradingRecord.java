@@ -67,6 +67,35 @@ public final class BasePortfolioTradingRecord implements PortfolioTradingRecord 
                 key -> Objects.requireNonNull(factory.apply(key), "record factory returned null for " + key));
     }
 
+    /**
+     * Installs an asset record, replacing its cached record only if the latter has
+     * no open position. Reinstalling the same record is a no-op. The restriction
+     * also applies to cached records for assets removed from the series.
+     *
+     * <p>
+     * This class is not thread-safe. The caller must coordinate access and ensure
+     * that no executions are pending against the record being replaced.
+     * </p>
+     *
+     * @param asset  asset identifier
+     * @param record restored or new record to install
+     * @throws IllegalStateException if a different cached record has an open
+     *                               position
+     * @since 0.27.1
+     */
+    public void replaceRecord(String asset, TradingRecord record) {
+        Objects.requireNonNull(asset, "asset");
+        Objects.requireNonNull(record, "record");
+        TradingRecord existing = records.get(asset);
+        if (existing == record) {
+            return;
+        }
+        if (existing != null && !existing.isClosed()) {
+            throw new IllegalStateException("Cannot replace an open trading record for asset " + asset);
+        }
+        records.put(asset, record);
+    }
+
     /** @since 0.27.1 */
     @Override
     public int openPositionCount() {
