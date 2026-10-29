@@ -30,9 +30,8 @@ final class PortfolioSerialization {
                     tradeType(descriptor));
         }
         if (PerAssetStrategy.class.getName().equals(type)) {
-            requireShape(descriptor, 1, Set.of("unstableBars", "startingType", "strategyJson"));
-            return PerAssetStrategy.fromDescriptor(descriptor.getComponents().get(0), tradeType(descriptor),
-                    integer(descriptor, "unstableBars"), text(descriptor, "strategyJson"));
+            requireShape(descriptor, 1, Set.of("strategyJson"));
+            return PerAssetStrategy.fromDescriptor(descriptor.getComponents().get(0), text(descriptor, "strategyJson"));
         }
         throw new IllegalArgumentException("Unknown portfolio strategy type: " + type);
     }

@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.portfolio;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -12,13 +11,20 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.ComponentSerialization;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 /**
  * Runs one ordinary strategy per asset, translating portfolio indices to source
- * indices and supplying that asset's trading record. Bind explicitly before
- * requesting metadata, or let a decision bind lazily from its record. All
- * assets must have the same entry type and unstable-bar count. Instances cache
- * per-asset strategies and are not thread-safe.
+ * indices and supplying that asset's trading record. Descriptor-backed
+ * strategies can be serialized before binding a view. Metadata from a sample
+ * strategy is available immediately; a JSON or arbitrary factory must be bound
+ * before requesting its starting type or unstable bars. All assets must have
+ * the same entry type and unstable-bar count. Instances cache per-asset
+ * strategies and are not thread-safe.
  *
  * <p>
  * Arbitrary factories can depend on the asset series in ways a descriptor
@@ -37,19 +43,23 @@ public final class PerAssetStrategy implements PortfolioStrategy {
     private final TradeType expectedType;
     private final String strategyJson;
     private final Integer expectedUnstableBars;
-    private ComponentDescriptor template;
+    private final ComponentDescriptor template;
+    private final String name;
     private PortfolioSeriesView view;
     private TradeType startingType;
     private Integer unstableBars;
 
-    private PerAssetStrategy(Function<BarSeries, Strategy> factory, boolean descriptorBacked,
-            ComponentDescriptor template, TradeType expectedType, Integer expectedUnstableBars, String strategyJson) {
+    private PerAssetStrategy(Function<BarSeries, Strategy> factory, ComponentDescriptor template,
+            TradeType expectedType, Integer expectedUnstableBars, String strategyJson, String name) {
         this.strategies = new AssetComponents<>(factory);
-        this.descriptorBacked = descriptorBacked;
+        this.descriptorBacked = strategyJson != null;
         this.template = template;
         this.expectedType = expectedType;
         this.expectedUnstableBars = expectedUnstableBars;
         this.strategyJson = strategyJson;
+        this.name = name;
+        this.startingType = expectedType;
+        this.unstableBars = expectedUnstableBars;
     }
 
     /**
@@ -61,7 +71,7 @@ public final class PerAssetStrategy implements PortfolioStrategy {
      * @since 0.27.1
      */
     public static PerAssetStrategy of(Function<BarSeries, Strategy> factory) {
-        return new PerAssetStrategy(factory, false, null, null, null, null);
+        return new PerAssetStrategy(factory, null, null, null, null, "PerAssetStrategy");
     }
 
     /**
@@ -74,15 +84,18 @@ public final class PerAssetStrategy implements PortfolioStrategy {
      * @since 0.27.1
      */
     public static PerAssetStrategy of(Strategy strategy) {
-        return ofJson(Objects.requireNonNull(strategy, "strategy").toJson());
+        Strategy sample = Objects.requireNonNull(strategy, "strategy");
+        String json = sample.toJson();
+        return new PerAssetStrategy(series -> Strategy.fromJson(series, json), describeJson(json),
+                sample.getStartingType(), sample.getUnstableBars(), json, sample.getName());
     }
 
     /**
      * Uses {@link Strategy#fromJson(BarSeries, String)} on each asset's series.
      * Both canonical and version-2 strategy JSON are accepted. The original JSON is
      * retained in the portfolio descriptor so that each asset is restored from the
-     * same input even when numeric factories differ. The canonical descriptor of
-     * the first bound strategy is also exposed as a child.
+     * same input even when numeric factories differ. The descriptor is available
+     * before binding; starting type and unstable-bar metadata require binding.
      *
      * @param strategyJson single-series strategy JSON
      * @return descriptor-backed portfolio strategy
@@ -90,16 +103,44 @@ public final class PerAssetStrategy implements PortfolioStrategy {
      */
     public static PerAssetStrategy ofJson(String strategyJson) {
         Objects.requireNonNull(strategyJson, "strategyJson");
-        return new PerAssetStrategy(series -> Strategy.fromJson(series, strategyJson), true, null, null, null,
-                strategyJson);
+        ComponentDescriptor template = describeJson(strategyJson);
+        return new PerAssetStrategy(series -> Strategy.fromJson(series, strategyJson), template, null, null,
+                strategyJson, template.getLabel());
     }
 
-    static PerAssetStrategy fromDescriptor(ComponentDescriptor descriptor, TradeType expectedType,
-            Integer expectedUnstableBars, String strategyJson) {
+    static PerAssetStrategy fromDescriptor(ComponentDescriptor descriptor, String strategyJson) {
         Objects.requireNonNull(descriptor, "descriptor");
-        Objects.requireNonNull(strategyJson, "strategyJson");
-        return new PerAssetStrategy(series -> Strategy.fromJson(series, strategyJson), true, descriptor, expectedType,
-                expectedUnstableBars, strategyJson);
+        PerAssetStrategy strategy = ofJson(strategyJson);
+        if (!strategy.template.equals(descriptor)) {
+            throw new IllegalArgumentException("Per-asset strategy descriptor does not match its JSON");
+        }
+        return strategy;
+    }
+
+    private static ComponentDescriptor describeJson(String strategyJson) {
+        if (strategyJson.contains("\"version\"")) {
+            JsonElement json = JsonParser.parseString(strategyJson);
+            if (json.isJsonObject()) {
+                JsonObject object = json.getAsJsonObject();
+                if (object.has("version") && (object.has("strategy") || object.has("name") || object.has("entryRule")
+                        || object.has("exitRule"))) {
+                    JsonElement name = object.get("name");
+                    String label = name != null && name.isJsonPrimitive() && name.getAsJsonPrimitive().isString()
+                            ? name.getAsString()
+                            : null;
+                    return ComponentDescriptor.builder()
+                            .withType("StrategyJson")
+                            .withLabel(label)
+                            .withParameters(Map.of("json", strategyJson))
+                            .build();
+                }
+            }
+        }
+        ComponentDescriptor descriptor = ComponentSerialization.parse(strategyJson);
+        if (descriptor == null) {
+            throw new IllegalArgumentException("Missing strategy JSON descriptor");
+        }
+        return descriptor;
     }
 
     /**
@@ -113,21 +154,16 @@ public final class PerAssetStrategy implements PortfolioStrategy {
         if (view != newView) {
             view = newView;
             strategies.bind(newView);
-            startingType = null;
-            unstableBars = null;
+            startingType = expectedType;
+            unstableBars = expectedUnstableBars;
         }
         try {
             if (newView.assets().isEmpty()) {
                 throw new IllegalStateException("Cannot determine per-asset strategy metadata from an empty view");
             }
-            boolean first = true;
             for (String asset : newView.assets()) {
                 Strategy strategy = strategies.get(newView, asset);
                 validateMetadata(strategy, asset);
-                if (first && descriptorBacked) {
-                    template = strategy.toDescriptor();
-                }
-                first = false;
             }
         } catch (RuntimeException ex) {
             invalidateBinding();
@@ -157,8 +193,8 @@ public final class PerAssetStrategy implements PortfolioStrategy {
 
     private void invalidateBinding() {
         view = null;
-        startingType = null;
-        unstableBars = null;
+        startingType = expectedType;
+        unstableBars = expectedUnstableBars;
     }
 
     /**
@@ -168,7 +204,7 @@ public final class PerAssetStrategy implements PortfolioStrategy {
      */
     @Override
     public String getName() {
-        return "PerAssetStrategy";
+        return name;
     }
 
     /**
@@ -192,29 +228,35 @@ public final class PerAssetStrategy implements PortfolioStrategy {
     }
 
     /**
-     * {@inheritDoc}
-     * 
+     * Returns the sample strategy's starting type, or the common type discovered
+     * when a JSON or arbitrary factory is bound.
+     *
+     * @return starting trade type
+     * @throws IllegalStateException if factory metadata is requested before binding
      * @since 0.27.1
      */
     @Override
     public TradeType getStartingType() {
-        requireBound();
+        requireMetadata();
         return startingType;
     }
 
     /**
-     * {@inheritDoc}
-     * 
+     * Returns the sample strategy's unstable-bar count, or the common count
+     * discovered when a JSON or arbitrary factory is bound.
+     *
+     * @return number of unstable bars
+     * @throws IllegalStateException if factory metadata is requested before binding
      * @since 0.27.1
      */
     @Override
     public int getUnstableBars() {
-        requireBound();
+        requireMetadata();
         return unstableBars;
     }
 
-    private void requireBound() {
-        if (view == null || startingType == null || unstableBars == null) {
+    private void requireMetadata() {
+        if (startingType == null || unstableBars == null) {
             throw new IllegalStateException("Bind the portfolio view before requesting strategy metadata");
         }
     }
@@ -279,15 +321,10 @@ public final class PerAssetStrategy implements PortfolioStrategy {
         if (!descriptorBacked) {
             throw new UnsupportedOperationException("Cannot serialize an opaque per-asset strategy factory");
         }
-        requireBound();
-        Map<String, Object> parameters = new LinkedHashMap<>();
-        parameters.put("unstableBars", unstableBars);
-        parameters.put("startingType", startingType.name());
-        parameters.put("strategyJson", strategyJson);
         return ComponentDescriptor.builder()
                 .withType(PerAssetStrategy.class.getName())
-                .withLabel("PerAssetStrategy")
-                .withParameters(parameters)
+                .withLabel(template.getLabel())
+                .withParameters(Map.of("strategyJson", strategyJson))
                 .addComponent(template)
                 .build();
     }
