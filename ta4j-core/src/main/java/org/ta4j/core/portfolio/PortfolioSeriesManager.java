@@ -265,12 +265,21 @@ public final class PortfolioSeriesManager {
         strategy.bind(view);
         TradeType tradeType = strategy.getStartingType();
         CostModel holdingCost = new ZeroCostModel();
-        BasePortfolioTradingRecord baseRecord = new BasePortfolioTradingRecord(view,
-                asset -> new DeferredTradingRecord(tradeType, transactionCostModel, holdingCost));
+        List<DeferredTradingRecord> deferredRecords = new ArrayList<>();
+        boolean[] completed = { false };
+        BasePortfolioTradingRecord baseRecord = new BasePortfolioTradingRecord(view, asset -> {
+            if (completed[0]) {
+                return new BaseTradingRecord(tradeType, transactionCostModel, holdingCost);
+            }
+            DeferredTradingRecord deferred = new DeferredTradingRecord(tradeType, transactionCostModel, holdingCost);
+            deferredRecords.add(deferred);
+            return deferred;
+        });
         List<AssetExecution> assets = new ArrayList<>();
         int begin = view.getBeginIndex();
         int end = view.getEndIndex();
         if (end < begin) {
+            completed[0] = true;
             return baseRecord;
         }
         TradeExecutionModel closingModel = new ExitOnRunEndModel(executionModel);
@@ -291,6 +300,7 @@ public final class PortfolioSeriesManager {
                     continue;
                 }
                 asset.currentIndex = view.getSourceIndex(asset.name, index);
+                asset.lastProcessedIndex = asset.currentIndex;
                 asset.window.markBarProcessed();
                 asset.record.advance(asset.currentIndex);
                 closingModel.onBar(asset.currentIndex, asset.record, asset.window);
@@ -316,12 +326,26 @@ public final class PortfolioSeriesManager {
                 if (asset.currentIndex == asset.sourceEnd) {
                     closingModel.onRunEnd(asset.currentIndex, asset.record, asset.window);
                     asset.record.finish();
+                    asset.finished = true;
                 }
             }
             if (index == end) {
                 break;
             }
         }
+        for (AssetExecution asset : assets) {
+            if (!asset.finished && asset.lastProcessedIndex >= 0) {
+                closingModel.onRunEnd(asset.lastProcessedIndex, asset.record, asset.window);
+                asset.record.finish();
+            }
+        }
+        for (DeferredTradingRecord deferred : deferredRecords) {
+            if (!deferred.finished) {
+                deferred.finish();
+            }
+        }
+        deferredRecords.clear();
+        completed[0] = true;
         return baseRecord;
     }
 
@@ -351,6 +375,8 @@ public final class PortfolioSeriesManager {
         private final Strategy projection;
         private final int sourceEnd;
         private int currentIndex = -1;
+        private int lastProcessedIndex = -1;
+        private boolean finished;
 
         private AssetExecution(String name, RunWindowBarSeries window, DeferredTradingRecord record,
                 Strategy projection, int sourceEnd) {

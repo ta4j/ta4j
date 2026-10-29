@@ -402,6 +402,86 @@ public class PortfolioSeriesManagerTest {
     }
 
     @Test
+    public void removedAssetIsFinalizedAtItsLastProcessedBar() {
+        LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", series("ALPHA", 10, 11, 12)));
+        List<Integer> endings = new ArrayList<>();
+        TradeExecutionModel immediate = new TradeOnCurrentCloseModel();
+        TradeExecutionModel model = new TradeExecutionModel() {
+            @Override
+            public void execute(int index, TradingRecord record, BarSeries bars, Num amount) {
+                immediate.execute(index, record, bars, amount);
+            }
+
+            @Override
+            public void onRunEnd(int index, TradingRecord record, BarSeries bars) {
+                endings.add(index);
+            }
+        };
+        PortfolioStrategy strategy = new BasePortfolioStrategy("removed", (asset, index, record) -> index == 0,
+                (asset, index, record) -> {
+                    view.removeAsset(asset);
+                    return false;
+                });
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(), model);
+
+        assertEquals(List.of(1), endings);
+        assertEquals(0, result.openPositionCount());
+        assertEquals(1, result.record("ALPHA").getPositions().getFirst().getExit().getIndex());
+        assertTrue(result.enter("ALPHA", 2, view.numFactory().one(), view.numFactory().one()));
+        assertEquals(1, result.openPositionCount());
+    }
+
+    @Test
+    public void removedAssetExpiresPendingOrder() {
+        LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", liquidSeries("ALPHA", 1, 3)));
+        NumFactory factory = view.numFactory();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(factory.zero(), factory.zero(), factory.one(), 3,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("removed-pending", (asset, index, record) -> {
+            view.removeAsset(asset);
+            return true;
+        }, (asset, index, record) -> false);
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(), model);
+
+        assertTrue(model.getPendingOrder(result.record("ALPHA")).isEmpty());
+        assertTrue(result.record("ALPHA").isClosed());
+    }
+
+    @Test
+    public void emptyRunReturnsImmediateRecordsForLaterAssets() {
+        BarSeries alpha = new BaseBarSeriesBuilder().withName("ALPHA").withNumFactory(DoubleNumFactory.getInstance())
+                .build();
+        LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", alpha));
+        PortfolioStrategy strategy = new BasePortfolioStrategy("empty", (asset, index, record) -> false,
+                (asset, index, record) -> false);
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, view.numFactory().one());
+        alpha.addBar(series("ALPHA", 10).getBar(0));
+        view.advance();
+
+        assertTrue(result.enter("ALPHA", 0, view.numFactory().numOf(10), view.numFactory().one()));
+        assertEquals(1, result.openPositionCount());
+    }
+
+    @Test
+    public void skippedAndLazyRecordsAreImmediateAfterNonemptyRun() {
+        BarSeries alpha = new BaseBarSeriesBuilder().withName("ALPHA").withNumFactory(DoubleNumFactory.getInstance())
+                .build();
+        LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", alpha, "BETA", series("BETA", 10)));
+        PortfolioStrategy strategy = new BasePortfolioStrategy("skipped", (asset, index, record) -> {
+            record.record("ALPHA");
+            return false;
+        }, (asset, index, record) -> false);
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, view.numFactory().one());
+        assertTrue(result.enter("ALPHA", 0, view.numFactory().numOf(10), view.numFactory().one()));
+        assertTrue(result.enter("LATER", 0, view.numFactory().numOf(10), view.numFactory().one()));
+        assertEquals(2, result.openPositionCount());
+    }
+
+    @Test
     public void pendingAndPartiallyFilledEntriesReservePortfolioCapacity() {
         Map<String, BarSeries> members = new LinkedHashMap<>();
         members.put("ALPHA", liquidSeries("ALPHA", 0.5, 4));
