@@ -64,7 +64,8 @@ final class PortfolioSerialization {
             ComponentDescriptor child = descriptor.getComponents().get(0);
             if (!view.assets().isEmpty()) {
                 BarSeries series = view.getBarSeries(view.assets().get(0));
-                child = RuleSerialization.fromDescriptor(series, child).toDescriptor();
+                // Validate against a series without replacing the precision-bearing template.
+                RuleSerialization.fromDescriptor(series, child);
             }
             return AssetRule.fromDescriptor(child);
         }
@@ -86,7 +87,8 @@ final class PortfolioSerialization {
             ComponentDescriptor child = descriptor.getComponents().get(0);
             if (!view.assets().isEmpty()) {
                 BarSeries series = view.getBarSeries(view.assets().get(0));
-                child = IndicatorSerialization.fromDescriptor(series, child).toDescriptor();
+                // Each asset must reconstruct the original template with its own factory.
+                IndicatorSerialization.fromDescriptor(series, child);
             }
             return IndicatorAssetRanker.fromDescriptor(child, (Boolean) direction);
         }

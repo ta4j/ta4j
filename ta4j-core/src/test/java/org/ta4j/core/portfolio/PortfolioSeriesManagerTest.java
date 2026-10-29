@@ -11,6 +11,7 @@ import static org.ta4j.core.portfolio.PortfolioFixtures.START;
 import static org.ta4j.core.portfolio.PortfolioFixtures.assertNumClose;
 import static org.ta4j.core.portfolio.PortfolioFixtures.series;
 
+import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -19,6 +20,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
@@ -27,6 +29,7 @@ import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.backtest.PositionSizer;
+import org.ta4j.core.backtest.StopLimitExecutionModel;
 import org.ta4j.core.backtest.TradeExecutionModel;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.backtest.TradeOnNextOpenModel;
@@ -396,6 +399,101 @@ public class PortfolioSeriesManagerTest {
         assertNumEquals(11, result.record("ALPHA").getPositions().getFirst().getExit().getPricePerAsset());
         assertNumEquals(21, result.record("BETA").getPositions().getFirst().getExit().getPricePerAsset());
         assertEquals(0, result.openPositionCount());
+    }
+
+    @Test
+    public void pendingAndPartiallyFilledEntriesReservePortfolioCapacity() {
+        Map<String, BarSeries> members = new LinkedHashMap<>();
+        members.put("ALPHA", liquidSeries("ALPHA", 0.5, 4));
+        members.put("BETA", liquidSeries("BETA", 0.5, 4));
+        PortfolioSeriesView view = PortfolioSeries.union(members);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("limit", new MaxOpenPositionsRule(1),
+                (asset, index, record) -> false);
+        NumFactory factory = view.numFactory();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(factory.zero(), factory.zero(), factory.one(), 3,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(), model);
+
+        assertTrue(result.record("BETA").getPositions().isEmpty());
+        assertEquals(2, result.record("ALPHA").getPositions().size());
+        assertEquals(List.of(1, 2),
+                result.record("ALPHA")
+                        .getPositions()
+                        .stream()
+                        .map(position -> position.getEntry().getIndex())
+                        .toList());
+    }
+
+    @Test
+    public void expiredUnfilledEntryReleasesCapacityForAnotherAsset() {
+        PortfolioSeriesView view = PortfolioSeries
+                .union(Map.of("ALPHA", liquidSeries("ALPHA", 0, 4), "BETA", liquidSeries("BETA", 1, 4)));
+        PortfolioRule limit = new MaxOpenPositionsRule(1);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("expiry", (asset, index,
+                record) -> (asset.equals("ALPHA") ? index == 0 : index >= 1) && limit.isSatisfied(asset, index, record),
+                (asset, index, record) -> false);
+        NumFactory factory = view.numFactory();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(factory.zero(), factory.zero(), factory.one(), 1,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(), model);
+
+        assertTrue(result.record("ALPHA").getPositions().isEmpty());
+        assertEquals(1, result.record("BETA").getPositions().size());
+        assertEquals(2, result.record("BETA").getPositions().getFirst().getEntry().getIndex());
+    }
+
+    @Test
+    public void nextOpenExitDoesNotReleaseCapacityBeforeItsAssetBar() {
+        BarSeries alpha = series("ALPHA", 100, 100);
+        BarSeries later = series("LATER", DoubleNumFactory.getInstance(), 5, "100", "100");
+        alpha.addBar(later.getBar(0));
+        alpha.addBar(later.getBar(1));
+        BarSeries beta = series("BETA", 100, 100, 100, 100, 100, 100, 100);
+        PortfolioSeriesView view = PortfolioSeries.union(Map.of("ALPHA", alpha, "BETA", beta));
+        PortfolioRule limit = new MaxOpenPositionsRule(1);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("next-open",
+                (asset, index, record) -> (asset.equals("ALPHA") ? index == 0 : index == 2 || index == 5)
+                        && limit.isSatisfied(asset, index, record),
+                (asset, index, record) -> asset.equals("ALPHA") && index == 1);
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(),
+                new TradeOnNextOpenModel());
+
+        assertEquals(2, result.record("ALPHA").getPositions().getFirst().getExit().getIndex());
+        assertEquals(6, result.record("BETA").getPositions().getFirst().getEntry().getIndex());
+    }
+
+    @Test
+    public void terminalAssetClosesBeforeLaterAssetAdmission() {
+        PortfolioSeriesView view = PortfolioSeries
+                .union(Map.of("ALPHA", series("ALPHA", 100, 100), "BETA", series("BETA", 100, 100, 100, 100)));
+        PortfolioRule limit = new MaxOpenPositionsRule(1);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("terminal", (asset, index,
+                record) -> (asset.equals("ALPHA") ? index == 0 : index == 2) && limit.isSatisfied(asset, index, record),
+                (asset, index, record) -> false);
+
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, view.numFactory().one());
+
+        assertEquals(1, result.record("ALPHA").getPositions().getFirst().getExit().getIndex());
+        assertEquals(2, result.record("BETA").getPositions().getFirst().getEntry().getIndex());
+    }
+
+    private static BarSeries liquidSeries(String name, double volume, int bars) {
+        BarSeries series = new BaseBarSeriesBuilder().withName(name).build();
+        for (int i = 0; i < bars; i++) {
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(START.plus(Duration.ofDays(i)))
+                    .openPrice(100)
+                    .highPrice(100)
+                    .lowPrice(100)
+                    .closePrice(100)
+                    .volume(volume)
+                    .add();
+        }
+        return series;
     }
 
     private static PortfolioSnapshot scaledRun(NumFactory numFactory, String price, String capital) {

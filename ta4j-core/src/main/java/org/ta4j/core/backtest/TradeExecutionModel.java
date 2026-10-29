@@ -70,6 +70,19 @@ public interface TradeExecutionModel {
     }
 
     /**
+     * Reports an accepted order that has not yet filled, expired, or been
+     * cancelled. Models that retain asynchronous orders must override this method
+     * so portfolio runs can reserve entry capacity and avoid duplicate signals.
+     *
+     * @param tradingRecord record whose order is being queried
+     * @return whether the record has a pending order
+     * @since 0.27.1
+     */
+    default boolean hasPendingOrder(TradingRecord tradingRecord) {
+        return false;
+    }
+
+    /**
      * Finalizes model state when a {@link BarSeriesManager} run ends.
      *
      * <p>

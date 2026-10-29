@@ -16,7 +16,9 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.OverIndicatorRule;
 
 public class AssetRuleTest {
@@ -70,6 +72,26 @@ public class AssetRuleTest {
         }
         assertTrue(restored.isSatisfied("A", 1, record));
         assertFalse(restored.isSatisfied("B", 1, record));
+    }
+
+    @Test
+    public void preservesThresholdPrecisionWhenRestoringForMixedFactories() {
+        NumFactory decimal = DecimalNumFactory.getInstance(30);
+        BarSeries a = series("A", DoubleNumFactory.getInstance(), 0, "1");
+        BarSeries b = series("B", decimal, 0, "1.00000000000000000005");
+        PortfolioSeriesView view = new PortfolioSeries(a, b);
+        PortfolioTradingRecord record = new BasePortfolioTradingRecord(view);
+        PortfolioRule original = AssetRule
+                .of(new OverIndicatorRule(new ClosePriceIndicator(b), decimal.numOf("1.0000000000000000001")));
+        String json = original.toJson();
+        PortfolioRule restored = PortfolioRule.fromJson(view, json);
+
+        assertFalse(original.isSatisfied("B", 0, record));
+        assertFalse(restored.isSatisfied("B", 0, record));
+        assertEquals(original.isSatisfied("A", 0, record), restored.isSatisfied("A", 0, record));
+        assertEquals(original.toDescriptor(), restored.toDescriptor());
+        assertThrows(RuntimeException.class, () -> PortfolioRule.fromJson(view,
+                json.replace(OverIndicatorRule.class.getSimpleName(), "invalid.Rule")));
     }
 
     @Test

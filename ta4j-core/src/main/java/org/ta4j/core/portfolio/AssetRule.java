@@ -9,6 +9,7 @@ import java.util.function.Function;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.ComponentSerialization;
 import org.ta4j.core.serialization.RuleSerialization;
 
 /**
@@ -53,7 +54,8 @@ public final class AssetRule implements PortfolioRule {
 
     static AssetRule fromDescriptor(ComponentDescriptor descriptor) {
         Objects.requireNonNull(descriptor, "descriptor");
-        return new AssetRule(series -> RuleSerialization.fromDescriptor(series, descriptor), descriptor);
+        ComponentDescriptor canonical = ComponentSerialization.parse(ComponentSerialization.toJson(descriptor));
+        return new AssetRule(series -> RuleSerialization.fromDescriptor(series, descriptor), canonical);
     }
 
     /**

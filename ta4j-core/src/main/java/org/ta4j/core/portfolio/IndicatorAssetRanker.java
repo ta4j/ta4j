@@ -14,6 +14,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.ComponentSerialization;
 import org.ta4j.core.serialization.IndicatorSerialization;
 
 /**
@@ -85,7 +86,8 @@ public final class IndicatorAssetRanker implements AssetRanker {
 
     static IndicatorAssetRanker fromDescriptor(ComponentDescriptor descriptor, boolean descending) {
         Objects.requireNonNull(descriptor, "descriptor");
-        return new IndicatorAssetRanker(series -> numericIndicator(series, descriptor), descriptor, descending);
+        ComponentDescriptor canonical = ComponentSerialization.parse(ComponentSerialization.toJson(descriptor));
+        return new IndicatorAssetRanker(series -> numericIndicator(series, descriptor), canonical, descending);
     }
 
     @SuppressWarnings("unchecked")

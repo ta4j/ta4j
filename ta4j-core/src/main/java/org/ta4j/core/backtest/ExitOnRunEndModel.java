@@ -58,6 +58,12 @@ public final class ExitOnRunEndModel implements TradeExecutionModel {
         delegate.onBar(index, tradingRecord, barSeries);
     }
 
+    /** @since 0.27.1 */
+    @Override
+    public boolean hasPendingOrder(TradingRecord tradingRecord) {
+        return delegate.hasPendingOrder(tradingRecord);
+    }
+
     @Override
     public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
         delegate.execute(index, tradingRecord, barSeries, amount);

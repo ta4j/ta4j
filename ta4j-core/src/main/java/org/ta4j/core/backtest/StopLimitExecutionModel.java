@@ -162,6 +162,12 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         }
     }
 
+    /** @since 0.27.1 */
+    @Override
+    public boolean hasPendingOrder(TradingRecord tradingRecord) {
+        return pendingOrderOf(tradingRecord) != null;
+    }
+
     @Override
     public ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
         ExecutionTarget referenceTarget = ExecutionModelSupport.resolveExecutionTarget(signalIndex, barSeries,

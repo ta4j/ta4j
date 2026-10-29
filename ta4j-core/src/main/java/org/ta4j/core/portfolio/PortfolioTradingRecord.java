@@ -42,6 +42,18 @@ public interface PortfolioTradingRecord {
     int openPositionCount();
 
     /**
+     * Returns the number of accepted entry orders not yet reflected in open
+     * positions. External/live implementations may override this when they expose
+     * pending orders; the default reports none.
+     *
+     * @return pending entry reservations, excluding already-open positions
+     * @since 0.27.1
+     */
+    default int pendingEntryCount() {
+        return 0;
+    }
+
+    /**
      * @return a snapshot mapping each asset with an open position to its position
      * @since 0.27.1
      */

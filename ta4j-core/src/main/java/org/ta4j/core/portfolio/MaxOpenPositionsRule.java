@@ -9,8 +9,9 @@ import java.util.Objects;
 import org.ta4j.core.serialization.ComponentDescriptor;
 
 /**
- * Entry guard satisfied while the portfolio has fewer than the configured
- * maximum open positions. It should normally be applied to entry, not exit.
+ * Entry guard satisfied while open positions plus accepted pending entries are
+ * fewer than the configured maximum. It should normally be applied to entry,
+ * not exit.
  *
  * @since 0.27.1
  */
@@ -38,7 +39,8 @@ public final class MaxOpenPositionsRule implements PortfolioRule {
      */
     @Override
     public boolean isSatisfied(String asset, int index, PortfolioTradingRecord record) {
-        return Objects.requireNonNull(record, "record").openPositionCount() < maximum;
+        Objects.requireNonNull(record, "record");
+        return record.openPositionCount() + record.pendingEntryCount() < maximum;
     }
 
     /**

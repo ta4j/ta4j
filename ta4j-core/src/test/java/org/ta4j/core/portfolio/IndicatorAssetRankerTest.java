@@ -18,10 +18,12 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class IndicatorAssetRankerTest {
 
@@ -96,5 +98,28 @@ public class IndicatorAssetRankerTest {
         IndicatorAssetRanker ranker = new IndicatorAssetRanker(ClosePriceIndicator::new);
         assertEquals(List.of("B", "A"), ranker.rank(view, 0));
         assertEquals(List.of("A", "B"), ranker.rank(view, 1));
+    }
+
+    @Test
+    public void preservesRankingThresholdPrecisionWhenRestoringForMixedFactories() {
+        NumFactory decimal = DecimalNumFactory.getInstance(30);
+        BarSeries a = series("A", DoubleNumFactory.getInstance(), 0, "1");
+        BarSeries b = series("B", decimal, 0, "1.00000000000000000005");
+        PortfolioSeriesView view = new PortfolioSeries(a, b);
+        PortfolioTradingRecord record = new BasePortfolioTradingRecord(view);
+        IndicatorAssetRanker ranker = IndicatorAssetRanker.of(BinaryOperationIndicator.difference(
+                new ClosePriceIndicator(b), new ConstantIndicator<>(b, decimal.numOf("1.0000000000000000001"))));
+        PortfolioRule original = new AssetRankRule(ranker, 1);
+        String json = original.toJson();
+        PortfolioRule restored = PortfolioRule.fromJson(view, json);
+
+        assertEquals(List.of("A", "B"), ranker.rank(view, 0));
+        assertTrue(original.isSatisfied("A", 0, record));
+        assertFalse(original.isSatisfied("B", 0, record));
+        assertTrue(restored.isSatisfied("A", 0, record));
+        assertFalse(restored.isSatisfied("B", 0, record));
+        assertEquals(original.toDescriptor(), restored.toDescriptor());
+        assertThrows(RuntimeException.class, () -> PortfolioRule.fromJson(view,
+                json.replace(BinaryOperationIndicator.class.getSimpleName(), "invalid.Indicator")));
     }
 }
