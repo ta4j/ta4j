@@ -21,6 +21,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
@@ -77,6 +79,23 @@ public class PortfolioSeriesManagerTest {
         assertNumEquals(750, last.getTradedNotional());
         assertNumEquals(0.6, last.getTurnover());
         assertEquals(RebalanceStatus.COMPLETED, last.getRebalanceStatus());
+    }
+
+    @Test
+    public void allocationRejectsUnionSnapshotsWithMissingBars() {
+        BarSeries alpha = series("ALPHA", 100);
+        alpha.addBar(series("LATER", DoubleNumFactory.getInstance(), 2, "120").getBar(0));
+        PortfolioSeries union = PortfolioSeries.union(Map.of("ALPHA", alpha, "BETA", series("BETA", 100, 200, 100)));
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> new PortfolioSeriesManager(union).run(weights(0.5, 0.5), 1000, RebalancePolicy.everyBar()));
+        assertTrue(error.getMessage().contains("ALPHA"));
+    }
+
+    @Test
+    public void allocationAcceptsUnionSnapshotsWithoutGaps() {
+        PortfolioSeries union = PortfolioSeries.union(Map.of("ALPHA", series("ALPHA", 100, 110), "BETA",
+                series("BETA", 100, 90)));
+        assertEquals(2, new PortfolioSeriesManager(union).run(weights(0.5, 0.5), 1000).getSnapshots().size());
     }
 
     @Test
@@ -399,6 +418,70 @@ public class PortfolioSeriesManagerTest {
         assertNumEquals(11, result.record("ALPHA").getPositions().getFirst().getExit().getPricePerAsset());
         assertNumEquals(21, result.record("BETA").getPositions().getFirst().getExit().getPricePerAsset());
         assertEquals(0, result.openPositionCount());
+    }
+
+    @Test
+    public void removedAssetReleasesCapacityBeforeLaterDecisions() {
+        Map<String, BarSeries> members = new LinkedHashMap<>();
+        members.put("ALPHA", series("ALPHA", 10, 11, 12));
+        members.put("BETA", series("BETA", 20, 21, 22));
+        LivePortfolioSeries view = new LivePortfolioSeries(members);
+        PortfolioRule limit = new MaxOpenPositionsRule(1);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("removal",
+                (asset, index, record) -> (asset.equals("ALPHA") ? index == 0 : index == 2)
+                        && limit.isSatisfied(asset, index, record),
+                (asset, index, record) -> {
+                    if (asset.equals("ALPHA") && index == 1) {
+                        view.removeAsset(asset);
+                    }
+                    return false;
+                });
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, view.numFactory().one());
+        assertEquals(1, result.record("ALPHA").getPositions().getFirst().getExit().getIndex());
+        assertEquals(2, result.record("BETA").getPositions().getFirst().getEntry().getIndex());
+    }
+
+    @Test
+    public void removedAssetReleasesDeferredEntryCapacity() {
+        Map<String, BarSeries> members = new LinkedHashMap<>();
+        members.put("ALPHA", series("ALPHA", 10, 11, 12));
+        members.put("BETA", series("BETA", 20, 21, 22));
+        LivePortfolioSeries view = new LivePortfolioSeries(members);
+        PortfolioRule limit = new MaxOpenPositionsRule(1);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("removal-pending", (asset, index, record) -> {
+            if (asset.equals("ALPHA") && index == 0) {
+                view.removeAsset(asset);
+                return true;
+            }
+            return asset.equals("BETA") && index == 1 && limit.isSatisfied(asset, index, record);
+        }, (asset, index, record) -> false);
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(),
+                new TradeOnNextOpenModel());
+        assertTrue(result.record("ALPHA").getPositions().isEmpty());
+        assertEquals(2, result.record("BETA").getPositions().getFirst().getEntry().getIndex());
+    }
+
+    @Test
+    public void reorderedLiveBarsExecuteInChronologicalOrder() {
+        ConcurrentBarSeries alpha = new ConcurrentBarSeriesBuilder().withName("ALPHA")
+                .withNumFactory(DoubleNumFactory.getInstance())
+                .withBars(series("ALPHA", 10, 11, 12).getBarData()).build();
+        LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", alpha));
+        alpha.replaceBar(0, series("LATER", DoubleNumFactory.getInstance(), 3, "30").getBar(0));
+        alpha.replaceBar(2, series("EARLIER", DoubleNumFactory.getInstance(), 1, "21").getBar(0));
+        view.advance();
+        PortfolioStrategy strategy = new BasePortfolioStrategy("reordered", (asset, index, record) -> {
+            if (index == 1) {
+                assertEquals(0, record.series().getSourceIndex(asset, index));
+                assertNumEquals(21, record.series().getBarSeries(asset).getBar(0).getClosePrice());
+                return true;
+            }
+            return false;
+        }, (asset, index, record) -> false);
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, view.numFactory().one());
+        Position position = result.record("ALPHA").getPositions().getFirst();
+        assertNumEquals(21, position.getEntry().getPricePerAsset());
+        assertNumEquals(30, position.getExit().getPricePerAsset());
     }
 
     @Test

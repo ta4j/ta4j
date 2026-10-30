@@ -26,6 +26,8 @@
 
 ### Fixed
 
+- **Portfolio strategy runs**: removed live assets release open-position and pending-entry capacity before later decisions; reordered histories use chronological execution snapshots. Allocation runs reject union timelines with missing bars rather than trading on stale prices.
+
 - **Live portfolio cache retention**: per-asset strategy and rule caches discard removed members on subsequent cache access; re-added members receive fresh components after eviction.
 
 - **Safer saved trades**: Java deserialization rejects missing `BaseTrade` state and indices below -1, while preserving zero and negative scalar amounts and the deferred index -1 supported by trade construction.

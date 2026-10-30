@@ -14,8 +14,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Rule;
@@ -201,7 +204,8 @@ public final class PortfolioSeriesManager {
     /**
      * Runs a portfolio that trades toward its targets on the bars selected by
      * {@code rebalancePolicy}. The policy also schedules the initial investment:
-     * the portfolio holds only cash until the first selected bar.
+     * the portfolio holds only cash until the first selected bar. Every asset must
+     * have a bar at every aligned time; union snapshots with gaps are rejected.
      *
      * @param allocation      target allocation
      * @param initialCash     positive starting cash
@@ -212,6 +216,14 @@ public final class PortfolioSeriesManager {
     public PortfolioExecutionResult run(PortfolioAllocation allocation, Num initialCash,
             RebalancePolicy rebalancePolicy) {
         getPortfolioSeries();
+        for (String asset : series.assets()) {
+            for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+                if (!series.hasBar(asset, index)) {
+                    throw new IllegalArgumentException("Allocation requires a bar for " + asset + " at "
+                            + series.getEndTime(index));
+                }
+            }
+        }
         return new Execution(allocation, initialCash, rebalancePolicy).run();
     }
 
@@ -244,6 +256,8 @@ public final class PortfolioSeriesManager {
      * close. Sizing is called only for entries. Its single-series strategy context
      * exposes this portfolio strategy projected onto the asset. Execution and
      * sizing cannot see bars beyond the captured run window.
+     * Reordered source histories are captured in chronological order for the run;
+     * strategies and execution models see the same reindexed source snapshot.
      * </p>
      *
      * @param strategy       strategy to evaluate
@@ -262,6 +276,7 @@ public final class PortfolioSeriesManager {
             TradeExecutionModel executionModel, Num fixedAmount) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(executionModel, "executionModel");
+        PortfolioSeriesView view = executionView(this.view);
         strategy.bind(view);
         TradeType tradeType = strategy.getStartingType();
         CostModel holdingCost = new ZeroCostModel();
@@ -294,9 +309,20 @@ public final class PortfolioSeriesManager {
             }
         }
         for (int index = begin;; index++) {
+            List<String> currentAssets = view.assets();
+            for (AssetExecution asset : assets) {
+                if (!asset.finished && !currentAssets.contains(asset.name)) {
+                    asset.record.discardUnprocessedTrades();
+                    if (asset.lastProcessedIndex >= 0) {
+                        closingModel.onRunEnd(asset.lastProcessedIndex, asset.record, asset.window);
+                    }
+                    asset.record.finish();
+                    asset.finished = true;
+                }
+            }
             for (AssetExecution asset : assets) {
                 asset.currentIndex = -1;
-                if (!view.hasBar(asset.name, index)) {
+                if (asset.finished || !view.hasBar(asset.name, index)) {
                     continue;
                 }
                 asset.currentIndex = view.getSourceIndex(asset.name, index);
@@ -323,7 +349,7 @@ public final class PortfolioSeriesManager {
                 }
             }
             for (AssetExecution asset : assets) {
-                if (asset.currentIndex == asset.sourceEnd) {
+                if (!asset.finished && asset.currentIndex == asset.sourceEnd) {
                     closingModel.onRunEnd(asset.currentIndex, asset.record, asset.window);
                     asset.record.finish();
                     asset.finished = true;
@@ -348,6 +374,99 @@ public final class PortfolioSeriesManager {
         deferredRecords.clear();
         completed[0] = true;
         return baseRecord;
+    }
+
+    private static PortfolioSeriesView executionView(PortfolioSeriesView source) {
+        Map<String, BarSeries> reordered = new LinkedHashMap<>();
+        for (String asset : source.assets()) {
+            BarSeries bars = source.getBarSeries(asset);
+            List<Bar> captured = bars.withReadLock(() -> List.copyOf(bars.getBarData()));
+            boolean ordered = true;
+            for (int i = 1; i < captured.size(); i++) {
+                if (!captured.get(i - 1).getEndTime().isBefore(captured.get(i).getEndTime())) {
+                    ordered = false;
+                    break;
+                }
+            }
+            if (!ordered) {
+                TreeMap<Instant, Bar> byTime = new TreeMap<>();
+                for (Bar bar : captured) {
+                    byTime.put(bar.getEndTime(), bar);
+                }
+                reordered.put(asset, new BaseBarSeriesBuilder().withName(bars.getName())
+                        .withNumFactory(bars.numFactory())
+                        .withBars(new ArrayList<>(byTime.values()))
+                        .build());
+            }
+        }
+        return reordered.isEmpty() ? source : new ChronologicalView(source, reordered);
+    }
+
+    private record ChronologicalView(PortfolioSeriesView delegate, Map<String, BarSeries> reordered)
+            implements PortfolioSeriesView {
+        @Override
+        public List<String> assets() {
+            return delegate.assets();
+        }
+
+        @Override
+        public int getBeginIndex() {
+            return delegate.getBeginIndex();
+        }
+
+        @Override
+        public int getEndIndex() {
+            return delegate.getEndIndex();
+        }
+
+        @Override
+        public Instant getEndTime(int index) {
+            return delegate.getEndTime(index);
+        }
+
+        @Override
+        public boolean hasBar(String asset, int index) {
+            BarSeries bars = reordered.get(asset);
+            if (bars == null) {
+                return delegate.hasBar(asset, index);
+            }
+            int sourceIndex = getSourceIndex(asset, index);
+            return sourceIndex >= 0 && bars.getBar(sourceIndex).getEndTime().equals(getEndTime(index));
+        }
+
+        @Override
+        public int getSourceIndex(String asset, int index) {
+            BarSeries bars = reordered.get(asset);
+            if (bars == null) {
+                return delegate.getSourceIndex(asset, index);
+            }
+            if (!delegate.assets().contains(asset)) {
+                return -1;
+            }
+            Instant time = getEndTime(index);
+            int low = bars.getBeginIndex();
+            int high = bars.getEndIndex();
+            while (low <= high) {
+                int middle = low + (high - low) / 2;
+                if (bars.getBar(middle).getEndTime().isAfter(time)) {
+                    high = middle - 1;
+                } else {
+                    low = middle + 1;
+                }
+            }
+            return high;
+        }
+
+        @Override
+        public BarSeries getBarSeries(String asset) {
+            BarSeries original = delegate.getBarSeries(asset);
+            return reordered.getOrDefault(asset, original);
+        }
+
+        @Override
+        public NumFactory numFactory() {
+            return delegate.numFactory();
+        }
     }
 
     private Num entryAmount(PositionSizer sizer, TradeExecutionModel model, Strategy strategy, TradingRecord record,
@@ -544,6 +663,7 @@ public final class PortfolioSeriesManager {
 
     private boolean projectedDecision(PortfolioStrategy strategy, PortfolioTradingRecord record, String asset,
             int sourceIndex, boolean entry) {
+        PortfolioSeriesView view = record.series();
         BarSeries assetSeries = view.getBarSeries(asset);
         if (sourceIndex < assetSeries.getBeginIndex() || sourceIndex > assetSeries.getEndIndex()) {
             return false;
