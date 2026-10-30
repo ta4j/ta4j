@@ -219,8 +219,8 @@ public final class PortfolioSeriesManager {
         for (String asset : series.assets()) {
             for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
                 if (!series.hasBar(asset, index)) {
-                    throw new IllegalArgumentException("Allocation requires a bar for " + asset + " at "
-                            + series.getEndTime(index));
+                    throw new IllegalArgumentException(
+                            "Allocation requires a bar for " + asset + " at " + series.getEndTime(index));
                 }
             }
         }
@@ -255,9 +255,9 @@ public final class PortfolioSeriesManager {
      * An {@link ExitOnRunEndModel} finalizes each asset at its own last processed
      * close. Sizing is called only for entries. Its single-series strategy context
      * exposes this portfolio strategy projected onto the asset. Execution and
-     * sizing cannot see bars beyond the captured run window.
-     * Reordered source histories are captured in chronological order for the run;
-     * strategies and execution models see the same reindexed source snapshot.
+     * sizing cannot see bars beyond the captured run window. Reordered source
+     * histories are captured in chronological order for the run; strategies and
+     * execution models see the same reindexed source snapshot.
      * </p>
      *
      * @param strategy       strategy to evaluate
@@ -393,17 +393,18 @@ public final class PortfolioSeriesManager {
                 for (Bar bar : captured) {
                     byTime.put(bar.getEndTime(), bar);
                 }
-                reordered.put(asset, new BaseBarSeriesBuilder().withName(bars.getName())
-                        .withNumFactory(bars.numFactory())
-                        .withBars(new ArrayList<>(byTime.values()))
-                        .build());
+                reordered.put(asset,
+                        new BaseBarSeriesBuilder().withName(bars.getName())
+                                .withNumFactory(bars.numFactory())
+                                .withBars(new ArrayList<>(byTime.values()))
+                                .build());
             }
         }
         return reordered.isEmpty() ? source : new ChronologicalView(source, reordered);
     }
 
-    private record ChronologicalView(PortfolioSeriesView delegate, Map<String, BarSeries> reordered)
-            implements PortfolioSeriesView {
+    private record ChronologicalView(PortfolioSeriesView delegate,
+            Map<String, BarSeries> reordered) implements PortfolioSeriesView {
         @Override
         public List<String> assets() {
             return delegate.assets();

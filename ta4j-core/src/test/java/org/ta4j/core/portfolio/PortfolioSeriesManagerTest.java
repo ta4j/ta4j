@@ -93,8 +93,8 @@ public class PortfolioSeriesManagerTest {
 
     @Test
     public void allocationAcceptsUnionSnapshotsWithoutGaps() {
-        PortfolioSeries union = PortfolioSeries.union(Map.of("ALPHA", series("ALPHA", 100, 110), "BETA",
-                series("BETA", 100, 90)));
+        PortfolioSeries union = PortfolioSeries
+                .union(Map.of("ALPHA", series("ALPHA", 100, 110), "BETA", series("BETA", 100, 90)));
         assertEquals(2, new PortfolioSeriesManager(union).run(weights(0.5, 0.5), 1000).getSnapshots().size());
     }
 
@@ -427,9 +427,8 @@ public class PortfolioSeriesManagerTest {
         members.put("BETA", series("BETA", 20, 21, 22));
         LivePortfolioSeries view = new LivePortfolioSeries(members);
         PortfolioRule limit = new MaxOpenPositionsRule(1);
-        PortfolioStrategy strategy = new BasePortfolioStrategy("removal",
-                (asset, index, record) -> (asset.equals("ALPHA") ? index == 0 : index == 2)
-                        && limit.isSatisfied(asset, index, record),
+        PortfolioStrategy strategy = new BasePortfolioStrategy("removal", (asset, index,
+                record) -> (asset.equals("ALPHA") ? index == 0 : index == 2) && limit.isSatisfied(asset, index, record),
                 (asset, index, record) -> {
                     if (asset.equals("ALPHA") && index == 1) {
                         view.removeAsset(asset);
@@ -465,7 +464,8 @@ public class PortfolioSeriesManagerTest {
     public void reorderedLiveBarsExecuteInChronologicalOrder() {
         ConcurrentBarSeries alpha = new ConcurrentBarSeriesBuilder().withName("ALPHA")
                 .withNumFactory(DoubleNumFactory.getInstance())
-                .withBars(series("ALPHA", 10, 11, 12).getBarData()).build();
+                .withBars(series("ALPHA", 10, 11, 12).getBarData())
+                .build();
         LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", alpha));
         alpha.replaceBar(0, series("LATER", DoubleNumFactory.getInstance(), 3, "30").getBar(0));
         alpha.replaceBar(2, series("EARLIER", DoubleNumFactory.getInstance(), 1, "21").getBar(0));
