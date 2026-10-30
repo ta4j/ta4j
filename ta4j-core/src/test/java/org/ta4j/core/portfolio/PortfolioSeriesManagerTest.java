@@ -658,6 +658,108 @@ public class PortfolioSeriesManagerTest {
     }
 
     @Test
+    public void capturedEvictedBarReleasesCapacityWhenDeferredExitSettles() {
+        BarSeries alpha = series("ALPHA", 10, 11, 12, 13);
+        BarSeries beta = series("BETA", 20, 21, 22, 23);
+        Map<String, BarSeries> members = new LinkedHashMap<>();
+        members.put("ALPHA", alpha);
+        members.put("BETA", beta);
+        LivePortfolioSeries view = new LivePortfolioSeries(members);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("evicted-exit", (asset, index, record) -> {
+            if (asset.equals("BETA") && index == 1) {
+                alpha.setMaximumBarCount(1);
+            }
+            return asset.equals("ALPHA") && index == 0
+                    || asset.equals("BETA") && index == 2 && record.openPositionCount() == 0;
+        }, (asset, index, record) -> asset.equals("ALPHA") && index == 1);
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(),
+                new TradeOnNextOpenModel());
+        assertEquals(2, result.record("ALPHA").getPositions().getFirst().getExit().getIndex());
+        assertEquals(3, result.record("BETA").getPositions().getFirst().getEntry().getIndex());
+    }
+
+    @Test
+    public void appendWithinFixedTimelineIsProcessedButLaterBarsAreExcluded() {
+        BarSeries alpha = series("ALPHA", 10);
+        BarSeries additions = series("ALPHA", 10, 11, 12, 13);
+        BarSeries beta = series("BETA", 20, 21, 22);
+        Map<String, BarSeries> members = new LinkedHashMap<>();
+        members.put("ALPHA", alpha);
+        members.put("BETA", beta);
+        LivePortfolioSeries view = new LivePortfolioSeries(members);
+        List<Integer> alphaDecisions = new ArrayList<>();
+        PortfolioStrategy strategy = new BasePortfolioStrategy("append", (asset, index, record) -> {
+            if (asset.equals("BETA") && index == 0) {
+                for (int i = 1; i <= 3; i++) {
+                    alpha.addBar(additions.getBar(i));
+                }
+                view.advance();
+            }
+            if (asset.equals("ALPHA")) {
+                alphaDecisions.add(index);
+                if (index > 0) {
+                    assertEquals(2, record.series().getBarSeries(asset).getEndIndex());
+                }
+                return index == 1;
+            }
+            return false;
+        }, (asset, index, record) -> false);
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, view.numFactory().one());
+        assertEquals(List.of(0, 1), alphaDecisions);
+        assertEquals(1, result.record("ALPHA").getPositions().getFirst().getEntry().getIndex());
+    }
+
+    @Test
+    public void capturedEvictionMatchesStaticFinalHistoryAcrossExecutionModels() {
+        for (int modelKind = 0; modelKind < 6; modelKind++) {
+            for (int seed = 0; seed < 8; seed++) {
+                BarSeries alpha = series("ALPHA", 10, 11, 12, 13, 14, 15);
+                BarSeries beta = series("BETA", 20, 21, 22, 23, 24, 25);
+                Map<String, BarSeries> members = new LinkedHashMap<>();
+                members.put("ALPHA", alpha);
+                members.put("BETA", beta);
+                PortfolioSeries fixed = PortfolioSeries.union(members);
+                LivePortfolioSeries live = new LivePortfolioSeries(members);
+                int evictionIndex = seed % 3;
+                PortfolioStrategy oracle = evictionOracleStrategy(null, evictionIndex);
+                PortfolioStrategy mutating = evictionOracleStrategy(alpha, evictionIndex);
+                PortfolioTradingRecord expected = new PortfolioSeriesManager(fixed).run(oracle, PositionSizer.fixed(),
+                        oracleModel(modelKind, alpha.numFactory()));
+                PortfolioTradingRecord actual = new PortfolioSeriesManager(live).run(mutating, PositionSizer.fixed(),
+                        oracleModel(modelKind, alpha.numFactory()));
+                for (String asset : members.keySet()) {
+                    assertEquals(expected.record(asset).getPositions(), actual.record(asset).getPositions(),
+                            "model=" + modelKind + ", seed=" + seed + ", asset=" + asset);
+                    assertEquals(expected.record(asset).getCurrentPosition(), actual.record(asset).getCurrentPosition(),
+                            "model=" + modelKind + ", seed=" + seed + ", asset=" + asset);
+                }
+            }
+        }
+    }
+
+    private static PortfolioStrategy evictionOracleStrategy(BarSeries evicted, int evictionIndex) {
+        return new BasePortfolioStrategy("oracle", (asset, index, record) -> {
+            if (evicted != null && asset.equals("BETA") && index == evictionIndex) {
+                evicted.setMaximumBarCount(1);
+            }
+            return asset.equals("ALPHA") ? index == 0 : index == 3 && record.openPositionCount() == 0;
+        }, (asset, index, record) -> asset.equals("ALPHA") && index == 1 || index == 4);
+    }
+
+    private static TradeExecutionModel oracleModel(int kind, NumFactory factory) {
+        return switch (kind) {
+        case 0 -> new TradeOnCurrentCloseModel();
+        case 1 -> new TradeOnNextOpenModel();
+        case 2 -> new StopLimitExecutionModel(factory.zero(), factory.zero(), factory.one(), 2,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+        case 3 -> new StopLimitExecutionModel(factory.zero(), factory.zero(), factory.one(), 2,
+                TradeExecutionModel.PriceSource.NEXT_OPEN);
+        case 4 -> new SlippageExecutionModel(factory.zero(), TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+        default -> new SlippageExecutionModel(factory.zero(), TradeExecutionModel.PriceSource.NEXT_OPEN);
+        };
+    }
+
+    @Test
     public void seededLiveMutationMatrixPreservesObservedExecutionHistory() {
         for (int modelKind = 0; modelKind < 6; modelKind++) {
             for (int seed = 0; seed < 12; seed++) {
