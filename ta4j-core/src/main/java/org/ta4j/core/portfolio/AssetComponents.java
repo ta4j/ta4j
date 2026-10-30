@@ -39,10 +39,7 @@ final class AssetComponents<T> {
             return entry.component();
         }
         BarSeries series = newView.getBarSeries(asset);
-        Object identity = newView instanceof LivePortfolioSeries live ? live.assetIdentity(asset)
-                : newView instanceof PortfolioSeriesManager.ChronologicalView chronological
-                        ? chronological.assetIdentity(asset)
-                        : series;
+        Object identity = newView instanceof LivePortfolioSeries live ? live.assetIdentity(asset) : series;
         if (entry == null || entry.series() != series || entry.identity() != identity) {
             entry = new Entry<>(series, identity, Objects.requireNonNull(factory.apply(series), "factory result"));
             entries.put(asset, entry);

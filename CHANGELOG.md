@@ -26,7 +26,7 @@
 
 ### Fixed
 
-- **Portfolio strategy runs**: live strategies and execution share captured bars; corrections refresh unprocessed bars without rewriting processed history. Snapshots retain observed bars across source eviction, settle pending exits on captured bars, accept newly appended bars within the fixed run timeline, and exclude later bars. They finalize pending orders across unseen gaps and membership changes and handle reordered and intersection histories through terminal indexes. Fixed amounts use each asset's numeric factory. Allocation runs reject union timelines with missing bars rather than trading on stale prices.
+- **Portfolio strategy runs**: every run binds to a detached snapshot of the initial aligned timeline and source bars; later live-feed appends, corrections, evictions and membership changes do not change that run. Assets finalize at their own last bar, releasing position capacity for later decisions. Intersection gaps process intervening source bars, terminal indices do not wrap, and fixed amounts use each asset's numeric factory. Allocation runs reject union timelines with missing bars rather than trading on stale prices.
 
 - **Live portfolio cache retention**: per-asset strategy and rule caches discard removed members on subsequent cache access; re-added members receive fresh components even when the same source is re-added between accesses.
 

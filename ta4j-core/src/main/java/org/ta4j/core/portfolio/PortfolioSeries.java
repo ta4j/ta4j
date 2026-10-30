@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.ta4j.core.Bar;
@@ -127,9 +128,18 @@ public final class PortfolioSeries implements PortfolioSeriesView {
         return new PortfolioSeries(seriesByAsset, false);
     }
 
+    static PortfolioSeries snapshot(Map<String, BarSeries> seriesByAsset, List<Instant> timeline, NumFactory factory) {
+        return new PortfolioSeries(seriesByAsset, false, timeline, factory);
+    }
+
     private PortfolioSeries(Map<String, BarSeries> seriesByAsset, boolean strictIntersection) {
+        this(seriesByAsset, strictIntersection, null, null);
+    }
+
+    private PortfolioSeries(Map<String, BarSeries> seriesByAsset, boolean strictIntersection, List<Instant> timeline,
+            NumFactory emptyFactory) {
         Objects.requireNonNull(seriesByAsset, "seriesByAsset");
-        if (seriesByAsset.isEmpty()) {
+        if (seriesByAsset.isEmpty() && timeline == null) {
             throw new IllegalArgumentException("portfolio series must contain at least one asset");
         }
 
@@ -142,7 +152,7 @@ public final class PortfolioSeries implements PortfolioSeriesView {
             BarSeries source = Objects.requireNonNull(entry.getValue(), "series must not be null for asset " + asset);
             if (firstFactory == null) {
                 firstFactory = Objects.requireNonNull(source.numFactory(), "source numFactory");
-            } else if (!strictIntersection) {
+            } else if (!strictIntersection && timeline == null) {
                 requireMatchingFactory(firstFactory, source.numFactory(), asset);
             }
             if (positions.putIfAbsent(asset, assetNames.size()) != null) {
@@ -159,37 +169,49 @@ public final class PortfolioSeries implements PortfolioSeriesView {
         this.assets = List.copyOf(assetNames);
         this.assetPositions = Map.copyOf(positions);
         this.ownedSeries = owned;
-        this.numFactory = owned[0].numFactory();
+        this.numFactory = owned.length == 0 ? Objects.requireNonNull(emptyFactory, "numFactory")
+                : owned[0].numFactory();
         this.strictIntersection = strictIntersection;
 
         List<Map<Instant, Integer>> indexesByEndTime = new ArrayList<>(owned.length);
         for (int position = 0; position < owned.length; position++) {
             indexesByEndTime.add(indexesByEndTime(assets.get(position), owned[position]));
         }
-        TreeSet<Instant> alignedEndTimes = new TreeSet<>(indexesByEndTime.getFirst().keySet());
-        for (Map<Instant, Integer> currentIndexes : indexesByEndTime) {
-            if (strictIntersection) {
-                alignedEndTimes.retainAll(currentIndexes.keySet());
-            } else {
-                alignedEndTimes.addAll(currentIndexes.keySet());
+        TreeSet<Instant> alignedEndTimes = new TreeSet<>();
+        if (timeline != null) {
+            alignedEndTimes.addAll(timeline);
+        } else {
+            alignedEndTimes.addAll(indexesByEndTime.getFirst().keySet());
+            for (Map<Instant, Integer> currentIndexes : indexesByEndTime) {
+                if (strictIntersection) {
+                    alignedEndTimes.retainAll(currentIndexes.keySet());
+                } else {
+                    alignedEndTimes.addAll(currentIndexes.keySet());
+                }
+            }
+            if (strictIntersection && alignedEndTimes.isEmpty()) {
+                throw new IllegalArgumentException("portfolio series do not share any common bar end times");
             }
         }
-        if (strictIntersection && alignedEndTimes.isEmpty()) {
-            throw new IllegalArgumentException("portfolio series do not share any common bar end times");
-        }
-
         this.endTimes = List.copyOf(alignedEndTimes);
         this.sourceIndexes = new int[owned.length][endTimes.size()];
         this.closePrices = new Num[owned.length][endTimes.size()];
         for (int position = 0; position < owned.length; position++) {
             Map<Instant, Integer> currentIndexes = indexesByEndTime.get(position);
+            TreeMap<Instant, Integer> byTime = timeline == null ? null : new TreeMap<>(currentIndexes);
             int latestSourceIndex = -1;
             Num latestClosePrice = null;
             for (int index = 0; index < endTimes.size(); index++) {
-                Integer exactSourceIndex = currentIndexes.get(endTimes.get(index));
-                if (exactSourceIndex != null) {
-                    latestSourceIndex = exactSourceIndex;
-                    latestClosePrice = toPortfolioNum(owned[position].getBar(latestSourceIndex).getClosePrice());
+                Integer sourceIndex;
+                if (byTime == null) {
+                    sourceIndex = currentIndexes.get(endTimes.get(index));
+                } else {
+                    Map.Entry<Instant, Integer> asOf = byTime.floorEntry(endTimes.get(index));
+                    sourceIndex = asOf == null ? null : asOf.getValue();
+                }
+                if (sourceIndex != null && sourceIndex != latestSourceIndex) {
+                    latestSourceIndex = sourceIndex;
+                    latestClosePrice = toPortfolioNum(owned[position].getBar(sourceIndex).getClosePrice());
                 }
                 sourceIndexes[position][index] = latestSourceIndex;
                 closePrices[position][index] = latestClosePrice;
