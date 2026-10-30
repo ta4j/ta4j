@@ -8,6 +8,8 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
@@ -22,6 +24,7 @@ import org.ta4j.core.num.NumFactory;
  * An amount bar is sampled after a fixed number of amount (= price * volume)
  * have been traded.
  */
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of amount threshold is a documented constructor contract; subclassing remains supported.")
 public class AmountBarBuilder implements BarBuilder {
 
     private Num distinctVolume;
@@ -120,7 +123,10 @@ public class AmountBarBuilder implements BarBuilder {
      */
     public AmountBarBuilder(final NumFactory numFactory, final int amountThreshold, final boolean setAmountByVolume,
             final boolean realtimeBars, final RemainderCarryOverPolicy carryOverPolicy) {
-        this.numFactory = numFactory;
+        if (amountThreshold <= 0) {
+            throw new IllegalArgumentException("amountThreshold must be positive");
+        }
+        this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
         this.amountThreshold = numFactory.numOf(amountThreshold);
         this.setAmountByVolume = setAmountByVolume;
         this.carryOverPolicy = carryOverPolicy == null ? RemainderCarryOverPolicy.NONE : carryOverPolicy;

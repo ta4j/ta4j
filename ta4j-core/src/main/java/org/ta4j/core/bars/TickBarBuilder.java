@@ -8,6 +8,8 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
@@ -21,6 +23,7 @@ import org.ta4j.core.num.NumFactory;
 /**
  * A tick bar is sampled after a fixed number of ticks.
  */
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of tick count is a documented constructor contract; subclassing remains supported.")
 public class TickBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
@@ -82,7 +85,10 @@ public class TickBarBuilder implements BarBuilder {
      * @since 0.22.0
      */
     public TickBarBuilder(final NumFactory numFactory, final int tickCount, final boolean realtimeBars) {
-        this.numFactory = numFactory;
+        if (tickCount <= 0) {
+            throw new IllegalArgumentException("tickCount must be positive");
+        }
+        this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
         this.realtimeBars = realtimeBars;
         this.tickCount = tickCount;
         reset();
