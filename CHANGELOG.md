@@ -26,7 +26,7 @@
 
 ### Fixed
 
-- **Portfolio strategy runs**: removed or replaced live assets finalize before later decisions; reordered histories use chronological execution snapshots, and intersection runs process intervening source bars. Fixed amounts use each asset's numeric factory. Allocation runs reject union timelines with missing bars rather than trading on stale prices.
+- **Portfolio strategy runs**: removed or replaced live assets finalize before later decisions; reordered histories use chronological execution snapshots, and intersection runs process intervening source bars, including at `Integer.MAX_VALUE`. Fixed amounts use each asset's numeric factory. Allocation runs reject union timelines with missing bars rather than trading on stale prices.
 
 - **Live portfolio cache retention**: per-asset strategy and rule caches discard removed members on subsequent cache access; re-added members receive fresh components after eviction.
 

@@ -355,11 +355,11 @@ public final class PortfolioSeriesManager {
                 if (asOfIndex < 0 || (asset.lastProcessedIndex < 0 && !hasBar)) {
                     continue;
                 }
-                int first = asset.lastProcessedIndex < 0 ? asOfIndex : asset.lastProcessedIndex + 1;
-                for (int sourceIndex = first; sourceIndex <= asOfIndex; sourceIndex++) {
+                long first = asset.lastProcessedIndex < 0 ? asOfIndex : (long) asset.lastProcessedIndex + 1;
+                for (long sourceIndex = first; sourceIndex <= asOfIndex; sourceIndex++) {
                     asset.window.markBarProcessed();
-                    asset.record.advance(sourceIndex);
-                    closingModel.onBar(sourceIndex, asset.record, asset.window);
+                    asset.record.advance((int) sourceIndex);
+                    closingModel.onBar((int) sourceIndex, asset.record, asset.window);
                 }
                 asset.lastProcessedIndex = asOfIndex;
                 if (hasBar) {
@@ -516,17 +516,17 @@ public final class PortfolioSeriesManager {
                 return -1;
             }
             Instant time = getEndTime(index);
-            int low = bars.getBeginIndex();
-            int high = bars.getEndIndex();
+            long low = bars.getBeginIndex();
+            long high = bars.getEndIndex();
             while (low <= high) {
-                int middle = low + (high - low) / 2;
+                int middle = (int) (low + (high - low) / 2);
                 if (bars.getBar(middle).getEndTime().isAfter(time)) {
-                    high = middle - 1;
+                    high = (long) middle - 1;
                 } else {
-                    low = middle + 1;
+                    low = (long) middle + 1;
                 }
             }
-            return high;
+            return (int) high;
         }
 
         @Override
@@ -751,15 +751,15 @@ public final class PortfolioSeriesManager {
             return false;
         }
         Instant time = assetSeries.getBar(sourceIndex).getEndTime();
-        int low = view.getBeginIndex();
-        int high = view.getEndIndex();
+        long low = view.getBeginIndex();
+        long high = view.getEndIndex();
         while (low <= high) {
-            int middle = low + (high - low) / 2;
+            int middle = (int) (low + (high - low) / 2);
             int comparison = view.getEndTime(middle).compareTo(time);
             if (comparison < 0) {
-                low = middle + 1;
+                low = (long) middle + 1;
             } else if (comparison > 0) {
-                high = middle - 1;
+                high = (long) middle - 1;
             } else {
                 return view.hasBar(asset, middle) && (entry ? strategy.shouldEnter(asset, middle, record)
                         : strategy.shouldExit(asset, middle, record));

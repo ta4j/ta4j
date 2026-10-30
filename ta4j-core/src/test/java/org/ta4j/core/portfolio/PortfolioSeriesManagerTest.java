@@ -421,6 +421,35 @@ public class PortfolioSeriesManagerTest {
     }
 
     @Test
+    public void strategyRunsHandleTerminalSourceIndexWithoutOverflow() {
+        BarSeries terminal = new BaseBarSeriesBuilder().withName("TERMINAL")
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .withBars(series("bars", 10, 11).getBarData())
+                .build();
+        PortfolioSeries view = new PortfolioSeries(terminal);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("terminal", (asset, index, record) -> false,
+                (asset, index, record) -> false);
+        PortfolioSeriesManager manager = new PortfolioSeriesManager(view);
+        List<Integer> visited = new ArrayList<>();
+        TradeExecutionModel model = new TradeExecutionModel() {
+            @Override
+            public void onBar(int index, TradingRecord record, BarSeries bars) {
+                visited.add(index);
+                bars.getBar(index);
+            }
+
+            @Override
+            public void execute(int index, TradingRecord record, BarSeries bars, Num amount) {
+                throw new AssertionError("No trades expected");
+            }
+        };
+
+        manager.run(strategy, PositionSizer.fixed(), model);
+        assertEquals(List.of(Integer.MAX_VALUE - 1, Integer.MAX_VALUE), visited);
+        assertTrue(manager.run(strategy, view.numFactory().one()).record("TERMINAL").getPositions().isEmpty());
+    }
+
+    @Test
     public void readdedAssetUsesReplacementSeriesAndKeepsPriorPositions() {
         Map<String, BarSeries> members = new LinkedHashMap<>();
         members.put("ALPHA", series("ALPHA", 10, 11, 12));
