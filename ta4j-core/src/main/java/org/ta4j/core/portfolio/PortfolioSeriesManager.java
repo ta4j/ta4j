@@ -19,6 +19,7 @@ import java.util.TreeMap;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
@@ -75,12 +76,15 @@ import org.ta4j.core.portfolio.PortfolioSnapshot.RebalanceStatus;
  *
  * <p>
  * Strategy runs capture retained live bars into private execution histories at
- * each decision, preserving their source indices. Appends extend that history;
- * later eviction cannot remove a captured bar. If an unseen index was evicted
- * before capture, the manager finalizes the old execution segment at its last
- * processed bar, expiring pending orders and closing any open position there,
- * then starts a new segment at the retained history. Removal or replacement
- * likewise finalizes the old segment. Out-of-order histories are normalized
+ * each decision, preserving their source indices. Strategy reads and execution
+ * use the same captured bars. Corrections to retained, unprocessed bars are
+ * captured before the next decision; corrections to processed bars do not
+ * rewrite that history or its fills. Appends extend the history; later eviction
+ * cannot remove a captured bar. If an unseen index was evicted before capture,
+ * the manager finalizes the old execution segment at its last processed bar,
+ * expiring pending orders and closing any open position there, then starts a
+ * new segment at the retained history. Removal or replacement likewise
+ * finalizes the old segment. Out-of-order histories are normalized
  * chronologically, intersection gaps process captured intervening source bars,
  * and terminal integer indices are processed without wrapping. The aligned
  * timeline is fixed at run start; newly appended times require a subsequent
@@ -296,12 +300,14 @@ public final class PortfolioSeriesManager {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(executionModel, "executionModel");
         PortfolioSeriesView executionSeries = executionView(this.view);
-        strategy.bind(executionSeries);
+        CapturedView captured = this.view instanceof LivePortfolioSeries ? new CapturedView(executionSeries) : null;
+        PortfolioSeriesView strategyView = captured == null ? executionSeries : captured;
+        strategy.bind(strategyView);
         TradeType tradeType = strategy.getStartingType();
         CostModel holdingCost = new ZeroCostModel();
         List<DeferredTradingRecord> deferredRecords = new ArrayList<>();
         boolean[] completed = { false };
-        BasePortfolioTradingRecord baseRecord = new BasePortfolioTradingRecord(executionSeries, asset -> {
+        BasePortfolioTradingRecord baseRecord = new BasePortfolioTradingRecord(strategyView, asset -> {
             if (completed[0]) {
                 return new BaseTradingRecord(tradeType, transactionCostModel, holdingCost);
             }
@@ -323,6 +329,9 @@ public final class PortfolioSeriesManager {
                 chronological.refresh();
             }
             List<String> currentAssets = executionSeries.assets();
+            if (captured != null) {
+                captured.active = List.copyOf(currentAssets);
+            }
             for (AssetExecution asset : assets) {
                 if (!currentAssets.contains(asset.name)) {
                     if (!asset.finished) {
@@ -345,7 +354,7 @@ public final class PortfolioSeriesManager {
                 Object identity = this.view instanceof LivePortfolioSeries live ? live.assetIdentity(name) : source;
                 boolean discontinuity = existing != null && this.view instanceof LivePortfolioSeries
                         && existing.source == source && existing.identity == identity
-                        && !extendHistory(existing.history, source);
+                        && !extendHistory(existing.history, source, existing.lastProcessedIndex);
                 if (existing == null || existing.removed || existing.source != source || existing.identity != identity
                         || discontinuity) {
                     if (existing != null && !existing.finished) {
@@ -353,11 +362,20 @@ public final class PortfolioSeriesManager {
                     }
                     int sourceEnd = executionSeries.getSourceIndex(name, end);
                     if (sourceEnd < 0) {
+                        if (captured != null) {
+                            captured.histories.put(name, captureHistory(source));
+                        }
                         continue;
                     }
                     DeferredTradingRecord assetRecord = (DeferredTradingRecord) baseRecord.record(name);
                     assetRecord.restart();
-                    BarSeries history = this.view instanceof LivePortfolioSeries ? captureHistory(source) : source;
+                    BarSeries history = captured == null ? source : captured.takeInitial(name, source);
+                    if (history == null) {
+                        history = captureHistory(source);
+                    }
+                    if (captured != null) {
+                        captured.histories.put(name, history);
+                    }
                     RunWindowBarSeries window = new RunWindowBarSeries(history, sourceEnd);
                     Strategy projection = positionSizer == null ? null : projectStrategy(strategy, record, name);
                     AssetExecution replacement = new AssetExecution(name, source, identity, history, window,
@@ -451,7 +469,7 @@ public final class PortfolioSeriesManager {
         });
     }
 
-    private static boolean extendHistory(BarSeries history, BarSeries source) {
+    private static boolean extendHistory(BarSeries history, BarSeries source, int processedIndex) {
         return source.withReadLock(() -> {
             long next = (long) history.getEndIndex() + 1;
             if (source.getBeginIndex() > next) {
@@ -459,8 +477,13 @@ public final class PortfolioSeriesManager {
             }
             for (long index = Math.max(history.getBeginIndex(), source.getBeginIndex()); index >= 0
                     && index <= Math.min(history.getEndIndex(), source.getEndIndex()); index++) {
-                if (!history.getBar((int) index).getEndTime().equals(source.getBar((int) index).getEndTime())) {
+                Bar captured = history.getBar((int) index);
+                Bar current = source.getBar((int) index);
+                if (!captured.getEndTime().equals(current.getEndTime())) {
                     return false;
+                }
+                if (index > processedIndex && !sameBar(captured, current)) {
+                    ((BaseBarSeries) history).replaceBar((int) index, copyBar(current));
                 }
             }
             for (long index = Math.max(next, source.getBeginIndex()); index >= 0
@@ -469,6 +492,16 @@ public final class PortfolioSeriesManager {
             }
             return true;
         });
+    }
+
+    private static boolean sameBar(Bar first, Bar second) {
+        return first.getTimePeriod().equals(second.getTimePeriod())
+                && first.getBeginTime().equals(second.getBeginTime()) && first.getEndTime().equals(second.getEndTime())
+                && first.getOpenPrice().equals(second.getOpenPrice())
+                && first.getHighPrice().equals(second.getHighPrice())
+                && first.getLowPrice().equals(second.getLowPrice())
+                && first.getClosePrice().equals(second.getClosePrice()) && first.getVolume().equals(second.getVolume())
+                && first.getAmount().equals(second.getAmount()) && first.getTrades() == second.getTrades();
     }
 
     private static Bar copyBar(Bar bar) {
@@ -484,6 +517,92 @@ public final class PortfolioSeriesManager {
         }
         asset.record.finish();
         asset.finished = true;
+    }
+
+    private static final class CapturedView implements PortfolioSeriesView {
+        private final PortfolioSeriesView source;
+        private final Map<String, BarSeries> histories = new LinkedHashMap<>();
+        private final Map<String, BarSeries> initialSources = new LinkedHashMap<>();
+        private final Map<String, Object> initialIdentities = new LinkedHashMap<>();
+        private List<String> active;
+
+        private CapturedView(PortfolioSeriesView source) {
+            this.source = source;
+            this.active = List.copyOf(source.assets());
+            for (String asset : source.assets()) {
+                BarSeries bars = source.getBarSeries(asset);
+                initialSources.put(asset, bars);
+                initialIdentities.put(asset, ((ChronologicalView) source).assetIdentity(asset));
+                histories.put(asset, captureHistory(bars));
+            }
+        }
+
+        private BarSeries takeInitial(String asset, BarSeries bars) {
+            BarSeries initial = initialSources.remove(asset);
+            Object identity = initialIdentities.remove(asset);
+            BarSeries history = histories.get(asset);
+            if (initial == bars && identity == ((ChronologicalView) source).assetIdentity(asset)
+                    && extendHistory(history, bars, -1)) {
+                return history;
+            }
+            return null;
+        }
+
+        @Override
+        public List<String> assets() {
+            return active;
+        }
+
+        @Override
+        public int getBeginIndex() {
+            return source.getBeginIndex();
+        }
+
+        @Override
+        public int getEndIndex() {
+            return source.getEndIndex();
+        }
+
+        @Override
+        public Instant getEndTime(int index) {
+            return source.getEndTime(index);
+        }
+
+        @Override
+        public boolean hasBar(String asset, int index) {
+            int sourceIndex = getSourceIndex(asset, index);
+            return sourceIndex >= 0 && getBarSeries(asset).getBar(sourceIndex).getEndTime().equals(getEndTime(index));
+        }
+
+        @Override
+        public int getSourceIndex(String asset, int index) {
+            BarSeries bars = histories.get(asset);
+            if (bars == null || !active.contains(asset)) {
+                return -1;
+            }
+            Instant time = getEndTime(index);
+            long low = bars.getBeginIndex();
+            long high = bars.getEndIndex();
+            while (low <= high) {
+                int middle = (int) (low + (high - low) / 2);
+                if (bars.getBar(middle).getEndTime().isAfter(time)) {
+                    high = (long) middle - 1;
+                } else {
+                    low = (long) middle + 1;
+                }
+            }
+            return high < bars.getBeginIndex() ? -1 : (int) high;
+        }
+
+        @Override
+        public BarSeries getBarSeries(String asset) {
+            return Objects.requireNonNull(histories.get(asset), "Unknown asset: " + asset);
+        }
+
+        @Override
+        public NumFactory numFactory() {
+            return source.numFactory();
+        }
     }
 
     private static PortfolioSeriesView executionView(PortfolioSeriesView source) {

@@ -22,7 +22,10 @@ import java.util.HashSet;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.ConcurrentBarSeriesBuilder;
@@ -612,6 +615,49 @@ public class PortfolioSeriesManagerTest {
     }
 
     @Test
+    public void liveCorrectionsRefreshUnprocessedBarsButNotExecutedHistory() {
+        BarSeries alpha = series("ALPHA", 10, 11, 12);
+        LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", alpha));
+        List<Double> seen = new ArrayList<>();
+        PortfolioStrategy strategy = new BasePortfolioStrategy("corrections", (asset, index, record) -> {
+            BarSeries captured = record.series().getBarSeries(asset);
+            seen.add(captured.getBar(index).getClosePrice().doubleValue());
+            if (index == 0) {
+                ((BaseBarSeries) alpha).replaceBar(0, correctedBar(alpha.getBar(0), 99));
+                ((BaseBarSeries) alpha).replaceBar(1, correctedBar(alpha.getBar(1), 100));
+            }
+            return index == 0;
+        }, (asset, index, record) -> {
+            BarSeries captured = record.series().getBarSeries(asset);
+            assertNumEquals(10, captured.getBar(0).getClosePrice());
+            seen.add(captured.getBar(index).getClosePrice().doubleValue());
+            return index == 1;
+        });
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, view.numFactory().one());
+        Position position = result.record("ALPHA").getPositions().getFirst();
+        assertEquals(List.of(10.0, 100.0, 12.0), seen);
+        assertNumEquals(10, position.getEntry().getPricePerAsset());
+        assertNumEquals(100, position.getExit().getPricePerAsset());
+    }
+
+    private static Bar correctedBar(Bar bar, int value) {
+        Num price = bar.getClosePrice().getNumFactory().numOf(value);
+        return new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), price, price, price, price,
+                price.getNumFactory().one(), price.getNumFactory().zero(), 1);
+    }
+
+    private static void observePrices(PortfolioTradingRecord record, String asset, Set<String> prices,
+            Map<Integer, Double> decisionPrices) {
+        BarSeries bars = record.series().getBarSeries(asset);
+        decisionPrices.clear();
+        for (long index = bars.getBeginIndex(); index >= 0 && index <= bars.getEndIndex(); index++) {
+            double value = bars.getBar((int) index).getClosePrice().doubleValue();
+            prices.add(index + ":" + value);
+            decisionPrices.put((int) index, value);
+        }
+    }
+
+    @Test
     public void seededLiveMutationMatrixPreservesObservedExecutionHistory() {
         for (int modelKind = 0; modelKind < 6; modelKind++) {
             for (int seed = 0; seed < 12; seed++) {
@@ -637,6 +683,8 @@ public class PortfolioSeriesManagerTest {
                 default -> new SlippageExecutionModel(factory.zero(), TradeExecutionModel.PriceSource.NEXT_OPEN);
                 };
                 Set<Double> observedPrices = new HashSet<>();
+                Set<String> strategyObservedPrices = new HashSet<>();
+                Map<Integer, Double> decisionPrices = new LinkedHashMap<>();
                 for (BarSeries bars : List.of(alpha, beta)) {
                     bars.getBarData().forEach(bar -> observedPrices.add(bar.getClosePrice().doubleValue()));
                 }
@@ -649,6 +697,11 @@ public class PortfolioSeriesManagerTest {
 
                     @Override
                     public void execute(int index, TradingRecord record, BarSeries bars, Num amount) {
+                        assertEquals(decisionPrices.get(index), bars.getBar(index).getClosePrice().doubleValue());
+                        ExecutionTarget target = delegate.estimateEntryTarget(index, bars, record.getStartingType());
+                        if (target != null && !(delegate instanceof StopLimitExecutionModel)) {
+                            assertEquals(decisionPrices.get(target.index()), target.price().doubleValue());
+                        }
                         delegate.execute(index, record, bars, amount);
                     }
 
@@ -669,8 +722,11 @@ public class PortfolioSeriesManagerTest {
                 };
                 Random random = new Random(seed);
                 PortfolioStrategy strategy = new BasePortfolioStrategy("mutations", (asset, index, record) -> {
+                    if (asset.equals("ALPHA")) {
+                        observePrices(record, asset, strategyObservedPrices, decisionPrices);
+                    }
                     if (asset.equals("BETA")) {
-                        switch (random.nextInt(4)) {
+                        switch (random.nextInt(6)) {
                         case 0 -> view.getBarSeries("ALPHA").setMaximumBarCount(1);
                         case 1 -> {
                             view.removeAsset("ALPHA");
@@ -690,6 +746,19 @@ public class PortfolioSeriesManagerTest {
                             view.removeAsset("ALPHA");
                             view.addAsset("ALPHA", current);
                         }
+                        case 3 -> {
+                            BarSeries current = view.getBarSeries("ALPHA");
+                            int target = current.getBeginIndex();
+                            Bar corrected = correctedBar(current.getBar(target), 120 + index);
+                            ((BaseBarSeries) current).replaceBar(target, corrected);
+                            observedPrices.add(corrected.getClosePrice().doubleValue());
+                        }
+                        case 4 -> {
+                            BarSeries current = view.getBarSeries("ALPHA");
+                            Bar corrected = correctedBar(current.getLastBar(), 140 + index);
+                            current.addBar(corrected, true);
+                            observedPrices.add(corrected.getClosePrice().doubleValue());
+                        }
                         default -> {
                             BarSeries current = view.getBarSeries("ALPHA");
                             if (current.getEndIndex() < Integer.MAX_VALUE) {
@@ -703,13 +772,22 @@ public class PortfolioSeriesManagerTest {
                         }
                     }
                     return asset.equals("ALPHA") && index % 2 == 0;
-                }, (asset, index, record) -> index % 2 != 0);
+                }, (asset, index, record) -> {
+                    if (asset.equals("ALPHA")) {
+                        observePrices(record, asset, strategyObservedPrices, decisionPrices);
+                    }
+                    return index % 2 != 0;
+                });
                 PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(),
                         checked);
                 for (Position position : result.record("ALPHA").getPositions()) {
                     assertTrue(observedPrices.contains(position.getEntry().getPricePerAsset().doubleValue()));
+                    assertTrue(strategyObservedPrices.contains(position.getEntry().getIndex() + ":"
+                            + position.getEntry().getPricePerAsset().doubleValue()));
                     if (position.isClosed()) {
                         assertTrue(observedPrices.contains(position.getExit().getPricePerAsset().doubleValue()));
+                        assertTrue(strategyObservedPrices.contains(position.getExit().getIndex() + ":"
+                                + position.getExit().getPricePerAsset().doubleValue()));
                     }
                 }
             }
