@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.portfolio;
 
+import java.io.Serial;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,9 +14,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.backtest.ExitOnRunEndModel;
+import org.ta4j.core.backtest.PositionSizer;
+import org.ta4j.core.backtest.RunWindowBarSeries;
+import org.ta4j.core.backtest.TradeExecutionModel;
+import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
+import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.portfolio.PortfolioSnapshot.RebalanceStatus;
@@ -55,6 +73,14 @@ import org.ta4j.core.portfolio.PortfolioSnapshot.RebalanceStatus;
  * </p>
  *
  * <p>
+ * Each strategy run captures its aligned timeline and source bars at the start,
+ * then binds the strategy to that detached snapshot. Later source appends,
+ * corrections, evictions and membership changes do not affect the run.
+ * Out-of-order histories are normalized chronologically, intersection gaps
+ * process intervening source bars, and terminal integer indices do not wrap.
+ * </p>
+ *
+ * <p>
  * Transaction costs are computed per trade with
  * {@link CostModel#calculate(Num, Num)} (price and units). The post-cost solve
  * is exact for proportional models and converges in a few fixed-point steps;
@@ -72,6 +98,7 @@ public final class PortfolioSeriesManager {
     private static final int MAX_FIXED_POINT_ITERATIONS = 32;
 
     private final PortfolioSeries series;
+    private final PortfolioSeriesView view;
     private final CostModel transactionCostModel;
 
     /**
@@ -92,15 +119,42 @@ public final class PortfolioSeriesManager {
      * @since 0.25.1
      */
     public PortfolioSeriesManager(PortfolioSeries series, CostModel transactionCostModel) {
-        this.series = Objects.requireNonNull(series, "series");
+        this((PortfolioSeriesView) series, transactionCostModel);
+    }
+
+    /**
+     * Creates a strategy manager over an aligned snapshot or live view with zero
+     * transaction costs. Allocation runs require a {@link PortfolioSeries}.
+     *
+     * @param view aligned portfolio view
+     * @since 0.27.1
+     */
+    public PortfolioSeriesManager(PortfolioSeriesView view) {
+        this(view, new ZeroCostModel());
+    }
+
+    /**
+     * Creates a strategy manager over an aligned view.
+     *
+     * @param view                 aligned portfolio view
+     * @param transactionCostModel transaction cost model applied to each trade
+     * @since 0.27.1
+     */
+    public PortfolioSeriesManager(PortfolioSeriesView view, CostModel transactionCostModel) {
+        this.view = Objects.requireNonNull(view, "view");
+        this.series = view instanceof PortfolioSeries snapshot ? snapshot : null;
         this.transactionCostModel = Objects.requireNonNull(transactionCostModel, "transactionCostModel");
     }
 
     /**
      * @return managed portfolio series
+     * @throws IllegalStateException if the managed view is not a snapshot
      * @since 0.25.1
      */
     public PortfolioSeries getPortfolioSeries() {
+        if (series == null) {
+            throw new IllegalStateException("Allocation runs require a PortfolioSeries snapshot");
+        }
         return series;
     }
 
@@ -152,13 +206,14 @@ public final class PortfolioSeriesManager {
     public PortfolioExecutionResult run(PortfolioAllocation allocation, Number initialCash,
             RebalancePolicy rebalancePolicy) {
         Objects.requireNonNull(initialCash, "initialCash");
-        return run(allocation, series.numFactory().numOf(initialCash), rebalancePolicy);
+        return run(allocation, getPortfolioSeries().numFactory().numOf(initialCash), rebalancePolicy);
     }
 
     /**
      * Runs a portfolio that trades toward its targets on the bars selected by
      * {@code rebalancePolicy}. The policy also schedules the initial investment:
-     * the portfolio holds only cash until the first selected bar.
+     * the portfolio holds only cash until the first selected bar. Every asset must
+     * have a bar at every aligned time; union snapshots with gaps are rejected.
      *
      * @param allocation      target allocation
      * @param initialCash     positive starting cash
@@ -168,7 +223,413 @@ public final class PortfolioSeriesManager {
      */
     public PortfolioExecutionResult run(PortfolioAllocation allocation, Num initialCash,
             RebalancePolicy rebalancePolicy) {
+        getPortfolioSeries();
+        for (String asset : series.assets()) {
+            for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+                if (!series.hasBar(asset, index)) {
+                    throw new IllegalArgumentException(
+                            "Allocation requires a bar for " + asset + " at " + series.getEndTime(index));
+                }
+            }
+        }
         return new Execution(allocation, initialCash, rebalancePolicy).run();
+    }
+
+    /**
+     * Runs a strategy with a fixed amount, converted to each asset's numeric
+     * factory, executing on each asset's current close and closing any remaining
+     * position at that asset's last processed close. The aligned view and source
+     * bars are snapshotted at the start of the run.
+     *
+     * @param strategy strategy to evaluate
+     * @param amount   fixed entry amount
+     * @return per-asset trading records
+     * @since 0.27.1
+     */
+    public PortfolioTradingRecord run(PortfolioStrategy strategy, Num amount) {
+        validateAmount(amount);
+        return runPortfolio(strategy, null, new TradeOnCurrentCloseModel(), amount);
+    }
+
+    /**
+     * Runs an asset-scoped strategy over aligned bars. Strategy decisions skip
+     * assets without a bar at an aligned time. Execution callbacks also process
+     * intervening source bars excluded by intersection alignment, before the next
+     * portfolio decision. A trade targeting a later source bar becomes visible when
+     * the portfolio reaches that bar's end time; in particular, next-open
+     * executions are observed at the target bar's end. Accepted pending entry
+     * orders reserve position-limit capacity until filled, rejected, or expired.
+     * The execution model must report its pending orders via
+     * {@link TradeExecutionModel#hasPendingOrder(TradingRecord)}.
+     *
+     * <p>
+     * An {@link ExitOnRunEndModel} finalizes each asset at its own last processed
+     * close. Sizing is called only for entries. Its single-series strategy context
+     * exposes this portfolio strategy projected onto the asset. Execution and
+     * sizing cannot see bars beyond the captured run window. Reordered source
+     * histories are captured in chronological order for the run; strategies and
+     * execution models see the same reindexed source snapshot. The aligned view and
+     * source bars are captured at the start; later mutations do not affect the run.
+     * </p>
+     *
+     * @param strategy       strategy to evaluate
+     * @param positionSizer  entry position sizing
+     * @param executionModel execution model, shared across asset records
+     * @return per-asset trading records
+     * @since 0.27.1
+     */
+    public PortfolioTradingRecord run(PortfolioStrategy strategy, PositionSizer positionSizer,
+            TradeExecutionModel executionModel) {
+        Objects.requireNonNull(positionSizer, "positionSizer");
+        return runPortfolio(strategy, positionSizer, executionModel, null);
+    }
+
+    private PortfolioTradingRecord runPortfolio(PortfolioStrategy strategy, PositionSizer positionSizer,
+            TradeExecutionModel executionModel, Num fixedAmount) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(executionModel, "executionModel");
+        PortfolioSeries executionSeries = executionView(this.view);
+        strategy.bind(executionSeries);
+        TradeType tradeType = strategy.getStartingType();
+        CostModel holdingCost = new ZeroCostModel();
+        List<DeferredTradingRecord> deferredRecords = new ArrayList<>();
+        boolean[] completed = { false };
+        BasePortfolioTradingRecord baseRecord = new BasePortfolioTradingRecord(executionSeries, asset -> {
+            if (completed[0]) {
+                return new BaseTradingRecord(tradeType, transactionCostModel, holdingCost);
+            }
+            DeferredTradingRecord deferred = new DeferredTradingRecord(tradeType, transactionCostModel, holdingCost);
+            deferredRecords.add(deferred);
+            return deferred;
+        });
+        List<AssetExecution> assets = new ArrayList<>();
+        int begin = executionSeries.getBeginIndex();
+        int end = executionSeries.getEndIndex();
+        if (end < begin) {
+            completed[0] = true;
+            return baseRecord;
+        }
+        TradeExecutionModel closingModel = new ExitOnRunEndModel(executionModel);
+        PortfolioTradingRecord record = new RunPortfolioRecord(baseRecord, assets, closingModel);
+        for (String name : executionSeries.assets()) {
+            int sourceEnd = executionSeries.getSourceIndex(name, end);
+            if (sourceEnd < 0) {
+                continue;
+            }
+            DeferredTradingRecord assetRecord = (DeferredTradingRecord) baseRecord.record(name);
+            RunWindowBarSeries window = new RunWindowBarSeries(executionSeries.getBarSeries(name), sourceEnd);
+            Strategy projection = positionSizer == null ? null : projectStrategy(strategy, record, name);
+            assets.add(new AssetExecution(name, window, assetRecord, projection, sourceEnd));
+        }
+        for (int index = begin;; index++) {
+            for (AssetExecution asset : assets) {
+                asset.currentIndex = -1;
+                if (asset.finished) {
+                    continue;
+                }
+                int asOfIndex = executionSeries.getSourceIndex(asset.name, index);
+                boolean hasBar = executionSeries.hasBar(asset.name, index);
+                if (asOfIndex < 0 || (asset.lastProcessedIndex < 0 && !hasBar)) {
+                    continue;
+                }
+                long first = asset.lastProcessedIndex < 0 ? asOfIndex : (long) asset.lastProcessedIndex + 1;
+                for (long sourceIndex = first; sourceIndex <= asOfIndex; sourceIndex++) {
+                    asset.window.markBarProcessed();
+                    asset.record.advance((int) sourceIndex);
+                    closingModel.onBar((int) sourceIndex, asset.record, asset.window);
+                }
+                asset.lastProcessedIndex = asOfIndex;
+                if (hasBar) {
+                    asset.currentIndex = asOfIndex;
+                }
+            }
+            for (AssetExecution asset : assets) {
+                if (asset.currentIndex < 0 || asset.record.hasDeferredTrades()
+                        || closingModel.hasPendingOrder(asset.record)) {
+                    continue;
+                }
+                if (asset.record.isClosed()) {
+                    if (strategy.shouldEnter(asset.name, index, record)) {
+                        Num amount = positionSizer == null ? fixedAmount
+                                : entryAmount(positionSizer, closingModel, asset.projection, asset.record, asset.window,
+                                        asset.currentIndex);
+                        Num executionAmount = amount.getNumFactory().equals(asset.window.numFactory()) ? amount
+                                : asset.window.numFactory().numOf(amount.bigDecimalValue());
+                        closingModel.execute(asset.currentIndex, asset.record, asset.window, executionAmount);
+                    }
+                } else if (strategy.shouldExit(asset.name, index, record)) {
+                    closingModel.execute(asset.currentIndex, asset.record, asset.window,
+                            asset.record.getCurrentPosition().amount());
+                }
+            }
+            for (AssetExecution asset : assets) {
+                if (!asset.finished && asset.lastProcessedIndex == asset.sourceEnd) {
+                    closingModel.onRunEnd(asset.lastProcessedIndex, asset.record, asset.window);
+                    asset.record.finish();
+                    asset.finished = true;
+                }
+            }
+            if (index == end) {
+                break;
+            }
+        }
+        for (DeferredTradingRecord deferred : deferredRecords) {
+            if (!deferred.finished) {
+                deferred.finish();
+            }
+        }
+        deferredRecords.clear();
+        completed[0] = true;
+        return baseRecord;
+    }
+
+    private static PortfolioSeries executionView(PortfolioSeriesView source) {
+        Map<String, BarSeries> originals = new LinkedHashMap<>();
+        boolean reordered = false;
+        for (String asset : source.assets()) {
+            BarSeries bars = source.getBarSeries(asset);
+            BarSeries ordered = chronologicalSeries(bars);
+            originals.put(asset, ordered);
+            reordered |= ordered != bars;
+        }
+        if (!reordered && source instanceof PortfolioSeries snapshot) {
+            return snapshot;
+        }
+        List<Instant> timeline = new ArrayList<>();
+        for (long index = source.getBeginIndex(); index >= 0 && index <= source.getEndIndex(); index++) {
+            timeline.add(source.getEndTime((int) index));
+        }
+        return PortfolioSeries.snapshot(originals, timeline, source.numFactory());
+    }
+
+    private static BarSeries chronologicalSeries(BarSeries bars) {
+        List<Bar> captured = bars.withReadLock(() -> List.copyOf(bars.getBarData()));
+        for (int i = 1; i < captured.size(); i++) {
+            if (!captured.get(i - 1).getEndTime().isBefore(captured.get(i).getEndTime())) {
+                TreeMap<Instant, Bar> byTime = new TreeMap<>();
+                for (Bar bar : captured) {
+                    byTime.put(bar.getEndTime(), bar);
+                }
+                return new BaseBarSeriesBuilder().withName(bars.getName())
+                        .withNumFactory(bars.numFactory())
+                        .withBars(new ArrayList<>(byTime.values()))
+                        .build();
+            }
+        }
+        return bars;
+    }
+
+    private Num entryAmount(PositionSizer sizer, TradeExecutionModel model, Strategy strategy, TradingRecord record,
+            BarSeries window, int sourceIndex) {
+        TradeType type = record.getStartingType();
+        ExecutionTarget target = model.estimateEntryTarget(sourceIndex, window, type);
+        if (target == null) {
+            target = new ExecutionTarget(sourceIndex, window.getBar(sourceIndex).getClosePrice());
+        }
+        Num amount = sizer.amount(new PositionSizer.Context(sourceIndex, target.index(), target.price(), strategy,
+                window, type, record, record.getTransactionCostModel(), record.getHoldingCostModel()));
+        validateAmount(amount);
+        return amount;
+    }
+
+    private static void validateAmount(Num amount) {
+        if (amount == null || amount.isNaN() || amount.isNegativeOrZero() || !Double.isFinite(amount.doubleValue())) {
+            throw new IllegalArgumentException("Amount must be positive and finite");
+        }
+    }
+
+    private static final class AssetExecution {
+        private final String name;
+        private final RunWindowBarSeries window;
+        private final DeferredTradingRecord record;
+        private final Strategy projection;
+        private final int sourceEnd;
+        private int currentIndex = -1;
+        private int lastProcessedIndex = -1;
+        private boolean finished;
+
+        private AssetExecution(String name, RunWindowBarSeries window, DeferredTradingRecord record,
+                Strategy projection, int sourceEnd) {
+            this.name = name;
+            this.window = window;
+            this.record = record;
+            this.projection = projection;
+            this.sourceEnd = sourceEnd;
+        }
+    }
+
+    private static final class RunPortfolioRecord implements PortfolioTradingRecord {
+        private final BasePortfolioTradingRecord delegate;
+        private final List<AssetExecution> assets;
+        private final TradeExecutionModel model;
+
+        private RunPortfolioRecord(BasePortfolioTradingRecord delegate, List<AssetExecution> assets,
+                TradeExecutionModel model) {
+            this.delegate = delegate;
+            this.assets = assets;
+            this.model = model;
+        }
+
+        @Override
+        public PortfolioSeriesView series() {
+            return delegate.series();
+        }
+
+        @Override
+        public TradingRecord record(String asset) {
+            return delegate.record(asset);
+        }
+
+        @Override
+        public int openPositionCount() {
+            return delegate.openPositionCount();
+        }
+
+        @Override
+        public int pendingEntryCount() {
+            int count = 0;
+            for (AssetExecution asset : assets) {
+                if (asset.record.isClosed()
+                        && (asset.record.hasDeferredTrades() || model.hasPendingOrder(asset.record))) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        @Override
+        public Map<String, org.ta4j.core.Position> openPositions() {
+            return delegate.openPositions();
+        }
+    }
+
+    private static final class DeferredTradingRecord extends BaseTradingRecord {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        private record DeferredTrade(int index, Runnable apply) {
+        }
+
+        private transient List<DeferredTrade> deferred;
+        private int processedIndex = -1;
+        private boolean finished;
+
+        private DeferredTradingRecord(TradeType type, CostModel transactionCost, CostModel holdingCost) {
+            super(type, transactionCost, holdingCost);
+        }
+
+        private boolean hasDeferredTrades() {
+            return deferred != null && !deferred.isEmpty();
+        }
+
+        private void enqueue(int index, Runnable apply) {
+            if (deferred == null) {
+                deferred = new ArrayList<>();
+            }
+            deferred.add(new DeferredTrade(index, apply));
+        }
+
+        private void advance(int index) {
+            processedIndex = index;
+            if (deferred == null) {
+                return;
+            }
+            for (int i = 0; i < deferred.size();) {
+                if (deferred.get(i).index() <= index) {
+                    deferred.remove(i).apply().run();
+                } else {
+                    i++;
+                }
+            }
+            if (deferred.isEmpty()) {
+                deferred = null;
+            }
+        }
+
+        private void finish() {
+            if (hasDeferredTrades()) {
+                throw new IllegalStateException("Execution model scheduled a trade beyond the asset's run window");
+            }
+            finished = true;
+        }
+
+        @Override
+        public void operate(int index, Num price, Num amount) {
+            if (!finished && index > processedIndex) {
+                enqueue(index, () -> super.operate(index, price, amount));
+            } else {
+                super.operate(index, price, amount);
+            }
+        }
+
+        @Override
+        public void operate(Trade trade) {
+            int latestIndex = trade.getIndex();
+            for (var fill : Trade.executionFillsOf(trade)) {
+                latestIndex = Math.max(latestIndex, fill.index());
+            }
+            if (!finished && latestIndex > processedIndex) {
+                enqueue(latestIndex, () -> super.operate(trade));
+            } else {
+                super.operate(trade);
+            }
+        }
+
+        @Override
+        public boolean enter(int index, Num price, Num amount) {
+            if (!finished && index > processedIndex) {
+                if (!isClosed() || hasDeferredTrades()) {
+                    return false;
+                }
+                enqueue(index, () -> super.enter(index, price, amount));
+                return true;
+            }
+            return super.enter(index, price, amount);
+        }
+
+        @Override
+        public boolean exit(int index, Num price, Num amount) {
+            if (!finished && index > processedIndex) {
+                if (isClosed() || hasDeferredTrades()) {
+                    return false;
+                }
+                enqueue(index, () -> super.exit(index, price, amount));
+                return true;
+            }
+            return super.exit(index, price, amount);
+        }
+    }
+
+    private Strategy projectStrategy(PortfolioStrategy strategy, PortfolioTradingRecord record, String asset) {
+        Rule entry = (sourceIndex, ignored) -> projectedDecision(strategy, record, asset, sourceIndex, true);
+        Rule exit = (sourceIndex, ignored) -> projectedDecision(strategy, record, asset, sourceIndex, false);
+        return new BaseStrategy(strategy.getName(), entry, exit, strategy.getUnstableBars(),
+                strategy.getStartingType());
+    }
+
+    private boolean projectedDecision(PortfolioStrategy strategy, PortfolioTradingRecord record, String asset,
+            int sourceIndex, boolean entry) {
+        PortfolioSeriesView view = record.series();
+        BarSeries assetSeries = view.getBarSeries(asset);
+        if (sourceIndex < assetSeries.getBeginIndex() || sourceIndex > assetSeries.getEndIndex()) {
+            return false;
+        }
+        Instant time = assetSeries.getBar(sourceIndex).getEndTime();
+        long low = view.getBeginIndex();
+        long high = view.getEndIndex();
+        while (low <= high) {
+            int middle = (int) (low + (high - low) / 2);
+            int comparison = view.getEndTime(middle).compareTo(time);
+            if (comparison < 0) {
+                low = (long) middle + 1;
+            } else if (comparison > 0) {
+                high = (long) middle - 1;
+            } else {
+                return view.hasBar(asset, middle) && (entry ? strategy.shouldEnter(asset, middle, record)
+                        : strategy.shouldExit(asset, middle, record));
+            }
+        }
+        return false;
     }
 
     /** One run's mutable state; assets are addressed by portfolio position. */

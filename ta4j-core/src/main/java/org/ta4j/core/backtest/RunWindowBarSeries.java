@@ -26,8 +26,10 @@ import org.ta4j.core.num.NumFactory;
  * needs a later bar to fill simply does not fill, leaving the position open at
  * the window end.
  * </p>
+ *
+ * @since 0.27.1
  */
-final class RunWindowBarSeries implements BarSeries {
+public final class RunWindowBarSeries implements BarSeries {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -36,7 +38,12 @@ final class RunWindowBarSeries implements BarSeries {
     private final int windowEndIndex;
     private boolean processedBar;
 
-    void markBarProcessed() {
+    /**
+     * Marks that the runner has processed at least one bar in this window.
+     *
+     * @since 0.27.1
+     */
+    public void markBarProcessed() {
         processedBar = true;
     }
 
@@ -44,26 +51,37 @@ final class RunWindowBarSeries implements BarSeries {
         return processedBar;
     }
 
-    RunWindowBarSeries(BarSeries delegate, int windowEndIndex) {
+    /**
+     * Creates a read-only window ending at the specified source-series index.
+     *
+     * @param delegate       source series
+     * @param windowEndIndex inclusive end index
+     * @since 0.27.1
+     */
+    public RunWindowBarSeries(BarSeries delegate, int windowEndIndex) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         this.windowEndIndex = windowEndIndex;
     }
 
+    /** @since 0.27.1 */
     @Override
     public NumFactory numFactory() {
         return delegate.numFactory();
     }
 
+    /** @since 0.27.1 */
     @Override
     public BarBuilder barBuilder() {
         throw new UnsupportedOperationException("Run window series are read-only");
     }
 
+    /** @since 0.27.1 */
     @Override
     public String getName() {
         return delegate.getName();
     }
 
+    /** @since 0.27.1 */
     @Override
     public Bar getBar(int i) {
         return delegate.withReadLock(() -> {
@@ -77,6 +95,7 @@ final class RunWindowBarSeries implements BarSeries {
         });
     }
 
+    /** @since 0.27.1 */
     @Override
     public int getBarCount() {
         return delegate.withReadLock(() -> {
@@ -90,6 +109,8 @@ final class RunWindowBarSeries implements BarSeries {
     /**
      * Returns a snapshot of bars in the run window, copying a coherent delegate
      * range so later appends cannot appear in this view.
+     *
+     * @since 0.27.1
      */
     @Override
     public List<Bar> getBarData() {
@@ -104,6 +125,7 @@ final class RunWindowBarSeries implements BarSeries {
         });
     }
 
+    /** @since 0.27.1 */
     @Override
     public long getBarHistoryRevision() {
         return delegate.getBarHistoryRevision();
@@ -112,6 +134,8 @@ final class RunWindowBarSeries implements BarSeries {
     /**
      * Delegates to the source's snapshot, which describes one coherent state, and
      * caps its end at the run window.
+     *
+     * @since 0.27.1
      */
     @Override
     public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
@@ -124,56 +148,67 @@ final class RunWindowBarSeries implements BarSeries {
         });
     }
 
+    /** @since 0.27.1 */
     @Override
     public void withReadLock(Runnable action) {
         delegate.withReadLock(action);
     }
 
+    /** @since 0.27.1 */
     @Override
     public <T> T withReadLock(Supplier<T> action) {
         return delegate.withReadLock(action);
     }
 
+    /** @since 0.27.1 */
     @Override
     public int getBeginIndex() {
         return delegate.withReadLock(() -> Math.max(delegate.getBeginIndex(), delegate.getRemovedBarsCount()));
     }
 
+    /** @since 0.27.1 */
     @Override
     public int getEndIndex() {
         return delegate.withReadLock(() -> Math.min(delegate.getEndIndex(), windowEndIndex));
     }
 
+    /** @since 0.27.1 */
     @Override
     public int getMaximumBarCount() {
         return delegate.getMaximumBarCount();
     }
 
+    /** @since 0.27.1 */
     @Override
     public void setMaximumBarCount(int maximumBarCount) {
         throw new UnsupportedOperationException("Run window series are read-only");
     }
 
+    /** @since 0.27.1 */
     @Override
     public int getRemovedBarsCount() {
         return delegate.withReadLock(() -> Math.max(delegate.getBeginIndex(), delegate.getRemovedBarsCount()));
     }
 
+    /** @since 0.27.1 */
     @Override
     public void addBar(Bar bar, boolean replace) {
         throw new UnsupportedOperationException("Run window series are read-only");
     }
 
+    /** @since 0.27.1 */
     @Override
     public void addTrade(Num tradeVolume, Num tradePrice) {
         throw new UnsupportedOperationException("Run window series are read-only");
     }
 
+    /** @since 0.27.1 */
     @Override
     public void addPrice(Num price) {
         throw new UnsupportedOperationException("Run window series are read-only");
     }
 
+    /** @since 0.27.1 */
     @Override
     public BarSeries getSubSeries(int startIndex, int endIndex) {
         return delegate.withReadLock(() -> {
