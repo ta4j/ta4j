@@ -3,6 +3,10 @@
  */
 package org.ta4j.core;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
@@ -240,5 +244,54 @@ public class BaseRealtimeBar extends BaseBar implements RealtimeBar {
                 && Objects.equals(makerAmount, other.makerAmount) && Objects.equals(takerAmount, other.takerAmount)
                 && makerTrades == other.makerTrades && takerTrades == other.takerTrades
                 && hasLiquidityData == other.hasLiquidityData;
+    }
+
+    @Serial
+    private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (numFactory == null) {
+            throw new InvalidObjectException("NumFactory must not be null");
+        }
+        if (buyVolume != null && buyVolume.isNegative()) {
+            throw new InvalidObjectException("Buy volume cannot be negative, but was " + buyVolume);
+        }
+        if (sellVolume != null && sellVolume.isNegative()) {
+            throw new InvalidObjectException("Sell volume cannot be negative, but was " + sellVolume);
+        }
+        if (buyAmount != null && buyAmount.isNegative()) {
+            throw new InvalidObjectException("Buy amount cannot be negative, but was " + buyAmount);
+        }
+        if (sellAmount != null && sellAmount.isNegative()) {
+            throw new InvalidObjectException("Sell amount cannot be negative, but was " + sellAmount);
+        }
+        if (buyTrades < 0) {
+            throw new InvalidObjectException("Number of buy trades cannot be negative, but was " + buyTrades);
+        }
+        if (sellTrades < 0) {
+            throw new InvalidObjectException("Number of sell trades cannot be negative, but was " + sellTrades);
+        }
+        if (makerVolume != null && makerVolume.isNegative()) {
+            throw new InvalidObjectException("Maker volume cannot be negative, but was " + makerVolume);
+        }
+        if (takerVolume != null && takerVolume.isNegative()) {
+            throw new InvalidObjectException("Taker volume cannot be negative, but was " + takerVolume);
+        }
+        if (makerAmount != null && makerAmount.isNegative()) {
+            throw new InvalidObjectException("Maker amount cannot be negative, but was " + makerAmount);
+        }
+        if (takerAmount != null && takerAmount.isNegative()) {
+            throw new InvalidObjectException("Taker amount cannot be negative, but was " + takerAmount);
+        }
+        if (makerTrades < 0) {
+            throw new InvalidObjectException("Number of maker trades cannot be negative, but was " + makerTrades);
+        }
+        if (takerTrades < 0) {
+            throw new InvalidObjectException("Number of taker trades cannot be negative, but was " + takerTrades);
+        }
+    }
+
+    @Serial
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("BaseRealtimeBar class data is required");
     }
 }
