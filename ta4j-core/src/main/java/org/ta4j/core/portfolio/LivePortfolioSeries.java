@@ -59,7 +59,8 @@ import org.ta4j.core.num.NumFactory;
  */
 public final class LivePortfolioSeries implements PortfolioSeriesView {
 
-    private record State(Map<String, BarSeries> sources, List<String> assets, List<Instant> endTimes) {
+    private record State(Map<String, BarSeries> sources, List<String> assets, List<Instant> endTimes,
+            Map<String, Object> identities) {
     }
 
     private final NumFactory numFactory;
@@ -96,8 +97,10 @@ public final class LivePortfolioSeries implements PortfolioSeriesView {
             sources.put(asset, source);
         }
         this.numFactory = firstFactory;
-        this.state = new AtomicReference<>(
-                new State(Collections.unmodifiableMap(sources), List.copyOf(sources.keySet()), List.of()));
+        Map<String, Object> identities = new LinkedHashMap<>();
+        sources.keySet().forEach(asset -> identities.put(asset, new Object()));
+        this.state = new AtomicReference<>(new State(Collections.unmodifiableMap(sources),
+                List.copyOf(sources.keySet()), List.of(), Collections.unmodifiableMap(identities)));
         advance();
     }
 
@@ -121,7 +124,7 @@ public final class LivePortfolioSeries implements PortfolioSeriesView {
                 }
                 continue;
             }
-            State next = new State(current.sources(), current.assets(), updated);
+            State next = new State(current.sources(), current.assets(), updated, current.identities());
             if (state.compareAndSet(current, next)) {
                 return updated.size() - current.endTimes().size();
             }
@@ -152,7 +155,10 @@ public final class LivePortfolioSeries implements PortfolioSeriesView {
             Map<String, BarSeries> sources = new LinkedHashMap<>(current.sources());
             sources.put(asset, source);
             List<Instant> updated = appendEndTimes(current.endTimes(), List.of(source));
-            State next = new State(Collections.unmodifiableMap(sources), List.copyOf(sources.keySet()), updated);
+            Map<String, Object> identities = new LinkedHashMap<>(current.identities());
+            identities.put(asset, new Object());
+            State next = new State(Collections.unmodifiableMap(sources), List.copyOf(sources.keySet()), updated,
+                    Collections.unmodifiableMap(identities));
             if (state.compareAndSet(current, next)) {
                 return;
             }
@@ -176,8 +182,10 @@ public final class LivePortfolioSeries implements PortfolioSeriesView {
             }
             Map<String, BarSeries> sources = new LinkedHashMap<>(current.sources());
             sources.remove(asset);
+            Map<String, Object> identities = new LinkedHashMap<>(current.identities());
+            identities.remove(asset);
             State next = new State(Collections.unmodifiableMap(sources), List.copyOf(sources.keySet()),
-                    current.endTimes());
+                    current.endTimes(), Collections.unmodifiableMap(identities));
             if (state.compareAndSet(current, next)) {
                 return true;
             }
@@ -294,6 +302,10 @@ public final class LivePortfolioSeries implements PortfolioSeriesView {
             throw new IllegalArgumentException("asset is not in this portfolio series: " + asset);
         }
         return source;
+    }
+
+    Object assetIdentity(String asset) {
+        return state.get().identities().get(asset);
     }
 
     /**

@@ -26,9 +26,9 @@
 
 ### Fixed
 
-- **Portfolio strategy runs**: removed or replaced live assets finalize before later decisions; reordered histories use chronological execution snapshots, and intersection runs process intervening source bars, including at `Integer.MAX_VALUE`. Fixed amounts use each asset's numeric factory. Allocation runs reject union timelines with missing bars rather than trading on stale prices.
+- **Portfolio strategy runs**: live execution snapshots retain observed bars across source eviction, finalize pending orders across unseen gaps and membership changes, and handle reordered and intersection histories through terminal indexes. Fixed amounts use each asset's numeric factory. Allocation runs reject union timelines with missing bars rather than trading on stale prices.
 
-- **Live portfolio cache retention**: per-asset strategy and rule caches discard removed members on subsequent cache access; re-added members receive fresh components after eviction.
+- **Live portfolio cache retention**: per-asset strategy and rule caches discard removed members on subsequent cache access; re-added members receive fresh components even when the same source is re-added between accesses.
 
 - **Safer saved trades**: Java deserialization rejects missing `BaseTrade` state and indices below -1, while preserving zero and negative scalar amounts and the deferred index -1 supported by trade construction.
 

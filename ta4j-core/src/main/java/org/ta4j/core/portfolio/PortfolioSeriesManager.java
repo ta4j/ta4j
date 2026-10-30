@@ -18,6 +18,7 @@ import java.util.TreeMap;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
@@ -70,6 +71,20 @@ import org.ta4j.core.portfolio.PortfolioSnapshot.RebalanceStatus;
  * treated as already at target, so numerical residue never triggers fees. Every
  * snapshot reports whether its rebalance {@link RebalanceStatus completed, was
  * partial, or was skipped}.
+ * </p>
+ *
+ * <p>
+ * Strategy runs capture retained live bars into private execution histories at
+ * each decision, preserving their source indices. Appends extend that history;
+ * later eviction cannot remove a captured bar. If an unseen index was evicted
+ * before capture, the manager finalizes the old execution segment at its last
+ * processed bar, expiring pending orders and closing any open position there,
+ * then starts a new segment at the retained history. Removal or replacement
+ * likewise finalizes the old segment. Out-of-order histories are normalized
+ * chronologically, intersection gaps process captured intervening source bars,
+ * and terminal integer indices are processed without wrapping. The aligned
+ * timeline is fixed at run start; newly appended times require a subsequent
+ * run.
  * </p>
  *
  * <p>
@@ -304,6 +319,9 @@ public final class PortfolioSeriesManager {
         TradeExecutionModel closingModel = new ExitOnRunEndModel(executionModel);
         PortfolioTradingRecord record = new RunPortfolioRecord(baseRecord, assets, closingModel);
         for (int index = begin;; index++) {
+            if (executionSeries instanceof ChronologicalView chronological) {
+                chronological.refresh();
+            }
             List<String> currentAssets = executionSeries.assets();
             for (AssetExecution asset : assets) {
                 if (!currentAssets.contains(asset.name)) {
@@ -324,7 +342,12 @@ public final class PortfolioSeriesManager {
                 BarSeries source = existing == null || this.view instanceof LivePortfolioSeries
                         ? executionSeries.getBarSeries(name)
                         : existing.source;
-                if (existing == null || existing.removed || existing.source != source) {
+                Object identity = this.view instanceof LivePortfolioSeries live ? live.assetIdentity(name) : source;
+                boolean discontinuity = existing != null && this.view instanceof LivePortfolioSeries
+                        && existing.source == source && existing.identity == identity
+                        && !extendHistory(existing.history, source);
+                if (existing == null || existing.removed || existing.source != source || existing.identity != identity
+                        || discontinuity) {
                     if (existing != null && !existing.finished) {
                         finishAsset(existing, closingModel);
                     }
@@ -334,10 +357,11 @@ public final class PortfolioSeriesManager {
                     }
                     DeferredTradingRecord assetRecord = (DeferredTradingRecord) baseRecord.record(name);
                     assetRecord.restart();
-                    RunWindowBarSeries window = new RunWindowBarSeries(source, sourceEnd);
+                    BarSeries history = this.view instanceof LivePortfolioSeries ? captureHistory(source) : source;
+                    RunWindowBarSeries window = new RunWindowBarSeries(history, sourceEnd);
                     Strategy projection = positionSizer == null ? null : projectStrategy(strategy, record, name);
-                    AssetExecution replacement = new AssetExecution(name, source, window, assetRecord, projection,
-                            sourceEnd);
+                    AssetExecution replacement = new AssetExecution(name, source, identity, history, window,
+                            assetRecord, projection, sourceEnd);
                     if (existing != null) {
                         assets.set(assets.indexOf(existing), replacement);
                     } else {
@@ -411,6 +435,48 @@ public final class PortfolioSeriesManager {
         return baseRecord;
     }
 
+    private static BarSeries captureHistory(BarSeries source) {
+        return source.withReadLock(() -> {
+            List<Bar> bars = new ArrayList<>();
+            for (long index = source.getBeginIndex(); index >= 0 && index <= source.getEndIndex(); index++) {
+                bars.add(copyBar(source.getBar((int) index)));
+            }
+            BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder().withName(source.getName())
+                    .withNumFactory(source.numFactory())
+                    .withBars(bars);
+            if (!bars.isEmpty()) {
+                builder.withBeginIndex(source.getBeginIndex());
+            }
+            return builder.build();
+        });
+    }
+
+    private static boolean extendHistory(BarSeries history, BarSeries source) {
+        return source.withReadLock(() -> {
+            long next = (long) history.getEndIndex() + 1;
+            if (source.getBeginIndex() > next) {
+                return false;
+            }
+            for (long index = Math.max(history.getBeginIndex(), source.getBeginIndex()); index >= 0
+                    && index <= Math.min(history.getEndIndex(), source.getEndIndex()); index++) {
+                if (!history.getBar((int) index).getEndTime().equals(source.getBar((int) index).getEndTime())) {
+                    return false;
+                }
+            }
+            for (long index = Math.max(next, source.getBeginIndex()); index >= 0
+                    && index <= source.getEndIndex(); index++) {
+                history.addBar(copyBar(source.getBar((int) index)));
+            }
+            return true;
+        });
+    }
+
+    private static Bar copyBar(Bar bar) {
+        return new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
+                bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
+                bar.getTrades());
+    }
+
     private static void finishAsset(AssetExecution asset, TradeExecutionModel model) {
         asset.record.discardUnprocessedTrades();
         if (asset.lastProcessedIndex >= 0) {
@@ -452,8 +518,29 @@ public final class PortfolioSeriesManager {
         return bars;
     }
 
-    private record ChronologicalView(PortfolioSeriesView delegate, Map<String, BarSeries> originals,
+    record ChronologicalView(PortfolioSeriesView delegate, Map<String, BarSeries> originals,
             Map<String, BarSeries> reordered) implements PortfolioSeriesView {
+        Object assetIdentity(String asset) {
+            return delegate instanceof LivePortfolioSeries live ? live.assetIdentity(asset) : getBarSeries(asset);
+        }
+
+        private void refresh() {
+            if (!(delegate instanceof LivePortfolioSeries)) {
+                return;
+            }
+            for (String asset : delegate.assets()) {
+                BarSeries current = delegate.getBarSeries(asset);
+                BarSeries normalized = chronologicalSeries(current);
+                BarSeries previous = reordered.get(asset);
+                originals.put(asset, current);
+                if (normalized == current) {
+                    reordered.remove(asset);
+                } else if (previous == null || !previous.getBarData().equals(normalized.getBarData())) {
+                    reordered.put(asset, normalized);
+                }
+            }
+        }
+
         private BarSeries ordered(String asset) {
             if (delegate instanceof LivePortfolioSeries) {
                 BarSeries current = delegate.getBarSeries(asset);
@@ -565,6 +652,8 @@ public final class PortfolioSeriesManager {
     private static final class AssetExecution {
         private final String name;
         private final BarSeries source;
+        private final Object identity;
+        private final BarSeries history;
         private final RunWindowBarSeries window;
         private final DeferredTradingRecord record;
         private final Strategy projection;
@@ -574,10 +663,12 @@ public final class PortfolioSeriesManager {
         private boolean finished;
         private boolean removed;
 
-        private AssetExecution(String name, BarSeries source, RunWindowBarSeries window, DeferredTradingRecord record,
-                Strategy projection, int sourceEnd) {
+        private AssetExecution(String name, BarSeries source, Object identity, BarSeries history,
+                RunWindowBarSeries window, DeferredTradingRecord record, Strategy projection, int sourceEnd) {
             this.name = name;
             this.source = source;
+            this.identity = identity;
+            this.history = history;
             this.window = window;
             this.record = record;
             this.projection = projection;

@@ -60,6 +60,24 @@ public class PerAssetStrategyTest {
     }
 
     @Test
+    public void rebuildsStrategyWhenSameSourceIsReaddedBetweenAccesses() {
+        BarSeries source = series("same", 3, 3);
+        LivePortfolioSeries view = new LivePortfolioSeries(Map.of("A", source));
+        PortfolioTradingRecord record = new BasePortfolioTradingRecord(view);
+        AtomicInteger created = new AtomicInteger();
+        PerAssetStrategy strategy = PerAssetStrategy.of(bars -> {
+            created.incrementAndGet();
+            return strategyFor(bars, TradeType.BUY, 0);
+        });
+        assertTrue(strategy.shouldEnter("A", 0, record));
+        assertEquals(1, created.get());
+        assertTrue(view.removeAsset("A"));
+        view.addAsset("A", source);
+        assertTrue(strategy.shouldEnter("A", 0, record));
+        assertEquals(2, created.get());
+    }
+
+    @Test
     public void evictsRemovedAssetsDuringLiveViewAccess() {
         BarSeries original = series("original", 3);
         LivePortfolioSeries view = new LivePortfolioSeries(Map.of("A", original, "B", series("other", 3)));

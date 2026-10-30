@@ -16,6 +16,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -31,6 +34,7 @@ import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.backtest.PositionSizer;
+import org.ta4j.core.backtest.SlippageExecutionModel;
 import org.ta4j.core.backtest.StopLimitExecutionModel;
 import org.ta4j.core.backtest.TradeExecutionModel;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
@@ -534,6 +538,182 @@ public class PortfolioSeriesManagerTest {
                 (asset, index, record) -> asset.equals("ALPHA") && index == 0, (asset, index, record) -> false);
         PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(), model);
         assertTrue(result.record("ALPHA").getPositions().isEmpty());
+    }
+
+    @Test
+    public void retainedExecutionHistorySurvivesEvictionBeforeStopLimitCallback() {
+        BarSeries alpha = series("ALPHA", 10, 11, 12);
+        BarSeries beta = series("BETA", 20, 21, 22);
+        LivePortfolioSeries view = new LivePortfolioSeries(Map.of("ALPHA", alpha, "BETA", beta));
+        NumFactory factory = alpha.numFactory();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(factory.zero(), factory.zero(), factory.one(), 2,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+        PortfolioStrategy strategy = new BasePortfolioStrategy("eviction", (asset, index, record) -> {
+            if (asset.equals("BETA") && index == 0) {
+                alpha.setMaximumBarCount(1);
+            }
+            return asset.equals("ALPHA") && index == 0;
+        }, (asset, index, record) -> false);
+        new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(), model);
+        assertEquals(2, alpha.getBeginIndex());
+    }
+
+    @Test
+    public void unseenEvictedGapFinalizesPendingOrderWithoutDispatchingMissingBars() {
+        BarSeries alpha = series("ALPHA", 10, 11, 12);
+        BarSeries beta = series("BETA", 20, 21, 22, 23, 24, 25, 26);
+        Map<String, BarSeries> members = new LinkedHashMap<>();
+        members.put("ALPHA", alpha);
+        members.put("BETA", beta);
+        LivePortfolioSeries view = new LivePortfolioSeries(members);
+        NumFactory factory = alpha.numFactory();
+        StopLimitExecutionModel stop = new StopLimitExecutionModel(factory.zero(), factory.zero(), factory.one(), 8,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+        List<Integer> callbacks = new ArrayList<>();
+        TradeExecutionModel model = new TradeExecutionModel() {
+            @Override
+            public void onBar(int index, TradingRecord record, BarSeries bars) {
+                if (bars.getName().equals("ALPHA")) {
+                    callbacks.add(index);
+                    bars.getBar(index);
+                }
+                stop.onBar(index, record, bars);
+            }
+
+            @Override
+            public void execute(int index, TradingRecord record, BarSeries bars, Num amount) {
+                stop.execute(index, record, bars, amount);
+            }
+
+            @Override
+            public boolean hasPendingOrder(TradingRecord record) {
+                return stop.hasPendingOrder(record);
+            }
+
+            @Override
+            public void onRunEnd(int index, TradingRecord record, BarSeries bars) {
+                stop.onRunEnd(index, record, bars);
+            }
+        };
+        PortfolioStrategy strategy = new BasePortfolioStrategy("gap", (asset, index, record) -> {
+            if (asset.equals("BETA") && index == 0) {
+                alpha.setMaximumBarCount(1);
+                for (int day = 3; day <= 6; day++) {
+                    alpha.addBar(
+                            series("new", DoubleNumFactory.getInstance(), day, Integer.toString(30 + day)).getBar(0));
+                }
+            }
+            return asset.equals("ALPHA") && index == 0;
+        }, (asset, index, record) -> false);
+        PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(), model);
+        assertEquals(List.of(0, 6), callbacks);
+        assertTrue(result.record("ALPHA").getPositions().isEmpty());
+        assertTrue(!stop.hasPendingOrder(result.record("ALPHA")));
+    }
+
+    @Test
+    public void seededLiveMutationMatrixPreservesObservedExecutionHistory() {
+        for (int modelKind = 0; modelKind < 6; modelKind++) {
+            for (int seed = 0; seed < 12; seed++) {
+                BarSeries initial = series("ALPHA", 10, 11, 12, 13, 14, 15);
+                BarSeries alpha = seed % 4 == 0 ? new BaseBarSeriesBuilder().withName("ALPHA")
+                        .withBeginIndex(Integer.MAX_VALUE - 5)
+                        .withBars(initial.getBarData())
+                        .build() : initial;
+                BarSeries beta = series("BETA", 20, 21, 22, 23, 24, 25);
+                Map<String, BarSeries> members = new LinkedHashMap<>();
+                members.put("ALPHA", alpha);
+                members.put("BETA", beta);
+                LivePortfolioSeries view = new LivePortfolioSeries(members);
+                NumFactory factory = alpha.numFactory();
+                TradeExecutionModel delegate = switch (modelKind) {
+                case 0 -> new TradeOnCurrentCloseModel();
+                case 1 -> new TradeOnNextOpenModel();
+                case 2 -> new StopLimitExecutionModel(factory.zero(), factory.zero(), factory.one(), 2,
+                        TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+                case 3 -> new StopLimitExecutionModel(factory.zero(), factory.zero(), factory.one(), 2,
+                        TradeExecutionModel.PriceSource.NEXT_OPEN);
+                case 4 -> new SlippageExecutionModel(factory.zero(), TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+                default -> new SlippageExecutionModel(factory.zero(), TradeExecutionModel.PriceSource.NEXT_OPEN);
+                };
+                Set<Double> observedPrices = new HashSet<>();
+                for (BarSeries bars : List.of(alpha, beta)) {
+                    bars.getBarData().forEach(bar -> observedPrices.add(bar.getClosePrice().doubleValue()));
+                }
+                TradeExecutionModel checked = new TradeExecutionModel() {
+                    @Override
+                    public void onBar(int index, TradingRecord record, BarSeries bars) {
+                        assertTrue(observedPrices.contains(bars.getBar(index).getClosePrice().doubleValue()));
+                        delegate.onBar(index, record, bars);
+                    }
+
+                    @Override
+                    public void execute(int index, TradingRecord record, BarSeries bars, Num amount) {
+                        delegate.execute(index, record, bars, amount);
+                    }
+
+                    @Override
+                    public boolean hasPendingOrder(TradingRecord record) {
+                        return delegate.hasPendingOrder(record);
+                    }
+
+                    @Override
+                    public void onRunEnd(int index, TradingRecord record, BarSeries bars) {
+                        delegate.onRunEnd(index, record, bars);
+                    }
+
+                    @Override
+                    public ExecutionTarget estimateEntryTarget(int index, BarSeries bars, TradeType type) {
+                        return delegate.estimateEntryTarget(index, bars, type);
+                    }
+                };
+                Random random = new Random(seed);
+                PortfolioStrategy strategy = new BasePortfolioStrategy("mutations", (asset, index, record) -> {
+                    if (asset.equals("BETA")) {
+                        switch (random.nextInt(4)) {
+                        case 0 -> view.getBarSeries("ALPHA").setMaximumBarCount(1);
+                        case 1 -> {
+                            view.removeAsset("ALPHA");
+                            BarSeries ordered = series("ALPHA", 30 + index, 31 + index, 32 + index, 33 + index,
+                                    34 + index, 35 + index);
+                            List<org.ta4j.core.Bar> reversed = new ArrayList<>(ordered.getBarData());
+                            java.util.Collections.reverse(reversed);
+                            BarSeries replacement = new BaseBarSeriesBuilder().withName("ALPHA")
+                                    .withBars(reversed)
+                                    .build();
+                            replacement.getBarData()
+                                    .forEach(bar -> observedPrices.add(bar.getClosePrice().doubleValue()));
+                            view.addAsset("ALPHA", replacement);
+                        }
+                        case 2 -> {
+                            BarSeries current = view.getBarSeries("ALPHA");
+                            view.removeAsset("ALPHA");
+                            view.addAsset("ALPHA", current);
+                        }
+                        default -> {
+                            BarSeries current = view.getBarSeries("ALPHA");
+                            if (current.getEndIndex() < Integer.MAX_VALUE) {
+                                BarSeries added = series("new", DoubleNumFactory.getInstance(), 10 + index,
+                                        Integer.toString(80 + index));
+                                current.addBar(added.getBar(0));
+                                observedPrices.add(added.getBar(0).getClosePrice().doubleValue());
+                                view.advance();
+                            }
+                        }
+                        }
+                    }
+                    return asset.equals("ALPHA") && index % 2 == 0;
+                }, (asset, index, record) -> index % 2 != 0);
+                PortfolioTradingRecord result = new PortfolioSeriesManager(view).run(strategy, PositionSizer.fixed(),
+                        checked);
+                for (Position position : result.record("ALPHA").getPositions()) {
+                    assertTrue(observedPrices.contains(position.getEntry().getPricePerAsset().doubleValue()));
+                    if (position.isClosed()) {
+                        assertTrue(observedPrices.contains(position.getExit().getPricePerAsset().doubleValue()));
+                    }
+                }
+            }
+        }
     }
 
     @Test

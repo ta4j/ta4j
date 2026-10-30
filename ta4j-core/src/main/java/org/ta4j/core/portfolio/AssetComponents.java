@@ -39,8 +39,12 @@ final class AssetComponents<T> {
             return entry.component();
         }
         BarSeries series = newView.getBarSeries(asset);
-        if (entry == null || entry.series() != series) {
-            entry = new Entry<>(series, Objects.requireNonNull(factory.apply(series), "factory result"));
+        Object identity = newView instanceof LivePortfolioSeries live ? live.assetIdentity(asset)
+                : newView instanceof PortfolioSeriesManager.ChronologicalView chronological
+                        ? chronological.assetIdentity(asset)
+                        : series;
+        if (entry == null || entry.series() != series || entry.identity() != identity) {
+            entry = new Entry<>(series, identity, Objects.requireNonNull(factory.apply(series), "factory result"));
             entries.put(asset, entry);
         }
         return entry.component();
@@ -50,6 +54,6 @@ final class AssetComponents<T> {
         return entries.size();
     }
 
-    private record Entry<T>(BarSeries series, T component) {
+    private record Entry<T>(BarSeries series, Object identity, T component) {
     }
 }
