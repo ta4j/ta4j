@@ -21,6 +21,7 @@ public class IsLowestRule extends AbstractRule {
 
     /** The barCount. */
     private final int barCount;
+    private final LowestValueIndicator lowest;
 
     /**
      * Constructor.
@@ -31,12 +32,12 @@ public class IsLowestRule extends AbstractRule {
     public IsLowestRule(Indicator<Num> ref, int barCount) {
         this.ref = ref;
         this.barCount = barCount;
+        this.lowest = new LowestValueIndicator(ref, barCount);
     }
 
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        LowestValueIndicator lowest = new LowestValueIndicator(ref, barCount);
         Num lowestVal = lowest.getValue(index);
         Num refVal = ref.getValue(index);
 

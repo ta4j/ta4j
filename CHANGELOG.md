@@ -9,6 +9,8 @@
 
 ### Changed
 
+- **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases reconstruct from the existing calculation when reuse is unsafe.
+
 - **Moving-series guidance for 0.27.0**: the [moving-series continuation example](https://ta4j.github.io/ta4j-wiki/Bar-series-and-bars.html#moving-series-and-continued-indicator-state) and [indicator cache policies](https://ta4j.github.io/ta4j-wiki/Technical-indicators.html#moving-series-cache-policies) explain continued versus fresh indicator state, mutation-aware latest-bar caching and retained-window exceptions in 0.27.0. Later releases extend continuation to additional indicators; consult their changelog entries for those changes.
 - **Leaner `DoubleNum` forecast summaries**: Monte Carlo summaries retain primitive-double sorting for `DoubleNum` samples and skip unused higher moments while keeping moment calculations in `Num` arithmetic and preserving the series' numeric ownership.
 

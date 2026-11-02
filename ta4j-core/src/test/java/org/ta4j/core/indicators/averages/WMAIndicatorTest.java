@@ -6,7 +6,10 @@ package org.ta4j.core.indicators.averages;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -44,6 +47,48 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         for (int i = 0; i < series.getBarCount(); i++) {
             assertThat(Num.isNaNOrNull(wmaIndicator.getValue(i))).isTrue();
+        }
+    }
+
+    @Test
+    public void historicalReplacementAndExpirationUpdateWeightedAverages() {
+        var series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6)
+                .build();
+        var close = new ClosePriceIndicator(series);
+        var wma = new WMAIndicator(close, 3);
+        var lwma = new LWMAIndicator(close, 3);
+        for (int i = 2; i <= 3; i++) {
+            wma.getValue(i);
+            lwma.getValue(i);
+        }
+        var old = series.getBar(1);
+        series.replaceBar(1,
+                series.barBuilder()
+                        .timePeriod(old.getTimePeriod())
+                        .endTime(old.getEndTime())
+                        .openPrice(20)
+                        .highPrice(20)
+                        .lowPrice(20)
+                        .closePrice(20)
+                        .volume(old.getVolume())
+                        .build());
+
+        assertNumEquals(38.0 / 6, wma.getValue(3));
+        assertNumEquals(38.0 / 6, lwma.getValue(3));
+        assertNumEquals(26.0 / 6, wma.getValue(4));
+        assertNumEquals(26.0 / 6, lwma.getValue(4));
+    }
+
+    @Test
+    public void weightedAverageRecoversAfterLargeValuesExpire() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1e100, 1e100, 1, 2, 3, 4).build();
+        var close = new ClosePriceIndicator(series);
+        for (Indicator<Num> average : List.of(new WMAIndicator(close, 2), new LWMAIndicator(close, 2))) {
+            average.getValue(1);
+            average.getValue(2);
+            assertNumEquals(5.0 / 3, average.getValue(3));
+            assertNumEquals(8.0 / 3, average.getValue(4));
         }
     }
 

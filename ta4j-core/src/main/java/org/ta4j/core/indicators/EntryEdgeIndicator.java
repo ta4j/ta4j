@@ -3,8 +3,12 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Objects;
+import java.util.concurrent.locks.ReentrantLock;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Trade.TradeType;
@@ -42,6 +46,19 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
     private final int horizonBars;
     private final int lookbackSignals;
     private final Indicator<Integer> latestMaturedSignalIndexIndicator;
+    private final transient ReentrantLock rollingLock = new ReentrantLock();
+    private final transient Deque<SignalReturn> rollingSignals = new ArrayDeque<>();
+    private transient volatile int rollingIndex = -1;
+    private transient volatile int rollingBegin = -1;
+    private transient volatile int rollingBaselineStart = -1;
+    private transient volatile long rollingRevision = -1;
+    private transient int rollingUpdates;
+    private transient int rollingBaselineCount;
+    private transient double rollingBaselineTotal;
+    private transient double rollingSignalTotal;
+
+    private record SignalReturn(double value) {
+    }
 
     /**
      * Creates a long-side edge indicator using close price as the return source.
@@ -110,6 +127,8 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     @Override
+    @SuppressFBWarnings(value = { "AT_NONATOMIC_64BIT_PRIMITIVE",
+            "AT_STALE_THREAD_WRITE_OF_PRIMITIVE" }, justification = "Rolling aggregate state is read and written only while holding rollingLock.")
     protected Num calculate(int index) {
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
@@ -119,6 +138,30 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
         if (lastEligibleIndex < beginIndex) {
             return NaN.NaN;
         }
+        var snapshot = synchronizeCacheWithSeries(getBarSeries());
+        boolean terminal = index == snapshot.endIndex();
+        if (terminal && index > getCountOfUnstableBars()) {
+            getValue(index - 1);
+        }
+        int checkpoint = rollingIndex;
+        int previousBegin = rollingBegin;
+        int previousBaselineStart = rollingBaselineStart;
+        long revision = rollingRevision;
+        int baselineStart = Math.max(beginIndex, lastEligibleIndex - lookbackSignals + 1);
+        if (checkpoint == index - 1 && previousBegin == beginIndex && baselineStart >= previousBaselineStart
+                && baselineStart <= previousBaselineStart + 1 && isCached(checkpoint)) {
+            var changes = getBarSeries().getBarSeriesChangeSnapshot(revision);
+            double current = signedForwardReturn(lastEligibleIndex);
+            double outgoing = baselineStart == previousBaselineStart ? Double.NaN
+                    : signedForwardReturn(previousBaselineStart);
+            boolean signal = Boolean.TRUE.equals(signalIndicator.getValue(lastEligibleIndex));
+            Num result = advance(checkpoint, previousBegin, previousBaselineStart, revision, changes, index,
+                    baselineStart, current, outgoing, signal, terminal);
+            if (result != null) {
+                return result;
+            }
+        }
+        Deque<SignalReturn> signals = !terminal && snapshot.revision() >= 0 ? new ArrayDeque<>() : null;
         double signalTotal = 0.0d;
         int signalCount = 0;
         int signalIndex = latestMaturedSignalIndexIndicator.getValue(lastEligibleIndex);
@@ -128,6 +171,9 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
                 return NaN.NaN;
             }
             signalTotal += forwardReturn;
+            if (signals != null) {
+                signals.addFirst(new SignalReturn(forwardReturn));
+            }
             signalCount++;
             int previousIndex = signalIndex - 1;
             signalIndex = previousIndex >= beginIndex ? latestMaturedSignalIndexIndicator.getValue(previousIndex)
@@ -139,7 +185,7 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
 
         double baselineTotal = 0.0d;
         int baselineCount = 0;
-        int baselineStart = Math.max(beginIndex, lastEligibleIndex - Math.max(signalCount, lookbackSignals) + 1);
+        baselineStart = Math.max(beginIndex, lastEligibleIndex - Math.max(signalCount, lookbackSignals) + 1);
         for (int cursor = baselineStart; cursor <= lastEligibleIndex; cursor++) {
             double forwardReturn = signedForwardReturn(cursor);
             if (!Double.isFinite(forwardReturn)) {
@@ -151,9 +197,85 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
         if (baselineCount == 0) {
             return NaN.NaN;
         }
+        if (signals != null && Double.isFinite(signalTotal) && Double.isFinite(baselineTotal)
+                && rollingLock.tryLock()) {
+            try {
+                rollingSignals.clear();
+                rollingSignals.addAll(signals);
+                rollingSignalTotal = signalTotal;
+                rollingBaselineTotal = baselineTotal;
+                rollingBaselineCount = baselineCount;
+                rollingBegin = beginIndex;
+                rollingBaselineStart = baselineStart;
+                rollingUpdates = 0;
+                rollingIndex = index;
+                rollingRevision = snapshot.revision();
+            } finally {
+                rollingLock.unlock();
+            }
+        }
 
         double edgeBps = (signalTotal / signalCount) - (baselineTotal / baselineCount);
         return getBarSeries().numFactory().numOf(edgeBps);
+    }
+
+    private Num advance(int expected, int begin, int oldStart, long expectedRevision,
+            BarSeries.BarSeriesChangeSnapshot changes, int target, int start, double current, double outgoing,
+            boolean signal, boolean terminal) {
+        if (expectedRevision < 0 || changes.revision() < 0 || !rollingLock.tryLock()) {
+            return null;
+        }
+        try {
+            if (rollingIndex != expected || rollingBegin != begin || rollingBaselineStart != oldStart
+                    || rollingRevision != expectedRevision || rollingUpdates >= lookbackSignals
+                    || (changes.earliestChangedIndex() >= 0 && changes.earliestChangedIndex() <= expected)
+                    || changes.removedThroughIndex() >= begin) {
+                return null;
+            }
+            double baseline = rollingBaselineTotal;
+            int baselineCount = rollingBaselineCount;
+            if (start != oldStart && Double.isFinite(outgoing)) {
+                baseline -= outgoing;
+                baselineCount--;
+            }
+            if (Double.isFinite(current)) {
+                baseline += current;
+                baselineCount++;
+            }
+            boolean addSignal = signal && Double.isFinite(current);
+            SignalReturn removed = addSignal && rollingSignals.size() == lookbackSignals ? rollingSignals.peekFirst()
+                    : null;
+            double signalTotal = rollingSignalTotal - (removed == null ? 0 : removed.value())
+                    + (addSignal ? current : 0);
+            int signalCount = rollingSignals.size() - (removed == null ? 0 : 1) + (addSignal ? 1 : 0);
+            if (baselineCount == 0 || signalCount == 0 || !Double.isFinite(baseline) || !Double.isFinite(signalTotal)
+                    || Math.abs(baseline) < Math.abs(rollingBaselineTotal) * 1e-8
+                    || Math.abs(signalTotal) < Math.abs(rollingSignalTotal) * 1e-8) {
+                return null;
+            }
+            double edge = signalTotal / signalCount - baseline / baselineCount;
+            if (!Double.isFinite(edge)) {
+                return null;
+            }
+            if (!terminal) {
+                if (removed != null) {
+                    rollingSignals.removeFirst();
+                }
+                if (addSignal) {
+                    rollingSignals.addLast(new SignalReturn(current));
+                }
+                rollingSignalTotal = signalTotal;
+                rollingBaselineTotal = baseline;
+                rollingBaselineCount = baselineCount;
+                rollingBaselineStart = start;
+                rollingUpdates++;
+                rollingIndex = target;
+            }
+            rollingRevision = changes.revision();
+            return getBarSeries().numFactory().numOf(edge);
+        } finally {
+            rollingLock.unlock();
+        }
     }
 
     /**

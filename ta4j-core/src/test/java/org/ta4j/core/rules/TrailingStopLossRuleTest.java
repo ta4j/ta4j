@@ -285,6 +285,24 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
     }
 
     @Test
+    public void rollingExtremeExpiresAndTracksFormingBar() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 120, 108, 105, 104)
+                .build();
+        TrailingStopLossRule rule = new TrailingStopLossRule(new ClosePriceIndicator(series), numOf(10), 3);
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, numOf(100), numOf(1));
+        assertFalse(rule.isSatisfied(1, record));
+        assertTrue(rule.isSatisfied(2, record));
+        assertTrue(rule.isSatisfied(3, record));
+        assertFalse(rule.isSatisfied(4, record));
+        series.addPrice(numOf(95));
+        assertTrue(rule.isSatisfied(4, record));
+        series.addPrice(numOf(106));
+        assertFalse(rule.isSatisfied(4, record));
+    }
+
+    @Test
     public void serializeAndDeserialize() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(
                 new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 90, 95, 105).build());

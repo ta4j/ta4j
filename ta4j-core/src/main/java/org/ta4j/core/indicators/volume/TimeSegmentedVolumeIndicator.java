@@ -9,6 +9,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -27,6 +28,7 @@ import org.ta4j.core.num.Num;
  */
 public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
     private final DifferenceIndicator closePriceDifference;
+    private final transient RunningTotalIndicator total;
     private final int barCount;
 
     /**
@@ -40,6 +42,17 @@ public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
 
         this.closePriceDifference = new DifferenceIndicator(new ClosePriceIndicator(series));
         this.barCount = barCount;
+        this.total = new RunningTotalIndicator(new CachedIndicator<Num>(series) {
+            @Override
+            protected Num calculate(int index) {
+                return closePriceDifference.getValue(index).multipliedBy(getBarSeries().getBar(index).getVolume());
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return closePriceDifference.getCountOfUnstableBars();
+            }
+        }, barCount);
     }
 
     @Override
@@ -53,6 +66,9 @@ public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
 
         // Calculate the TSV for the given period
         int startIndex = Math.max(0, index - barCount + 1);
+        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()) {
+            return total.getValue(index);
+        }
         for (int i = startIndex; i <= index; i++) {
             Num closePriceDifferenceValue = closePriceDifference.getValue(i);
             Num currentVolume = getBarSeries().getBar(i).getVolume();

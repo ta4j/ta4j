@@ -10,6 +10,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -83,6 +84,33 @@ public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
         assertNumEquals(0.1713, coef.getValue(17));
         assertNumEquals(0.9841, coef.getValue(18));
         assertNumEquals(0.9799, coef.getValue(19));
+    }
+
+    @Test
+    public void historicalReplacementAndExpirationUpdateCorrelation() {
+        var series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6)
+                .build();
+        var x = new ClosePriceIndicator(series);
+        var y = new FixedIndicator<Num>(series, numOf(1), numOf(2), numOf(3), numOf(4), numOf(5), numOf(6));
+        var correlation = new PearsonCorrelationIndicator(x, y, 3);
+        for (int i = 0; i <= 3; i++) {
+            correlation.getValue(i);
+        }
+        var old = series.getBar(1);
+        series.replaceBar(1,
+                series.barBuilder()
+                        .timePeriod(old.getTimePeriod())
+                        .endTime(old.getEndTime())
+                        .openPrice(20)
+                        .highPrice(20)
+                        .lowPrice(20)
+                        .closePrice(20)
+                        .volume(old.getVolume())
+                        .build());
+
+        assertNumEquals(-16 / Math.sqrt(364), correlation.getValue(3));
+        assertNumEquals(1, correlation.getValue(4));
     }
 
     /**

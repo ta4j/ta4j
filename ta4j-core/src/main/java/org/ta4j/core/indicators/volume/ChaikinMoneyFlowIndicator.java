@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.volume;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 
@@ -23,6 +24,7 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
 
     private final CloseLocationValueIndicator clvIndicator;
     private final VolumeIndicator volumeIndicator;
+    private final transient RunningTotalIndicator moneyFlowTotal;
     private final int barCount;
 
     /**
@@ -36,14 +38,30 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
         this.barCount = barCount;
         this.clvIndicator = new CloseLocationValueIndicator(series);
         this.volumeIndicator = new VolumeIndicator(series, barCount);
+        this.moneyFlowTotal = new RunningTotalIndicator(new CachedIndicator<Num>(series) {
+            @Override
+            protected Num calculate(int index) {
+                return getMoneyFlowVolume(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return clvIndicator.getCountOfUnstableBars();
+            }
+        }, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
         int startIndex = Math.max(0, index - barCount + 1);
-        Num sumOfMoneyFlowVolume = getBarSeries().numFactory().zero();
-        for (int i = startIndex; i <= index; i++) {
-            sumOfMoneyFlowVolume = sumOfMoneyFlowVolume.plus(getMoneyFlowVolume(i));
+        Num sumOfMoneyFlowVolume;
+        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()) {
+            sumOfMoneyFlowVolume = moneyFlowTotal.getValue(index);
+        } else {
+            sumOfMoneyFlowVolume = getBarSeries().numFactory().zero();
+            for (int i = startIndex; i <= index; i++) {
+                sumOfMoneyFlowVolume = sumOfMoneyFlowVolume.plus(getMoneyFlowVolume(i));
+            }
         }
         Num sumOfVolume = volumeIndicator.getValue(index);
 

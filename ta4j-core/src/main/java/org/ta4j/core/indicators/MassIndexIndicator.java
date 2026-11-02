@@ -7,6 +7,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
@@ -21,6 +22,7 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
 
     private final transient EMAIndicator singleEma;
     private final transient EMAIndicator doubleEma;
+    private final transient RunningTotalIndicator ratioTotal;
     private final int emaBarCount;
     private final int barCount;
 
@@ -40,12 +42,16 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
         this.emaBarCount = emaBarCount;
         this.barCount = barCount;
         this.singleEma = first;
+        this.ratioTotal = new RunningTotalIndicator(BinaryOperationIndicator.quotient(first, second), barCount);
         this.doubleEma = second; // Not the same formula as DoubleEMAIndicator
     }
 
     @Override
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
+        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()) {
+            return ratioTotal.getValue(index);
+        }
         Num massIndex = getBarSeries().numFactory().zero();
         for (int i = startIndex; i <= index; i++) {
             Num emaRatio = singleEma.getValue(i).dividedBy(doubleEma.getValue(i));

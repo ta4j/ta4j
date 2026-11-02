@@ -8,7 +8,9 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -74,6 +76,41 @@ public class EntryEdgeIndicatorTest {
         }
 
         assertThat(signals.getReads()).isLessThan(200);
+    }
+
+    @Test
+    public void shouldExpireOldSignalsAndRecalculateFormingBar() {
+        EntryEdgeIndicator subject = new EntryEdgeIndicator(fixedSignals(0, 2, 4), new ClosePriceIndicator(series),
+                TradeType.BUY, 2, 2);
+        for (int index = 2; index <= 7; index++) {
+            subject.getValue(index);
+        }
+
+        assertNumEquals(1.3479511143062552, subject.getValue(7));
+        series.addPrice(110);
+        assertNumEquals(-92.10999281092738, subject.getValue(7));
+    }
+
+    @Test
+    public void shouldRecalculateAfterHistoricalPriceReplacement() {
+        EntryEdgeIndicator subject = new EntryEdgeIndicator(fixedSignals(0, 2, 4), new ClosePriceIndicator(series),
+                TradeType.BUY, 2, 2);
+        for (int index = 2; index <= 7; index++) {
+            subject.getValue(index);
+        }
+        Bar old = series.getBar(4);
+        ((BaseBarSeries) series).replaceBar(4,
+                series.barBuilder()
+                        .timePeriod(old.getTimePeriod())
+                        .endTime(old.getEndTime())
+                        .openPrice(110)
+                        .highPrice(110)
+                        .lowPrice(110)
+                        .closePrice(110)
+                        .volume(old.getVolume())
+                        .build());
+
+        assertNumEquals(241.73256649892164, subject.getValue(7));
     }
 
     private Indicator<Boolean> fixedSignals(int... indexes) {

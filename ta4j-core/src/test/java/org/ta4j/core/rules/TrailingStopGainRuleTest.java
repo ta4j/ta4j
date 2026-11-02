@@ -136,6 +136,18 @@ public class TrailingStopGainRuleTest extends AbstractIndicatorTest<Object, Obje
     }
 
     @Test
+    public void expiredExtremeCannotActivateTrailingGain() {
+        ClosePriceIndicator close = StopRuleTestSupport.closePrice(numFactory, 100, 120, 108, 105, 104);
+        TrailingStopGainRule rule = new TrailingStopGainRule(close, numOf(10), 3);
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, numOf(100), numOf(1));
+        assertFalse(rule.isSatisfied(1, record));
+        assertTrue(rule.isSatisfied(2, record));
+        assertTrue(rule.isSatisfied(3, record));
+        assertFalse(rule.isSatisfied(4, record));
+    }
+
+    @Test
     public void serializeAndDeserialize() {
         ClosePriceIndicator closePrice = StopRuleTestSupport.closePrice(numFactory, 100, 110, 90, 95, 105);
         TrailingStopGainRule rule = new TrailingStopGainRule(closePrice, numOf(7), 2);
