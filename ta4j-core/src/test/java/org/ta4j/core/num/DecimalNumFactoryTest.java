@@ -92,6 +92,8 @@ class DecimalNumFactoryTest {
 
     @Test
     void testLegacySerializedUidDeserialization() throws Exception {
+        assertEquals(-9178833530374200385L, ObjectStreamClass.lookup(DecimalNumFactory.class).getSerialVersionUID());
+
         final MathContext mc = DecimalNum.getDefaultMathContext();
         final SerializedDecimalNumFactoryState state = new SerializedDecimalNumFactoryState(mc,
                 DecimalNum.valueOf(-1, mc), DecimalNum.valueOf(0, mc), DecimalNum.valueOf(1, mc),
