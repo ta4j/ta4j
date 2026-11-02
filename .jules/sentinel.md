@@ -19,3 +19,8 @@
 **Vulnerability:** Standard Java deserialization (`readObject`) bypasses constructors, allowing serialized payloads with trade indices below -1 or null required fields (type, price, amount, cost, netPrice, fills) to instantiate invalid `BaseTrade` domain objects. Scalar trades may have zero or negative amounts, and index -1 represents deferred assignment.
 **Learning:** `BaseTrade` implements `Serializable` but lacked `readObject` validation. Validating fields in `readObject` and throwing `InvalidObjectException` prevents corrupted streams from instantiating invalid trades.
 **Prevention:** Any `Serializable` domain model in ta4j must implement `readObject` to validate all constructor invariants upon deserialization.
+
+## 2026-11-02 - Java Deserialization Invariant Validation for DecimalNum and DecimalNumFactory
+**Vulnerability:** `DecimalNum` and `DecimalNumFactory` implement `Serializable` (via `Num` and `NumFactory`) without defining `readObject`. Serialized payloads with null `delegate`, null `mathContext`, or null pre-cached constants could instantiate uninitialized numeric instances, leading to unexpected `NullPointerException` during arithmetic calculations or indicators evaluation.
+**Learning:** Core value types and numeric factories must enforce non-nullness of delegates, math contexts, and pre-cached constants during deserialization to maintain the immutable value contract across Java serialization streams.
+**Prevention:** Always implement `readObject` with explicit non-null checks throwing `InvalidObjectException` on `Serializable` numeric types and factories.
