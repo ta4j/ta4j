@@ -160,6 +160,12 @@ final class PositionPriceExtrema {
         }
 
         @Override
+        protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+            long windowFloor = (long) super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex) + barCount - 1;
+            return (int) Math.min(Integer.MAX_VALUE, windowFloor);
+        }
+
+        @Override
         public int getCountOfUnstableBars() {
             return source.getCountOfUnstableBars();
         }

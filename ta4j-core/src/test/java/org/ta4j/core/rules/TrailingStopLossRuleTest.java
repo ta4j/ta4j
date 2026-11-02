@@ -303,6 +303,32 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
     }
 
     @Test
+    public void reevaluatedRetainedBarExcludesEvictedPositionExtreme() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(120, 110, 105, 100).build();
+        series.setMaximumBarCount(4);
+        TrailingStopLossRule rule = new TrailingStopLossRule(new ClosePriceIndicator(series), numOf(10), 4);
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, numOf(120), numOf(1));
+
+        assertTrue(rule.isSatisfied(2, record));
+        series.barBuilder().openPrice(90).highPrice(90).lowPrice(90).closePrice(90).volume(1).add();
+        assertFalse(rule.isSatisfied(2, record));
+    }
+
+    @Test
+    public void reevaluatedRetainedBarExcludesEvictedShortExtreme() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(80, 90, 95, 100).build();
+        series.setMaximumBarCount(4);
+        TrailingStopLossRule rule = new TrailingStopLossRule(new ClosePriceIndicator(series), numOf(10), 4);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.SELL);
+        record.enter(0, numOf(80), numOf(1));
+
+        assertTrue(rule.isSatisfied(2, record));
+        series.barBuilder().openPrice(110).highPrice(110).lowPrice(110).closePrice(110).volume(1).add();
+        assertFalse(rule.isSatisfied(2, record));
+    }
+
+    @Test
     public void serializeAndDeserialize() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(
                 new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 90, 95, 105).build());
