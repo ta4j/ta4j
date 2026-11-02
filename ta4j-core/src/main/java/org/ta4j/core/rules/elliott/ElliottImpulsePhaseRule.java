@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.rules.elliott;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
@@ -50,7 +50,7 @@ public class ElliottImpulsePhaseRule extends AbstractRule {
         if (phases == null || phases.length == 0) {
             throw new IllegalArgumentException("phases must not be empty");
         }
-        return new Config(validatedScenarioIndicator, EnumSet.copyOf(Arrays.asList(phases)));
+        return new Config(validatedScenarioIndicator, EnumSet.copyOf(List.of(phases)));
     }
 
     @Override
