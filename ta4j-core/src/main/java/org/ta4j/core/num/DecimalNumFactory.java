@@ -12,7 +12,7 @@ import java.math.MathContext;
 public class DecimalNumFactory implements NumFactory {
 
     @Serial
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = -9178833530374200385L;
 
     private final MathContext mathContext;
     private final DecimalNum minusOne;

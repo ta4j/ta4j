@@ -90,6 +90,21 @@ class DecimalNumFactoryTest {
         assertThrows(InvalidObjectException.class, () -> restoreState(state));
     }
 
+    @Test
+    void testLegacySerializedUidDeserialization() throws Exception {
+        final MathContext mc = DecimalNum.getDefaultMathContext();
+        final SerializedDecimalNumFactoryState state = new SerializedDecimalNumFactoryState(mc,
+                DecimalNum.valueOf(-1, mc), DecimalNum.valueOf(0, mc), DecimalNum.valueOf(1, mc),
+                DecimalNum.valueOf(2, mc), DecimalNum.valueOf(3, mc), DecimalNum.valueOf(100, mc),
+                DecimalNum.valueOf(1000, mc));
+        final Object restored = restoreState(state);
+        assertTrue(restored instanceof DecimalNumFactory);
+        final DecimalNumFactory restoredFactory = (DecimalNumFactory) restored;
+        assertEquals(DecimalNum.valueOf(1, mc), restoredFactory.one());
+        assertEquals(DecimalNum.valueOf(0, mc), restoredFactory.zero());
+        assertEquals(DecimalNum.valueOf(-1, mc), restoredFactory.minusOne());
+    }
+
     private static byte[] serialize(final Object value) throws IOException {
         try (ByteArrayOutputStream bytes = new ByteArrayOutputStream();
                 ObjectOutputStream out = new ObjectOutputStream(bytes)) {
@@ -122,7 +137,7 @@ class DecimalNumFactoryTest {
 
     private static final class SerializedDecimalNumFactoryState implements Serializable {
         @Serial
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -9178833530374200385L;
         private final MathContext mathContext;
         private final DecimalNum minusOne;
         private final DecimalNum zero;
