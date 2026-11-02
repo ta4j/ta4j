@@ -21,7 +21,7 @@ public class IsLowestRule extends AbstractRule {
 
     /** The barCount. */
     private final int barCount;
-    private final LowestValueIndicator lowest;
+    private final transient LowestValueIndicator lowest;
 
     /**
      * Constructor.

@@ -22,7 +22,7 @@ public class IsHighestRule extends AbstractRule {
 
     /** The barCount. */
     private final int barCount;
-    private final HighestValueIndicator highest;
+    private final transient HighestValueIndicator highest;
 
     /**
      * Constructor.

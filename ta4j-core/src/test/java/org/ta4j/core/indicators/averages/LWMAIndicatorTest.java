@@ -9,6 +9,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -45,5 +46,40 @@ public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertNumEquals(37.1833, lwma.getValue(8));
         assertNumEquals(37.5240, lwma.getValue(9));
         assertNumEquals(37.4060, lwma.getValue(10));
+    }
+
+    @Test
+    public void historicalReplacementAndExpirationUpdateWeightedAverage() {
+        var series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6)
+                .build();
+        var average = new LWMAIndicator(new ClosePriceIndicator(series), 3);
+        for (int i = 2; i <= 3; i++) {
+            average.getValue(i);
+        }
+        var old = series.getBar(1);
+        series.replaceBar(1,
+                series.barBuilder()
+                        .timePeriod(old.getTimePeriod())
+                        .endTime(old.getEndTime())
+                        .openPrice(20)
+                        .highPrice(20)
+                        .lowPrice(20)
+                        .closePrice(20)
+                        .volume(old.getVolume())
+                        .build());
+
+        assertNumEquals(38.0 / 6, average.getValue(3));
+        assertNumEquals(26.0 / 6, average.getValue(4));
+    }
+
+    @Test
+    public void weightedAverageRecoversAfterLargeValuesExpire() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1e100, 1e100, 1, 2, 3, 4).build();
+        var average = new LWMAIndicator(new ClosePriceIndicator(series), 2);
+        average.getValue(1);
+        average.getValue(2);
+        assertNumEquals(5.0 / 3, average.getValue(3));
+        assertNumEquals(8.0 / 3, average.getValue(4));
     }
 }

@@ -138,7 +138,7 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
         if (lastEligibleIndex < beginIndex) {
             return NaN.NaN;
         }
-        var snapshot = synchronizeCacheWithSeries(getBarSeries());
+        BarSeries.BarSeriesChangeSnapshot snapshot = synchronizeCacheWithSeries(getBarSeries());
         boolean terminal = index == snapshot.endIndex();
         if (terminal && index > getCountOfUnstableBars()) {
             getValue(index - 1);
@@ -150,7 +150,7 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
         int baselineStart = Math.max(beginIndex, lastEligibleIndex - lookbackSignals + 1);
         if (checkpoint == index - 1 && previousBegin == beginIndex && baselineStart >= previousBaselineStart
                 && baselineStart <= previousBaselineStart + 1 && isCached(checkpoint)) {
-            var changes = getBarSeries().getBarSeriesChangeSnapshot(revision);
+            BarSeries.BarSeriesChangeSnapshot changes = getBarSeries().getBarSeriesChangeSnapshot(revision);
             double current = signedForwardReturn(lastEligibleIndex);
             double outgoing = baselineStart == previousBaselineStart ? Double.NaN
                     : signedForwardReturn(previousBaselineStart);
