@@ -3,9 +3,14 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import java.util.concurrent.locks.ReentrantLock;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -24,6 +29,14 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
 
     protected final Indicator<Num> priceIndicator;
     protected final Indicator<Num> volumeIndicator;
+    private final transient ReentrantLock rollingLock = new ReentrantLock();
+    private transient volatile int rollingIndex = -1;
+    private transient volatile int rollingStart = -1;
+    private transient volatile long rollingRevision = -1;
+    private transient Num rollingWeighted;
+    private transient Num rollingSquared;
+    private transient Num rollingVolume;
+    private transient int rollingUpdates;
 
     /**
      * Creates a new AbstractVWAPIndicator instance.
@@ -105,8 +118,32 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
      *
      * @since 0.19
      */
+    @SuppressFBWarnings(value = "AT_STALE_THREAD_WRITE_OF_PRIMITIVE", justification = "Rolling aggregate state is read and written only while holding rollingLock.")
     protected final VWAPValues collectValues(int startIndex, int endIndex) {
         NumFactory factory = getBarSeries().numFactory();
+        boolean supported = IndicatorUtils.isSameSeries(priceIndicator.getBarSeries(), volumeIndicator.getBarSeries())
+                && (!(factory.zero() instanceof DecimalNum decimal) || decimal.getMathContext().getPrecision() >= 16);
+        var snapshot = supported ? synchronizeCacheWithSeries(getBarSeries()) : null;
+        boolean terminal = snapshot != null && endIndex == snapshot.endIndex();
+        if (terminal && endIndex > startIndex) {
+            getValue(endIndex - 1);
+        }
+        int checkpoint = rollingIndex;
+        int previousStart = rollingStart;
+        long revision = rollingRevision;
+        if (snapshot != null && checkpoint == endIndex - 1 && previousStart >= getBarSeries().getBeginIndex()
+                && startIndex >= previousStart && startIndex <= previousStart + 1 && isCached(checkpoint)) {
+            var changes = getBarSeries().getBarSeriesChangeSnapshot(revision);
+            Num price = priceIndicator.getValue(endIndex);
+            Num volume = volumeIndicator.getValue(endIndex);
+            Num oldPrice = startIndex == previousStart ? null : priceIndicator.getValue(previousStart);
+            Num oldVolume = startIndex == previousStart ? null : volumeIndicator.getValue(previousStart);
+            VWAPValues result = advance(checkpoint, previousStart, revision, changes, startIndex, endIndex, price,
+                    volume, oldPrice, oldVolume, terminal, factory);
+            if (result != null) {
+                return result;
+            }
+        }
         Num weightedPriceSum = factory.zero();
         Num weightedSquareSum = factory.zero();
         Num volumeSum = factory.zero();
@@ -131,8 +168,89 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
         if (!hasContribution || volumeSum.isZero()) {
             return VWAPValues.empty(factory);
         }
+        if (snapshot != null && !terminal && snapshot.revision() >= 0 && Num.isFinite(weightedPriceSum)
+                && Num.isFinite(weightedSquareSum) && Num.isFinite(volumeSum) && rollingLock.tryLock()) {
+            try {
+                rollingWeighted = weightedPriceSum;
+                rollingSquared = weightedSquareSum;
+                rollingVolume = volumeSum;
+                rollingUpdates = 0;
+                rollingStart = startIndex;
+                rollingIndex = endIndex;
+                rollingRevision = snapshot.revision();
+            } finally {
+                rollingLock.unlock();
+            }
+        }
 
         return VWAPValues.valid(weightedPriceSum, weightedSquareSum, volumeSum, factory);
+    }
+
+    private VWAPValues advance(int expected, int previousStart, long expectedRevision,
+            BarSeries.BarSeriesChangeSnapshot changes, int start, int end, Num price, Num volume, Num oldPrice,
+            Num oldVolume, boolean terminal, NumFactory factory) {
+        if (expectedRevision < 0 || changes.revision() < 0 || !Num.isFinite(price) || !Num.isFinite(volume)
+                || volume.isNegative()
+                || (oldPrice != null && (!Num.isFinite(oldPrice) || !Num.isFinite(oldVolume) || oldVolume.isNegative()))
+                || !rollingLock.tryLock()) {
+            return null;
+        }
+        try {
+            if (rollingIndex != expected || rollingStart != previousStart || rollingRevision != expectedRevision
+                    || end != expected + 1 || rollingUpdates >= end - start + 1
+                    || (changes.earliestChangedIndex() >= 0 && changes.earliestChangedIndex() <= expected)
+                    || changes.removedThroughIndex() >= previousStart) {
+                return null;
+            }
+            Num weighted = rollingWeighted;
+            Num squared = rollingSquared;
+            Num totalVolume = rollingVolume;
+            if (oldPrice != null && !oldVolume.isZero()) {
+                weighted = weighted.minus(oldPrice.multipliedBy(oldVolume));
+                squared = squared.minus(oldPrice.multipliedBy(oldPrice).multipliedBy(oldVolume));
+                totalVolume = totalVolume.minus(oldVolume);
+            }
+            if (!volume.isZero()) {
+                weighted = weighted.plus(price.multipliedBy(volume));
+                squared = squared.plus(price.multipliedBy(price).multipliedBy(volume));
+                totalVolume = totalVolume.plus(volume);
+            }
+            Num threshold = factory.numOf(100000000);
+            if (!Num.isFinite(weighted) || !Num.isFinite(squared) || !Num.isFinite(totalVolume)
+                    || totalVolume.isNegative() || squared.isNegative()
+                    || (oldPrice != null && ((!rollingWeighted.isZero()
+                            && weighted.abs().isLessThan(rollingWeighted.abs().dividedBy(threshold)))
+                            || (!rollingVolume.isZero()
+                                    && totalVolume.abs().isLessThan(rollingVolume.abs().dividedBy(threshold)))
+                            || (!rollingSquared.isZero()
+                                    && squared.abs().isLessThan(rollingSquared.abs().dividedBy(threshold)))))) {
+                return null;
+            }
+            if (!totalVolume.isZero()) {
+                Num mean = weighted.dividedBy(totalVolume);
+                Num squareMean = squared.dividedBy(totalVolume);
+                Num variance = squareMean.minus(mean.multipliedBy(mean));
+                if (!Num.isFinite(variance)
+                        || variance.abs().isLessThanOrEqual(squareMean.abs().dividedBy(threshold))) {
+                    return null;
+                }
+            }
+            if (!terminal) {
+                rollingWeighted = weighted;
+                rollingSquared = squared;
+                rollingVolume = totalVolume;
+                rollingStart = start;
+                rollingUpdates++;
+                rollingIndex = end;
+            }
+            rollingRevision = changes.revision();
+            return totalVolume.isZero() ? VWAPValues.empty(factory)
+                    : VWAPValues.valid(weighted, squared, totalVolume, factory);
+        } catch (ArithmeticException e) {
+            return null;
+        } finally {
+            rollingLock.unlock();
+        }
     }
 
     /**
