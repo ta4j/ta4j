@@ -29,6 +29,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntConsumer;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,9 +47,11 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Object> {
@@ -282,6 +294,197 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         tradingRecord.enter(7, numOf(91), numOf(1));
         assertFalse(rule.isSatisfied(7, tradingRecord));
         assertTrue(rule.isSatisfied(8, tradingRecord));
+    }
+
+    @Test
+    public void rollingExtremeExpiresAndTracksFormingBar() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 120, 108, 105, 104)
+                .build();
+        TrailingStopLossRule rule = new TrailingStopLossRule(new ClosePriceIndicator(series), numOf(10), 3);
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, numOf(100), numOf(1));
+        assertFalse(rule.isSatisfied(1, record));
+        assertTrue(rule.isSatisfied(2, record));
+        assertTrue(rule.isSatisfied(3, record));
+        assertFalse(rule.isSatisfied(4, record));
+        series.addPrice(numOf(95));
+        assertTrue(rule.isSatisfied(4, record));
+        series.addPrice(numOf(106));
+        assertFalse(rule.isSatisfied(4, record));
+    }
+
+    @Test
+    public void reevaluatedRetainedBarExcludesEvictedPositionExtreme() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(120, 110, 105, 100).build();
+        series.setMaximumBarCount(4);
+        TrailingStopLossRule rule = new TrailingStopLossRule(new ClosePriceIndicator(series), numOf(10), 4);
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, numOf(120), numOf(1));
+
+        assertTrue(rule.isSatisfied(2, record));
+        series.barBuilder().openPrice(90).highPrice(90).lowPrice(90).closePrice(90).volume(1).add();
+        assertFalse(rule.isSatisfied(2, record));
+    }
+
+    @Test
+    public void reevaluatedRetainedBarExcludesEvictedShortExtreme() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(80, 90, 95, 100).build();
+        series.setMaximumBarCount(4);
+        TrailingStopLossRule rule = new TrailingStopLossRule(new ClosePriceIndicator(series), numOf(10), 4);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.SELL);
+        record.enter(0, numOf(80), numOf(1));
+
+        assertTrue(rule.isSatisfied(2, record));
+        series.barBuilder().openPrice(110).highPrice(110).lowPrice(110).closePrice(110).volume(1).add();
+        assertFalse(rule.isSatisfied(2, record));
+    }
+
+    @Test
+    public void retainedHistoricalMutationInvalidatesRollingExtremeOnHeadAdvance() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 140, 100, 100).build();
+        series.setMaximumBarCount(4);
+        TrailingStopLossRule rule = new TrailingStopLossRule(new ClosePriceIndicator(series), numOf(10));
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, numOf(100), numOf(1));
+
+        assertTrue(rule.isSatisfied(3, record));
+        series.getBar(1).addPrice(numOf(100));
+        series.barBuilder().closePrice(100).add();
+        assertFalse(rule.isSatisfied(4, record));
+    }
+
+    @Test
+    public void headRebasedSourceInvalidatesRollingExtremeOnHeadAdvance() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 140, 100, 100).build();
+        series.setMaximumBarCount(4);
+        CachedIndicator<Num> source = new CachedIndicator<>(series) {
+            @Override
+            protected Num calculate(int index) {
+                return series.getBeginIndex() == 0 ? series.getBar(index).getClosePrice() : numOf(100);
+            }
+
+            @Override
+            protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+                return true;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        TrailingStopLossRule rule = new TrailingStopLossRule(source, numOf(10));
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, numOf(100), numOf(1));
+
+        assertTrue(rule.isSatisfied(3, record));
+        series.barBuilder().closePrice(100).add();
+        assertFalse(rule.isSatisfied(4, record));
+    }
+
+    @Test
+    public void customCloseSourceCanRebaseOnHeadAdvance() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 140, 100, 100).build();
+        series.setMaximumBarCount(4);
+        ClosePriceIndicator source = new ClosePriceIndicator(series) {
+            @Override
+            public Num getValue(int index) {
+                return series.getBeginIndex() == 0 ? super.getValue(index) : numOf(100);
+            }
+        };
+        TrailingStopLossRule rule = new TrailingStopLossRule(source, numOf(10));
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, numOf(100), numOf(1));
+
+        assertTrue(rule.isSatisfied(3, record));
+        series.barBuilder().closePrice(100).add();
+        assertFalse(rule.isSatisfied(4, record));
+    }
+
+    @Test
+    public void foreignSeriesMutationInvalidatesRollingExtremeOnHeadAdvance() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 100, 100, 100).build();
+        series.setMaximumBarCount(4);
+        BarSeries foreign = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 40, 0, 0, 0).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        ClosePriceIndicator foreignClose = new ClosePriceIndicator(foreign);
+        CachedIndicator<Num> source = new CachedIndicator<>(series, close, foreignClose) {
+            @Override
+            protected Num calculate(int index) {
+                return close.getValue(index).plus(foreignClose.getValue(index));
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        TrailingStopLossRule rule = new TrailingStopLossRule(source, numOf(10));
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, numOf(100), numOf(1));
+
+        assertTrue(rule.isSatisfied(3, record));
+        foreign.getBar(1).addPrice(numOf(0));
+        series.barBuilder().closePrice(100).add();
+        assertFalse(rule.isSatisfied(4, record));
+    }
+
+    @Test
+    public void concurrentRetainedMutationCannotLeaveStaleRollingExtreme() throws Exception {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 140, 100, 100).build();
+        series.setMaximumBarCount(4);
+        CountDownLatch readingCurrent = new CountDownLatch(1);
+        CountDownLatch resume = new CountDownLatch(1);
+        AtomicInteger currentReads = new AtomicInteger();
+        BarSeries observed = interceptBarReads(series, index -> {
+            if (index == 4 && currentReads.incrementAndGet() == 2) {
+                readingCurrent.countDown();
+                try {
+                    if (!resume.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("timed out waiting for retained mutation");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+            }
+        });
+        ClosePriceIndicator source = new ClosePriceIndicator(observed);
+        TrailingStopLossRule rule = new TrailingStopLossRule(source, numOf(10));
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, numOf(100), numOf(1));
+        assertTrue(rule.isSatisfied(3, record));
+        series.barBuilder().closePrice(100).add();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Boolean> result = executor.submit(() -> rule.isSatisfied(4, record));
+            assertTrue(readingCurrent.await(10, TimeUnit.SECONDS));
+            series.getBar(1).addPrice(numOf(100));
+            resume.countDown();
+            assertFalse(result.get(10, TimeUnit.SECONDS));
+            assertFalse(rule.isSatisfied(4, record));
+            series.barBuilder().closePrice(100).add();
+            assertFalse(rule.isSatisfied(5, record));
+        } finally {
+            resume.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    private BarSeries interceptBarReads(BarSeries delegate, IntConsumer beforeRead) {
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getBar")) {
+                        beforeRead.accept((Integer) args[0]);
+                    }
+                    try {
+                        return method.invoke(delegate, args);
+                    } catch (InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                });
     }
 
     @Test

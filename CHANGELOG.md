@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Changed
+
+- **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases, including low-precision decimal totals, reconstruct from the existing calculation when reuse is unsafe.
+
 ### Fixed
 
 - **Safer saved concurrent bar series**: Java deserialization of `ConcurrentBarSeries` rejects streams that omit its class data with `InvalidObjectException` instead of restoring a series without initialized locks.
