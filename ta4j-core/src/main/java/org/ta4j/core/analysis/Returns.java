@@ -415,7 +415,7 @@ public class Returns implements PerformanceIndicator {
      *         return.
      */
     public int getSize() {
-        if (returnFactors.size() == 0) {
+        if (returnFactors.isEmpty()) {
             return 0;
         }
         return returnFactors.size() - (firstRetainedSlotSeeded ? 0 : 1);

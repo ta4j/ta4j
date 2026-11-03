@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.portfolio;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.portfolio.PortfolioFixtures.START;
 import static org.ta4j.core.portfolio.PortfolioFixtures.assertNumClose;
@@ -12,7 +12,7 @@ import static org.ta4j.core.portfolio.PortfolioFixtures.series;
 import java.time.Duration;
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;

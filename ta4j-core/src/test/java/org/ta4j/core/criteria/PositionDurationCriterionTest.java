@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.criteria;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import static org.ta4j.core.TestUtils.assertNumEquals;

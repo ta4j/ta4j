@@ -8,12 +8,13 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.adx.ADXIndicator;
 import org.ta4j.core.indicators.adx.MinusDIIndicator;
@@ -25,6 +26,28 @@ public class DownTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Bool
 
     public DownTrendIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void continuesTrendStrengthAndDirectionAcrossAShortWindow() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int direction : new int[] { -1, 1 }) {
+                BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+                series.setMaximumBarCount(2);
+                DownTrendIndicator indicator = new DownTrendIndicator(series, 3);
+                assertEquals(7, indicator.getCountOfUnstableBars());
+                for (int index = 0; index < 80; index++) {
+                    int close = 100 + direction * index;
+                    series.barBuilder().closePrice(close).highPrice(close + 1).lowPrice(close - 1).add();
+                    assertEquals(index >= 7 && direction < 0, indicator.getValue(index),
+                            "direction " + direction + " index " + index);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

@@ -7,8 +7,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.ta4j.core.num.NaN;
 import java.util.ArrayList;
 import org.ta4j.core.FuturesContract;
@@ -17,8 +17,8 @@ import org.ta4j.core.TradeFee;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.util.List;
 import java.math.BigDecimal;
@@ -28,8 +28,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ConcurrentBarSeries;
-import org.junit.Test;
-import static org.junit.Assert.assertThrows;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTrade;
@@ -40,7 +40,6 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -863,12 +862,12 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
                 CumulativePnL actual = new CumulativePnL(series, record, 4, mode, handling);
                 CumulativePnL expected = new CumulativePnL(freshSeries, equivalentRecord, 2, mode, handling);
                 String context = "mode=" + mode + ", handling=" + handling;
-                assertEquals(context, expected.stream().toList(), actual.stream().toList());
+                assertEquals(expected.stream().toList(), actual.stream().toList(), context);
 
                 CumulativePnL incremental = new CumulativePnL(series, boundedRecord(2, 5), 4, mode, handling);
                 incremental.calculatePosition(record.getPositions().get(1), 4);
                 incremental.calculatePosition(record.getPositions().get(2), 4);
-                assertEquals(context + " incremental", actual.stream().toList(), incremental.stream().toList());
+                assertEquals(actual.stream().toList(), incremental.stream().toList(), context + " incremental");
             }
         }
     }
@@ -891,13 +890,13 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
                 CumulativePnL actual = new CumulativePnL(series, record, 4, mode, handling);
                 CumulativePnL expected = new CumulativePnL(freshSeries, equivalentRecord, 2, mode, handling);
                 String context = "mode=" + mode + ", handling=" + handling;
-                assertEquals(context, expected.stream().toList(), actual.stream().toList());
+                assertEquals(expected.stream().toList(), actual.stream().toList(), context);
 
                 CumulativePnL incremental = new CumulativePnL(series, boundedRecord(2, 5), 4, mode, handling);
                 if (handling != OpenPositionHandling.IGNORE) {
                     incremental.calculatePosition(record.getPositions().get(0), 4);
                 }
-                assertEquals(context + " incremental", actual.stream().toList(), incremental.stream().toList());
+                assertEquals(actual.stream().toList(), incremental.stream().toList(), context + " incremental");
             }
         }
     }
@@ -1137,8 +1136,7 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertEquals(2 * periods + 1, pnl.getSize());
         // settled positions are folded once instead of being re-measured on every later
         // bar
-        assertTrue("holding costs were recomputed " + holdingCosts.calls() + " times",
-                holdingCosts.calls() <= 3 * periods);
+        assertTrue(holdingCosts.calls() <= 3 * periods, "holding costs were recomputed " + holdingCosts.calls() + " times");
     }
 
     private static BarSeries flatRuntimeSeries(NumFactory numFactory, int barCount) {
@@ -1581,7 +1579,7 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         Indicator<Num> mark = new Indicator<Num>() {
             @Override
             public Num getValue(int index) {
-                assertEquals("incremental mark must run outside the read lock", 0, lock.getReadHoldCount());
+                assertEquals(0, lock.getReadHoldCount(), "incremental mark must run outside the read lock");
                 Num value = series.getBar(index).getClosePrice();
                 if (index == 1 && changed.compareAndSet(false, true)) {
                     Bar original = series.getBar(index);

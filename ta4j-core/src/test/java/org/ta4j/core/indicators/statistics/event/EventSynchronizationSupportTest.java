@@ -3,9 +3,9 @@
  */
 package org.ta4j.core.indicators.statistics.event;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.ArrayList;
@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.DoubleStream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
@@ -281,8 +281,9 @@ public class EventSynchronizationSupportTest extends AbstractIndicatorTest<Indic
                     maxLead, maxLag, 0, 29);
             BruteForceResult expected = bruteForce(predicted, reference, maxLead, maxLag);
 
-            assertEquals("trial " + trial + " p=" + Arrays.toString(predicted) + " r=" + Arrays.toString(reference)
-                    + " lead=" + maxLead + " lag=" + maxLag, expected.matches.size(), actual.matchedCount());
+            assertEquals(expected.matches.size(), actual.matchedCount(),
+                    "trial " + trial + " p=" + Arrays.toString(predicted) + " r=" + Arrays.toString(reference)
+                            + " lead=" + maxLead + " lag=" + maxLag);
             assertEquals(expected.totalAbsoluteOffset,
                     actual.matches().stream().mapToLong(Match::offsetBars).map(Math::abs).sum());
             assertEquals(expected.worstAbsoluteOffset,

@@ -46,19 +46,35 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
      * @param k        the K multiplier for ATR (usually 3.0)
      */
     public ChandelierExitLongIndicator(BarSeries series, int barCount, double k) {
-        super(series);
+        this(barCount, k, new HighestValueIndicator(new HighPriceIndicator(series), barCount),
+                new ATRIndicator(series, barCount));
+    }
+
+    private ChandelierExitLongIndicator(int barCount, double k, HighestValueIndicator high, ATRIndicator atr) {
+        super(high, atr);
         this.barCount = barCount;
         this.k = getBarSeries().numFactory().numOf(k);
-        this.high = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
-        this.atr = new ATRIndicator(series, barCount);
+        this.high = high;
+        this.atr = atr;
     }
 
     @Override
     protected Num calculate(int index) {
+        Num averageTrueRange = atr.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
-        return high.getValue(index).minus(atr.getValue(index).multipliedBy(k));
+        return high.getValue(index).minus(averageTrueRange.multipliedBy(k));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     @Override

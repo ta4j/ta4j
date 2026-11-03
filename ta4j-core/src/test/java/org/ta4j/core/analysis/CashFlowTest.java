@@ -6,7 +6,7 @@ package org.ta4j.core.analysis;
 import org.ta4j.core.criteria.ReturnRepresentation;
 
 import java.lang.reflect.Proxy;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.FuturesContract;
@@ -26,12 +26,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
@@ -1508,13 +1508,13 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 CashFlow actual = new CashFlow(series, record, 2, 4, mode, handling);
                 CashFlow expected = new CashFlow(freshSeries, equivalentRecord, 0, 2, mode, handling);
                 String context = "mode=" + mode + ", handling=" + handling;
-                assertEquals(context, expected.stream().toList(), actual.stream().toList());
+                assertEquals(expected.stream().toList(), actual.stream().toList(), context);
 
                 BaseTradingRecord emptyRecord = boundedRecord(2, 5);
                 CashFlow incremental = new CashFlow(series, emptyRecord, 2, 4, mode, handling);
                 incremental.calculatePosition(record.getPositions().get(1), 4);
                 incremental.calculatePosition(record.getPositions().get(2), 4);
-                assertEquals(context + " incremental", actual.stream().toList(), incremental.stream().toList());
+                assertEquals(actual.stream().toList(), incremental.stream().toList(), context + " incremental");
             }
         }
     }
@@ -1537,13 +1537,13 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 CashFlow actual = new CashFlow(series, record, 2, 4, mode, handling);
                 CashFlow expected = new CashFlow(freshSeries, equivalentRecord, 0, 2, mode, handling);
                 String context = "mode=" + mode + ", handling=" + handling;
-                assertEquals(context, expected.stream().toList(), actual.stream().toList());
+                assertEquals(expected.stream().toList(), actual.stream().toList(), context);
 
                 CashFlow incremental = new CashFlow(series, boundedRecord(2, 5), 2, 4, mode, handling);
                 if (handling != OpenPositionHandling.IGNORE) {
                     incremental.calculatePosition(record.getPositions().get(0), 4);
                 }
-                assertEquals(context + " incremental", actual.stream().toList(), incremental.stream().toList());
+                assertEquals(actual.stream().toList(), incremental.stream().toList(), context + " incremental");
             }
         }
     }
@@ -2114,7 +2114,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             Indicator<Num> mark = new Indicator<Num>() {
                 @Override
                 public Num getValue(int index) {
-                    assertEquals("custom mark must run outside the series read lock", 0, lock.getReadHoldCount());
+                    assertEquals(0, lock.getReadHoldCount(), "custom mark must run outside the series read lock");
                     Num value = series.getBar(index).getClosePrice();
                     if (index == 1 && changed.compareAndSet(false, true)) {
                         Bar original = series.getBar(index);
@@ -2563,7 +2563,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         Indicator<Num> mark = new Indicator<Num>() {
             @Override
             public Num getValue(int index) {
-                assertEquals("incremental mark must run outside the read lock", 0, lock.getReadHoldCount());
+                assertEquals(0, lock.getReadHoldCount(), "incremental mark must run outside the read lock");
                 Num value = series.getBar(index).getClosePrice();
                 if (index == 1 && changed.compareAndSet(false, true)) {
                     Bar original = series.getBar(index);
@@ -2963,8 +2963,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, curve.getBaselineValue());
         assertEquals(2, curve.getSize());
         if (metadataOnly) {
-            assertTrue("values=" + curve.stream().toList() + ", baseline=" + curve.getBaselineValue()
-                    + ", initialReturn=" + curve.hasInitialReturn(), curve.hasInitialReturn());
+            assertTrue(curve.hasInitialReturn(), "values=" + curve.stream().toList() + ", baseline=" + curve.getBaselineValue()
+                    + ", initialReturn=" + curve.hasInitialReturn());
         } else {
             assertNumEquals(1.1, curve.getValue(2));
             assertNumEquals(1.1, curve.getValue(3));

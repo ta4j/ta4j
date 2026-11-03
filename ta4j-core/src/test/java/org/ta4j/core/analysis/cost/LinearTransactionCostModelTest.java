@@ -4,8 +4,8 @@
 package org.ta4j.core.analysis.cost;
 
 import org.ta4j.core.num.DoubleNumFactory;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.*;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
@@ -21,14 +21,14 @@ import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class LinearTransactionCostModelTest {
 
     private CostModel transactionModel;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         transactionModel = new LinearTransactionCostModel(0.01);
     }

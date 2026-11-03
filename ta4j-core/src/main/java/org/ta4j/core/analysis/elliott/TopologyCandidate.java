@@ -29,6 +29,10 @@ record TopologyCandidate(TopologyGrammar grammar, WaveDirection direction, List<
         Objects.requireNonNull(grammar, "grammar");
         Objects.requireNonNull(direction, "direction");
         pivots = pivots == null ? List.of() : List.copyOf(pivots);
+        validatePivots(grammar, pivots);
+    }
+
+    static void validatePivots(final TopologyGrammar grammar, final List<ConfirmedPivot> pivots) {
         if (pivots.size() != grammar.requiredPivots()) {
             throw new IllegalArgumentException(
                     grammar + " requires " + grammar.requiredPivots() + " pivots but got " + pivots.size());

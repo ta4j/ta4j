@@ -3,15 +3,15 @@
  */
 package org.ta4j.core.backtest;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.TraceTestLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +52,7 @@ public class ProgressCompletionTest {
         traceLogger.clear();
         callback.accept(completed);
         String output = traceLogger.getLogOutput();
-        assertTrue(output, output.startsWith(expectedCaller.getName() + " Progress: " + completed));
+        assertTrue(output.startsWith(expectedCaller.getName() + " Progress: " + completed), output);
     }
 
     @Test

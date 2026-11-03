@@ -43,6 +43,7 @@ run_test() {
   git init -q -b master
   git config user.name "Test User"
   git config user.email "test@example.com"
+  git config core.autocrlf false
 }
 
 finish_test() {

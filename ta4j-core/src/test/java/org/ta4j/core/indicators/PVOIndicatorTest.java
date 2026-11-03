@@ -5,8 +5,8 @@ package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -21,7 +21,7 @@ public class PVOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         barSeries.barBuilder().closePrice(0).volume(10).add();

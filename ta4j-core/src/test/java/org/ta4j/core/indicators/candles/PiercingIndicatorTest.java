@@ -3,18 +3,19 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.trend.DownTrendIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
@@ -42,9 +43,35 @@ public class PiercingIndicatorTest extends AbstractIndicatorTest<Indicator<Boole
         return bars;
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withBars(generateDowntrend()).build();
+    }
+
+    @Test
+    public void maintainsTrendBeforeFirstPatternOnShortWindow() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(2);
+        PiercingIndicator piercing = new PiercingIndicator(moving);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index < 40; index++) {
+                moving.barBuilder()
+                        .openPrice(200 - index)
+                        .closePrice(196 - index)
+                        .highPrice(200 - index)
+                        .lowPrice(194 - index)
+                        .add();
+                assertFalse(piercing.getValue(index));
+            }
+            moving.barBuilder().openPrice(160).closePrice(152).highPrice(160).lowPrice(152).add();
+            assertFalse(piercing.getValue(40));
+            moving.barBuilder().openPrice(150).closePrice(158).highPrice(159).lowPrice(150).add();
+            assertTrue(piercing.getValue(41));
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

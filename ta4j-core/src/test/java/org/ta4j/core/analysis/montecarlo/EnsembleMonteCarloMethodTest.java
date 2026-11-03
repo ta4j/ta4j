@@ -3,16 +3,16 @@
  */
 package org.ta4j.core.analysis.montecarlo;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.SplittableRandom;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.ShockModel;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.VolatilityUpdateMode;
@@ -64,6 +64,32 @@ public class EnsembleMonteCarloMethodTest {
         assertNull(method.terminalReturns(context(4, 5, window(0.01d, -0.01d, 0.01d), moments(0d), 7L)));
         assertEquals(2, firstCount[0]);
         assertEquals(3, secondCount[0]);
+    }
+
+    @Test
+    public void componentPathsMapOntoDisjointParentPathStreams() {
+        List<Integer> requestedParentPaths = new ArrayList<>();
+        MonteCarloMethod pathEcho = context -> {
+            List<Num> samples = new ArrayList<>(context.iterationCount());
+            for (int path = 0; path < context.iterationCount(); path++) {
+                samples.add(FACTORY.numOf(context.randomForPath(path).nextInt()));
+            }
+            return samples;
+        };
+        MonteCarloContext parent = new MonteCarloContext(100, 4, 5, window(0.01d, -0.01d, 0.01d), moments(0d),
+                new SplittableRandom(7L), FACTORY, path -> {
+                    requestedParentPaths.add(path);
+                    return new SplittableRandom(path);
+                });
+
+        List<Num> pooled = new EnsembleMonteCarloMethod(pathEcho, pathEcho).terminalReturns(parent);
+
+        assertEquals(List.of(0, 1, 2, 3, 4), requestedParentPaths);
+        List<Num> expected = new ArrayList<>();
+        for (int path = 0; path < 5; path++) {
+            expected.add(FACTORY.numOf(new SplittableRandom(path).nextInt()));
+        }
+        assertEquals(expected, pooled);
     }
 
     @Test

@@ -5,10 +5,10 @@ package org.ta4j.core.criteria.risk;
 
 import java.time.Instant;
 import java.util.List;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesContract;

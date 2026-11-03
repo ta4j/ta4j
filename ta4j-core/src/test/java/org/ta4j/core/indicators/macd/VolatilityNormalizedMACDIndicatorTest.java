@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators.macd;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -12,13 +12,14 @@ import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.averages.EMAIndicator;
@@ -42,9 +43,70 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         this.series = buildOscillatingSeries(120);
+    }
+
+    @Test
+    public void dependenciesExposeTheCalculatedBranches() {
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        VolatilityNormalizedMACDIndicator macd = new VolatilityNormalizedMACDIndicator(close, 2, 3, 2);
+        assertThat(macd.getDependencies()).hasSize(3);
+        EMAIndicator fast = (EMAIndicator) macd.getDependencies().get(0);
+        EMAIndicator slow = (EMAIndicator) macd.getDependencies().get(1);
+        ATRIndicator atr = (ATRIndicator) macd.getDependencies().get(2);
+        assertThat(fast.getDependencies()).containsExactly(close);
+        assertThat(slow.getDependencies()).containsExactly(close);
+        assertThat(fast.getBarCount()).isEqualTo(2);
+        assertThat(slow.getBarCount()).isEqualTo(3);
+        assertThat(macd.getValue(20)).isEqualByComparingTo(
+                fast.getValue(20).minus(slow.getValue(20)).dividedBy(atr.getValue(20)).multipliedBy(numOf(100)));
+        assertThat(macd.getFastEma()).isNotSameAs(fast);
+        assertThat(macd.getSlowEma()).isNotSameAs(slow);
+        assertThat(macd.getAtrIndicator()).isNotSameAs(atr);
+    }
+
+    @Test
+    public void primesAveragesBeforeWarmupOnShortMovingWindow() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries bounded = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+            BarSeries unbounded = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+            bounded.setMaximumBarCount(2);
+            var actual = new VolatilityNormalizedMACDIndicator(bounded, 3, 5, 2);
+            var reference = new VolatilityNormalizedMACDIndicator(unbounded, 3, 5, 2);
+            for (int i = 0; i < 24; i++) {
+                int close = 100 + i * (i % 2 == 0 ? 1 : -1);
+                bounded.barBuilder()
+                        .timePeriod(PERIOD)
+                        .endTime(START.plus(PERIOD.multipliedBy(i + 1L)))
+                        .closePrice(close)
+                        .highPrice(close + 2)
+                        .lowPrice(close - 1)
+                        .volume(10 + i)
+                        .add();
+                unbounded.barBuilder()
+                        .timePeriod(PERIOD)
+                        .endTime(START.plus(PERIOD.multipliedBy(i + 1L)))
+                        .closePrice(close)
+                        .highPrice(close + 2)
+                        .lowPrice(close - 1)
+                        .volume(10 + i)
+                        .add();
+                Num expected = reference.getValue(i);
+                Num value = actual.getValue(i);
+                if (i < actual.getCountOfUnstableBars()) {
+                    assertThat(value.isNaN()).isTrue();
+                } else {
+                    assertThat(expected.isNaN()).isFalse();
+                    assertThat(value).isEqualByComparingTo(expected);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

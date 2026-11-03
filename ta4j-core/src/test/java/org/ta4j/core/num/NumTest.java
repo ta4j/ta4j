@@ -4,11 +4,11 @@
 package org.ta4j.core.num;
 
 import static java.math.RoundingMode.HALF_UP;
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.TestUtils.assertNumNotEquals;
@@ -23,9 +23,10 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.Properties;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class NumTest extends AbstractIndicatorTest<Object, Num> {
 
@@ -69,9 +70,11 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         assertNumEquals(100, anyDoubleNum.getNumFactory().hundred());
     }
 
-    @Test(expected = AssertionError.class)
+    @Test
     public void testStringNumFail() {
-        assertNumEquals("1.234", numOf(4.321));
+        assertThrows(AssertionError.class, () -> {
+            assertNumEquals("1.234", numOf(4.321));
+        });
     }
 
     @Test
@@ -126,28 +129,36 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
                 doubleNumFromDouble.multipliedBy(doubleNumFromString));
     }
 
-    @Test(expected = java.lang.ClassCastException.class)
+    @Test
     public void testFailDifferentNumsAdd() {
-        final Num a = DecimalNum.valueOf(12);
-        final Num b = DoubleNum.valueOf(12);
-        a.plus(b);
+        assertThrows(java.lang.ClassCastException.class, () -> {
+            final Num a = DecimalNum.valueOf(12);
+            final Num b = DoubleNum.valueOf(12);
+            a.plus(b);
+        });
     }
 
-    @Test(expected = java.lang.ClassCastException.class)
+    @Test
     public void testFailDifferentNumsCompare() {
-        final Num a = DecimalNum.valueOf(12);
-        final Num b = DoubleNum.valueOf(13);
-        a.isEqual(b);
+        assertThrows(java.lang.ClassCastException.class, () -> {
+            final Num a = DecimalNum.valueOf(12);
+            final Num b = DoubleNum.valueOf(13);
+            a.isEqual(b);
+        });
     }
 
-    @Test(expected = UnsupportedOperationException.class)
+    @Test
     public void testFailNaNtoInt() {
-        NaN.intValue();
+        assertThrows(UnsupportedOperationException.class, () -> {
+            NaN.intValue();
+        });
     }
 
-    @Test(expected = UnsupportedOperationException.class)
+    @Test
     public void testFailNaNtoLong() {
-        NaN.longValue();
+        assertThrows(UnsupportedOperationException.class, () -> {
+            NaN.longValue();
+        });
     }
 
     @Test
@@ -185,7 +196,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
         final Float nanFloat = a.floatValue();
         assertEquals(Float.NaN, nanFloat);
 
-        Assert.assertEquals(NaN, a); // NaN == NaN -> true
+        Assertions.assertEquals(NaN, a); // NaN == NaN -> true
 
     }
 
@@ -337,54 +348,54 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     @Test
     public void testIsNaNOrNull() {
         // Test null value
-        assertTrue("null value should return true", Num.isNaNOrNull(null));
+        assertTrue(Num.isNaNOrNull(null), "null value should return true");
 
         // Test NaN instance
-        assertTrue("NaN instance should return true", Num.isNaNOrNull(NaN));
+        assertTrue(Num.isNaNOrNull(NaN), "NaN instance should return true");
 
         // Test DoubleNum with Double.NaN (edge case - DoubleNum doesn't override
         // isNaN())
         // This should work regardless of which factory is being used for the test
         final Num doubleNaN = DoubleNum.valueOf(Double.NaN);
-        assertTrue("DoubleNum with Double.NaN should return true", Num.isNaNOrNull(doubleNaN));
+        assertTrue(Num.isNaNOrNull(doubleNaN), "DoubleNum with Double.NaN should return true");
 
         // Test valid DecimalNum values
         final Num validDecimal = DecimalNum.valueOf(42.5);
-        assertFalse("Valid DecimalNum should return false", Num.isNaNOrNull(validDecimal));
+        assertFalse(Num.isNaNOrNull(validDecimal), "Valid DecimalNum should return false");
 
         // Test valid DoubleNum values
         final Num validDouble = DoubleNum.valueOf(42.5);
-        assertFalse("Valid DoubleNum should return false", Num.isNaNOrNull(validDouble));
+        assertFalse(Num.isNaNOrNull(validDouble), "Valid DoubleNum should return false");
 
         // Test zero values
         final Num zero = numOf(0);
-        assertFalse("Zero value should return false", Num.isNaNOrNull(zero));
+        assertFalse(Num.isNaNOrNull(zero), "Zero value should return false");
 
         // Test negative values
         final Num negative = numOf(-10.5);
-        assertFalse("Negative value should return false", Num.isNaNOrNull(negative));
+        assertFalse(Num.isNaNOrNull(negative), "Negative value should return false");
 
         // Test positive values
         final Num positive = numOf(100.25);
-        assertFalse("Positive value should return false", Num.isNaNOrNull(positive));
+        assertFalse(Num.isNaNOrNull(positive), "Positive value should return false");
 
         // Test very small values
         final Num small = numOf(0.0001);
-        assertFalse("Small value should return false", Num.isNaNOrNull(small));
+        assertFalse(Num.isNaNOrNull(small), "Small value should return false");
 
         // Test very large values
         final Num large = numOf(1e10);
-        assertFalse("Large value should return false", Num.isNaNOrNull(large));
+        assertFalse(Num.isNaNOrNull(large), "Large value should return false");
 
         // Test infinity (if supported by the factory)
         if (this.numFactory instanceof DoubleNumFactory) {
             final Num positiveInfinity = DoubleNum.valueOf(Double.POSITIVE_INFINITY);
             // Double.POSITIVE_INFINITY is not NaN, so should return false
-            assertFalse("Positive infinity should return false", Num.isNaNOrNull(positiveInfinity));
+            assertFalse(Num.isNaNOrNull(positiveInfinity), "Positive infinity should return false");
 
             final Num negativeInfinity = DoubleNum.valueOf(Double.NEGATIVE_INFINITY);
             // Double.NEGATIVE_INFINITY is not NaN, so should return false
-            assertFalse("Negative infinity should return false", Num.isNaNOrNull(negativeInfinity));
+            assertFalse(Num.isNaNOrNull(negativeInfinity), "Negative infinity should return false");
         }
     }
 

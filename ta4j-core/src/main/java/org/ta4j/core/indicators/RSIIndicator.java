@@ -32,22 +32,28 @@ public class RSIIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public RSIIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        this(indicator, barCount, new MMAIndicator(new GainIndicator(indicator), barCount),
+                new MMAIndicator(new LossIndicator(indicator), barCount));
+    }
+
+    private RSIIndicator(Indicator<Num> indicator, int barCount, MMAIndicator averageGainIndicator,
+            MMAIndicator averageLossIndicator) {
+        super(averageGainIndicator, averageLossIndicator);
         this.indicator = indicator;
-        this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);
-        this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), barCount);
+        this.averageGainIndicator = averageGainIndicator;
+        this.averageLossIndicator = averageLossIndicator;
         this.barCount = barCount;
         this.unstableBars = barCount + indicator.getCountOfUnstableBars();
     }
 
     @Override
     protected Num calculate(int index) {
+        Num averageGain = averageGainIndicator.getValue(index);
+        Num averageLoss = averageLossIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
         // compute relative strength
-        Num averageGain = averageGainIndicator.getValue(index);
-        Num averageLoss = averageLossIndicator.getValue(index);
         if (Num.isNaNOrNull(averageGain) || Num.isNaNOrNull(averageLoss)) {
             return NaN;
         }
@@ -63,5 +69,14 @@ public class RSIIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;
+    }
+
+    /**
+     * @return {@code true}, because Wilder averages retain full-history state
+     * @since 0.27.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 }

@@ -3,9 +3,9 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -13,11 +13,13 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.time.Instant;
 import java.util.List;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class TradeFillTest {

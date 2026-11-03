@@ -9,12 +9,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import java.time.Duration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -23,7 +22,7 @@ import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -50,16 +49,12 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import java.util.ArrayList;
-import java.util.List;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.TradeFill;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.mocks.MockIndicator;
-import static org.junit.Assert.assertTrue;
 
 public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -806,8 +801,8 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         Returns windowedReturns = new Returns(windowed, windowedPosition, ReturnRepresentation.DECIMAL);
 
         assertEquals(CLOSES.length, windowedReturns.getValues().size());
-        assertTrue("first retained slot without a return is undefined", windowedReturns.getRawValues().get(0).isNaN());
-        assertTrue("returns before the captured window are undefined", windowedReturns.getValue(BEGIN - 1).isNaN());
+        assertTrue(windowedReturns.getRawValues().get(0).isNaN(), "first retained slot without a return is undefined");
+        assertTrue(windowedReturns.getValue(BEGIN - 1).isNaN(), "returns before the captured window are undefined");
         for (int index = 1; index < CLOSES.length; index++) {
             assertNumEquals(fullReturns.getRawValues().get(index), windowedReturns.getRawValues().get(index));
             assertNumEquals(windowedReturns.getValues().get(index), windowedReturns.getValue(BEGIN + index));
@@ -828,7 +823,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertEquals(CLOSES.length, windowedReturns.getValues().size());
         assertTrue(windowedReturns.hasFirstBarReturn());
         assertNumEquals(0, windowedReturns.getRawValues().get(0));
-        assertTrue("returns before the captured window are undefined", windowedReturns.getValue(BEGIN - 1).isNaN());
+        assertTrue(windowedReturns.getValue(BEGIN - 1).isNaN(), "returns before the captured window are undefined");
         for (int index = 1; index < CLOSES.length; index++) {
             assertNumEquals(fullReturns.getRawValues().get(index), windowedReturns.getRawValues().get(index));
             assertNumEquals(windowedReturns.getValues().get(index), windowedReturns.getValue(BEGIN + index));
@@ -1475,7 +1470,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         Indicator<Num> mark = new Indicator<Num>() {
             @Override
             public Num getValue(int index) {
-                assertEquals("incremental mark must run outside the read lock", 0, lock.getReadHoldCount());
+                assertEquals(0, lock.getReadHoldCount(), "incremental mark must run outside the read lock");
                 Num value = series.getBar(index).getClosePrice();
                 if (index == 1 && changed.compareAndSet(false, true)) {
                     Bar original = series.getBar(index);

@@ -61,12 +61,13 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        Num high = highPriceIndicator.getValue(index);
+        Num low = lowPriceIndicator.getValue(index);
+        Num previousClose = index > getBarSeries().getBeginIndex() ? closePriceIndicator.getValue(index - 1) : null;
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
 
-        Num high = highPriceIndicator.getValue(index);
-        Num low = lowPriceIndicator.getValue(index);
         if (Num.isNaNOrNull(high) || Num.isNaNOrNull(low)) {
             return NaN;
         }
@@ -75,7 +76,6 @@ public class TRIndicator extends CachedIndicator<Num> {
             return hl;
         }
 
-        Num previousClose = closePriceIndicator.getValue(index - 1);
         if (Num.isNaNOrNull(previousClose)) {
             return NaN;
         }

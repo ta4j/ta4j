@@ -7,15 +7,16 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.List;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-@RunWith(Parameterized.class)
+@ParameterizedClass(name = "NumFactory: {index} (1=DoubleNum, 2=DecimalNum)")
+@MethodSource("function")
 public class StatisticsTest {
 
     private final NumFactory numFactory;
@@ -24,7 +25,6 @@ public class StatisticsTest {
         this.numFactory = numFactory;
     }
 
-    @Parameterized.Parameters(name = "NumFactory: {index} (0=DoubleNum, 1=DecimalNum)")
     public static List<NumFactory> function() {
         return List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance());
     }

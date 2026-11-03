@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.backtest;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import java.time.Instant;
 import java.math.BigDecimal;
@@ -21,10 +21,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BaseTradingRecord;
@@ -38,7 +39,6 @@ import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -114,8 +114,8 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
                 assertTrue(model.getPendingOrder(record).isEmpty());
             }
         }
-        assertTrue("The complete close must not leave a new short position", record.isClosed());
-        assertTrue("A completed close must remove its pending order", model.getPendingOrder(record).isEmpty());
+        assertTrue(record.isClosed(), "The complete close must not leave a new short position");
+        assertTrue(model.getPendingOrder(record).isEmpty(), "A completed close must remove its pending order");
     }
 
     @Test

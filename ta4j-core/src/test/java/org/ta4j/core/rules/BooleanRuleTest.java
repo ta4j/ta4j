@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
@@ -17,7 +17,7 @@ public class BooleanRuleTest {
     private BooleanRule unsatisfiedRule;
     private BarSeries series;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         satisfiedRule = new BooleanRule(true);
         unsatisfiedRule = new BooleanRule(false);

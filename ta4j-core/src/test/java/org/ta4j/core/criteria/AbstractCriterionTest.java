@@ -5,15 +5,16 @@ package org.ta4j.core.criteria;
 
 import java.util.List;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.ta4j.core.*;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-@RunWith(Parameterized.class)
+@ParameterizedClass(name = "Test Case: {index} (1=DoubleNum, 2=DecimalNum)")
+@MethodSource("function")
 public abstract class AbstractCriterionTest {
 
     protected final NumFactory numFactory;
@@ -31,7 +32,6 @@ public abstract class AbstractCriterionTest {
         this.numFactory = numFactory;
     }
 
-    @Parameterized.Parameters(name = "Test Case: {index} (0=DoubleNum, 1=DecimalNum)")
     public static List<NumFactory> function() {
         return List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance());
     }

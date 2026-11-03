@@ -169,6 +169,24 @@ public abstract class AbstractPivotPointIndicator extends CachedIndicator<Num> {
         return firstIndexAfterAffectedCalendarPeriods(firstRetainedIndex);
     }
 
+    /**
+     * When the period following the truncated one contains the latest bar, the
+     * pivot values still being appended are rebaselined against the truncated
+     * period. Declaring that as an explicit full invalidation resets recursive
+     * consumers, which cannot continue a chain across the changed values; earlier
+     * affected periods only re-evaluate values a consumer already read.
+     *
+     * @return {@code true} when the affected calendar periods reach the latest bar
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        int firstRetainedIndex = getBarSeries().getBeginIndex();
+        if (timeLevel == TimeLevel.BARBASED || firstRetainedIndex < 0) {
+            return false;
+        }
+        return firstIndexAfterAffectedCalendarPeriods(firstRetainedIndex) == Integer.MAX_VALUE;
+    }
+
     private int firstIndexAfterAffectedCalendarPeriods(int firstRetainedIndex) {
         int endIndex = getBarSeries().getEndIndex();
         if (firstRetainedIndex >= endIndex) {

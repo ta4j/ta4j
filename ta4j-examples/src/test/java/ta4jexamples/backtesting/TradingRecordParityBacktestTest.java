@@ -3,10 +3,10 @@
  */
 package ta4jexamples.backtesting;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
@@ -80,6 +80,6 @@ public class TradingRecordParityBacktestTest {
     }
 
     private static void assertNumEquals(Num expected, Num actual) {
-        assertTrue("expected=" + expected + " actual=" + actual, actual.isEqual(expected));
+        assertTrue(actual.isEqual(expected), "expected=" + expected + " actual=" + actual);
     }
 }

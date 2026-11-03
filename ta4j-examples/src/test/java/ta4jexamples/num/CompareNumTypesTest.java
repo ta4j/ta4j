@@ -3,7 +3,7 @@
  */
 package ta4jexamples.num;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class CompareNumTypesTest {
 

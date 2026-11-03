@@ -6,6 +6,7 @@ package org.ta4j.core;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.time.Instant;
@@ -211,14 +212,6 @@ public class BaseTrade implements Trade {
         this.correlationId = config.correlationId();
         this.cost = config.cost();
         this.costModel = config.costModel();
-    }
-
-    @Serial
-    private void readObject(ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
-        inputStream.defaultReadObject();
-        if (costModel == null && futuresContract != null) {
-            costModel = RecordedTradeCostModel.INSTANCE;
-        }
     }
 
     private static TradeConfig seriesConfig(int index, BarSeries series, Trade.TradeType type) {
@@ -952,6 +945,40 @@ public class BaseTrade implements Trade {
             }
             return preservedCost.equals(other.preservedCost);
         }
+    }
+
+    @Serial
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (index < -1) {
+            throw new InvalidObjectException("Index must be at least -1");
+        }
+        if (type == null) {
+            throw new InvalidObjectException("Type must not be null");
+        }
+        if (pricePerAsset == null) {
+            throw new InvalidObjectException("Price per asset must not be null");
+        }
+        if (amount == null) {
+            throw new InvalidObjectException("Amount must not be null");
+        }
+        if (fills == null) {
+            throw new InvalidObjectException("Fills list must not be null");
+        }
+        if (cost == null) {
+            throw new InvalidObjectException("Cost must not be null");
+        }
+        if (netPrice == null) {
+            throw new InvalidObjectException("Net price must not be null");
+        }
+        if (costModel == null && futuresContract != null) {
+            costModel = RecordedTradeCostModel.INSTANCE;
+        }
+    }
+
+    @Serial
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("BaseTrade class data is required");
     }
 
 }

@@ -55,9 +55,9 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     private final int defaultSignalBarCount;
     private final Num scaleFactor;
 
-    private transient EMAIndicator fastEma;
-    private transient EMAIndicator slowEma;
-    private transient ATRIndicator averageTrueRange;
+    private final transient EMAIndicator fastEma;
+    private final transient EMAIndicator slowEma;
+    private final transient ATRIndicator averageTrueRange;
 
     /**
      * Constructor with defaults:
@@ -159,14 +159,19 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     private VolatilityNormalizedMACDIndicator(ValidatedConfig config) {
-        super(config.priceIndicator());
+        EMAIndicator fast = new EMAIndicator(config.priceIndicator(), config.fastBarCount());
+        EMAIndicator slow = new EMAIndicator(config.priceIndicator(), config.slowBarCount());
+        ATRIndicator atr = new ATRIndicator(config.priceIndicator().getBarSeries(), config.atrBarCount());
+        super(fast, slow, atr);
         this.priceIndicator = config.priceIndicator();
         this.fastBarCount = config.fastBarCount();
         this.slowBarCount = config.slowBarCount();
         this.atrBarCount = config.atrBarCount();
         this.defaultSignalBarCount = config.signalBarCount();
         this.scaleFactor = config.scaleFactor();
-        ensureSubIndicatorsInitialized();
+        this.fastEma = fast;
+        this.slowEma = slow;
+        this.averageTrueRange = atr;
     }
 
     private static void validatePeriods(int fastBarCount, int slowBarCount, int atrBarCount, int signalBarCount) {
@@ -303,27 +308,6 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      */
     public ATRIndicator getAtrIndicator() {
         return new ATRIndicator(getBarSeries(), atrBarCount);
-    }
-
-    private EMAIndicator getCachedFastEma() {
-        if (fastEma == null) {
-            fastEma = new EMAIndicator(priceIndicator, fastBarCount);
-        }
-        return fastEma;
-    }
-
-    private EMAIndicator getCachedSlowEma() {
-        if (slowEma == null) {
-            slowEma = new EMAIndicator(priceIndicator, slowBarCount);
-        }
-        return slowEma;
-    }
-
-    private ATRIndicator getCachedAtrIndicator() {
-        if (averageTrueRange == null) {
-            averageTrueRange = new ATRIndicator(getBarSeries(), atrBarCount);
-        }
-        return averageTrueRange;
     }
 
     /**
@@ -542,10 +526,11 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public MACDVMomentumState getMomentumState(int index, MACDVMomentumProfile momentumProfile) {
+        Num value = getValue(index);
         if (index < getCountOfUnstableBars()) {
             return MACDVMomentumState.UNDEFINED;
         }
-        return MACDVMomentumState.fromMacdV(getValue(index), momentumProfile);
+        return MACDVMomentumState.fromMacdV(value, momentumProfile);
     }
 
     /**
@@ -646,13 +631,13 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        Num fastValue = fastEma.getValue(index);
+        Num slowValue = slowEma.getValue(index);
+        Num atrValue = averageTrueRange.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
 
-        Num fastValue = getCachedFastEma().getValue(index);
-        Num slowValue = getCachedSlowEma().getValue(index);
-        Num atrValue = getCachedAtrIndicator().getValue(index);
         if (Num.isNaNOrNull(fastValue) || Num.isNaNOrNull(slowValue) || Num.isNaNOrNull(atrValue)) {
             return NaN.NaN;
         }
@@ -669,17 +654,22 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
         return Num.isNaNOrNull(macdV) ? NaN.NaN : macdV;
     }
 
+    /**
+     * Retains the historical state consumed by the EMA and ATR branches.
+     *
+     * @return {@code true}
+     * @since 0.27.1
+     */
     @Override
-    public int getCountOfUnstableBars() {
-        int emaUnstableBars = Math.max(getCachedFastEma().getCountOfUnstableBars(),
-                getCachedSlowEma().getCountOfUnstableBars());
-        int spreadUnstableBars = priceIndicator.getCountOfUnstableBars() + emaUnstableBars;
-        return Math.max(spreadUnstableBars, getCachedAtrIndicator().getCountOfUnstableBars());
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
-    private void ensureSubIndicatorsInitialized() {
-        getCachedFastEma();
-        getCachedSlowEma();
-        getCachedAtrIndicator();
+    @Override
+    public int getCountOfUnstableBars() {
+        int emaUnstableBars = Math.max(fastEma.getCountOfUnstableBars(), slowEma.getCountOfUnstableBars());
+        int spreadUnstableBars = priceIndicator.getCountOfUnstableBars() + emaUnstableBars;
+        return Math.max(spreadUnstableBars, averageTrueRange.getCountOfUnstableBars());
     }
+
 }

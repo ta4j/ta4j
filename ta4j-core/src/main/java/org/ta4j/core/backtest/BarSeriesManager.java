@@ -17,6 +17,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.acceleration.AccelerationRuntime;
 import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatementGenerator;
@@ -650,28 +651,30 @@ public class BarSeriesManager {
                     strategy, tradingRecord.getStartingType());
         }
 
-        int lastProcessedIndex = runEndIndex;
-        if (runBeginIndex <= runEndIndex) {
-            for (int i = runBeginIndex;; i++) {
-                lastProcessedIndex = i;
-                runSeries.markBarProcessed();
-                advanceToBarBoundary(tradingRecord, i, false, runSeries);
-                tradeExecutionModel.onBar(i, tradingRecord, runSeries);
-                // For each bar between both indexes...
-                if (strategy.shouldOperate(i, tradingRecord)) {
-                    Num amount = amountResolver.amount(i, runSeries);
-                    if (amount != null)
-                        tradeExecutionModel.execute(i, tradingRecord, runSeries, amount);
-                }
-                advanceToBarBoundary(tradingRecord, i, true, runSeries);
-                if (i == runEndIndex) {
-                    break;
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(barSeries, runBeginIndex, runEndIndex)) {
+            int lastProcessedIndex = runEndIndex;
+            if (runBeginIndex <= runEndIndex) {
+                for (int i = runBeginIndex;; i++) {
+                    lastProcessedIndex = i;
+                    runSeries.markBarProcessed();
+                    advanceToBarBoundary(tradingRecord, i, false, runSeries);
+                    tradeExecutionModel.onBar(i, tradingRecord, runSeries);
+                    // For each bar between both indexes...
+                    if (strategy.shouldOperate(i, tradingRecord)) {
+                        Num amount = amountResolver.amount(i, runSeries);
+                        if (amount != null) {
+                            tradeExecutionModel.execute(i, tradingRecord, runSeries, amount);
+                        }
+                    }
+                    advanceToBarBoundary(tradingRecord, i, true, runSeries);
+                    if (i == runEndIndex) {
+                        break;
+                    }
                 }
             }
+            tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord, runSeries);
+            return tradingRecord;
         }
-
-        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord, runSeries);
-        return tradingRecord;
     }
 
     /** Resolves the amount for an operation at an index of the run window. */

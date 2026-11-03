@@ -13,12 +13,15 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -101,7 +104,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
             try {
                 // Delete all files in the directory first
                 if (Files.isDirectory(dirPath)) {
-                    try (var stream = Files.list(dirPath)) {
+                    try (Stream<Path> stream = Files.list(dirPath)) {
                         stream.forEach(path -> {
                             try {
                                 if (Files.isDirectory(path)) {
@@ -763,7 +766,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         // Locate the written cache file for the dashed product ID
         Path cacheDir = Paths.get(AbstractHttpBarSeriesDataSource.DEFAULT_RESPONSE_CACHE_DIR);
         List<Path> cacheFiles;
-        try (var stream = Files.list(cacheDir)) {
+        try (Stream<Path> stream = Files.list(cacheDir)) {
             cacheFiles = stream
                     .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-"))
                     .toList();
@@ -1483,6 +1486,91 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         } finally {
             // Clean up: delete the directory if it was created by the constructor
             deleteDirectory(cacheDirPath);
+        }
+    }
+
+    @Test
+    public void testDistinctNotesNeverShareCacheFile() throws IOException, InterruptedException {
+        String customCacheDir = "temp/coinbase-distinct-notes-test";
+        Path customCachePath = Paths.get(customCacheDir).toAbsolutePath();
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        // A character-replacing sanitizer would map several of these onto one file
+        // name (e.g. "run/a" and "run a"); the case variants would also share one
+        // file on case-insensitive file systems
+        List<String> notes = List.of("run_a", "run/a", "run a", "run.a", "run%2Fa", "Run_a", "../run_a");
+        try {
+            CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient,
+                    customCacheDir);
+            Instant start = Instant.parse("2021-01-01T00:00:00Z");
+            Instant end = Instant.parse("2021-01-03T00:00:00Z");
+
+            for (String note : notes) {
+                assertNotNull(
+                        dataSource.loadSeriesInstance("BTC-USD",
+                                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end, note),
+                        "Series should load for notes '" + note + "'");
+            }
+            // Every note missed the cache: none was served from another note's file
+            verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+            try (Stream<Path> files = Files.list(customCachePath)) {
+                List<String> fileNames = files.map(file -> file.getFileName().toString()).toList();
+                assertEquals(notes.size(), fileNames.size(), "Each distinct note must get its own cache file");
+                assertEquals(notes.size(),
+                        fileNames.stream().map(name -> name.toLowerCase(Locale.ROOT)).distinct().count(),
+                        "Cache file names must differ even when compared case-insensitively");
+            }
+
+            // Repeating a request reads its own cache file instead of fetching again
+            for (String note : notes) {
+                assertNotNull(
+                        dataSource.loadSeriesInstance("BTC-USD",
+                                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end, note),
+                        "Series should load from cache for notes '" + note + "'");
+            }
+            verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+        } finally {
+            deleteDirectory(customCachePath);
+        }
+    }
+
+    @Test
+    public void testLongNotesAreCachedWithoutFilenameOverflow() throws Exception {
+        Path customCachePath = Files.createTempDirectory("coinbase-long-cache-notes-");
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+        List<String> notes = List.of("A".repeat(69), "\u00e4".repeat(100), "a".repeat(4096));
+        try {
+            CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient,
+                    customCachePath.toString());
+            Instant start = Instant.parse("2021-01-01T00:00:00Z");
+            Instant end = Instant.parse("2021-01-03T00:00:00Z");
+            for (int pass = 0; pass < 2; pass++) {
+                for (String note : notes) {
+                    assertNotNull(dataSource.loadSeriesInstance("BTC-USD",
+                            CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_DAY, start, end, note));
+                }
+            }
+            verify(mockClient, times(notes.size())).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+            try (Stream<Path> files = Files.list(customCachePath)) {
+                List<Path> cacheFiles = files.toList();
+                assertEquals(notes.size(), cacheFiles.size());
+                for (Path file : cacheFiles) {
+                    assertEquals(customCachePath, file.getParent());
+                    assertTrue(file.getFileName().toString().getBytes(StandardCharsets.UTF_8).length <= 255,
+                            "Cache file must fit the filesystem component limit: " + file);
+                    assertNotNull(dataSource.loadSeries(file.toString()), "Digest-key filenames must remain loadable");
+                }
+            }
+        } finally {
+            deleteDirectory(customCachePath);
         }
     }
 }

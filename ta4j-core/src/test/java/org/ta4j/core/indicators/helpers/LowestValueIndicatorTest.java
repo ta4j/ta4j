@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static junit.framework.TestCase.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
@@ -25,7 +25,7 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 6, 4, 3, 2, 4, 3, 1)
@@ -59,6 +59,43 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     public void lowestValueIndicatorWhenBarCountIsGreaterThanIndex() {
         LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 500);
         assertNumEquals("1.0", lowestValue.getValue(12));
+    }
+
+    @Test
+    public void outOfOrderEvaluation() {
+        LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(data), 5);
+        // Evaluating out-of-order directly at index 10
+        assertNumEquals("2.0", lowestValue.getValue(10));
+        assertNumEquals("3.0", lowestValue.getValue(6));
+    }
+
+    @Test
+    public void slidingWindowEdgeCases() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 8, 12, 14, 15, 5).build();
+        LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 3);
+
+        assertNumEquals("10.0", lowestValue.getValue(0));
+        assertNumEquals("8.0", lowestValue.getValue(1));
+        // index 2: [10, 8, 12] -> min = 8 (dropped element index 0 was 10 > prevMin 8)
+        assertNumEquals("8.0", lowestValue.getValue(2));
+        // index 3: [8, 12, 14] -> min = 8 (dropped element index 0 was 10, remaining
+        // window contains 8)
+        assertNumEquals("8.0", lowestValue.getValue(3));
+        // index 4: [12, 14, 15] -> min = 12 (dropped element index 1 was 8 == prevMin
+        // 8, recalculates)
+        assertNumEquals("12.0", lowestValue.getValue(4));
+        // index 5: [14, 15, 5] -> min = 5 (current 5 < prevMin 12)
+        assertNumEquals("5.0", lowestValue.getValue(5));
+    }
+
+    @Test
+    public void withRemovedBars() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 5, 8, 12, 15).build();
+        series.setMaximumBarCount(4);
+
+        LowestValueIndicator lowestValue = new LowestValueIndicator(new ClosePriceIndicator(series), 3);
+        // End index 5, window [3..5] values [8, 12, 15], lowest is 8.0
+        assertNumEquals("8.0", lowestValue.getValue(series.getEndIndex()));
     }
 
     @Test

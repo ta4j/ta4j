@@ -10,8 +10,8 @@ import java.util.List;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -27,7 +27,7 @@ public class StandardErrorIndicatorTest extends AbstractIndicatorTest<Indicator<
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 20, 30, 40, 50, 40, 40, 50, 40, 30, 20, 10)

@@ -6,24 +6,24 @@ package org.ta4j.core.criteria.commissions;
 import java.time.Instant;
 import java.util.List;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Test;
+import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.AnalysisWindow;
+import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.FuturesCashFlow;
-import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
-import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.TradeFee;
-import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -31,6 +31,10 @@ import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.FuturesCashFlow;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.TradeFill;
 
 public class TotalFeesCriterionTest extends AbstractCriterionTest {
 
@@ -98,6 +102,111 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
         assertTrue(criterion.betterThan(numFactory.one(), numFactory.two()));
         assertFalse(criterion.betterThan(numFactory.two(), numFactory.one()));
     }
+
+    private static final class TradingRecordFeeStub implements TradingRecord {
+
+        private final TradingRecord delegate;
+        private final Num recordedFees;
+
+        private TradingRecordFeeStub(TradingRecord delegate, Num recordedFees) {
+            this.delegate = delegate;
+            this.recordedFees = recordedFees;
+        }
+
+        @Override
+        public TradeType getStartingType() {
+            return delegate.getStartingType();
+        }
+
+        @Override
+        public String getName() {
+            return delegate.getName();
+        }
+
+        @Override
+        public void operate(int index, Num price, Num amount) {
+            delegate.operate(index, price, amount);
+        }
+
+        @Override
+        public boolean enter(int index, Num price, Num amount) {
+            return delegate.enter(index, price, amount);
+        }
+
+        @Override
+        public boolean exit(int index, Num price, Num amount) {
+            return delegate.exit(index, price, amount);
+        }
+
+        @Override
+        public CostModel getTransactionCostModel() {
+            return delegate.getTransactionCostModel();
+        }
+
+        @Override
+        public CostModel getHoldingCostModel() {
+            return delegate.getHoldingCostModel();
+        }
+
+        @Override
+        public List<Position> getPositions() {
+            return delegate.getPositions();
+        }
+
+        @Override
+        public Position getCurrentPosition() {
+            return delegate.getCurrentPosition();
+        }
+
+        @Override
+        public Num getRecordedTotalFees() {
+            return recordedFees;
+        }
+
+        @Override
+        public List<Trade> getTrades() {
+            return delegate.getTrades();
+        }
+
+        @Override
+        public Integer getStartIndex() {
+            return delegate.getStartIndex();
+        }
+
+        @Override
+        public Integer getEndIndex() {
+            return delegate.getEndIndex();
+        }
+    }
+
+    @Test
+    public void directBoundedRecordTotalsRecordedFeesAsOfEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 105, 100, 110, 130)
+                .build();
+        for (boolean futureExit : new boolean[] { false, true }) {
+            BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, 2, 8, new ZeroCostModel(),
+                    new ZeroCostModel());
+            int[] indices = futureExit ? new int[] { 0, 2, 3, 4, 5, 6, 7, 9 } : new int[] { 0, 2, 3, 4, 5, 6, 7 };
+            for (int tradeIndex = 0; tradeIndex < indices.length; tradeIndex++) {
+                int index = indices[tradeIndex];
+                ExecutionSide side = tradeIndex % 2 == 0 ? ExecutionSide.BUY : ExecutionSide.SELL;
+                record.operate(new BaseTrade(index, Instant.EPOCH.plusSeconds(index),
+                        series.getBar(index).getClosePrice(), numFactory.one(), numFactory.one(), side, null, null));
+            }
+            TotalFeesCriterion criterion = new TotalFeesCriterion();
+            // Actual fees: selected entries/exits at 3,4,5,6 and entry at 7.
+            assertNumEquals(5, criterion.calculate(series, record));
+            AnalysisContext context = AnalysisContext.defaults()
+                    .withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED);
+            assertNumEquals(4, criterion.calculate(series, record, AnalysisWindow.barRange(2, 8), context));
+            // Zero-cost synthetic exit must not invent an additional recorded execution
+            // fee.
+            assertNumEquals(5, criterion.calculate(series, record, AnalysisWindow.barRange(2, 8),
+                    context.withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET)));
+        }
+    }
+
 
     @Test
     public void futuresRecordTotalsRecordedSettlementFeesOnly() {
@@ -200,82 +309,6 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
                 .amount(numFactory.numOf(amount))
                 .currency(contract.settlementCurrency())
                 .build();
-    }
-
-    private static final class TradingRecordFeeStub implements TradingRecord {
-
-        private final TradingRecord delegate;
-        private final Num recordedFees;
-
-        private TradingRecordFeeStub(TradingRecord delegate, Num recordedFees) {
-            this.delegate = delegate;
-            this.recordedFees = recordedFees;
-        }
-
-        @Override
-        public TradeType getStartingType() {
-            return delegate.getStartingType();
-        }
-
-        @Override
-        public String getName() {
-            return delegate.getName();
-        }
-
-        @Override
-        public void operate(int index, Num price, Num amount) {
-            delegate.operate(index, price, amount);
-        }
-
-        @Override
-        public boolean enter(int index, Num price, Num amount) {
-            return delegate.enter(index, price, amount);
-        }
-
-        @Override
-        public boolean exit(int index, Num price, Num amount) {
-            return delegate.exit(index, price, amount);
-        }
-
-        @Override
-        public CostModel getTransactionCostModel() {
-            return delegate.getTransactionCostModel();
-        }
-
-        @Override
-        public CostModel getHoldingCostModel() {
-            return delegate.getHoldingCostModel();
-        }
-
-        @Override
-        public List<Position> getPositions() {
-            return delegate.getPositions();
-        }
-
-        @Override
-        public Position getCurrentPosition() {
-            return delegate.getCurrentPosition();
-        }
-
-        @Override
-        public Num getRecordedTotalFees() {
-            return recordedFees;
-        }
-
-        @Override
-        public List<Trade> getTrades() {
-            return delegate.getTrades();
-        }
-
-        @Override
-        public Integer getStartIndex() {
-            return delegate.getStartIndex();
-        }
-
-        @Override
-        public Integer getEndIndex() {
-            return delegate.getEndIndex();
-        }
     }
 
     @Test

@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.portfolio;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -94,9 +94,9 @@ public class RebalancePolicyTest {
 
     /** ALPHA holds {@code units} at the bar's close price with a 60% target. */
     private static RebalancePolicy.Context context(PortfolioSeries series, int index, Num units, Num cash) {
-        Num[] prices = { series.getClosePrice(series.getAssets().getFirst(), index) };
-        Num value = cash.plus(prices[0].multipliedBy(units));
-        return new RebalancePolicy.Context(series, index, prices, new Num[] { units }, cash, value,
+        Num price = series.getClosePrice(series.getAssets().getFirst(), index);
+        Num value = cash.plus(price.multipliedBy(units));
+        return new RebalancePolicy.Context(series, index, new Num[] { units }, cash, value,
                 new Num[] { series.numFactory().numOf(0.6) });
     }
 

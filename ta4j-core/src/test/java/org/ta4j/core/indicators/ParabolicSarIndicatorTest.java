@@ -7,17 +7,33 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
+import org.ta4j.core.serialization.IndicatorSerialization;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.IntConsumer;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
@@ -82,6 +98,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         var sar = new ParabolicSarIndicator(mockBarSeries);
 
+        assertEquals(1, sar.getCountOfUnstableBars());
         assertEquals(NaN.NaN, sar.getValue(mockBarSeries.getBeginIndex()));
         assertEquals(NaN.NaN, sar.getValue(mockBarSeries.getRemovedBarsCount()));
 
@@ -359,6 +376,226 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertNumEquals(values.get(8), parabolicSarIndicator.getValue(8));
         assertNumEquals(values.get(7), parabolicSarIndicator.getValue(7));
         assertNumEquals(values.get(6), parabolicSarIndicator.getValue(6));
+    }
+
+    @Test
+    public void movingSeriesContinuesWholeSarState() {
+        for (int capacity : new int[] { 20, 60, 200 }) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(capacity);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            ParabolicSarIndicator reused = new ParabolicSarIndicator(moving);
+            ParabolicSarIndicator reference = new ParabolicSarIndicator(unbounded);
+            for (int i = 0; i < 600; i++) {
+                appendTrendBar(moving, i);
+                appendTrendBar(unbounded, i);
+                assertNumEquals(reference.getValue(i), reused.getValue(i));
+            }
+            ParabolicSarIndicator fresh = new ParabolicSarIndicator(moving);
+            BarSeries retained = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            for (int i = moving.getBeginIndex(); i <= moving.getEndIndex(); i++) {
+                retained.addBar(moving.getBar(i));
+            }
+            ParabolicSarIndicator retainedReference = new ParabolicSarIndicator(retained);
+            for (int i = moving.getBeginIndex(); i <= moving.getEndIndex(); i++) {
+                assertNumEquals(retainedReference.getValue(i - moving.getBeginIndex()), fresh.getValue(i));
+                assertNumEquals(reference.getValue(i), reused.getValue(i));
+            }
+            // The head seed is NaN even when the continued chain has a trend.
+            assertEquals(NaN.NaN, fresh.getValue(moving.getBeginIndex()));
+            assertNotEquals(NaN.NaN, reused.getValue(moving.getBeginIndex()));
+        }
+    }
+
+    @Test
+    public void terminalEditReadAndAppendUsesCorrectedTuple() {
+        for (boolean readAfterEdit : new boolean[] { false, true }) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(20);
+            BarSeries history = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            ParabolicSarIndicator reused = new ParabolicSarIndicator(moving);
+            for (int i = 0; i < 45; i++) {
+                appendTrendBar(moving, i);
+                appendTrendBar(history, i);
+                reused.getValue(i);
+            }
+            moving.getLastBar().addPrice(numOf(140));
+            history.getLastBar().addPrice(numOf(140));
+            ParabolicSarIndicator corrected = new ParabolicSarIndicator(history);
+            if (readAfterEdit) {
+                assertNumEquals(corrected.getValue(44), reused.getValue(44));
+            }
+            for (int i = 45; i < 51; i++) {
+                appendTrendBar(moving, i);
+                appendTrendBar(history, i);
+                assertNumEquals(corrected.getValue(i), reused.getValue(i));
+            }
+        }
+    }
+
+    @Test
+    public void historicalReplacementInvalidatesWholeTupleSuffix() {
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 35; i++) {
+            appendTrendBar(series, i);
+        }
+        ParabolicSarIndicator reused = new ParabolicSarIndicator(series);
+        reused.getValue(34);
+        Bar old = series.getBar(15);
+        Bar replacement = series.barBuilder()
+                .endTime(old.getEndTime())
+                .timePeriod(old.getTimePeriod())
+                .openPrice(120)
+                .highPrice(130)
+                .lowPrice(90)
+                .closePrice(125)
+                .build();
+        series.replaceBar(15, replacement);
+        ParabolicSarIndicator corrected = new ParabolicSarIndicator(series);
+        for (int i = 15; i < 35; i++) {
+            assertNumEquals(corrected.getValue(i), reused.getValue(i));
+        }
+        appendTrendBar(series, 35);
+        assertNumEquals(corrected.getValue(35), reused.getValue(35));
+    }
+
+    @Test
+    public void missedHistoryReseedsAndLongGapsPrefillIteratively() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(200);
+        ParabolicSarIndicator reused = new ParabolicSarIndicator(series);
+        for (int i = 0; i < 450; i++) {
+            appendTrendBar(series, i);
+            if (i < 10) {
+                reused.getValue(i);
+            }
+        }
+        ParabolicSarIndicator fresh = new ParabolicSarIndicator(series);
+        assertNumEquals(fresh.getValue(449), reused.getValue(449));
+        for (int i : new int[] { 300, 250, 448, 400, 449 }) {
+            assertNumEquals(fresh.getValue(i), reused.getValue(i));
+        }
+        appendTrendBar(series, 450);
+        assertNumEquals(fresh.getValue(450), reused.getValue(450));
+    }
+
+    @Test
+    public void normalAppendCalculatesOneBoundedState() {
+        for (int capacity : new int[] { 20, 60, 200 }) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            series.setMaximumBarCount(capacity);
+            AtomicInteger calculations = new AtomicInteger();
+            ParabolicSarIndicator sar = new ParabolicSarIndicator(series, numOf(0.02), numOf(0.2), numOf(0.02),
+                    index -> calculations.incrementAndGet());
+            CachedIndicator<?> state = (CachedIndicator<?>) sar.getDependencies().getFirst();
+            for (int i = 0; i < 2 * capacity + 30; i++) {
+                appendTrendBar(series, i);
+                int before = calculations.get();
+                sar.getValue(i);
+                assertEquals(1, calculations.get() - before);
+                sar.getValue(i);
+                assertEquals(1, calculations.get() - before);
+                assertTrue(state.getCache().getCapacity() <= capacity);
+                if (i > capacity) {
+                    assertTrue(state.getCache().getFirstCachedIndex() >= series.getBeginIndex());
+                    assertTrue(state.getCache().getHighestResultIndex() - state.getCache().getFirstCachedIndex()
+                            + 1 <= capacity);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void headAdvanceDuringStateReadRetriesAgainstNewHead() throws Exception {
+        BarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .withMaxBarCount(5)
+                .build();
+        for (int i = 0; i <= 10; i++) {
+            appendTrendBar(series, i);
+        }
+        AtomicBoolean triggered = new AtomicBoolean();
+        CountDownLatch reading = new CountDownLatch(1);
+        CountDownLatch resume = new CountDownLatch(1);
+        BarSeries advancing = interceptBarReads(series, index -> {
+            if (index == 8 && triggered.compareAndSet(false, true)) {
+                reading.countDown();
+                try {
+                    assertTrue(resume.await(10, TimeUnit.SECONDS));
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError(interrupted);
+                }
+            }
+        });
+        ParabolicSarIndicator raced = new ParabolicSarIndicator(advancing);
+        Num actual;
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Num> result = executor.submit(() -> raced.getValue(10));
+            assertTrue(reading.await(10, TimeUnit.SECONDS));
+            for (int i = 11; i <= 13; i++) {
+                appendTrendBar(series, i);
+            }
+            resume.countDown();
+            actual = result.get(10, TimeUnit.SECONDS);
+        } finally {
+            resume.countDown();
+            executor.shutdownNow();
+        }
+        ParabolicSarIndicator fresh = new ParabolicSarIndicator(series);
+        assertTrue(triggered.get());
+        assertEquals(9, series.getBeginIndex());
+        assertNumEquals(fresh.getValue(10), actual);
+        for (int i = 9; i <= 13; i++) {
+            assertNumEquals(fresh.getValue(i), raced.getValue(i));
+        }
+    }
+
+    @Test
+    public void boundedSerializationReconstructsFreshRetainedHistory() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(20);
+        ParabolicSarIndicator reused = new ParabolicSarIndicator(series, numOf(0.01), numOf(0.15), numOf(0.005));
+        for (int i = 0; i < 45; i++) {
+            appendTrendBar(series, i);
+            reused.getValue(i);
+        }
+        ParabolicSarIndicator descriptorCopy = (ParabolicSarIndicator) IndicatorSerialization.fromDescriptor(series,
+                reused.toDescriptor());
+        ParabolicSarIndicator jsonCopy = (ParabolicSarIndicator) Indicator.fromJson(series, reused.toJson());
+        ParabolicSarIndicator fresh = new ParabolicSarIndicator(series, numOf(0.01), numOf(0.15), numOf(0.005));
+        assertEquals(reused.toDescriptor(), descriptorCopy.toDescriptor());
+        assertEquals(reused.toDescriptor(), jsonCopy.toDescriptor());
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNumEquals(fresh.getValue(i), descriptorCopy.getValue(i));
+            assertNumEquals(fresh.getValue(i), jsonCopy.getValue(i));
+        }
+    }
+
+    private BarSeries interceptBarReads(BarSeries delegate, IntConsumer beforeRead) {
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getBar")) {
+                        beforeRead.accept((Integer) args[0]);
+                    }
+                    try {
+                        return method.invoke(delegate, args);
+                    } catch (InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                });
+    }
+
+    private void appendTrendBar(BarSeries series, int index) {
+        double close = 100 + (index / 80 % 2 == 0 ? index % 80 : 80 - index % 80) / 8;
+        series.barBuilder()
+                .endTime(Instant.EPOCH.plusSeconds(index + 1))
+                .openPrice(close - 0.25)
+                .highPrice(close + 1)
+                .lowPrice(close - 1)
+                .closePrice(close)
+                .add();
     }
 
     @Override

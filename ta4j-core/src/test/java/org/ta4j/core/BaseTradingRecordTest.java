@@ -3,20 +3,18 @@
  */
 package org.ta4j.core;
 
-import org.ta4j.core.analysis.CumulativePnL;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.math.MathContext;
+import java.io.ObjectStreamClass;
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.Instant;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import org.ta4j.core.analysis.AnalysisContext;
-import org.ta4j.core.analysis.AnalysisWindow;
-import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
-import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -27,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
-import org.ta4j.core.analysis.cost.FuturesTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.NumberOfLosingPositionsCriterion;
@@ -35,7 +32,6 @@ import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.NumberOfWinningPositionsCriterion;
 import org.ta4j.core.criteria.PositionsRatioCriterion;
 import org.ta4j.core.criteria.SqnCriterion;
-import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.helpers.VarianceCriterion;
 import org.ta4j.core.criteria.pnl.GrossLossCriterion;
 import org.ta4j.core.criteria.pnl.GrossProfitCriterion;
@@ -43,7 +39,6 @@ import org.ta4j.core.criteria.pnl.GrossProfitLossRatioCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossRatioCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -60,6 +55,16 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.ta4j.core.analysis.CumulativePnL;
+import java.math.MathContext;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.analysis.AnalysisWindow;
+import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.analysis.cost.FuturesTransactionCostModel;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
 
 class BaseTradingRecordTest {
 
@@ -1089,10 +1094,177 @@ class BaseTradingRecordTest {
         assertEquals(1, tradingRecord.getEndIndex(series));
     }
 
+    @Test
+    public void getContainedPositionsKeepsOnlyPositionsEnteredAndExitedWithinBounds() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 95, 100, 110, 130)
+                .build();
+        TradingRecord bounded = new BaseTradingRecord(TradeType.BUY, 2, 8, new ZeroCostModel(), new ZeroCostModel());
+        TradingRecord unbounded = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        for (TradingRecord record : List.of(bounded, unbounded)) {
+            record.enter(0, numFactory.hundred(), numFactory.one());
+            record.exit(2, numFactory.numOf(110), numFactory.one());
+            record.enter(2, numFactory.numOf(110), numFactory.one());
+            record.exit(8, numFactory.hundred(), numFactory.one());
+            record.enter(8, numFactory.hundred(), numFactory.one());
+            record.exit(9, numFactory.numOf(130), numFactory.one());
+        }
+
+        // Entered before the start or exited after the end: not contained.
+        List<Position> contained = bounded.getContainedPositions(series);
+        assertEquals(1, contained.size());
+        assertEquals(2, contained.get(0).getEntry().getIndex());
+        assertEquals(8, contained.get(0).getExit().getIndex());
+        assertSame(unbounded.getPositions(), unbounded.getContainedPositions(series));
+    }
+
+    @Test
+    public void getContainedPositionsExcludesPartialExitsAfterTheEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 100, 100, 100, 110, 120)
+                .build();
+        TradingRecord record = new BaseTradingRecord(TradeType.BUY, 2, 7, new ZeroCostModel(), new ZeroCostModel());
+        record.operate(Trade.buyAt(3, series, numFactory.two()));
+        record.operate(Trade.sellAt(5, series, numFactory.one()));
+        record.operate(Trade.sellAt(8, series, numFactory.one()));
+
+        List<Position> contained = record.getContainedPositions(series);
+        assertEquals(1, contained.size());
+        assertEquals(5, contained.get(0).getExit().getIndex());
+    }
+
     private void assertParity(AnalysisCriterion criterion, BarSeries series, TradingRecord baseRecord,
             TradingRecord liveRecord) {
         assertEquals(criterion.calculate(series, baseRecord), criterion.calculate(series, liveRecord),
                 criterion.getClass().getSimpleName());
+    }
+
+    @Test
+    public void deserializationRejectsInvalidRecordState() {
+        Object positionBook = new SerializedPositionBookState(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ArrayDeque<>(), new ArrayList<>());
+
+        assertRestoreRejected("startingType must not be null",
+                new SerializedRecordState(null, ExecutionMatchPolicy.FIFO, positionBook, 0, 0L));
+        assertRestoreRejected("matchPolicy must not be null",
+                new SerializedRecordState(TradeType.BUY, null, positionBook, 0, 0L));
+        assertRestoreRejected("positionBook must not be null",
+                new SerializedRecordState(TradeType.BUY, ExecutionMatchPolicy.FIFO, null, 0, 0L));
+        assertRestoreRejected("nextTradeIndex must be >= 0",
+                new SerializedRecordState(TradeType.BUY, ExecutionMatchPolicy.FIFO, positionBook, -1, 0L));
+        assertRestoreRejected("nextSequence must be >= 0",
+                new SerializedRecordState(TradeType.BUY, ExecutionMatchPolicy.FIFO, positionBook, 0, -1L));
+    }
+
+    @Test
+    public void deserializationRejectsInvalidPositionBookState() {
+        Object openLots = new ArrayDeque<>();
+        Object closedPositions = new ArrayList<>();
+
+        assertPositionBookRejected("PositionBook.startingType must not be null",
+                new SerializedPositionBookState(null, ExecutionMatchPolicy.FIFO, openLots, closedPositions));
+        assertPositionBookRejected("PositionBook.matchPolicy must not be null",
+                new SerializedPositionBookState(TradeType.BUY, null, openLots, closedPositions));
+        assertPositionBookRejected("PositionBook.openLots must not be null",
+                new SerializedPositionBookState(TradeType.BUY, ExecutionMatchPolicy.FIFO, null, closedPositions));
+        assertPositionBookRejected("PositionBook.closedPositions must not be null",
+                new SerializedPositionBookState(TradeType.BUY, ExecutionMatchPolicy.FIFO, openLots, null));
+    }
+
+    @Test
+    public void deserializationKeepsEmptyRunWindow() throws Exception {
+        // Non-overlapping BarSeriesManager windows yield startIndex > endIndex.
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, 10, 3, null, null);
+
+        BaseTradingRecord restored = restoreRecord(record);
+
+        assertEquals(10, restored.getStartIndex().intValue());
+        assertEquals(3, restored.getEndIndex().intValue());
+    }
+
+    private static void assertRestoreRejected(String expectedMessage, Object state) {
+        InvalidObjectException exception = assertThrows(InvalidObjectException.class, () -> restoreRecord(state));
+        assertEquals(expectedMessage, exception.getMessage());
+    }
+
+    private static void assertPositionBookRejected(String expectedMessage, Object positionBook) {
+        assertRestoreRejected(expectedMessage,
+                new SerializedRecordState(TradeType.BUY, ExecutionMatchPolicy.FIFO, positionBook, 0, 0L));
+    }
+
+    private static BaseTradingRecord restoreRecord(Object state) throws Exception {
+        ObjectStreamClass recordDescriptor = ObjectStreamClass.lookup(BaseTradingRecord.class);
+        Class<?> positionBookType = recordDescriptor.getField("positionBook").getType();
+        ObjectStreamClass positionBookDescriptor = ObjectStreamClass.lookup(positionBookType);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ObjectOutputStream output = new ObjectOutputStream(bytes)) {
+            output.writeObject(state);
+        }
+        try (ObjectInputStream input = new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray())) {
+            @Override
+            protected ObjectStreamClass readClassDescriptor() throws IOException, ClassNotFoundException {
+                ObjectStreamClass descriptor = super.readClassDescriptor();
+                if (descriptor.getName().equals(SerializedRecordState.class.getName())) {
+                    return recordDescriptor;
+                }
+                if (descriptor.getName().equals(SerializedPositionBookState.class.getName())) {
+                    return positionBookDescriptor;
+                }
+                return descriptor;
+            }
+        }) {
+            return (BaseTradingRecord) input.readObject();
+        }
+    }
+
+    // Mirrors the serialized fields of BaseTradingRecord.
+    private static final class SerializedRecordState implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 7960596064337713648L;
+
+        private final TradeType startingType;
+        private final ExecutionMatchPolicy matchPolicy;
+        private final Object positionBook;
+        private final Integer startIndex;
+        private final Integer endIndex;
+        private final String name;
+        private final int nextTradeIndex;
+        private final long modificationCount;
+        private final Num totalFees;
+        private final long nextSequence;
+
+        private SerializedRecordState(TradeType startingType, ExecutionMatchPolicy matchPolicy, Object positionBook,
+                int nextTradeIndex, long nextSequence) {
+            this.startingType = startingType;
+            this.matchPolicy = matchPolicy;
+            this.positionBook = positionBook;
+            this.startIndex = null;
+            this.endIndex = null;
+            this.name = "TestRecord";
+            this.nextTradeIndex = nextTradeIndex;
+            this.modificationCount = 0L;
+            this.totalFees = null;
+            this.nextSequence = nextSequence;
+        }
+    }
+
+    // Mirrors the serialized fields of BaseTradingRecord.PositionBook.
+    private static final class SerializedPositionBookState implements Serializable {
+        @Serial
+        private static final long serialVersionUID = -6897162194206253952L;
+
+        private final TradeType startingType;
+        private final ExecutionMatchPolicy matchPolicy;
+        private final Object openLots;
+        private final Object closedPositions;
+
+        private SerializedPositionBookState(TradeType startingType, ExecutionMatchPolicy matchPolicy, Object openLots,
+                Object closedPositions) {
+            this.startingType = startingType;
+            this.matchPolicy = matchPolicy;
+            this.openLots = openLots;
+            this.closedPositions = closedPositions;
+        }
     }
 
     @Test

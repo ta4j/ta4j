@@ -3,15 +3,15 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 import java.time.LocalTime;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.DateTimeIndicator;
@@ -85,8 +85,8 @@ public class TimeRangeRuleTest extends AbstractIndicatorTest<Object, Object> {
 
         TimeRangeRule rule = new TimeRangeRule(dateTimeIndicator, from, to);
 
-        assertTrue("02:30 should be inside first range", rule.isSatisfied(0, null));
-        assertTrue("18:15 should be inside second range", rule.isSatisfied(1, null));
+        assertTrue(rule.isSatisfied(0, null), "02:30 should be inside first range");
+        assertTrue(rule.isSatisfied(1, null), "18:15 should be inside second range");
     }
 
     @Test

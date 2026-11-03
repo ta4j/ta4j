@@ -15,7 +15,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.time.Instant;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;

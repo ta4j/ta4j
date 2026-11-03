@@ -8,8 +8,8 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.util.EnumSet;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -31,7 +31,7 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
     /**
      * Initializes the test fixtures used by these scenarios.
      */
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         addBar(series, 11.0, 12.0, 10.5, 11.5);

@@ -3,11 +3,13 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.*;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -395,29 +397,104 @@ public class WildersMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void initializesFromRetainedHead() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
-        series.setMaximumBarCount(3);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+            series.setMaximumBarCount(3);
 
-        WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
+            WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
 
-        assertNumEquals(4, indicator.getValue(3));
-        assertNumEquals(5, indicator.getValue(5));
+            assertNumEquals(4, indicator.getValue(3));
+            assertNumEquals(5, indicator.getValue(5));
+        } finally {
+            capture.close();
+        }
     }
 
     @Test
-    public void clearsCacheWhenSeriesHeadAdvances() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+    public void keepsRetainedChainWhenSeriesHeadAdvances() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                    .withData(1, 2, 3, 4, 5, 6)
+                    .build();
+            WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
+            indicator.getValue(5);
+
+            series.setMaximumBarCount(3);
+
+            // Retained values are full-history values (#1666) and are kept.
+            WildersMAIndicator reference = new WildersMAIndicator(new ClosePriceIndicator(unbounded), 3);
+            for (int i = 3; i <= 5; i++) {
+                assertNumEquals(reference.getValue(i), indicator.getValue(i));
+            }
+            // A removed index maps to the first available bar's retained value.
+            assertNumEquals(indicator.getValue(3), indicator.getValue(2));
+
+            // Without cached predecessors the chain seeds at the retained [4, 5, 6].
+            WildersMAIndicator fresh = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
+            assertNumEquals(4, fresh.getValue(3));
+            assertNumEquals(5, fresh.getValue(5));
+        } finally {
+            capture.close();
+        }
+    }
+
+    @Test
+    public void movingSeriesJustLongerThanBarCountContinuesRecursion() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            // Initialization is counted from where the recursion was seeded, so with a
+            // window of barCount + 1 every appended bar continues the recursion instead
+            // of re-entering the retained-head initialization.
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(4);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(moving), 3);
+            WildersMAIndicator reference = new WildersMAIndicator(new ClosePriceIndicator(unbounded), 3);
+            for (int i = 0; i < 12; i++) {
+                moving.barBuilder().closePrice(5 + 2 * (i % 4)).add();
+                unbounded.barBuilder().closePrice(5 + 2 * (i % 4)).add();
+                assertNumEquals(reference.getValue(i), indicator.getValue(i));
+            }
+        } finally {
+            capture.close();
+        }
+    }
+
+    @Test
+    public void emptySeriesReturnsNaNWithoutRecursing() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
 
-        // Cache values before head advance
-        indicator.getValue(5);
+        assertTrue(indicator.getValue(0).isNaN());
 
-        // Advance series head by setting maximum bar count
-        series.setMaximumBarCount(3);
+        // The empty-series read must not leave a value that later appends reuse.
+        WildersMAIndicator reference = new WildersMAIndicator(new ClosePriceIndicator(unbounded), 3);
+        for (int i = 0; i < 5; i++) {
+            series.barBuilder().closePrice(10 + 2 * i).add();
+            unbounded.barBuilder().closePrice(10 + 2 * i).add();
+        }
+        for (int i = 0; i < 5; i++) {
+            assertNumEquals(reference.getValue(i), indicator.getValue(i));
+        }
+    }
 
-        // Values should match a freshly seeded indicator over retained bars [4, 5, 6]
-        assertNumEquals(4, indicator.getValue(3));
-        assertNumEquals(5, indicator.getValue(5));
+    @Test
+    public void readRecomputesWhenHeadAdvancesMidRead() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            HeadAdvancingSource.assertReadRecomputesAfterMidReadHeadAdvance(numFactory,
+                    source -> new WildersMAIndicator(source, 3));
+        } finally {
+            capture.close();
+        }
     }
 
 }

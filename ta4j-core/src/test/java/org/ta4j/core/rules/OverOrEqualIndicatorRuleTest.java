@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
@@ -19,7 +19,7 @@ public class OverOrEqualIndicatorRuleTest {
     private OverOrEqualIndicatorRule rule;
     private BarSeries series;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new BaseBarSeriesBuilder().build();
         Indicator<Num> indicator = new FixedNumIndicator(series, 20, 15, 10, 5, 0, -5, -10, 100);

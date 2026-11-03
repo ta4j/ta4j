@@ -3,13 +3,13 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
@@ -22,7 +22,7 @@ public class OrRuleTest {
     private BarSeries series;
     private TraceTestLogger ruleTraceTestLogger;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
@@ -32,7 +32,7 @@ public class OrRuleTest {
         series = new MockBarSeriesBuilder().withData(1).build();
     }
 
-    @After
+    @AfterEach
     public void tearDownLogger() {
         ruleTraceTestLogger.close();
     }
@@ -64,10 +64,10 @@ public class OrRuleTest {
         orRule.isSatisfiedWithTraceMode(1, null, Rule.TraceMode.SUMMARY);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Summary mode should still log the parent composite rule",
-                logContent.contains("FirstOrSecond#isSatisfied"));
-        assertFalse("Summary mode should suppress child rule logs", logContent.contains("First Rule#isSatisfied"));
-        assertFalse("Summary mode should suppress child rule logs", logContent.contains("Second Rule#isSatisfied"));
+        assertTrue(logContent.contains("FirstOrSecond#isSatisfied"),
+                "Summary mode should still log the parent composite rule");
+        assertFalse(logContent.contains("First Rule#isSatisfied"), "Summary mode should suppress child rule logs");
+        assertFalse(logContent.contains("Second Rule#isSatisfied"), "Summary mode should suppress child rule logs");
     }
 
     @Test
@@ -84,12 +84,12 @@ public class OrRuleTest {
         orRule.isSatisfied(1);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Verbose mode should log the parent composite rule",
-                logContent.contains("FirstOrSecond#isSatisfied"));
-        assertTrue("Verbose mode should keep first child rule logs", logContent.contains("First Rule#isSatisfied"));
-        assertTrue("Verbose mode should keep second child rule logs", logContent.contains("Second Rule#isSatisfied"));
-        assertTrue("Verbose mode should attribute the second rule path",
-                logContent.contains("path=root.rule2 depth=1"));
+        assertTrue(logContent.contains("FirstOrSecond#isSatisfied"),
+                "Verbose mode should log the parent composite rule");
+        assertTrue(logContent.contains("First Rule#isSatisfied"), "Verbose mode should keep first child rule logs");
+        assertTrue(logContent.contains("Second Rule#isSatisfied"), "Verbose mode should keep second child rule logs");
+        assertTrue(logContent.contains("path=root.rule2 depth=1"),
+                "Verbose mode should attribute the second rule path");
     }
 
     @Test
