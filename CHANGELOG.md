@@ -4,6 +4,12 @@
 
 - **Safer saved decimal numbers**: Java deserialization of `DecimalNum` and `DecimalNumFactory` rejects missing values, math contexts, cached constants or class data with `InvalidObjectException`. `DecimalNumFactory` pins its existing serial version UID, so previously saved factories still load.
 
+
+### Changed
+
+- **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases, including low-precision decimal totals, reconstruct from the existing calculation when reuse is unsafe.
+
+
 ## 0.28.0 (2026-11-02)
 
 ### Added
