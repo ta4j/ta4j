@@ -63,7 +63,7 @@ import java.util.stream.Stream;
  * </p>
  *
  * @param <T> named component base type owned by this registry
- * @since 0.27.1
+ * @since 0.28.1
  */
 public final class NamedComponentRegistry<T> {
 
@@ -92,7 +92,7 @@ public final class NamedComponentRegistry<T> {
      * @param loaderFallbackOwner type whose {@link ClassLoader} is used when the
      *                            thread context class loader is absent
      * @param defaultScanPackages packages scanned lazily on first registry use
-     * @since 0.27.1
+     * @since 0.28.1
      */
     public NamedComponentRegistry(Class<T> componentType, String componentNoun, String facadeName,
             Class<?> loaderFallbackOwner, String... defaultScanPackages) {
@@ -109,7 +109,7 @@ public final class NamedComponentRegistry<T> {
      * calls wait for an in-progress scan to finish before returning.
      *
      * @param basePackages optional extra packages to scan
-     * @since 0.27.1
+     * @since 0.28.1
      */
     public void initializeRegistry(String... basePackages) {
         ensureDefaultRegistryInitialized();
@@ -127,7 +127,7 @@ public final class NamedComponentRegistry<T> {
      *                                  compact label
      * @throws IllegalStateException    when a different component is already
      *                                  registered under the same simple name
-     * @since 0.27.1
+     * @since 0.28.1
      */
     public void registerImplementation(Class<? extends T> type) {
         Objects.requireNonNull(type, "type");
@@ -153,7 +153,7 @@ public final class NamedComponentRegistry<T> {
      * @return {@code true} when the component was removed, {@code false} when a
      *         different class was registered under the same simple name or no
      *         registration existed
-     * @since 0.27.1
+     * @since 0.28.1
      */
     public boolean unregisterImplementation(Class<? extends T> type) {
         Objects.requireNonNull(type, "type");
@@ -169,7 +169,7 @@ public final class NamedComponentRegistry<T> {
      *
      * @param simpleName simple class name
      * @return optional containing the registered type
-     * @since 0.27.1
+     * @since 0.28.1
      */
     public Optional<Class<? extends T>> lookup(String simpleName) {
         if (simpleName == null || simpleName.isBlank()) {
@@ -189,7 +189,7 @@ public final class NamedComponentRegistry<T> {
      *                                  a blank simple name, or when the component
      *                                  type or a parameter contains the underscore
      *                                  label delimiter
-     * @since 0.27.1
+     * @since 0.28.1
      */
     public String buildLabel(Class<? extends T> type, String... parameters) {
         Objects.requireNonNull(type, "type");
@@ -221,7 +221,7 @@ public final class NamedComponentRegistry<T> {
      * @param label serialized label
      * @return immutable token list
      * @throws IllegalArgumentException when the label is blank
-     * @since 0.27.1
+     * @since 0.28.1
      */
     public List<String> splitLabel(String label) {
         Objects.requireNonNull(label, "label");
@@ -237,7 +237,7 @@ public final class NamedComponentRegistry<T> {
      * @param simpleName named component simple class name
      * @return registered type
      * @throws IllegalArgumentException when the simple name is unknown
-     * @since 0.27.1
+     * @since 0.28.1
      */
     public Class<? extends T> requireRegistered(String simpleName) {
         ensureDefaultRegistryInitialized();
@@ -252,7 +252,7 @@ public final class NamedComponentRegistry<T> {
      * Registered implementations are not removed. Primarily intended for tests and
      * environments that redefine the classpath between registry uses.
      *
-     * @since 0.27.1
+     * @since 0.28.1
      */
     public void resetScanState() {
         synchronized (initializationLock) {
