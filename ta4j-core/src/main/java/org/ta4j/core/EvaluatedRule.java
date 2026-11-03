@@ -54,7 +54,7 @@ import java.util.Objects;
  * a functional interface.
  *
  * @param <R> the evaluation result type
- * @since 0.25.1
+ * @since 0.28.1
  */
 public interface EvaluatedRule<R> extends Rule {
 
@@ -64,7 +64,7 @@ public interface EvaluatedRule<R> extends Rule {
      * @param index         the bar index
      * @param tradingRecord the trading record, may be {@code null}
      * @return the evaluation result, never {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     R evaluate(int index, TradingRecord tradingRecord);
 
@@ -78,7 +78,7 @@ public interface EvaluatedRule<R> extends Rule {
      * @param result a non-null result previously returned by
      *               {@link #evaluate(int, TradingRecord)}
      * @return {@code true} if the result satisfies this rule
-     * @since 0.25.1
+     * @since 0.28.1
      */
     boolean toBoolean(R result);
 
@@ -87,7 +87,7 @@ public interface EvaluatedRule<R> extends Rule {
      *
      * @param index the bar index
      * @return the evaluation result, never {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default R evaluate(int index) {
         return evaluate(index, null);
@@ -102,7 +102,7 @@ public interface EvaluatedRule<R> extends Rule {
      * @return the boolean projection of the evaluation result
      * @throws NullPointerException if {@link #evaluate(int, TradingRecord)} returns
      *                              {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @Override
     default boolean isSatisfied(int index, TradingRecord tradingRecord) {

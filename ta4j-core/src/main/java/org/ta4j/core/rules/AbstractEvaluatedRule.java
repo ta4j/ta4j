@@ -24,7 +24,7 @@ import org.ta4j.core.TradingRecord;
  * part of the serialized configuration.
  *
  * @param <R> the evaluation result type
- * @since 0.25.1
+ * @since 0.28.1
  */
 public abstract class AbstractEvaluatedRule<R> extends AbstractRule implements EvaluatedRule<R> {
 
@@ -36,7 +36,7 @@ public abstract class AbstractEvaluatedRule<R> extends AbstractRule implements E
      * @return the boolean projection of the evaluation result
      * @throws NullPointerException if {@link #evaluate(int, TradingRecord)} returns
      *                              {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @Override
     public final boolean isSatisfied(int index, TradingRecord tradingRecord) {
