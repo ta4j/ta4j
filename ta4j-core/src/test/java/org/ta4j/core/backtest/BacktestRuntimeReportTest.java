@@ -5,7 +5,7 @@ package org.ta4j.core.backtest;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.rules.FixedRule;
@@ -14,7 +14,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class BacktestRuntimeReportTest {
 
@@ -69,7 +69,7 @@ public class BacktestRuntimeReportTest {
 
         mutableList.add(new BacktestRuntimeReport.StrategyRuntime(strategy, Duration.ofMillis(200)));
 
-        assertEquals("strategyRuntimes should be immutable", 1, report.strategyRuntimes().size());
+        assertEquals(1, report.strategyRuntimes().size(), "strategyRuntimes should be immutable");
     }
 
     @Test
@@ -86,18 +86,18 @@ public class BacktestRuntimeReportTest {
 
         String jsonString = report.toString();
 
-        assertNotNull("toString() should not return null", jsonString);
-        assertFalse("toString() should return non-empty JSON", jsonString.isEmpty());
+        assertNotNull(jsonString, "toString() should not return null");
+        assertFalse(jsonString.isEmpty(), "toString() should return non-empty JSON");
 
         JsonObject json = JsonParser.parseString(jsonString).getAsJsonObject();
 
-        assertTrue("JSON should contain overallRuntime", json.has("overallRuntime"));
-        assertTrue("JSON should contain minStrategyRuntime", json.has("minStrategyRuntime"));
-        assertTrue("JSON should contain maxStrategyRuntime", json.has("maxStrategyRuntime"));
-        assertTrue("JSON should contain averageStrategyRuntime", json.has("averageStrategyRuntime"));
-        assertTrue("JSON should contain medianStrategyRuntime", json.has("medianStrategyRuntime"));
+        assertTrue(json.has("overallRuntime"), "JSON should contain overallRuntime");
+        assertTrue(json.has("minStrategyRuntime"), "JSON should contain minStrategyRuntime");
+        assertTrue(json.has("maxStrategyRuntime"), "JSON should contain maxStrategyRuntime");
+        assertTrue(json.has("averageStrategyRuntime"), "JSON should contain averageStrategyRuntime");
+        assertTrue(json.has("medianStrategyRuntime"), "JSON should contain medianStrategyRuntime");
 
-        assertFalse("JSON should NOT contain strategyRuntimes", json.has("strategyRuntimes"));
+        assertFalse(json.has("strategyRuntimes"), "JSON should NOT contain strategyRuntimes");
     }
 
     @Test
@@ -126,12 +126,12 @@ public class BacktestRuntimeReportTest {
 
         String jsonString = report.toString();
 
-        assertNotNull("toString() should not return null", jsonString);
-        assertFalse("toString() should return non-empty JSON", jsonString.isEmpty());
+        assertNotNull(jsonString, "toString() should not return null");
+        assertFalse(jsonString.isEmpty(), "toString() should return non-empty JSON");
 
         JsonObject json = JsonParser.parseString(jsonString).getAsJsonObject();
 
-        assertFalse("JSON should NOT contain strategyRuntimes", json.has("strategyRuntimes"));
+        assertFalse(json.has("strategyRuntimes"), "JSON should NOT contain strategyRuntimes");
         assertEquals("PT0S", json.get("overallRuntime").getAsString());
     }
 

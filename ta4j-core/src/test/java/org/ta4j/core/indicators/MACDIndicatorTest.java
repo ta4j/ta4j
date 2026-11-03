@@ -5,8 +5,8 @@ package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
@@ -14,6 +14,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class MACDIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -23,7 +24,7 @@ public class MACDIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     private BarSeries data;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(37.08, 36.7, 36.11, 35.85, 35.71, 36.04, 36.41, 37.67, 38.01, 37.79, 36.83, 37.10, 38.01,
@@ -31,9 +32,27 @@ public class MACDIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
                 .build();
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
+    public void dependenciesExposeTheCalculatedAverages() {
+        ClosePriceIndicator close = new ClosePriceIndicator(data);
+        MACDIndicator macd = new MACDIndicator(close, 2, 3);
+        assertThat(macd.getDependencies()).hasSize(2);
+        EMAIndicator shortEma = (EMAIndicator) macd.getDependencies().get(0);
+        EMAIndicator longEma = (EMAIndicator) macd.getDependencies().get(1);
+        assertThat(shortEma.getBarCount()).isEqualTo(2);
+        assertThat(longEma.getBarCount()).isEqualTo(3);
+        assertThat(shortEma.getDependencies()).containsExactly(close);
+        assertThat(longEma.getDependencies()).containsExactly(close);
+        assertThat(macd.getValue(10)).isEqualByComparingTo(shortEma.getValue(10).minus(longEma.getValue(10)));
+        assertThat(macd.getShortTermEma()).isNotSameAs(shortEma);
+        assertThat(macd.getLongTermEma()).isNotSameAs(longEma);
+    }
+
+    @Test
     public void throwsErrorOnIllegalArguments() {
-        new MACDIndicator(new ClosePriceIndicator(data), 10, 5);
+        assertThrows(IllegalArgumentException.class, () -> {
+            new MACDIndicator(new ClosePriceIndicator(data), 10, 5);
+        });
     }
 
     @Test

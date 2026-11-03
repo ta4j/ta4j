@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
 
 /**
  * Ring-buffer backed cache for indicator values with O(1) eviction and
@@ -235,6 +236,36 @@ class CachedBuffer<T> {
         }
         if (cached == NOT_COMPUTED) {
             return null;
+        }
+        if (cached == NULL_VALUE) {
+            return null;
+        }
+        @SuppressWarnings("unchecked")
+        T result = (T) cached;
+        return result;
+    }
+
+    /**
+     * Gets a cached value, or the result of {@code ifMissing} when the index is not
+     * cached. The lookup is a single read, so a concurrent eviction cannot turn a
+     * cached entry into a {@code null} result; {@code ifMissing} runs after the
+     * lock is released.
+     *
+     * @param index     the series index
+     * @param ifMissing supplies the value when the index is not cached
+     * @return the cached value (possibly a cached {@code null}), or the supplied
+     *         value
+     */
+    T getOrElse(int index, Supplier<? extends T> ifMissing) {
+        lock.readLock().lock();
+        Object cached;
+        try {
+            cached = readAtUnlocked(index);
+        } finally {
+            lock.readLock().unlock();
+        }
+        if (cached == NOT_COMPUTED) {
+            return ifMissing.get();
         }
         if (cached == NULL_VALUE) {
             return null;

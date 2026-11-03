@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.criteria.pnl;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.CriterionFactory;
 import org.ta4j.core.BaseTradingRecord;

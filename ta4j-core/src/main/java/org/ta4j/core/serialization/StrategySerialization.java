@@ -726,39 +726,44 @@ public final class StrategySerialization {
      * @return reconstructed strategy
      * @throws IllegalArgumentException if the descriptor type cannot be resolved
      * @throws IllegalStateException    if the resolved type has no suitable
-     *                                  constructor
+     *                                  constructor or an unavailable dependency
      */
     public static Strategy fromDescriptor(BarSeries series, ComponentDescriptor descriptor) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(descriptor, "descriptor");
 
         String descriptorType = descriptor.getType();
-        if (NamedStrategy.SERIALIZED_TYPE.equals(descriptorType)
-                || NamedStrategy.class.getName().equals(descriptorType)) {
-            return instantiateNamedStrategy(series, descriptor, null);
+        try {
+            if (NamedStrategy.SERIALIZED_TYPE.equals(descriptorType)
+                    || NamedStrategy.class.getName().equals(descriptorType)) {
+                return instantiateNamedStrategy(series, descriptor, null);
+            }
+
+            Class<? extends Strategy> strategyType = resolveStrategyClass(descriptorType);
+            if (NamedStrategy.class.isAssignableFrom(strategyType)) {
+                return instantiateNamedStrategy(series, descriptor, strategyType);
+            }
+
+            // Create a Strategy-level context that contains all Strategy components
+            // This allows rule deserialization to resolve Strategy-level indicators and
+            // rules
+            // For now, pass null as parent context - rule components contain all their
+            // dependencies
+            // and don't need Strategy-level resolution during constructor matching
+            Rule entryRule = instantiateRule(series, extractChild(descriptor, ENTRY_LABEL), null);
+            Rule exitRule = instantiateRule(series, extractChild(descriptor, EXIT_LABEL), null);
+
+            String name = descriptor.getLabel();
+            TradeType startingType = extractStartingType(descriptor.getParameters().get(STARTING_TYPE_KEY));
+            int unstableBars = extractUnstableBars(descriptor.getParameters().get(UNSTABLE_BARS_KEY));
+
+            Strategy strategy = instantiateStrategy(strategyType, name, entryRule, exitRule, unstableBars,
+                    startingType);
+            strategy.setUnstableBars(unstableBars);
+            return strategy;
+        } catch (LinkageError ex) {
+            throw new IllegalStateException("Failed to construct strategy: " + descriptorType, ex);
         }
-
-        Class<? extends Strategy> strategyType = resolveStrategyClass(descriptorType);
-        if (NamedStrategy.class.isAssignableFrom(strategyType)) {
-            return instantiateNamedStrategy(series, descriptor, strategyType);
-        }
-
-        // Create a Strategy-level context that contains all Strategy components
-        // This allows rule deserialization to resolve Strategy-level indicators and
-        // rules
-        // For now, pass null as parent context - rule components contain all their
-        // dependencies
-        // and don't need Strategy-level resolution during constructor matching
-        Rule entryRule = instantiateRule(series, extractChild(descriptor, ENTRY_LABEL), null);
-        Rule exitRule = instantiateRule(series, extractChild(descriptor, EXIT_LABEL), null);
-
-        String name = descriptor.getLabel();
-        TradeType startingType = extractStartingType(descriptor.getParameters().get(STARTING_TYPE_KEY));
-        int unstableBars = extractUnstableBars(descriptor.getParameters().get(UNSTABLE_BARS_KEY));
-
-        Strategy strategy = instantiateStrategy(strategyType, name, entryRule, exitRule, unstableBars, startingType);
-        strategy.setUnstableBars(unstableBars);
-        return strategy;
     }
 
     private static ComponentDescriptor applyLabel(ComponentDescriptor descriptor, String label) {

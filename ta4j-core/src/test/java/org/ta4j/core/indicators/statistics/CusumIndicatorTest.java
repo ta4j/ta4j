@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.assertIndicatorRoundTrips;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
@@ -20,9 +20,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
@@ -52,11 +53,23 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         source = new MockIndicator(data, 0, numOf(0.010), numOf(0.010), numOf(-0.100));
         cusum = new CusumIndicator(source, 0, 0.005, 3.0, 0.5);
+    }
+
+    @Test
+    public void emptyReadsDoNotPoisonLaterStatisticAndScale() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        CusumIndicator actual = new CusumIndicator(new ClosePriceIndicator(series), 0, 0, 3.0, 0.5);
+        assertTrue(actual.getValue(0).isNaN());
+        assertTrue(actual.getValue(series.getEndIndex()).isNaN());
+        series.barBuilder().closePrice(-1).add();
+        assertNumEquals(1, actual.getValue(0));
+        series.barBuilder().closePrice(-100).add();
+        assertNumEquals(4, actual.getValue(1));
     }
 
     @Test
@@ -236,6 +249,29 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         // exact scale by 1e100, admitting one representable minimum increment.
         assertNumEquals(doubleFactory.zero(), cusum.getValue(1));
         assertNumEquals(minimum, cusum.getValue(2));
+    }
+
+    @Test
+    public void exactScaleFollowsMutationGapCarryAndEvictionWithItsRoundedValue() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        Num minimum = factory.numOf(Double.MIN_VALUE);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(0, -Double.MIN_VALUE).build();
+        series.setMaximumBarCount(3);
+        CusumIndicator cusum = new CusumIndicator(series, 0, 0, new BigDecimal("1e100"),
+                BigDecimal.ONE.subtract(new BigDecimal("1e-100")));
+        assertNumEquals(factory.zero(), cusum.getValue(1));
+        series.barBuilder().closePrice(minimum.negate()).add();
+        assertNumEquals(minimum, cusum.getValue(2));
+
+        // The rounded scale at index 1 stays zero, but its exact residue must
+        // disappear when that bar changes, rather than clip index 2 with old data.
+        series.getBar(1).addPrice(factory.zero());
+        assertNumEquals(factory.zero(), cusum.getValue(2));
+        series.barBuilder().closePrice(NaN.NaN).add();
+        assertNumEquals(factory.zero(), cusum.getValue(3));
+        series.barBuilder().closePrice(minimum.negate()).add();
+        assertNumEquals(minimum, cusum.getValue(4));
+        assertNumEquals(factory.zero(), cusum.getValue(3));
     }
 
     @Test
@@ -430,10 +466,44 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
-    public void reanchorsAfterRetainedHeadPrunes() {
-        // Retained-head pruning invalidates the recursion: the CUSUM must
-        // reseed at the new head instead of publishing values cached against
-        // the discarded prefix.
+    public void continuedStatisticAndClippingMatchUnboundedHistory() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(3);
+        CusumIndicator actual = new CusumIndicator(bounded, 10, 0, 2, 0.5);
+        CusumIndicator expected = new CusumIndicator(unbounded, 10, 0, 2, 0.5);
+        for (int index = 0; index < 12; index++) {
+            int close = index % 4 == 3 ? -20 : 9 - index % 3;
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+            if (index > 0) {
+                assertNumEquals(expected.getValue(index - 1), actual.getValue(index - 1));
+            }
+        }
+    }
+
+    @Test
+    public void oneBarWindowContinuesStatisticAndScaleAcrossTerminalEdits() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        CusumIndicator actual = new CusumIndicator(bounded, 10, 0, 2, 0.5);
+        CusumIndicator expected = new CusumIndicator(unbounded, 10, 0, 2, 0.5);
+        for (int index = 0; index < 8; index++) {
+            int close = index % 4 == 3 ? -20 : 9 - index % 3;
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+            bounded.getLastBar().addPrice(numOf(close + 2));
+            unbounded.getLastBar().addPrice(numOf(close + 2));
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+            assertNumEquals(actual.getValue(index), actual.getValue(-1));
+        }
+    }
+
+    @Test
+    public void liveStatisticSurvivesShrinkWhileFreshStatisticSeedsAtHead() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1).build();
         CusumIndicator pruned = new CusumIndicator(new MockIndicator(series, 0, numOf(1), numOf(1), numOf(1), numOf(1)),
                 2, 0, 3.0, 0.94);
@@ -443,9 +513,8 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
         series.setMaximumBarCount(1);
 
-        // index 3 is the new head: the deviation of the single retained bar is
-        // 2 - 1 - 0 = 1, so the reseeded CUSUM is 1 (not the stale cached 4).
-        assertNumEquals(1, pruned.getValue(3));
+        assertNumEquals(4, pruned.getValue(3));
+        assertNumEquals(1, new CusumIndicator(series, 2, 0, 3.0, 0.94).getValue(3));
     }
 
     @Test
@@ -459,7 +528,8 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         pruned.getValue(3);
         series.setMaximumBarCount(1);
 
-        assertNumEquals(1, pruned.getValue(0));
+        assertNumEquals(4, pruned.getValue(0));
+        assertNumEquals(1, new CusumIndicator(series, 2, 0, 3.0, 0.94).getValue(0));
     }
 
     @Test
@@ -510,23 +580,19 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
-    public void deviationScaleReanchorsAfterRetainedHeadPrunes() {
-        // The winsorization scale must also reseed at the new retained head:
-        // a stale scale would clip the deviation against a bound derived from
-        // the discarded prefix.
+    public void continuedAndFreshClippingScaleStayPairedWithTheirStatistic() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 5, 1, -20).build();
         CusumIndicator pruned = new CusumIndicator(
                 new MockIndicator(series, 0, numOf(1), numOf(5), numOf(1), numOf(-20)), 10, 0, 3.0, 0.94);
 
         // Fill the caches across the whole series.
-        pruned.getValue(3);
+        Num continued = pruned.getValue(3);
 
         series.setMaximumBarCount(2);
 
-        // beginIndex = 2. Reseeded S(2) = 10 - 1 = 9, the fresh scale at index
-        // 2 is 9, so the clip bound is 27 and S(3) = 9 + min(30, 27) = 36. A
-        // stale scale (8.7744 -> bound 26.3232) would yield 35.3232.
-        assertNumEquals(36, pruned.getValue(3));
+        assertNumEquals(continued, pruned.getValue(3));
+        // Fresh S(2) = 9 and scale(2) = 9, so S(3) = 9 + min(30, 27).
+        assertNumEquals(36, new CusumIndicator(series, 10, 0, 3.0, 0.94).getValue(3));
     }
 
     @Test
@@ -763,8 +829,8 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
                 if (index == 3 && blockCurrentIndex.compareAndSet(true, false)) {
                     calculationStarted.countDown();
                     try {
-                        assertTrue("recursive calculation was not released",
-                                allowCalculation.await(5, TimeUnit.SECONDS));
+                        assertTrue(allowCalculation.await(5, TimeUnit.SECONDS),
+                                "recursive calculation was not released");
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         throw new AssertionError(e);
@@ -789,7 +855,7 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
         try {
             Future<Num> recursiveRead = executor.submit(() -> cusum.getValue(3));
-            assertTrue("recursive calculation never started", calculationStarted.await(5, TimeUnit.SECONDS));
+            assertTrue(calculationStarted.await(5, TimeUnit.SECONDS), "recursive calculation never started");
             series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(5).add();
 
             Future<Num> resetRead = executor.submit(() -> {
@@ -797,7 +863,7 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
                 resetReaderStarted.countDown();
                 return cusum.getValue(4);
             });
-            assertTrue("reset reader never started", resetReaderStarted.await(5, TimeUnit.SECONDS));
+            assertTrue(resetReaderStarted.await(5, TimeUnit.SECONDS), "reset reader never started");
 
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             Thread.State resetReaderState;
@@ -809,12 +875,15 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
                 }
                 Thread.onSpinWait();
             } while (System.nanoTime() < deadline);
-            assertTrue("reset reader did not contend with the recursive read", resetReaderState == Thread.State.BLOCKED
-                    || resetReaderState == Thread.State.WAITING || resetReaderState == Thread.State.TIMED_WAITING);
+            assertTrue(
+                    resetReaderState == Thread.State.BLOCKED || resetReaderState == Thread.State.WAITING
+                            || resetReaderState == Thread.State.TIMED_WAITING,
+                    "reset reader did not contend with the recursive read");
 
             allowCalculation.countDown();
-            assertNumEquals(21, recursiveRead.get(5, TimeUnit.SECONDS));
-            assertNumEquals(26, resetRead.get(5, TimeUnit.SECONDS));
+            // The first three inputs were consumed before the concurrent append.
+            assertNumEquals(30, recursiveRead.get(5, TimeUnit.SECONDS));
+            assertNumEquals(35, resetRead.get(5, TimeUnit.SECONDS));
         } finally {
             allowCalculation.countDown();
             executor.shutdownNow();
@@ -822,14 +891,44 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void terminalEditBetweenStatisticAndScaleLegsRetriesPairedRead() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        AtomicInteger terminalReads = new AtomicInteger();
+        AtomicBoolean armed = new AtomicBoolean();
+        Indicator<Num> source = new AbstractIndicator<Num>(series) {
+            @Override
+            public Num getValue(int index) {
+                // The statistic leg reads the terminal once; the scale leg's read then
+                // lands after a terminal edit that leaves the removal count unchanged.
+                if (index == 3 && armed.get() && terminalReads.incrementAndGet() == 2) {
+                    getBarSeries().getLastBar().addPrice(numOf(10));
+                }
+                return getBarSeries().getBar(index).getClosePrice();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        CusumIndicator cusum = new CusumIndicator(source, 10, 0, 3.0, 0.5);
+        cusum.getValue(2);
+        armed.set(true);
+
+        Num raced = cusum.getValue(3);
+
+        assertTrue(terminalReads.get() >= 2, "the terminal edit must land between the CUSUM legs");
+        assertNumEquals(new CusumIndicator(new ClosePriceIndicator(series), 10, 0, 3.0, 0.5).getValue(3), raced);
+
+        series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(5).add();
+        CusumIndicator freshAfterAppend = new CusumIndicator(new ClosePriceIndicator(series), 10, 0, 3.0, 0.5);
+        assertNumEquals(freshAfterAppend.getValue(4), cusum.getValue(4));
+    }
+
+    @Test
     public void reentrantPruneDuringCalculateDoesNotDoubleCountHeadDeviation() {
-        // A source read inside calculate() prunes the series so that the index
-        // being computed becomes the retained head. The outer computation then
-        // recurses into getValue(index - 1), which re-enters the retained-head
-        // reset while the cache write lock is held. The reset must defer to the
-        // top-level read; otherwise the in-flight computation repopulates the
-        // cache with the head deviation added twice (once by the re-anchored
-        // recursion, once by the stale-prefix outer path).
+        // The first source read shrinks the window mid-calculation. Retry from the
+        // new retained head without counting a discarded-prefix path a second time.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1).build();
         PruningIndicator source = new PruningIndicator(series, numFactory.one(), 2);
         CusumIndicator cusum = new CusumIndicator(source, 2, 0, 3.0, 0.94);

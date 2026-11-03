@@ -16,6 +16,15 @@ import org.ta4j.core.num.Num;
  * Combines MACD momentum with a stochastic calculation to accelerate trend
  * detection.
  *
+ * <p>
+ * When read on every appended bar of a bounded series with sufficient retained
+ * history for the cycle and warm-up, the complete chain continues across head
+ * advances. Retained results include previously observed history, including the
+ * stochastic stages' last non-flat value. At fixed periods, normal append/read
+ * work is independent of the retention capacity. A fresh instance or a chain
+ * invalidated by an explicitly resetting source instead seeds from available
+ * history; removed bars are never reconstructed.
+ *
  * @see <a href=
  *      "https://www.investopedia.com/articles/forex/10/schaff-trend-cycle-indicator.asp">
  *      Investopedia: Schaff Trend Cycle Indicator</a>
@@ -58,7 +67,7 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
     }
 
     private SchaffTrendCycleIndicator(Config config) {
-        super(config.indicator());
+        super(config.stcSmoothed());
         this.indicator = config.indicator();
         this.fastPeriod = config.fastPeriod();
         this.slowPeriod = config.slowPeriod();
@@ -77,10 +86,10 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
         }
 
         MACDIndicator macd = new MACDIndicator(indicator, fastPeriod, slowPeriod);
-        StochasticIndicator macdStochastic = new StochasticIndicator(macd, cycleLength);
-        EMAIndicator macdStochasticSmoothed = new EvictingEmaIndicator(macdStochastic, smoothingPeriod);
-        StochasticIndicator cycleStochastic = new StochasticIndicator(macdStochasticSmoothed, cycleLength);
-        EMAIndicator stcSmoothed = new EvictingEmaIndicator(cycleStochastic, smoothingPeriod);
+        StochasticIndicator macdStochastic = new ContinuedStochasticIndicator(macd, cycleLength);
+        EMAIndicator macdStochasticSmoothed = new EMAIndicator(macdStochastic, smoothingPeriod);
+        StochasticIndicator cycleStochastic = new ContinuedStochasticIndicator(macdStochasticSmoothed, cycleLength);
+        EMAIndicator stcSmoothed = new EMAIndicator(cycleStochastic, smoothingPeriod);
         return new Config(indicator, fastPeriod, stcSmoothed, slowPeriod, cycleLength, smoothingPeriod);
     }
 
@@ -101,19 +110,8 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
         return slowPeriod + cycleLength + smoothingPeriod + cycleLength + smoothingPeriod;
     }
 
-    /**
-     * Discards every cached value after the series head advanced.
-     *
-     * <p>
-     * STC values are always recomputable from the retained window, and both the
-     * stochastic stages and the smoothing {@link EvictingEmaIndicator}s discard
-     * their caches on a head advance: keeping any band here would preserve results
-     * derived from bars that no longer exist.
-     *
-     * @return {@code true} to evict the whole cache
-     */
     @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+    protected boolean hasRecursiveDependencies() {
         return true;
     }
 
@@ -122,25 +120,18 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * An {@link EMAIndicator} that discards its whole cache when the series head
-     * advances.
-     *
-     * <p>
-     * EMA values depend on the entire retained history of their input. The
-     * stochastic stage of this indicator rebaselines after a head advance, so any
-     * surviving EMA value would mix fresh and stale stochastic inputs; discarding
-     * the cache makes post-advance reads recurse through freshly recomputed
-     * stochastic values.
+     * Keeps the stochastic flat-range carry within this continued composition.
+     * Standalone stochastic indicators retain their retained-window reset policy.
      */
-    private static final class EvictingEmaIndicator extends EMAIndicator {
+    private static final class ContinuedStochasticIndicator extends StochasticIndicator {
 
-        private EvictingEmaIndicator(final Indicator<Num> indicator, final int barCount) {
-            super(indicator, barCount);
+        private ContinuedStochasticIndicator(Indicator<Num> indicator, int lookback) {
+            super(indicator, lookback);
         }
 
         @Override
         protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-            return true;
+            return false;
         }
     }
 }

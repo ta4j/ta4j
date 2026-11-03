@@ -5,6 +5,9 @@ package org.ta4j.core;
 
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
@@ -29,11 +32,31 @@ import org.ta4j.core.num.Num;
  * Open-position inspection APIs on {@link TradingRecord} also use this type, so
  * callers can query per-lot and net exposure through one consistent contract.
  * </p>
+ *
+ * <p>
+ * Java deserialization requires a non-null starting type, an entry before any
+ * exit, an entry type matching the starting type, complementary entry/exit
+ * types, and non-null trade cost models. Missing class data, inconsistent saved
+ * states, and conflicting retained models are rejected with
+ * {@link InvalidObjectException}; valid new, open, and closed positions remain
+ * supported, including constructor-created pairs whose exit index precedes
+ * their entry index.
+ * </p>
+ * <p>
+ * Cost models are transient. After loading, transaction costs use a retained
+ * trade model when available, preferring the entry model. A {@link BaseTrade}
+ * whose transient model is lost defaults to zero and does not conflict with a
+ * retained counterpart model, including in mixed legacy/live trade pairs.
+ * Positions without a retained trade model and holding costs use zero-cost
+ * models. Custom trades retaining serializable models continue to use them.
+ * </p>
  */
 public class Position implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -5484709075767220358L;
+
+    private static final CostModel ZERO_COST_MODEL = new ZeroCostModel();
 
     /** The entry trade */
     private Trade entry;
@@ -455,7 +478,7 @@ public class Position implements Serializable {
      * @return the cost of the position
      */
     public Num getPositionCost(int finalIndex) {
-        Num transactionCost = transactionCostModel.calculate(this, finalIndex);
+        Num transactionCost = getTransactionCostModel().calculate(this, finalIndex);
         Num borrowingCost = getHoldingCost(finalIndex);
         return transactionCost.plus(borrowingCost);
     }
@@ -466,7 +489,7 @@ public class Position implements Serializable {
      * @return the cost of the position
      */
     public Num getPositionCost() {
-        Num transactionCost = transactionCostModel.calculate(this);
+        Num transactionCost = getTransactionCostModel().calculate(this);
         Num borrowingCost = getHoldingCost();
         return transactionCost.plus(borrowingCost);
     }
@@ -477,7 +500,7 @@ public class Position implements Serializable {
      * @return the cost of the position
      */
     public Num getHoldingCost() {
-        return holdingCostModel.calculate(this);
+        return getHoldingCostModel().calculate(this);
     }
 
     /**
@@ -488,17 +511,35 @@ public class Position implements Serializable {
      * @return the cost of the position
      */
     public Num getHoldingCost(int finalIndex) {
-        return holdingCostModel.calculate(this, finalIndex);
+        return getHoldingCostModel().calculate(this, finalIndex);
     }
 
     /**
-     * @return the transaction cost model, or a zero-cost model after
-     *         deserialization when the model is unset
+     * @return the transaction cost model, or a retained trade model after
+     *         deserialization, preferring the entry model (otherwise zero)
      *
      * @since 0.22.2
      */
     public CostModel getTransactionCostModel() {
-        return transactionCostModel == null ? new ZeroCostModel() : transactionCostModel;
+        if (transactionCostModel != null) {
+            return transactionCostModel;
+        }
+        if (entry == null) {
+            return ZERO_COST_MODEL;
+        }
+        CostModel entryModel = entry.getCostModel();
+        if (exit != null && hasRestoredDefaultCostModel(entry, entryModel)) {
+            CostModel exitModel = exit.getCostModel();
+            if (!hasRestoredDefaultCostModel(exit, exitModel)) {
+                return exitModel;
+            }
+        }
+        return entryModel;
+    }
+
+    private static boolean hasRestoredDefaultCostModel(Trade trade, CostModel model) {
+        // BaseTrade does not persist its configured model, unlike retained models.
+        return trade instanceof BaseTrade && model instanceof ZeroCostModel;
     }
 
     /**
@@ -508,7 +549,7 @@ public class Position implements Serializable {
      * @since 0.22.2
      */
     public CostModel getHoldingCostModel() {
-        return holdingCostModel == null ? new ZeroCostModel() : holdingCostModel;
+        return holdingCostModel == null ? ZERO_COST_MODEL : holdingCostModel;
     }
 
     /**
@@ -605,6 +646,51 @@ public class Position implements Serializable {
      */
     private Num zero() {
         return entry.getNetPrice().getNumFactory().zero();
+    }
+
+    /**
+     * Restores and validates the persisted position without changing its schema.
+     *
+     * @param stream the object stream
+     * @throws IOException            if reading fails
+     * @throws ClassNotFoundException if a serialized class is unavailable
+     * @throws InvalidObjectException if the saved position is inconsistent
+     */
+    @Serial
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (startingType == null) {
+            throw new InvalidObjectException("Starting type must not be null");
+        }
+        if (entry == null) {
+            if (exit != null) {
+                throw new InvalidObjectException("Position cannot have an exit without an entry");
+            }
+            return;
+        }
+        if (entry.getType() != startingType) {
+            throw new InvalidObjectException("Entry trade type must match the starting type");
+        }
+        CostModel entryCostModel = entry.getCostModel();
+        if (entryCostModel == null) {
+            throw new InvalidObjectException("Entry trade cost model must not be null");
+        }
+        if (exit != null) {
+            if (exit.getType() != startingType.complementType()) {
+                throw new InvalidObjectException("Exit trade type must complement the entry trade type");
+            }
+            CostModel exitCostModel = exit.getCostModel();
+            if (exitCostModel == null
+                    || (!entryCostModel.equals(exitCostModel) && !hasRestoredDefaultCostModel(entry, entryCostModel)
+                            && !hasRestoredDefaultCostModel(exit, exitCostModel))) {
+                throw new InvalidObjectException("Trades must incorporate the same trading cost model");
+            }
+        }
+    }
+
+    @Serial
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("Position class data is required");
     }
 
     @Override

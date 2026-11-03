@@ -217,9 +217,20 @@ public final class PortfolioSnapshot {
      * @since 0.25.1
      */
     public Map<String, Num> getAssetWeights() {
-        Map<String, Num> weights = new LinkedHashMap<>();
-        for (String asset : holdings.keySet()) {
-            weights.put(asset, getAssetWeight(asset));
+        Map<String, Num> weights = new LinkedHashMap<>((int) Math.ceil(holdings.size() / 0.75f));
+        if (portfolioValue.isZero()) {
+            Num zero = portfolioValue.getNumFactory().zero();
+            for (String asset : holdings.keySet()) {
+                weights.put(asset, zero);
+            }
+        } else {
+            for (Map.Entry<String, Num> entry : holdings.entrySet()) {
+                String asset = entry.getKey();
+                Num holding = entry.getValue();
+                Num price = prices.get(asset);
+                Num assetValue = price.multipliedBy(holding);
+                weights.put(asset, assetValue.dividedBy(portfolioValue));
+            }
         }
         return Collections.unmodifiableMap(weights);
     }

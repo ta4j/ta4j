@@ -13,9 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
-import static org.hamcrest.core.Is.is;
-import static org.hamcrest.core.IsNull.notNullValue;
-import static org.junit.Assume.assumeThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -33,7 +31,7 @@ public class JsonBarSeriesDataSourceTest {
     public void testLoadCoinbaseInputStream() {
         String jsonFile = "Coinbase-ETH-USD-PT1D-20241105_20251020.json";
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(jsonFile);
-        assumeThat("File " + jsonFile + " does not exist", inputStream, is(notNullValue()));
+        assumeTrue(inputStream != null, "File " + jsonFile + " does not exist");
 
         BarSeries series = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(inputStream);
 
@@ -52,7 +50,7 @@ public class JsonBarSeriesDataSourceTest {
     public void testLoadBinanceInputStream() {
         String jsonFile = "Binance-ETH-USD-PT5M-20230313_20230315.json";
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(jsonFile);
-        assumeThat("File " + jsonFile + " does not exist", inputStream, is(notNullValue()));
+        assumeTrue(inputStream != null, "File " + jsonFile + " does not exist");
 
         BarSeries series = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(inputStream);
 
@@ -159,7 +157,7 @@ public class JsonBarSeriesDataSourceTest {
         // Pattern: {Exchange}-{ticker}-{interval}-{startDate}_{endDate}.json
         String expectedFile = "Coinbase-ETH-USD-PT1D-20241105_20251020.json";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         JsonFileBarSeriesDataSource dataSource = new JsonFileBarSeriesDataSource();
         Instant start = Instant.parse("2024-11-05T00:00:00Z");
@@ -178,7 +176,7 @@ public class JsonBarSeriesDataSourceTest {
         // pattern
         String expectedFile = "Binance-ETH-USD-PT5M-20230313_20230315.json";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         JsonFileBarSeriesDataSource dataSource = new JsonFileBarSeriesDataSource();
         Instant start = Instant.parse("2023-03-13T00:00:00Z");
@@ -283,7 +281,7 @@ public class JsonBarSeriesDataSourceTest {
         Instant end = Instant.parse("2025-10-20T23:59:59Z");
         String expectedFile = "Coinbase-ETH-USD-PT1D-20241105_20251020.json";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         BarSeries series = dataSource.loadSeries("ETH-USD", Duration.ofDays(1), start, end);
         assertNotNull(series, "Should find file using exchange prefix (not source name prefix)");

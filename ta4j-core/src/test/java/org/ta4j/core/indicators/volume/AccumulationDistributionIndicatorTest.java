@@ -5,7 +5,8 @@ package org.ta4j.core.indicators.volume;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -16,6 +17,26 @@ public class AccumulationDistributionIndicatorTest extends AbstractIndicatorTest
 
     public AccumulationDistributionIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void oneBarWindowKeepsAccumulatedMoneyFlow() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        AccumulationDistributionIndicator actual = new AccumulationDistributionIndicator(bounded);
+        AccumulationDistributionIndicator expected = new AccumulationDistributionIndicator(unbounded);
+        for (int index = 0; index < 4; index++) {
+            bounded.barBuilder().closePrice(3).highPrice(4).lowPrice(0).volume(10).add();
+            unbounded.barBuilder().closePrice(3).highPrice(4).lowPrice(0).volume(10).add();
+            assertNumEquals(5 * index, expected.getValue(index));
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+            if (index > 0) {
+                assertNumEquals(5 * index, actual.getValue(index - 1));
+                assertNumEquals(5 * index, actual.getValue(0));
+                assertNumEquals(5 * index, actual.getValue(index));
+            }
+        }
     }
 
     @Test

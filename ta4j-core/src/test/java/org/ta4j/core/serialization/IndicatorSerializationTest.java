@@ -6,7 +6,7 @@ package org.ta4j.core.serialization;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
@@ -25,10 +25,20 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class IndicatorSerializationTest {
+    @Test
+    public void fromDescriptorWrapsMissingConstructorDependency() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            RuntimeException exception = assertThrows(RuntimeException.class,
+                    () -> fixture.invoke("deserializeIndicator"));
+            assertThat(exception.getClass().getName()).isEqualTo(IndicatorSerializationException.class.getName());
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class);
+        }
+    }
+
     @Test
     public void toJsonRejectsUnresolvableIndicatorType() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();

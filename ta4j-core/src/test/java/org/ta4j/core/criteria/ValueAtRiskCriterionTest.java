@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
@@ -149,14 +149,14 @@ public class ValueAtRiskCriterionTest {
                 ValueAtRiskCriterion criterion = new ValueAtRiskCriterion(0.95, representation);
                 Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
                 Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.markedEquivalentRecord());
-                assertEquals(fixture.name() + ": trading-record return window", expected.doubleValue(),
-                        actual.doubleValue(), 1e-10);
+                assertEquals(expected.doubleValue(), actual.doubleValue(), 1e-10,
+                        fixture.name() + ": trading-record return window");
                 if (fixture.position() != null && fixture.markedEquivalentPosition() != null) {
                     Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
                     Num expectedPosition = criterion.calculate(fixture.equivalentSeries(),
                             fixture.markedEquivalentPosition());
-                    assertEquals(fixture.name() + ": position return window", expectedPosition.doubleValue(),
-                            actualPosition.doubleValue(), 1e-10);
+                    assertEquals(expectedPosition.doubleValue(), actualPosition.doubleValue(), 1e-10,
+                            fixture.name() + ": position return window");
                 }
             }
         }

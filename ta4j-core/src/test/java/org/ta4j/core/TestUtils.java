@@ -3,8 +3,8 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -130,8 +130,8 @@ public class TestUtils {
      * @param actual   indicator of actual values
      */
     public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual) {
-        org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
-                actual.getBarSeries().getBarCount());
+        org.junit.jupiter.api.Assertions.assertEquals(expected.getBarSeries().getBarCount(),
+                actual.getBarSeries().getBarCount(), "Size does not match,");
         for (int i = 0; i < expected.getBarSeries().getBarCount(); i++) {
             Num expectedValue = expected.getValue(i);
             Num actualValue = actual.getValue(i);
@@ -149,8 +149,8 @@ public class TestUtils {
                 continue;
             }
 
-            assertEquals(String.format("Failed at index %s: %s", i, actual.toString()), expectedValue.doubleValue(),
-                    actualValue.doubleValue(), GENERAL_OFFSET);
+            assertEquals(expectedValue.doubleValue(), actualValue.doubleValue(), GENERAL_OFFSET,
+                    String.format("Failed at index %s: %s", i, actual.toString()));
         }
     }
 
@@ -220,8 +220,8 @@ public class TestUtils {
      * @param actual   indicator of actual values
      */
     public static void assertIndicatorEquals(Indicator<Num> expected, Indicator<Num> actual, Num delta) {
-        org.junit.Assert.assertEquals("Size does not match,", expected.getBarSeries().getBarCount(),
-                actual.getBarSeries().getBarCount());
+        org.junit.jupiter.api.Assertions.assertEquals(expected.getBarSeries().getBarCount(),
+                actual.getBarSeries().getBarCount(), "Size does not match,");
         for (int i = expected.getBarSeries().getBeginIndex(); i < expected.getBarSeries().getEndIndex(); i++) {
             Num expectedValue = expected.getValue(i);
             Num actualValue = actual.getValue(i);
@@ -298,15 +298,15 @@ public class TestUtils {
      * package, so tests outside {@code org.ta4j.core} construct such series through
      * this factory.
      *
-     * @param bars            the bar data
-     * @param beginIndex      the first retained index
-     * @param endIndex        the last available index
-     * @param maximumBarCount the maximum number of retained bars
+     * @param bars             the bar data
+     * @param beginIndex       the first retained index
+     * @param endIndex         the last available index
+     * @param removedBarsCount the number of bars preceding the retained storage
      * @return the saturated series
      */
     public static BaseBarSeries saturatedRetainedWindowSeries(List<Bar> bars, int beginIndex, int endIndex,
-            int maximumBarCount) {
-        return new BaseBarSeries("saturated", bars, beginIndex, endIndex, maximumBarCount, false,
+            int removedBarsCount) {
+        return new BaseBarSeries("saturated", bars, beginIndex, endIndex, removedBarsCount, false,
                 DoubleNumFactory.getInstance(), new MockBarBuilderFactory());
     }
 

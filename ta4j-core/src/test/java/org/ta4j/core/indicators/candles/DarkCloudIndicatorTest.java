@@ -3,18 +3,19 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.trend.UpTrendIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
@@ -42,9 +43,35 @@ public class DarkCloudIndicatorTest extends AbstractIndicatorTest<Indicator<Bool
         return bars;
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withBars(generateUptrend()).build();
+    }
+
+    @Test
+    public void maintainsTrendBeforeFirstPatternOnShortWindow() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(2);
+        DarkCloudIndicator cloud = new DarkCloudIndicator(moving);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index < 40; index++) {
+                moving.barBuilder()
+                        .openPrice(100 + index)
+                        .closePrice(104 + index)
+                        .highPrice(106 + index)
+                        .lowPrice(100 + index)
+                        .add();
+                assertFalse(cloud.getValue(index));
+            }
+            moving.barBuilder().openPrice(140).closePrice(148).highPrice(148).lowPrice(140).add();
+            assertFalse(cloud.getValue(40));
+            moving.barBuilder().openPrice(150).closePrice(142).highPrice(150).lowPrice(141).add();
+            assertTrue(cloud.getValue(41));
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

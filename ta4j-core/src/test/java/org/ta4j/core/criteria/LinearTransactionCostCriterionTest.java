@@ -3,16 +3,21 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExternalCriterionTest;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.analysis.AnalysisWindow;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -116,4 +121,35 @@ public class LinearTransactionCostCriterionTest extends AbstractCriterionTest {
         assertTrue(criterion.betterThan(numOf(3.1), numOf(4.2)));
         assertFalse(criterion.betterThan(numOf(2.1), numOf(1.9)));
     }
+
+    @Test
+    public void directBoundedRecordExcludesEarlierEntryAndFutureExit() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 105, 100, 110, 130)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 2, 8, new ZeroCostModel(),
+                new ZeroCostModel());
+        record.operate(Trade.buyAt(0, series, numFactory.one()));
+        record.operate(Trade.sellAt(2, series, numFactory.one()));
+        record.operate(Trade.buyAt(3, series, numFactory.one()));
+        record.operate(Trade.sellAt(4, series, numFactory.one()));
+        record.operate(Trade.buyAt(5, series, numFactory.one()));
+        record.operate(Trade.sellAt(6, series, numFactory.one()));
+        record.operate(Trade.buyAt(7, series, numFactory.one()));
+        record.operate(Trade.sellAt(9, series, numFactory.one()));
+        LinearTransactionCostCriterion criterion = new LinearTransactionCostCriterion(1000, 0, 1);
+        // Four trades of the two contained positions plus the entry of the 7->9
+        // position, which is still open at end index 8.
+        assertNumEquals(5, criterion.calculate(series, record));
+        AnalysisWindow window = AnalysisWindow.barRange(2, 8);
+        AnalysisContext context = AnalysisContext.defaults();
+        assertNumEquals(6, criterion.calculate(series, record, window, context));
+        assertNumEquals(4, criterion.calculate(series, record, window,
+                context.withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED)));
+        TradingRecord unbounded = new BaseTradingRecord(record.getPositions());
+        unbounded.enter(9, numFactory.numOf(130), numFactory.one());
+        // Preserve the native unbounded charge for the current open entry.
+        assertNumEquals(9, criterion.calculate(series, unbounded));
+    }
+
 }

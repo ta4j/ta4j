@@ -11,7 +11,17 @@ import org.ta4j.core.num.Num;
 
 /**
  * With this cost model, the trading costs for borrowing a position accrue
- * linearly.
+ * linearly on the entry trade value: {@code entry.getValue() * indexDistance
+ * * feePerPeriod}. A period is one index step, not a calendar day. Later marks,
+ * timestamps, weekends and holidays do not change that calculation. The caller
+ * must supply a rate in these units; no annual-rate conversion is performed.
+ *
+ * <p>
+ * A closed position uses its actual exit index. An open position uses the
+ * supplied observation index and requires that overload. The price/amount
+ * overload returns zero because it cannot determine a holding duration. These
+ * legacy conventions are preserved. Calendar/mark-based borrowing requires an
+ * explicitly supplied cost model with the relevant historical inputs.
  *
  * <p>
  * By default borrowing costs apply to short positions only, preserving the

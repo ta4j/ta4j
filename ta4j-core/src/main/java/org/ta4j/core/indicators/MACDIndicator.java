@@ -52,7 +52,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
     }
 
     private MACDIndicator(Config config) {
-        super(config.indicator());
+        super(config.shortTermEma(), config.longTermEma());
         this.indicator = config.indicator();
         this.shortBarCount = config.shortBarCount();
         this.longBarCount = config.longBarCount();

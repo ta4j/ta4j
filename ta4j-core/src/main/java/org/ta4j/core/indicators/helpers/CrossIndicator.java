@@ -36,9 +36,11 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
     @Override
     protected Boolean calculate(int index) {
         int unstableBoundary = Math.max(up.getCountOfUnstableBars(), low.getCountOfUnstableBars());
+        Num currentUp = up.getValue(index);
+        Num currentLow = low.getValue(index);
 
         int i = index;
-        if (i <= unstableBoundary || up.getValue(i).isGreaterThanOrEqual(low.getValue(i))) {
+        if (i <= unstableBoundary || currentUp.isGreaterThanOrEqual(currentLow)) {
             return false;
         }
 

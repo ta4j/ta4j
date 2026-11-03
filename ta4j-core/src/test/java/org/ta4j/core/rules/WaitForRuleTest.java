@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
@@ -21,7 +21,7 @@ public class WaitForRuleTest {
     private WaitForRule rule;
     private BarSeries series;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         tradingRecord = new BaseTradingRecord();
         series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();

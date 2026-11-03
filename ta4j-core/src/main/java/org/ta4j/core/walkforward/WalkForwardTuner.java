@@ -297,15 +297,15 @@ public final class WalkForwardTuner<C, P, O> {
     }
 
     private static void patchCalibrationMetrics(Map<String, Num> metricMap, CalibrationScores scores) {
-        for (String key : new ArrayList<>(metricMap.keySet())) {
-            String normalized = key.toLowerCase();
+        for (Map.Entry<String, Num> entry : metricMap.entrySet()) {
+            String normalized = entry.getKey().toLowerCase();
             if (normalized.contains("brier")) {
-                metricMap.put(key, scores.brier);
+                entry.setValue(scores.brier);
             } else if (normalized.contains("logloss") || normalized.contains("log_loss")
                     || normalized.contains("log-loss")) {
-                metricMap.put(key, scores.logLoss);
+                entry.setValue(scores.logLoss);
             } else if (normalized.contains("ece")) {
-                metricMap.put(key, scores.ece);
+                entry.setValue(scores.ece);
             }
         }
     }

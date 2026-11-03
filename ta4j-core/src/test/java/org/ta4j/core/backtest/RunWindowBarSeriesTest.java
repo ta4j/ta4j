@@ -3,8 +3,8 @@
  */
 package org.ta4j.core.backtest;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Duration;
 import java.util.List;
@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
@@ -135,26 +135,26 @@ public class RunWindowBarSeriesTest {
             String name = scenario.name();
             List<Bar> expectedBars = scenario.expectedBars();
 
-            assertEquals(name + " logical begin", scenario.beginIndex(), window.getBeginIndex());
-            assertEquals(name + " removal prefix", scenario.beginIndex(), window.getRemovedBarsCount());
-            assertEquals(name + " logical end", scenario.endIndex(), window.getEndIndex());
-            assertEquals(name + " visible count", expectedBars.size(), window.getBarCount());
-            assertEquals(name + " empty state", expectedBars.isEmpty(), window.isEmpty());
-            assertEquals(name + " data", expectedBars, window.getBarData());
-            assertEquals(name + " first bar", expectedBars.getFirst(), window.getFirstBar());
-            assertEquals(name + " last bar", expectedBars.getLast(), window.getLastBar());
-            assertEquals(name + " subseries", expectedBars,
-                    window.getSubSeries(0, scenario.windowEnd() + 1).getBarData());
+            assertEquals(scenario.beginIndex(), window.getBeginIndex(), name + " logical begin");
+            assertEquals(scenario.beginIndex(), window.getRemovedBarsCount(), name + " removal prefix");
+            assertEquals(scenario.endIndex(), window.getEndIndex(), name + " logical end");
+            assertEquals(expectedBars.size(), window.getBarCount(), name + " visible count");
+            assertEquals(expectedBars.isEmpty(), window.isEmpty(), name + " empty state");
+            assertEquals(expectedBars, window.getBarData(), name + " data");
+            assertEquals(expectedBars.getFirst(), window.getFirstBar(), name + " first bar");
+            assertEquals(expectedBars.getLast(), window.getLastBar(), name + " last bar");
+            assertEquals(expectedBars, window.getSubSeries(0, scenario.windowEnd() + 1).getBarData(),
+                    name + " subseries");
             BarSeriesChangeSnapshot snapshot = window.getBarSeriesChangeSnapshot(-1);
-            assertEquals(name + " virtual removal boundary", scenario.beginIndex() - 1, snapshot.removedThroughIndex());
-            assertEquals(name + " snapshot end", scenario.endIndex(), snapshot.endIndex());
+            assertEquals(scenario.beginIndex() - 1, snapshot.removedThroughIndex(), name + " virtual removal boundary");
+            assertEquals(scenario.endIndex(), snapshot.endIndex(), name + " snapshot end");
 
             ClosePriceIndicator closePrice = new ClosePriceIndicator(window);
             for (int offset = 0; offset < expectedBars.size(); offset++) {
                 int index = scenario.beginIndex() + offset;
-                assertEquals(name + " index " + index, expectedBars.get(offset), window.getBar(index));
-                assertEquals(name + " close " + index, expectedBars.get(offset).getClosePrice(),
-                        closePrice.getValue(index));
+                assertEquals(expectedBars.get(offset), window.getBar(index), name + " index " + index);
+                assertEquals(expectedBars.get(offset).getClosePrice(), closePrice.getValue(index),
+                        name + " close " + index);
             }
             new ParabolicSarIndicator(window).getValue(window.getBeginIndex());
         }

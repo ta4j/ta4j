@@ -8,13 +8,15 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.num.Num;
@@ -27,6 +29,28 @@ public class MinusDIIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> 
     public MinusDIIndicatorTest(NumFactory nf) {
         super((data, params) -> new MinusDIIndicator(data, (int) params[0]), nf);
         xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 13, numFactory);
+    }
+
+    @Test
+    public void zeroAtrDoesNotPauseDirectionalMovementWarmUp() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(2);
+        MinusDIIndicator minus = new MinusDIIndicator(moving, 3);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index < 5; index++) {
+                moving.barBuilder().openPrice(10).highPrice(10).lowPrice(10).closePrice(10).add();
+                Num value = minus.getValue(index);
+                if (index >= 3) {
+                    TestUtils.assertNumEquals(0, value);
+                }
+            }
+            moving.barBuilder().openPrice(10).highPrice(10).lowPrice(9).closePrice(9).add();
+            TestUtils.assertNumEquals(100, minus.getValue(5));
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

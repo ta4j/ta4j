@@ -9,10 +9,12 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TestUtils;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -27,7 +29,30 @@ public class KeltnerChannelLowerIndicatorTest extends AbstractIndicatorTest<Indi
         super(numFactory);
     }
 
-    @Before
+    @Test
+    public void primesMiddleAndAtrBeforeItsWarmUpReturn() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(4);
+        KeltnerChannelMiddleIndicator middle = new KeltnerChannelMiddleIndicator(new ClosePriceIndicator(moving), 14);
+        KeltnerChannelLowerIndicator lower = new KeltnerChannelLowerIndicator(middle, 2, 14);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index <= 30; index++) {
+                moving.barBuilder().openPrice(10).highPrice(13).lowPrice(8).closePrice(10).add();
+                Num value = lower.getValue(index);
+                if (index < 14) {
+                    assertThat(value.isNaN()).isTrue();
+                } else {
+                    TestUtils.assertNumEquals(0, value);
+                }
+            }
+        } finally {
+            capture.close();
+        }
+    }
+
+    @BeforeEach
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         data.barBuilder().openPrice(11577.43).closePrice(11670.75).highPrice(11711.47).lowPrice(11577.35).add();

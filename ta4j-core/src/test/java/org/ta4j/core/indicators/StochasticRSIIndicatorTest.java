@@ -8,11 +8,12 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 
 import java.util.List;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
@@ -20,7 +21,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -42,13 +43,46 @@ public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<
         assertNumEquals(52.23449323656383, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex() - 1));
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(50.45, 50.30, 50.20, 50.15, 50.05, 50.06, 50.10, 50.08, 50.03, 50.07, 50.01, 50.14, 50.22,
                         50.43, 50.50, 50.56, 50.52, 50.70, 50.55, 50.62, 50.90, 50.82, 50.86, 51.20, 51.30, 51.10,
                         51.25, 51.35)
                 .build();
+    }
+
+    @Test
+    public void primesRsiWhilePreservingRetainedWindowStochasticSemantics() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            bounded.setMaximumBarCount(2);
+            var actual = new StochasticRSIIndicator(bounded, 3);
+            var rsi = new RSIIndicator(new ClosePriceIndicator(unbounded), 3);
+            Num previous = NaN.NaN;
+            for (int i = 0; i < 24; i++) {
+                int close = 100 + i * (i % 2 == 0 ? 1 : -1);
+                bounded.barBuilder().closePrice(close).add();
+                unbounded.barBuilder().closePrice(close).add();
+                Num current = rsi.getValue(i);
+                Num value = actual.getValue(i);
+                if (i < actual.getCountOfUnstableBars()) {
+                    assertThat(value.isNaN()).isTrue();
+                } else {
+                    Num low = current.min(previous);
+                    Num high = current.max(previous);
+                    Num expected = current.minus(low).dividedBy(high.minus(low)).multipliedBy(numFactory.hundred());
+                    assertThat(expected.isNaN()).isFalse();
+                    assertNumEquals(expected, value);
+                }
+                previous = current;
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

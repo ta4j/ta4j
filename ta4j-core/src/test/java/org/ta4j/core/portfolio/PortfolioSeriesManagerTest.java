@@ -3,18 +3,19 @@
  */
 package org.ta4j.core.portfolio;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.portfolio.PortfolioFixtures.assertNumClose;
 import static org.ta4j.core.portfolio.PortfolioFixtures.series;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.analysis.cost.CostModel;
@@ -63,6 +64,36 @@ public class PortfolioSeriesManagerTest {
         assertNumEquals(750, last.getTradedNotional());
         assertNumEquals(0.6, last.getTurnover());
         assertEquals(RebalanceStatus.COMPLETED, last.getRebalanceStatus());
+    }
+
+    @Test
+    public void retainedPolicyContextsPreserveEachBarsPreTradeState() {
+        PortfolioSeries series = new PortfolioSeries(series("ALPHA", 100, 200, 50), series("BETA", 100, 50, 150));
+        PortfolioSeriesManager manager = new PortfolioSeriesManager(series);
+        List<RebalancePolicy.Context> contexts = new ArrayList<>();
+
+        manager.run(weights(0.5, 0.25), 1000, context -> {
+            if (context.getIndex() == 0) {
+                assertNumEquals(0.75, context.getMaxDrift());
+            }
+            contexts.add(context);
+            return true;
+        });
+
+        double[][] expected = { { 1000, 0, 0, 1, 0.75 }, { 1375, 8.0 / 11, 1.0 / 11, 2.0 / 11, 5.0 / 22 },
+                { 1546.875, 1.0 / 9, 2.0 / 3, 2.0 / 9, 5.0 / 12 } };
+        for (int index = 0; index < expected.length; index++) {
+            RebalancePolicy.Context context = contexts.get(index);
+            assertEquals(index, context.getIndex());
+            assertEquals(series.getEndTimes().get(index), context.getEndTime());
+            assertNumClose(expected[index][0], context.getPortfolioValue(), TOLERANCE);
+            assertNumClose(expected[index][1], context.getAssetWeight("ALPHA"), TOLERANCE);
+            assertNumClose(expected[index][2], context.getAssetWeight("BETA"), TOLERANCE);
+            assertNumClose(expected[index][3], context.getCashWeight(), TOLERANCE);
+            assertNumClose(expected[index][4], context.getMaxDrift(), TOLERANCE);
+            assertNumEquals(0.5, context.getTargetWeight("ALPHA"));
+            assertNumEquals(0.25, context.getTargetWeight("BETA"));
+        }
     }
 
     @Test

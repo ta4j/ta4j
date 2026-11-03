@@ -66,10 +66,11 @@ public class ATRIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        Num averageTrueRange = averageTrueRangeIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
-        return averageTrueRangeIndicator.getValue(index);
+        return averageTrueRange;
     }
 
     @Override
@@ -78,17 +79,11 @@ public class ATRIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * The average true range re-anchors its whole chain on a head advance (see
-     * {@link AbstractEMAIndicator#getValue(int)}'s retained-head reset), so every
-     * cached value in this wrapper was derived from a recurrence that no longer
-     * exists. The re-anchored chain is recomputable from the retained window, but
-     * keeping any pre-advance value would combine the severed chain with the
-     * rebuilt one.
-     *
-     * @return {@code true}
+     * @return {@code true}, because the Wilder average retains full-history state
+     * @since 0.27.1
      */
     @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+    protected boolean hasRecursiveDependencies() {
         return true;
     }
 

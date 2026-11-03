@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.SplittableRandom;
 
@@ -66,10 +66,10 @@ class CandleThresholdSupportBenchmarkTest {
         }
         final long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
-        assertTrue("expected some long bodies in a random sweep", longBodies > 0);
-        assertTrue("expected some short bodies in a random sweep", shortBodies > 0);
-        assertTrue("expected some long shadows in a random sweep", longShadows > 0);
-        assertTrue("expected some short shadows in a random sweep", shortShadows > 0);
+        assertTrue(longBodies > 0, "expected some long bodies in a random sweep");
+        assertTrue(shortBodies > 0, "expected some short bodies in a random sweep");
+        assertTrue(longShadows > 0, "expected some long shadows in a random sweep");
+        assertTrue(shortShadows > 0, "expected some short shadows in a random sweep");
         LOG.info(
                 "candle-threshold benchmark: {} bars -> {} ms, long {} short {} doji {} longShadow {} shortShadow {} near {}",
                 BARS, elapsedMs, longBodies, shortBodies, dojis, longShadows, shortShadows, nearPairs);
