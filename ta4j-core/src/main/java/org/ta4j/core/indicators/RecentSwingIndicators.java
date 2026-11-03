@@ -608,13 +608,19 @@ public final class RecentSwingIndicators {
             if (current != null && current.matches(series, clampedIndex)) {
                 result = current.pivots();
             } else {
-                result = calculate(clampedIndex);
+                // Tag the memo with the history observed before detection and publish
+                // it only if that history is still current, so a concurrent update
+                // cannot label stale pivots with the new revision.
                 final PivotMemo computed = new PivotMemo(clampedIndex, series.getBarHistoryRevision(),
-                        series.getBeginIndex(), series.getEndIndex(), result);
-                if (atEnd) {
-                    endMemo = computed;
-                } else {
-                    scanMemo = computed;
+                        series.getBeginIndex(), series.getEndIndex(), null);
+                result = calculate(clampedIndex);
+                if (computed.matches(series, clampedIndex)) {
+                    final PivotMemo published = computed.withPivots(result);
+                    if (atEnd) {
+                        endMemo = published;
+                    } else {
+                        scanMemo = published;
+                    }
                 }
             }
             observedRevision = series.getBarHistoryRevision();
@@ -665,6 +671,10 @@ public final class RecentSwingIndicators {
     }
 
     private record PivotMemo(int index, long revision, int beginIndex, int endIndex, List<SwingPivot> pivots) {
+
+        private PivotMemo withPivots(final List<SwingPivot> detected) {
+            return new PivotMemo(index, revision, beginIndex, endIndex, detected);
+        }
 
         private boolean matches(final BarSeries series, final int queriedIndex) {
             return index == queriedIndex && revision == series.getBarHistoryRevision()
