@@ -31,7 +31,8 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
      * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      */
     public VolumeBarBuilderFactory(final int volumeThreshold) {
@@ -41,7 +42,8 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
      * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
      *                        instances
      *
@@ -55,7 +57,8 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
      * @param carryOverPolicy policy for handling side/liquidity remainder splits
      *
      * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
@@ -68,7 +71,8 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
      * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
      *                        instances
      * @param carryOverPolicy policy for handling side/liquidity remainder splits

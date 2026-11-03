@@ -59,7 +59,8 @@ public class TickBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar} with {@link DoubleNumFactory}
      *
-     * @param tickCount the number of ticks at which a new bar should be created; must be positive
+     * @param tickCount the number of ticks at which a new bar should be created;
+     *                  must be positive
      * @throws IllegalArgumentException if {@code tickCount} is not positive
      */
     public TickBarBuilder(final int tickCount) {
@@ -70,7 +71,8 @@ public class TickBarBuilder implements BarBuilder {
      * A builder to build a new {@link BaseBar}
      *
      * @param numFactory the backing number factory
-     * @param tickCount  the number of ticks at which a new bar should be created; must be positive
+     * @param tickCount  the number of ticks at which a new bar should be created;
+     *                   must be positive
      * @throws IllegalArgumentException if {@code tickCount} is not positive
      * @throws NullPointerException     if {@code numFactory} is {@code null}
      */
@@ -81,8 +83,9 @@ public class TickBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
      *
-     * @param numFactory the backing number factory
-     * @param tickCount    the number of ticks at which a new bar should be created; must be positive
+     * @param numFactory   the backing number factory
+     * @param tickCount    the number of ticks at which a new bar should be created;
+     *                     must be positive
      * @param realtimeBars {@code true} to build {@link BaseRealtimeBar} instances
      *
      * @throws IllegalArgumentException if {@code tickCount} is not positive

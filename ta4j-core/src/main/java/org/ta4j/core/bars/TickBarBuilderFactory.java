@@ -30,7 +30,8 @@ public class TickBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param tickCount the number of ticks at which a new bar should be created; must be positive
+     * @param tickCount the number of ticks at which a new bar should be created;
+     *                  must be positive
      * @throws IllegalArgumentException if {@code tickCount} is not positive
      */
     public TickBarBuilderFactory(final int tickCount) {
@@ -40,7 +41,8 @@ public class TickBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param tickCount    the number of ticks at which a new bar should be created; must be positive
+     * @param tickCount    the number of ticks at which a new bar should be created;
+     *                     must be positive
      * @param realtimeBars {@code true} to build {@link BaseRealtimeBar} instances
      *
      * @throws IllegalArgumentException if {@code tickCount} is not positive

@@ -32,7 +32,8 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set
@@ -45,7 +46,8 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set
@@ -63,7 +65,8 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set
@@ -80,7 +83,8 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set

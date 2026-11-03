@@ -64,7 +64,8 @@ public class VolumeBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar} with {@link DoubleNumFactory}
      *
-     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
      * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      */
     public VolumeBarBuilder(final int volumeThreshold) {
@@ -74,8 +75,9 @@ public class VolumeBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar}
      *
-     * @param numFactory the backing number factory
-     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
+     * @param numFactory      the backing number factory
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
      * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      * @throws NullPointerException     if {@code numFactory} is {@code null}
      */
@@ -86,8 +88,9 @@ public class VolumeBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
      *
-     * @param numFactory the backing number factory
-     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
+     * @param numFactory      the backing number factory
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
      * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
      *                        instances
      *
@@ -103,7 +106,8 @@ public class VolumeBarBuilder implements BarBuilder {
      * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
      *
      * @param numFactory      the backing number factory
-     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
      * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
      *                        instances
      * @param carryOverPolicy policy for handling side/liquidity remainder splits

@@ -67,7 +67,8 @@ public class AmountBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar} with {@link DoubleNumFactory}
      *
-     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@link #amount} is set by
      *                          {@link #volume} * {@link #closePrice}, otherwise
      *                          {@link #amount} must be explicitly set
@@ -80,8 +81,9 @@ public class AmountBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar}
      *
-     * @param numFactory the backing number factory
-     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
+     * @param numFactory        the backing number factory
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@link #amount} is set by
      *                          {@link #volume} * {@link #closePrice}, otherwise
      *                          {@link #amount} must be explicitly set
@@ -95,8 +97,9 @@ public class AmountBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
      *
-     * @param numFactory the backing number factory
-     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
+     * @param numFactory        the backing number factory
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@link #amount} is set by
      *                          {@link #volume} * {@link #closePrice}, otherwise
      *                          {@link #amount} must be explicitly set
@@ -116,7 +119,8 @@ public class AmountBarBuilder implements BarBuilder {
      * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
      *
      * @param numFactory        the backing number factory
-     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@link #amount} is set by
      *                          {@link #volume} * {@link #closePrice}, otherwise
      *                          {@link #amount} must be explicitly set
