@@ -64,6 +64,11 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
     private static final double PROXY_EPSILON = 1e-8d;
     private static final double MIN_HURST = 0.01d;
     private static final double MAX_HURST = 0.49d;
+    /**
+     * Each cached state holds one projected variance per horizon step, so the
+     * horizon bounds per-bar memory.
+     */
+    static final int MAX_HORIZON = 10_000;
 
     private final ReturnIndicator returnIndicator;
     private final int initializationBarCount;
@@ -334,7 +339,7 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
         /**
          * Sets the number of cumulative variance horizons emitted by each state.
          *
-         * @param value positive horizon count
+         * @param value positive horizon count, at most 10,000
          * @return this builder
          * @since 0.23.1
          */
@@ -370,8 +375,8 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
             if (volOfVolWindow < 2) {
                 throw new IllegalArgumentException("volOfVolWindow must be >= 2");
             }
-            if (horizon < 1) {
-                throw new IllegalArgumentException("horizon must be >= 1");
+            if (horizon < 1 || horizon > MAX_HORIZON) {
+                throw new IllegalArgumentException("horizon must be in [1, " + MAX_HORIZON + "]");
             }
         }
     }
