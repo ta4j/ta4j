@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.28.0 (2026-11-02)
+
 ### Added
 
 - **Immutable L2 order-book domain (`CF-605`, foundation)**: `OrderBook`, `OrderBookLevel`, `BaseOrderBook` and `BaseOrderBookBuilder` provide standalone displayed-depth observations with numeric price normalization, explicit synchronization/coverage metadata, Java serialization and atomic absolute updates. Partial sides require replacement, gaps require resynchronization, and unchanged builds preserve availability time. Decimal midpoints round only the final average, while primitive midpoints preserve subnormal prices. Measurements return NaN when calculations cannot complete in the caller's numeric context, including overflow and nonterminating exact decimal division. Historical indicators and strategy integration remain separate work; these snapshots do not change fill simulation.
