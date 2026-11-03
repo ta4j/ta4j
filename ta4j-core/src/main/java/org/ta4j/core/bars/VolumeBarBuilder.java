@@ -64,7 +64,8 @@ public class VolumeBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar} with {@link DoubleNumFactory}
      *
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      */
     public VolumeBarBuilder(final int volumeThreshold) {
         this(DoubleNumFactory.getInstance(), volumeThreshold, false, RemainderCarryOverPolicy.NONE);
@@ -73,8 +74,10 @@ public class VolumeBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar}
      *
-     * @param numFactory
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param numFactory the backing number factory
+     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
+     * @throws NullPointerException     if {@code numFactory} is {@code null}
      */
     public VolumeBarBuilder(final NumFactory numFactory, final int volumeThreshold) {
         this(numFactory, volumeThreshold, false, RemainderCarryOverPolicy.NONE);
@@ -83,11 +86,13 @@ public class VolumeBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
      *
-     * @param numFactory
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param numFactory the backing number factory
+     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
      * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
      *                        instances
      *
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
+     * @throws NullPointerException     if {@code numFactory} is {@code null}
      * @since 0.22.0
      */
     public VolumeBarBuilder(final NumFactory numFactory, final int volumeThreshold, final boolean realtimeBars) {
@@ -98,11 +103,13 @@ public class VolumeBarBuilder implements BarBuilder {
      * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
      *
      * @param numFactory      the backing number factory
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
      * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
      *                        instances
      * @param carryOverPolicy policy for handling side/liquidity remainder splits
      *
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
+     * @throws NullPointerException     if {@code numFactory} is {@code null}
      * @since 0.22.0
      */
     public VolumeBarBuilder(final NumFactory numFactory, final int volumeThreshold, final boolean realtimeBars,

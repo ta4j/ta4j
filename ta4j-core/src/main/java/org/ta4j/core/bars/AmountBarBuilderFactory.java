@@ -32,10 +32,11 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume) {
         this(amountThreshold, setAmountByVolume, false, RemainderCarryOverPolicy.NONE);
@@ -44,13 +45,14 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set
      * @param realtimeBars      {@code true} to build {@link BaseRealtimeBar}
      *                          instances
      *
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
      * @since 0.22.2
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume,
@@ -61,12 +63,13 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set
      * @param carryOverPolicy   policy for handling side/liquidity remainder splits
      *
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
      * @since 0.22.2
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume,
@@ -77,7 +80,7 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set
@@ -85,6 +88,7 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
      *                          instances
      * @param carryOverPolicy   policy for handling side/liquidity remainder splits
      *
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
      * @since 0.22.2
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume,

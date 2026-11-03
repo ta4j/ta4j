@@ -31,7 +31,8 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      */
     public VolumeBarBuilderFactory(final int volumeThreshold) {
         this(volumeThreshold, false, RemainderCarryOverPolicy.NONE);
@@ -40,10 +41,11 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
      * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
      *                        instances
      *
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      * @since 0.22.2
      */
     public VolumeBarBuilderFactory(final int volumeThreshold, final boolean realtimeBars) {
@@ -53,9 +55,10 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
      * @param carryOverPolicy policy for handling side/liquidity remainder splits
      *
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      * @since 0.22.0
      */
     public VolumeBarBuilderFactory(final int volumeThreshold, final RemainderCarryOverPolicy carryOverPolicy) {
@@ -65,11 +68,12 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param volumeThreshold the threshold at which a new bar should be created; must be positive
      * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
      *                        instances
      * @param carryOverPolicy policy for handling side/liquidity remainder splits
      *
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      * @since 0.22.2
      */
     public VolumeBarBuilderFactory(final int volumeThreshold, final boolean realtimeBars,

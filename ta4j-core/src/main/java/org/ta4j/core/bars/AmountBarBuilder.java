@@ -67,10 +67,11 @@ public class AmountBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar} with {@link DoubleNumFactory}
      *
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
      * @param setAmountByVolume if {@code true} the {@link #amount} is set by
      *                          {@link #volume} * {@link #closePrice}, otherwise
      *                          {@link #amount} must be explicitly set
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
      */
     public AmountBarBuilder(final int amountThreshold, final boolean setAmountByVolume) {
         this(DoubleNumFactory.getInstance(), amountThreshold, setAmountByVolume, false, RemainderCarryOverPolicy.NONE);
@@ -79,11 +80,13 @@ public class AmountBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar}
      *
-     * @param numFactory
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param numFactory the backing number factory
+     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
      * @param setAmountByVolume if {@code true} the {@link #amount} is set by
      *                          {@link #volume} * {@link #closePrice}, otherwise
      *                          {@link #amount} must be explicitly set
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
+     * @throws NullPointerException     if {@code numFactory} is {@code null}
      */
     public AmountBarBuilder(final NumFactory numFactory, final int amountThreshold, final boolean setAmountByVolume) {
         this(numFactory, amountThreshold, setAmountByVolume, false, RemainderCarryOverPolicy.NONE);
@@ -92,14 +95,16 @@ public class AmountBarBuilder implements BarBuilder {
     /**
      * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
      *
-     * @param numFactory
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param numFactory the backing number factory
+     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
      * @param setAmountByVolume if {@code true} the {@link #amount} is set by
      *                          {@link #volume} * {@link #closePrice}, otherwise
      *                          {@link #amount} must be explicitly set
      * @param realtimeBars      {@code true} to build {@link BaseRealtimeBar}
      *                          instances
      *
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
+     * @throws NullPointerException     if {@code numFactory} is {@code null}
      * @since 0.22.0
      */
     public AmountBarBuilder(final NumFactory numFactory, final int amountThreshold, final boolean setAmountByVolume,
@@ -111,7 +116,7 @@ public class AmountBarBuilder implements BarBuilder {
      * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
      *
      * @param numFactory        the backing number factory
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param amountThreshold   the threshold at which a new bar should be created; must be positive
      * @param setAmountByVolume if {@code true} the {@link #amount} is set by
      *                          {@link #volume} * {@link #closePrice}, otherwise
      *                          {@link #amount} must be explicitly set
@@ -119,6 +124,8 @@ public class AmountBarBuilder implements BarBuilder {
      *                          instances
      * @param carryOverPolicy   policy for handling side/liquidity remainder splits
      *
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
+     * @throws NullPointerException     if {@code numFactory} is {@code null}
      * @since 0.22.0
      */
     public AmountBarBuilder(final NumFactory numFactory, final int amountThreshold, final boolean setAmountByVolume,
