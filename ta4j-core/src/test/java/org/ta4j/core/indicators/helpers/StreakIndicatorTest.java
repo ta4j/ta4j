@@ -10,7 +10,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -29,6 +31,28 @@ public class StreakIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 11, 12, 11, 10, 9, 8, 9, 10, 10, 11, 12, 13)
                 .build();
+    }
+
+    @Test
+    public void startsRecursiveSourceBeforeStreakWarmUpEnds() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(2);
+        StreakIndicator streak = new StreakIndicator(new EMAIndicator(new ClosePriceIndicator(series), 3));
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index < 12; index++) {
+                series.barBuilder().closePrice(10).add();
+                Num value = streak.getValue(index);
+                if (index < 4) {
+                    assertThat(value.isNaN()).isTrue();
+                } else {
+                    assertNumEquals(0, value);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

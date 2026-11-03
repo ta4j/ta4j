@@ -11,6 +11,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -32,6 +35,40 @@ public class GatorOscillatorIndicatorTest extends AbstractIndicatorTest<Indicato
             final double high = i + ((i % 3 == 0) ? 2 : 1);
             final double low = i - ((i % 4 == 0) ? 2 : 1);
             series.barBuilder().openPrice(i).closePrice(i).highPrice(high).lowPrice(low).volume(20 + i).add();
+        }
+    }
+
+    @Test
+    public void primesOnlySelectedHistogramInputsBeforeWarmupOnShortWindow() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (boolean upper : new boolean[] { true, false }) {
+                BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+                BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+                bounded.setMaximumBarCount(2);
+                var actual = new GatorOscillatorIndicator(new EMAIndicator(new ClosePriceIndicator(bounded), 7),
+                        new EMAIndicator(new ClosePriceIndicator(bounded), 5),
+                        new EMAIndicator(new ClosePriceIndicator(bounded), 3), upper);
+                var reference = new GatorOscillatorIndicator(new EMAIndicator(new ClosePriceIndicator(unbounded), 7),
+                        new EMAIndicator(new ClosePriceIndicator(unbounded), 5),
+                        new EMAIndicator(new ClosePriceIndicator(unbounded), 3), upper);
+                for (int i = 0; i < 24; i++) {
+                    int close = 100 + i * (i % 2 == 0 ? 1 : -1);
+                    bounded.barBuilder().closePrice(close).add();
+                    unbounded.barBuilder().closePrice(close).add();
+                    Num expected = reference.getValue(i);
+                    Num value = actual.getValue(i);
+                    if (i < actual.getCountOfUnstableBars()) {
+                        assertThat(value.isNaN()).isTrue();
+                    } else {
+                        assertThat(expected.isNaN()).isFalse();
+                        assertThat(value).isEqualByComparingTo(expected);
+                    }
+                }
+            }
+        } finally {
+            capture.close();
         }
     }
 

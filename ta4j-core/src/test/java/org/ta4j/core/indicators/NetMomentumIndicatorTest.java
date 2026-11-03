@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
@@ -664,28 +665,36 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Test
     public void testFarFirstAccessMatchesSequentialAccessOnPrunedSeries() {
-        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        movingSeries.setMaximumBarCount(5);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            movingSeries.setMaximumBarCount(5);
 
-        for (int i = 0; i < 20; i++) {
-            movingSeries.barBuilder().closePrice(55 + i).add();
+            for (int i = 0; i < 20; i++) {
+                movingSeries.barBuilder().closePrice(55 + i).add();
+            }
+
+            NetMomentumIndicator sequential = new NetMomentumIndicator(new ClosePriceIndicator(movingSeries), 7, 50,
+                    0.85);
+            NetMomentumIndicator farFirst = new NetMomentumIndicator(new ClosePriceIndicator(movingSeries), 7, 50,
+                    0.85);
+
+            int beginIndex = movingSeries.getBeginIndex();
+            int endIndex = movingSeries.getEndIndex();
+            assertTrue(beginIndex <= endIndex, "Expected retained bars after populating the moving series");
+            Num expected = sequential.getValue(beginIndex);
+            for (int i = beginIndex + 1; i <= endIndex; i++) {
+                expected = sequential.getValue(i);
+            }
+
+            Num actual = farFirst.getValue(endIndex);
+            Num tolerance = numOf(1e-9);
+            assertTrue(expected.minus(actual).abs().isLessThan(tolerance),
+                    "Pruned-series large first access mismatch: expected=" + expected + " actual=" + actual);
+        } finally {
+            capture.close();
         }
-
-        NetMomentumIndicator sequential = new NetMomentumIndicator(new ClosePriceIndicator(movingSeries), 7, 50, 0.85);
-        NetMomentumIndicator farFirst = new NetMomentumIndicator(new ClosePriceIndicator(movingSeries), 7, 50, 0.85);
-
-        int beginIndex = movingSeries.getBeginIndex();
-        int endIndex = movingSeries.getEndIndex();
-        assertTrue(beginIndex <= endIndex, "Expected retained bars after populating the moving series");
-        Num expected = sequential.getValue(beginIndex);
-        for (int i = beginIndex + 1; i <= endIndex; i++) {
-            expected = sequential.getValue(i);
-        }
-
-        Num actual = farFirst.getValue(endIndex);
-        Num tolerance = numOf(1e-9);
-        assertTrue(expected.minus(actual).abs().isLessThan(tolerance),
-                "Pruned-series large first access mismatch: expected=" + expected + " actual=" + actual);
     }
 
     @Test
@@ -725,35 +734,41 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
     @Test
     public void recomputedBandAnchorsExpirationAtRetainedHead() {
-        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        movingSeries.setMaximumBarCount(5);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            movingSeries.setMaximumBarCount(5);
 
-        for (int i = 0; i < 20; i++) {
-            movingSeries.barBuilder().closePrice(55 + i).add();
-        }
-
-        // A constant oscillator keeps every contribution exactly -12
-        // (Kalman-smoothed delta 10, convex-weighted by pivot 50), so the
-        // expected partial-window sum at retained position k is -12 * (k + 1).
-        CachedIndicator<Num> constantOscillator = new CachedIndicator<>(movingSeries) {
-            @Override
-            public int getCountOfUnstableBars() {
-                return 0;
+            for (int i = 0; i < 20; i++) {
+                movingSeries.barBuilder().closePrice(55 + i).add();
             }
 
-            @Override
-            protected Num calculate(int index) {
-                return numOf(60);
-            }
-        };
-        NetMomentumIndicator indicator = new NetMomentumIndicator(constantOscillator, 7, 50, 1.0);
+            // A constant oscillator keeps every contribution exactly -12
+            // (Kalman-smoothed delta 10, convex-weighted by pivot 50), so the
+            // expected partial-window sum at retained position k is -12 * (k + 1).
+            CachedIndicator<Num> constantOscillator = new CachedIndicator<>(movingSeries) {
+                @Override
+                public int getCountOfUnstableBars() {
+                    return 0;
+                }
 
-        int beginIndex = movingSeries.getBeginIndex();
-        Num contribution = numOf(-12);
-        for (int i = beginIndex; i <= movingSeries.getEndIndex(); i++) {
-            int windowPosition = i - beginIndex;
-            Num expected = contribution.multipliedBy(numOf(windowPosition + 1));
-            assertClose(indicator.getValue(i), expected, i);
+                @Override
+                protected Num calculate(int index) {
+                    return numOf(60);
+                }
+            };
+            NetMomentumIndicator indicator = new NetMomentumIndicator(constantOscillator, 7, 50, 1.0);
+
+            int beginIndex = movingSeries.getBeginIndex();
+            Num contribution = numOf(-12);
+            for (int i = beginIndex; i <= movingSeries.getEndIndex(); i++) {
+                int windowPosition = i - beginIndex;
+                Num expected = contribution.multipliedBy(numOf(windowPosition + 1));
+                assertClose(indicator.getValue(i), expected, i);
+            }
+        } finally {
+            capture.close();
         }
     }
 

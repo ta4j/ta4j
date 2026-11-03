@@ -5,6 +5,8 @@ package org.ta4j.core.indicators.volume;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -16,6 +18,22 @@ public class ChaikinOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
 
     public ChaikinOscillatorIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void dependenciesExposeAveragesWithOneSharedCumulativeSource() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 6; i++) {
+            series.barBuilder().highPrice(12).lowPrice(8).closePrice(9 + i % 3).volume(10 + i).add();
+        }
+        ChaikinOscillatorIndicator chaikin = new ChaikinOscillatorIndicator(series, 2, 3);
+        assertThat(chaikin.getDependencies()).hasSize(2);
+        EMAIndicator shortEma = (EMAIndicator) chaikin.getDependencies().get(0);
+        EMAIndicator longEma = (EMAIndicator) chaikin.getDependencies().get(1);
+        assertThat(shortEma.getDependencies()).hasSize(1);
+        assertThat(longEma.getDependencies()).containsExactly(shortEma.getDependencies().get(0));
+        assertThat(shortEma.getDependencies().get(0)).isInstanceOf(AccumulationDistributionIndicator.class);
+        assertThat(chaikin.getValue(5)).isEqualByComparingTo(shortEma.getValue(5).minus(longEma.getValue(5)));
     }
 
     @Test

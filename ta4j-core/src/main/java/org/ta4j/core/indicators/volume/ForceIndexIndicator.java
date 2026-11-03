@@ -129,16 +129,26 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(final int index) {
+        final Num forceIndexValue = smoothedForceIndexIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
 
-        final Num forceIndexValue = smoothedForceIndexIndicator.getValue(index);
         if (Num.isNaNOrNull(forceIndexValue)) {
             return NaN;
         }
 
         return forceIndexValue;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.27.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     /**

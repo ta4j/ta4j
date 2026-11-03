@@ -45,6 +45,21 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 - For EMA-like smoothing, prefer extending `AbstractEMAIndicator` to preserve NaN reset behavior and unstable-period handling.
 - Prefer exposing helper methods (for example returning the source index of a detected event) when they improve testing and downstream reuse.
 
+## Retained bar mutation contract
+
+- Retained bars must publish their mutations to the retaining series, or must
+  not be mutated after a newer bar is appended.
+  `CachedIndicator` fingerprints non-publishing custom bars only while terminal;
+  the former-terminal promotion recheck does not provide ongoing historical
+  mutation detection.
+- Preserve `BaseBar` and `BaseRealtimeBar` notifications for supported mutations
+  at any retained index in `BaseBarSeries` and `ConcurrentBarSeries`. Do not
+  impose historical immutability on these publishing bars or weaken an
+  indicator's explicitly stronger mutation guarantees.
+- Test supported publication and terminal-promotion behavior in existing test
+  classes. Do not assert stale results from unsupported, unannounced historical
+  mutations as the expected indicator contract.
+
 ## Unstable bar contract
 
 - `getCountOfUnstableBars()` must represent the first index with stable output.
@@ -92,22 +107,22 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   `CachedIndicator` keeps a recursive indicator's former terminal value when a
   bar is appended, and applies the same rule to dependency-series head
   advances.
-- Conditionally recursive indicators (recursion only along special
-  stretches, e.g. flat windows or equal-basis Klinger trend stretches)
+- A conditional recursion is not itself a reason to reset. Klinger trend
+  direction carries the previous direction along equal-basis stretches; its
+  trend, cumulative measurement, volume force, both ordinary EMAs and outer
+  oscillator continue together. Prime the dependency chain during warm-up
+  before its primitive inputs can leave short windows.
+- Indicators whose contract deliberately reanchors to the retained window
   override `requiresFullCacheInvalidationAfterHeadAdvance()` to return
-  `true`: every value is recomputable from the retained window, so the
-  whole cache is discarded on head advance instead of preserving stale
-  pre-advance results. `StochasticIndicator` follows this policy and
-  extends `RecursiveCachedIndicator` so the inherited prefill rebuilds
-  long flat stretches iteratively after the eviction. The private stochastic
-  stages in `SchaffTrendCycleIndicator` instead continue their flat-range carry
-  with the MACD and smoothing chain; standalone stochastic semantics are unchanged.
-- Head-advance invalidation must cover every downstream component of a
-  rebaselining chain, not only the recursive core. The Klinger volume
-  oscillator applies `Integer.MAX_VALUE` eviction to the trend direction,
-  cumulative measurement, volume force, both EMAs, and the outer
-  oscillator, because each downstream cache mixes fresh and stale inputs
-  once the cumulative measurement rebaselines.
+  `true`. `StochasticIndicator` follows this policy and extends
+  `RecursiveCachedIndicator` so inherited prefill rebuilds long flat
+  stretches iteratively after eviction. The private stochastic stages in
+  `SchaffTrendCycleIndicator` instead continue their flat-range carry with
+  the MACD and smoothing chain; standalone stochastic semantics are unchanged.
+- An explicit reanchoring source invalidates every downstream component,
+  including otherwise continuing Klinger chains. Keep all actual inputs
+  registered so a reset on either high or low propagates through daily
+  measurement, trend, cumulative measurement and both EMAs.
 - `RecursiveCachedIndicator` opts in by default because its subclasses
   compute each value from its predecessors; recursive subclasses over a
   fixed trailing window, such as `VolumeIndicator` and

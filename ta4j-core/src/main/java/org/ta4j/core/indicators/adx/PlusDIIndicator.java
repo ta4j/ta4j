@@ -36,22 +36,31 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
      *                 {@link #avgPlusDMIndicator}
      */
     public PlusDIIndicator(BarSeries series, int barCount) {
-        super(series);
+        this(barCount, new PlusDMIndicator(series), new ATRIndicator(series, barCount));
+    }
+
+    private PlusDIIndicator(int barCount, PlusDMIndicator plusDMIndicator, ATRIndicator atrIndicator) {
+        this(barCount, plusDMIndicator, atrIndicator, new MMAIndicator(plusDMIndicator, barCount));
+    }
+
+    private PlusDIIndicator(int barCount, PlusDMIndicator plusDMIndicator, ATRIndicator atrIndicator,
+            MMAIndicator avgPlusDMIndicator) {
+        super(atrIndicator, avgPlusDMIndicator);
         this.barCount = barCount;
-        this.atrIndicator = new ATRIndicator(series, barCount);
-        this.plusDMIndicator = new PlusDMIndicator(series);
-        this.avgPlusDMIndicator = new MMAIndicator(plusDMIndicator, barCount);
+        this.atrIndicator = atrIndicator;
+        this.plusDMIndicator = plusDMIndicator;
+        this.avgPlusDMIndicator = avgPlusDMIndicator;
     }
 
     @Override
     protected Num calculate(int index) {
-        final var atrIndicatorValue = atrIndicator.getValue(index);
+        Num atrIndicatorValue = atrIndicator.getValue(index);
+        Num averageDirectionalMovement = avgPlusDMIndicator.getValue(index);
         if (atrIndicatorValue.equals(getBarSeries().numFactory().zero())) {
             return getBarSeries().numFactory().zero();
         }
 
-        return avgPlusDMIndicator.getValue(index)
-                .dividedBy(atrIndicatorValue)
+        return averageDirectionalMovement.dividedBy(atrIndicatorValue)
                 .multipliedBy(getBarSeries().numFactory().hundred());
     }
 
@@ -59,6 +68,15 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
     public int getCountOfUnstableBars() {
         int dmUnstableBars = plusDMIndicator.getCountOfUnstableBars() + avgPlusDMIndicator.getCountOfUnstableBars();
         return Math.max(atrIndicator.getCountOfUnstableBars(), dmUnstableBars);
+    }
+
+    /**
+     * @return {@code true}, because the Wilder averages retain full-history state
+     * @since 0.27.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     @Override

@@ -118,10 +118,11 @@ public class VWMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        Num value = volumeWeightedIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
-        return volumeWeightedIndicator.getValue(index);
+        return value;
     }
 
     @Override

@@ -15,6 +15,8 @@ import java.lang.reflect.Field;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -26,6 +28,29 @@ public class ConnorsRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     public ConnorsRSIIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void primesBothRsiChainsBeforeTheCombinedWarmUpReturn() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(4);
+        ConnorsRSIIndicator indicator = new ConnorsRSIIndicator(new ClosePriceIndicator(moving), 14, 2, 2);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index <= 20; index++) {
+                moving.barBuilder().closePrice(100 + index).add();
+                Num actual = indicator.getValue(index);
+                if (index < 14) {
+                    assertThat(actual.isNaN()).isTrue();
+                } else {
+                    // Both rising-series RSIs are 100; tied one-bar changes rank at zero.
+                    TestUtils.assertNumEquals(200d / 3, actual);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

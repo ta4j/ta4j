@@ -27,10 +27,14 @@ public class DXIndicator extends CachedIndicator<Num> {
      *                 {@link #minusDIIndicator}
      */
     public DXIndicator(BarSeries series, int barCount) {
-        super(series);
+        this(barCount, new PlusDIIndicator(series, barCount), new MinusDIIndicator(series, barCount));
+    }
+
+    private DXIndicator(int barCount, PlusDIIndicator plusDIIndicator, MinusDIIndicator minusDIIndicator) {
+        super(plusDIIndicator, minusDIIndicator);
         this.barCount = barCount;
-        this.plusDIIndicator = new PlusDIIndicator(series, barCount);
-        this.minusDIIndicator = new MinusDIIndicator(series, barCount);
+        this.plusDIIndicator = plusDIIndicator;
+        this.minusDIIndicator = minusDIIndicator;
     }
 
     @Override
@@ -47,6 +51,15 @@ public class DXIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(plusDIIndicator.getCountOfUnstableBars(), minusDIIndicator.getCountOfUnstableBars());
+    }
+
+    /**
+     * @return {@code true}, because both directional indexes retain Wilder state
+     * @since 0.27.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     @Override

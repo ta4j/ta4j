@@ -11,7 +11,9 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.CsvTestUtils;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -33,14 +36,77 @@ public class VWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     @Test
-    public void registersVolumeWeightedDelegateAsCacheSource() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
-        Indicator<Num> priceIndicator = new ClosePriceIndicator(series);
-        Indicator<Num> volumeIndicator = new VolumeIndicator(series);
-        VWMAIndicator indicator = new VWMAIndicator(priceIndicator, volumeIndicator, 2);
+    public void primesConfiguredRecursiveAveragesBeforeWarmupOnShortMovingWindow() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            bounded.setMaximumBarCount(2);
+            var actual = new VWMAIndicator(new ClosePriceIndicator(bounded), new VolumeIndicator(bounded), 5,
+                    EMAIndicator::new);
+            var reference = new VWMAIndicator(new ClosePriceIndicator(unbounded), new VolumeIndicator(unbounded), 5,
+                    EMAIndicator::new);
+            for (int i = 0; i < 24; i++) {
+                int close = 100 + i * (i % 2 == 0 ? 1 : -1);
+                bounded.barBuilder().closePrice(close).volume(10 + i).add();
+                unbounded.barBuilder().closePrice(close).volume(10 + i).add();
+                Num expected = reference.getValue(i);
+                Num value = actual.getValue(i);
+                if (i < actual.getCountOfUnstableBars()) {
+                    assertNumEquals(Double.NaN, value);
+                } else {
+                    assertEquals(false, expected.isNaN());
+                    assertNumEquals(expected, value);
+                }
+            }
+        } finally {
+            capture.close();
+        }
+    }
 
-        assertEquals(1, indicator.getDependencies().size());
-        assertEquals(2, indicator.getDependencies().get(0).getDependencies().size());
+    @Test
+    public void advancesEachInnerAverageOncePerAppendRegardlessOfRetainedCapacity() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int capacity : new int[] { 1, 2, 4, 16, 64 }) {
+                BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+                moving.setMaximumBarCount(capacity);
+                List<AtomicInteger> calculations = new ArrayList<>();
+                VWMAIndicator indicator = new VWMAIndicator(new ClosePriceIndicator(moving),
+                        new VolumeIndicator(moving), 14, (source, period) -> {
+                            AtomicInteger count = new AtomicInteger();
+                            calculations.add(count);
+                            return new EMAIndicator(source, period) {
+                                @Override
+                                protected Num calculate(int index) {
+                                    count.incrementAndGet();
+                                    return super.calculate(index);
+                                }
+                            };
+                        });
+                for (int index = 0; index < 200; index++) {
+                    int numeratorBefore = calculations.get(0).get();
+                    int denominatorBefore = calculations.get(1).get();
+                    moving.barBuilder().closePrice(100 + index).volume(1).add();
+                    Num actual = indicator.getValue(index);
+                    assertEquals(numeratorBefore + 1, calculations.get(0).get(),
+                            "numerator capacity=" + capacity + ", index=" + index);
+                    assertEquals(denominatorBefore + 1, calculations.get(1).get(),
+                            "denominator capacity=" + capacity + ", index=" + index);
+                    if (index < 14) {
+                        assertNumEquals(Double.NaN, actual);
+                    } else {
+                        // Linear ramp: EMA lag tends to (1-alpha)/alpha = 6.5.
+                        double expected = 100 + index - 6.5 + 6.5 * Math.pow(13d / 15, index - 14);
+                        assertNumEquals(expected, actual);
+                    }
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

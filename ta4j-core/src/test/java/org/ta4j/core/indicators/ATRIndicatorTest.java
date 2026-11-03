@@ -16,6 +16,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
@@ -32,6 +33,40 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
     public ATRIndicatorTest(NumFactory numFactory) {
         super((data, params) -> new ATRIndicator(data, (int) params[0]), numFactory);
         xls = new XLSIndicatorTest(this.getClass(), "ATR.xls", 7, numFactory);
+    }
+
+    @Test
+    public void periodFourteenContinuesOnAWindowShorterThanWarmUp() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(4);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        ATRIndicator indicator = new ATRIndicator(moving, 14);
+        ATRIndicator reference = new ATRIndicator(unbounded, 14);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index <= 20; index++) {
+                int close = index < 14 ? 100 + index : index == 14 ? 109 : index == 15 ? 111 : 94 + index;
+                moving.barBuilder().closePrice(close).highPrice(close + 1).lowPrice(close - 1).add();
+                unbounded.barBuilder().closePrice(close).highPrice(close + 1).lowPrice(close - 1).add();
+                Num actual = indicator.getValue(index);
+                Num expected = reference.getValue(index);
+                if (index < 14) {
+                    assertTrue(actual.isNaN());
+                } else {
+                    assertNumEquals(expected, actual);
+                }
+                if (index == 14) {
+                    assertNumEquals(5, actual);
+                } else if (index == 15) {
+                    assertNumEquals(34d / 7, actual);
+                } else if (index == 16) {
+                    assertNumEquals(228d / 49, actual);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

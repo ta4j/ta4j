@@ -9,6 +9,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -72,6 +73,40 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             } else {
                 assertThat(actual).isEqualByComparingTo(expected);
             }
+        }
+    }
+
+    @Test
+    public void periodFourteenWarmsUpBeforeItsFirstSeedLeavesAShortWindow() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(4);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        RSIIndicator indicator = new RSIIndicator(new ClosePriceIndicator(moving), 14);
+        RSIIndicator reference = new RSIIndicator(new ClosePriceIndicator(unbounded), 14);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index <= 20; index++) {
+                int close = index < 14 ? 100 + index : index == 14 ? 109 : index == 15 ? 111 : 94 + index;
+                moving.barBuilder().closePrice(close).add();
+                unbounded.barBuilder().closePrice(close).add();
+                Num actual = indicator.getValue(index);
+                Num expected = reference.getValue(index);
+                if (index < 14) {
+                    assertThat(actual.isNaN()).isTrue();
+                } else {
+                    assertThat(actual).isEqualByComparingTo(expected);
+                }
+                if (index == 14) {
+                    TestUtils.assertNumEquals(0, actual);
+                } else if (index == 15) {
+                    TestUtils.assertNumEquals(100d / 27, actual);
+                } else if (index == 16) {
+                    TestUtils.assertNumEquals(650d / 179, actual);
+                }
+            }
+        } finally {
+            capture.close();
         }
     }
 

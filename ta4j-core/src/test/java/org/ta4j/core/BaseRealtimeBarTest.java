@@ -9,7 +9,14 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Proxy;
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
@@ -806,6 +813,103 @@ public class BaseRealtimeBarTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(numOf(200), bar.getAmount());
         assertEquals(numOf(100), bar.getClosePrice());
         assertEquals(1, bar.getTrades());
+    }
+
+    @Test
+    public void testSerializedValidBaseRealtimeBarRoundTrips() throws Exception {
+        final Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        final Duration period = Duration.ofMinutes(1);
+        final BaseRealtimeBar original = new BaseRealtimeBar(period, start, start.plus(period), numOf(100), numOf(110),
+                numOf(90), numOf(105), numOf(1000), numOf(105000), 100, numOf(600), numOf(400), numOf(63000),
+                numOf(42000), 60, 40, numOf(700), numOf(300), numOf(73500), numOf(31500), 70, 30, true, true,
+                numFactory);
+
+        final BaseRealtimeBar restored = (BaseRealtimeBar) deserialize(serialize(original));
+
+        assertEquals(original, restored);
+        assertEquals(original.getBuyVolume(), restored.getBuyVolume());
+        assertEquals(original.getSellVolume(), restored.getSellVolume());
+        assertEquals(original.getMakerVolume(), restored.getMakerVolume());
+        assertEquals(original.getTakerVolume(), restored.getTakerVolume());
+    }
+
+    @Test
+    public void testSerializedBaseRealtimeBarWithNullNumFactoryIsRejected() throws Exception {
+        final Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        final Duration period = Duration.ofMinutes(1);
+        final BaseRealtimeBar bar = new BaseRealtimeBar(period, start, start.plus(period), numOf(100), numOf(110),
+                numOf(90), numOf(105), numOf(1000), numOf(105000), 100, numOf(600), numOf(400), numOf(63000),
+                numOf(42000), 60, 40, numOf(700), numOf(300), numOf(73500), numOf(31500), 70, 30, true, true,
+                numFactory);
+
+        final byte[] serialized;
+        try (ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                ObjectOutputStream out = new ObjectOutputStream(bytes) {
+                    {
+                        enableReplaceObject(true);
+                    }
+
+                    @Override
+                    protected Object replaceObject(Object value) {
+                        return value == numFactory ? null : value;
+                    }
+                }) {
+            out.writeObject(bar);
+            out.flush();
+            serialized = bytes.toByteArray();
+        }
+
+        assertThrows(InvalidObjectException.class, () -> deserialize(serialized));
+    }
+
+    @Test
+    public void testSerializedBaseRealtimeBarWithNegativeBuyTradesIsRejected() throws Exception {
+        final Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        final Duration period = Duration.ofMinutes(1);
+        final long testBuyTrades = 9876543210L;
+        final BaseRealtimeBar bar = new BaseRealtimeBar(period, start, start.plus(period), numOf(100), numOf(110),
+                numOf(90), numOf(105), numOf(1000), numOf(105000), 100, numOf(600), numOf(400), numOf(63000),
+                numOf(42000), testBuyTrades, 40, numOf(700), numOf(300), numOf(73500), numOf(31500), 70, 30, true, true,
+                numFactory);
+
+        final byte[] serialized = serialize(bar);
+        final int buyTradesOffset = indexOfLong(serialized, testBuyTrades);
+        assertTrue(buyTradesOffset >= 0, "serialized stream must contain buyTrades");
+        writeLong(serialized, buyTradesOffset, -1L);
+
+        assertThrows(InvalidObjectException.class, () -> deserialize(serialized));
+    }
+
+    private static byte[] serialize(Object value) throws IOException {
+        try (ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                ObjectOutputStream out = new ObjectOutputStream(bytes)) {
+            out.writeObject(value);
+            out.flush();
+            return bytes.toByteArray();
+        }
+    }
+
+    private static Object deserialize(byte[] bytes) throws IOException, ClassNotFoundException {
+        try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
+            return in.readObject();
+        }
+    }
+
+    private static int indexOfLong(byte[] bytes, long value) {
+        final byte[] needle = ByteBuffer.allocate(Long.BYTES).putLong(value).array();
+        outer: for (int i = 0; i <= bytes.length - needle.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (bytes[i + j] != needle[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
+    }
+
+    private static void writeLong(byte[] bytes, int offset, long value) {
+        System.arraycopy(ByteBuffer.allocate(Long.BYTES).putLong(value).array(), 0, bytes, offset, Long.BYTES);
     }
 
     private static Num throwingPlusNum(final Num delegate, final RuntimeException failure) {

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.averages.SMMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
@@ -30,6 +31,37 @@ public class AlligatorIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 1; i <= 60; i++) {
             series.barBuilder().openPrice(i).closePrice(i).highPrice(i + 1).lowPrice(i - 1).volume(10 + i).add();
+        }
+    }
+
+    @Test
+    public void primesDisplacedSmoothingBeforeWarmupWithoutReadingEvictedInputs() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            bounded.setMaximumBarCount(4);
+            var actual = new AlligatorIndicator(new ClosePriceIndicator(bounded), 7, 1);
+            var reference = new AlligatorIndicator(new ClosePriceIndicator(unbounded), 7, 1);
+            for (int i = 0; i < 24; i++) {
+                int close = 100 + i * (i % 2 == 0 ? 1 : -1);
+                bounded.barBuilder().closePrice(close).add();
+                unbounded.barBuilder().closePrice(close).add();
+                Num expected = reference.getValue(i);
+                Num value = actual.getValue(i);
+                if (i < actual.getCountOfUnstableBars()) {
+                    assertThat(value.isNaN()).isTrue();
+                } else {
+                    assertThat(expected.isNaN()).isFalse();
+                    assertThat(value).isEqualByComparingTo(expected);
+                }
+            }
+            bounded.setMaximumBarCount(1);
+            bounded.barBuilder().closePrice(120).add();
+            assertThat(actual.getValue(bounded.getEndIndex()).isNaN()).isTrue();
+        } finally {
+            capture.close();
         }
     }
 

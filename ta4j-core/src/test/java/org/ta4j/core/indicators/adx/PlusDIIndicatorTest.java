@@ -15,6 +15,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.XLSIndicatorTest;
 import org.ta4j.core.num.Num;
@@ -27,6 +29,28 @@ public class PlusDIIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
     public PlusDIIndicatorTest(NumFactory numFactory) {
         super((data, params) -> new PlusDIIndicator(data, (int) params[0]), numFactory);
         xls = new XLSIndicatorTest(this.getClass(), "ADX.xls", 12, numFactory);
+    }
+
+    @Test
+    public void zeroAtrDoesNotPauseDirectionalMovementWarmUp() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(2);
+        PlusDIIndicator plus = new PlusDIIndicator(moving, 3);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index < 5; index++) {
+                moving.barBuilder().openPrice(10).highPrice(10).lowPrice(10).closePrice(10).add();
+                Num value = plus.getValue(index);
+                if (index >= 3) {
+                    TestUtils.assertNumEquals(0, value);
+                }
+            }
+            moving.barBuilder().openPrice(10).highPrice(11).lowPrice(10).closePrice(11).add();
+            TestUtils.assertNumEquals(100, plus.getValue(5));
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

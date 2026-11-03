@@ -9,6 +9,7 @@ import static org.ta4j.core.TestUtils.*;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -396,52 +397,72 @@ public class WildersMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void initializesFromRetainedHead() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
-        series.setMaximumBarCount(3);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+            series.setMaximumBarCount(3);
 
-        WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
+            WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
 
-        assertNumEquals(4, indicator.getValue(3));
-        assertNumEquals(5, indicator.getValue(5));
+            assertNumEquals(4, indicator.getValue(3));
+            assertNumEquals(5, indicator.getValue(5));
+        } finally {
+            capture.close();
+        }
     }
 
     @Test
     public void keepsRetainedChainWhenSeriesHeadAdvances() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
-        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
-        WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
-        indicator.getValue(5);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                    .withData(1, 2, 3, 4, 5, 6)
+                    .build();
+            WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
+            indicator.getValue(5);
 
-        series.setMaximumBarCount(3);
+            series.setMaximumBarCount(3);
 
-        // Retained values are full-history values (#1666) and are kept.
-        WildersMAIndicator reference = new WildersMAIndicator(new ClosePriceIndicator(unbounded), 3);
-        for (int i = 3; i <= 5; i++) {
-            assertNumEquals(reference.getValue(i), indicator.getValue(i));
+            // Retained values are full-history values (#1666) and are kept.
+            WildersMAIndicator reference = new WildersMAIndicator(new ClosePriceIndicator(unbounded), 3);
+            for (int i = 3; i <= 5; i++) {
+                assertNumEquals(reference.getValue(i), indicator.getValue(i));
+            }
+            // A removed index maps to the first available bar's retained value.
+            assertNumEquals(indicator.getValue(3), indicator.getValue(2));
+
+            // Without cached predecessors the chain seeds at the retained [4, 5, 6].
+            WildersMAIndicator fresh = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
+            assertNumEquals(4, fresh.getValue(3));
+            assertNumEquals(5, fresh.getValue(5));
+        } finally {
+            capture.close();
         }
-        // A removed index maps to the first available bar's retained value.
-        assertNumEquals(indicator.getValue(3), indicator.getValue(2));
-
-        // Without cached predecessors the chain seeds at the retained [4, 5, 6].
-        WildersMAIndicator fresh = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
-        assertNumEquals(4, fresh.getValue(3));
-        assertNumEquals(5, fresh.getValue(5));
     }
 
     @Test
     public void movingSeriesJustLongerThanBarCountContinuesRecursion() {
-        // Initialization is counted from where the recursion was seeded, so with a
-        // window of barCount + 1 every appended bar continues the recursion instead
-        // of re-entering the retained-head initialization.
-        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        moving.setMaximumBarCount(4);
-        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(moving), 3);
-        WildersMAIndicator reference = new WildersMAIndicator(new ClosePriceIndicator(unbounded), 3);
-        for (int i = 0; i < 12; i++) {
-            moving.barBuilder().closePrice(5 + 2 * (i % 4)).add();
-            unbounded.barBuilder().closePrice(5 + 2 * (i % 4)).add();
-            assertNumEquals(reference.getValue(i), indicator.getValue(i));
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            // Initialization is counted from where the recursion was seeded, so with a
+            // window of barCount + 1 every appended bar continues the recursion instead
+            // of re-entering the retained-head initialization.
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(4);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(moving), 3);
+            WildersMAIndicator reference = new WildersMAIndicator(new ClosePriceIndicator(unbounded), 3);
+            for (int i = 0; i < 12; i++) {
+                moving.barBuilder().closePrice(5 + 2 * (i % 4)).add();
+                unbounded.barBuilder().closePrice(5 + 2 * (i % 4)).add();
+                assertNumEquals(reference.getValue(i), indicator.getValue(i));
+            }
+        } finally {
+            capture.close();
         }
     }
 
@@ -466,8 +487,14 @@ public class WildersMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void readRecomputesWhenHeadAdvancesMidRead() {
-        HeadAdvancingSource.assertReadRecomputesAfterMidReadHeadAdvance(numFactory,
-                source -> new WildersMAIndicator(source, 3));
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            HeadAdvancingSource.assertReadRecomputesAfterMidReadHeadAdvance(numFactory,
+                    source -> new WildersMAIndicator(source, 3));
+        } finally {
+            capture.close();
+        }
     }
 
 }

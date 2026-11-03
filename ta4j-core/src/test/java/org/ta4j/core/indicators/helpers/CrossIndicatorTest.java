@@ -12,7 +12,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
@@ -22,6 +24,24 @@ public class CrossIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>
 
     public CrossIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void startsRecursiveInputsBeforeFirstPossibleCross() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(2);
+        CrossIndicator cross = new CrossIndicator(new EMAIndicator(new ClosePriceIndicator(series), 3),
+                new MockIndicator(series, 0, List.of(numOf(60), numOf(60), numOf(60), numOf(60), numOf(60))));
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index < 5; index++) {
+                series.barBuilder().closePrice(index < 4 ? 100 : 10).add();
+                assertEquals(index == 4, cross.getValue(index));
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test
