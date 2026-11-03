@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Fixed
+
+- **Safer saved concurrent bar series**: Java deserialization of `ConcurrentBarSeries` rejects streams that omit its class data with `InvalidObjectException` instead of restoring a series without initialized locks.
 
 ## 0.28.0 (2026-11-02)
 
