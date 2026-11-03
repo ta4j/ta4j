@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,6 +43,13 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.indicators.macd.MACDVIndicator;
+import org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator;
+import org.ta4j.core.indicators.volume.ChaikinOscillatorIndicator;
+import org.ta4j.core.indicators.pivotpoints.FibonacciReversalIndicator;
+import org.ta4j.core.indicators.pivotpoints.DeMarkReversalIndicator;
+import org.ta4j.core.indicators.pivotpoints.DeMarkPivotPointIndicator;
+import org.ta4j.core.indicators.pivotpoints.DeMarkReversalIndicator.DeMarkPivotLevel;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
@@ -2481,6 +2489,88 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         for (int index = 0; index < 4; index++) {
             series.barBuilder().closePrice(10 + index).add();
             assertTrue(dependent.getValue(index).isNaN(), "a reset must restart the one-bar warm-up");
+        }
+    }
+
+    @Test
+    public void registeredCompositeHelpersPreserveReadEveryBarContinuation() {
+        List<Function<BarSeries, Indicator<Num>>> factories = List.of(
+                input -> new MACDIndicator(new ClosePriceIndicator(input), 2, 3),
+                input -> new PPOIndicator(new ClosePriceIndicator(input), 2, 3),
+                input -> new MassIndexIndicator(input, 2, 3), input -> new RWIHighIndicator(input, 3),
+                input -> new RWILowIndicator(input, 3), input -> new MACDVIndicator(input, 2, 3, 1),
+                input -> new VolatilityNormalizedMACDIndicator(input, 2, 3, 2),
+                input -> new ChaikinOscillatorIndicator(input, 2, 3));
+        for (Function<BarSeries, Indicator<Num>> factory : factories) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(8);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            Indicator<Num> actual = factory.apply(moving);
+            Indicator<Num> expected = factory.apply(unbounded);
+            for (int i = 0; i < 24; i++) {
+                int close = 20 + i * 7 % 11;
+                for (BarSeries input : List.of(moving, unbounded)) {
+                    input.barBuilder()
+                            .openPrice(close)
+                            .highPrice(close + 2 + i % 3)
+                            .lowPrice(close - 2)
+                            .closePrice(close)
+                            .volume(10 + i)
+                            .add();
+                }
+                assertNumEquals(expected.getValue(i), actual.getValue(i));
+                if (i >= 12) {
+                    assertThat(actual.getValue(i).isNaN()).as(actual.getClass().getSimpleName()).isFalse();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void registeredCompositeHelpersPropagateExplicitSourceResetsToRecursiveConsumers() {
+        List<Function<BarSeries, Indicator<Num>>> sources = List.of(
+                input -> new StochasticIndicator(new ClosePriceIndicator(input), 3),
+                input -> new StandardReversalIndicator(new PivotPointIndicator(input, TimeLevel.BARBASED),
+                        PivotLevel.RESISTANCE_1),
+                input -> new FibonacciReversalIndicator(new PivotPointIndicator(input, TimeLevel.BARBASED), 0.382,
+                        FibonacciReversalIndicator.FibReversalTyp.RESISTANCE),
+                input -> new DeMarkReversalIndicator(new DeMarkPivotPointIndicator(input, TimeLevel.BARBASED),
+                        DeMarkPivotLevel.RESISTANCE));
+        List<Function<Indicator<Num>, Indicator<Num>>> consumers = List.of(input -> new MACDIndicator(input, 2, 3),
+                input -> new PPOIndicator(input, 2, 3), input -> new MACDVIndicator(input, 2, 3, 1),
+                input -> new VolatilityNormalizedMACDIndicator(input, 2, 3, 2));
+        for (Function<BarSeries, Indicator<Num>> sourceFactory : sources) {
+            for (Function<Indicator<Num>, Indicator<Num>> consumerFactory : consumers) {
+                BarSeries input = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+                for (int i = 0; i < 24; i++) {
+                    int close = 20 + i * 7 % 11;
+                    input.barBuilder()
+                            .highPrice(close + 2)
+                            .lowPrice(close - 2)
+                            .openPrice(close - 1)
+                            .closePrice(close)
+                            .volume(10 + i)
+                            .add();
+                }
+                Indicator<Num> source = sourceFactory.apply(input);
+                Indicator<Num> composite = consumerFactory.apply(source);
+                EMAIndicator actual = new EMAIndicator(composite, 2);
+                for (int i = 0; i < 24; i++) {
+                    actual.getValue(i);
+                }
+                assertThat(actual.getValue(23).isNaN()).as(composite.getClass().getSimpleName()).isFalse();
+                input.setMaximumBarCount(12);
+                // The long price average must restart its three-bar warm-up,
+                // even through an otherwise continuing outer EMA. Independent
+                // OHLC/volume branches retain their own consumed history.
+                for (int i = input.getBeginIndex(); i < input.getBeginIndex() + 3; i++) {
+                    assertThat(actual.getValue(i).isNaN())
+                            .as("%s over %s at %s", composite.getClass().getSimpleName(),
+                                    source.getClass().getSimpleName(), i)
+                            .isTrue();
+                }
+                assertThat(actual.getValue(23).isNaN()).as(composite.getClass().getSimpleName()).isFalse();
+            }
         }
     }
 

@@ -210,7 +210,7 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
      *         rows, has invalid CSV syntax, or strict parsing rejects a data row
      * @throws UncheckedIOException if the file exists but cannot be read to
      *                              completion
-     * @since 0.27.1
+     * @since 0.28.1
      */
     public static BarSeries loadCsvSeries(String filename, boolean strict) {
         return loadCsvSeries(filename, null, strict);
