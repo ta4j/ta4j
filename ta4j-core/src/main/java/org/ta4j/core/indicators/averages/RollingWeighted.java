@@ -9,6 +9,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -16,6 +17,11 @@ import org.ta4j.core.num.NumFactory;
  * Sequential weighted sums relative to a fixed anchor, periodically rebased.
  */
 final class RollingWeighted {
+    private static final long CANCELLATION_FACTOR = 100_000_000L;
+    private static final long FLOAT_CANCELLATION_FACTOR = 10_000L;
+    // Leave headroom for the centered sums and their intermediate updates.
+    private static final long EXACT_INTEGER_BOUND = 1L << 49;
+
     private final ReentrantLock lock = new ReentrantLock();
     private volatile int index = -1;
     private volatile long revision = -1;
@@ -24,6 +30,9 @@ final class RollingWeighted {
     private Num weightedOffsets;
     private Num denominator;
     private Num maxAbs;
+    private Num cancellationFactor;
+    private Num exactIntegerBound;
+    private boolean exactIntegerInputs;
     private int updates;
 
     static boolean supports(Num zero) {
@@ -53,25 +62,33 @@ final class RollingWeighted {
                     || changes.removedThroughIndex() >= target - barCount) {
                 return null;
             }
-            Num nextMaxAbs = maxAbs.max(current.abs());
-            if (!Num.isFinite(nextMaxAbs.multipliedBy(denominator))) {
+            Num currentAbs = current.abs();
+            Num nextMaxAbs = maxAbs.max(currentAbs);
+            Num bound = nextMaxAbs.multipliedBy(denominator);
+            if (!Num.isFinite(bound)) {
                 return null;
             }
+            boolean nextExactIntegerInputs = exactIntegerInputs && bound.isLessThanOrEqual(exactIntegerBound)
+                    && (current.isZero() || (currentAbs.isGreaterThanOrEqual(current.getNumFactory().one())
+                            && current.isEqual(current.floor())));
             Num added = current.minus(anchor);
             Num removed = outgoing.minus(anchor);
             Num nextWeighted = weightedOffsets.minus(offsets).plus(added.multipliedBy(weight));
             Num nextOffsets = offsets.minus(removed).plus(added);
             Num result = anchor.plus(nextWeighted.dividedBy(denominator));
             Num numerator = anchor.multipliedBy(denominator).plus(nextWeighted);
+            // Offset sums can retain rounding errors from a much larger, expired value.
+            boolean exactZero = nextExactIntegerInputs && numerator.isZero() && result.isZero();
             if (!Num.isFinite(nextOffsets) || !Num.isFinite(nextWeighted) || !Num.isFinite(result)
-                    || !Num.isFinite(numerator) || (!anchor.isZero() && result.abs()
-                            .isLessThan(anchor.abs().dividedBy(current.getNumFactory().numOf(100000000))))) {
+                    || !Num.isFinite(numerator) || (!exactZero && !nextMaxAbs.isZero()
+                            && result.abs().multipliedBy(cancellationFactor).isLessThan(nextMaxAbs))) {
                 return null;
             }
             if (!terminal) {
                 offsets = nextOffsets;
                 weightedOffsets = nextWeighted;
                 maxAbs = nextMaxAbs;
+                exactIntegerInputs = nextExactIntegerInputs;
                 updates++;
                 index = target;
             }
@@ -94,6 +111,8 @@ final class RollingWeighted {
         Num weighted = factory.zero();
         Num denominatorSum = factory.zero();
         Num maximumAbs = factory.zero();
+        Num exactIntegerBound = factory.numOf(EXACT_INTEGER_BOUND);
+        boolean integerInputs = first instanceof DoubleNum || first instanceof DecimalNum;
         boolean finite = Num.isFinite(first);
         for (int n = 0; n < barCount; n++) {
             int at = ascending ? start + n : target - n;
@@ -105,7 +124,12 @@ final class RollingWeighted {
                 denominatorSum = denominatorSum.plus(factor);
             }
             if (finite && Num.isFinite(value)) {
-                maximumAbs = maximumAbs.max(value.abs());
+                Num valueAbs = value.abs();
+                maximumAbs = maximumAbs.max(valueAbs);
+                if (integerInputs) {
+                    integerInputs = maximumAbs.isLessThanOrEqual(exactIntegerBound) && (value.isZero()
+                            || (valueAbs.isGreaterThanOrEqual(factory.one()) && value.isEqual(value.floor())));
+                }
                 try {
                     Num offset = value.minus(first);
                     offsetSum = offsetSum.plus(offset);
@@ -128,6 +152,11 @@ final class RollingWeighted {
                 weightedOffsets = weighted;
                 denominator = divisor;
                 maxAbs = maximumAbs;
+                cancellationFactor = factory
+                        .numOf(first.getDelegate() instanceof Float ? FLOAT_CANCELLATION_FACTOR : CANCELLATION_FACTOR);
+                this.exactIntegerBound = exactIntegerBound;
+                exactIntegerInputs = integerInputs
+                        && maximumAbs.multipliedBy(divisor).isLessThanOrEqual(exactIntegerBound);
                 updates = 0;
                 index = target;
                 revision = observedRevision;

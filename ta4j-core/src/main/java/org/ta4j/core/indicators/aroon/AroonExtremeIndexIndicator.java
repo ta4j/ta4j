@@ -71,7 +71,10 @@ final class AroonExtremeIndexIndicator extends CachedIndicator<Integer> {
                     if (best == null) {
                         return current.isEqual(current) ? index : -1;
                     }
-                    return terminal && !current.isNaN() && betterOrEqual(current, best.value()) ? index : best.index();
+                    if (terminal && !current.isNaN() && betterOrEqual(current, best.value())) {
+                        return current.isEqual(current) ? index : -1;
+                    }
+                    return matchingIndex(best);
                 }
             } finally {
                 lock.unlock();
@@ -86,7 +89,8 @@ final class AroonExtremeIndexIndicator extends CachedIndicator<Integer> {
             add(rebuilt, i, source.getValue(i));
         }
         add(rebuilt, index, current);
-        int result = rebuilt.isEmpty() ? (current.isEqual(current) ? index : -1) : rebuilt.peekFirst().index();
+        Entry best = rebuilt.peekFirst();
+        int result = best == null ? (current.isEqual(current) ? index : -1) : matchingIndex(best);
         if (!terminal && sourceRevision >= 0 && lock.tryLock()) {
             try {
                 entries = rebuilt;
@@ -107,6 +111,12 @@ final class AroonExtremeIndexIndicator extends CachedIndicator<Integer> {
             queue.removeLast();
         }
         queue.addLast(new Entry(index, value));
+    }
+
+    private static int matchingIndex(Entry entry) {
+        // A raw DoubleNum NaN participates in ordering but cannot match the scan's
+        // equality test.
+        return entry.value().isEqual(entry.value()) ? entry.index() : -1;
     }
 
     private boolean betterOrEqual(Num left, Num right) {
