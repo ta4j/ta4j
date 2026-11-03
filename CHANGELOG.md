@@ -1,6 +1,23 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+
+- **Reusable data, charting, and named catalogs (`CF-336`)**: `ta4j-data`, `ta4j-charting`, and `ta4j-catalog` publish the existing loaders, chart workflows, calendar strategies, and named rules without depending on executable examples. Use them from Java applications, examples, or the independently owned [ta4j-cli](https://github.com/ta4j/ta4j-cli) project; existing Java package names and classpath dataset names are preserved.
+- **Rebuild rules from short labels (`CF-336`)**: Register a `NamedRule` subclass once and recreate it from a compact label such as `RsiThresholdRule_BELOW_14_30`. Subclasses call `super(TheirClass.class, parameters...)`; conflicting simple names fail fast rather than resolving by classpath order.
+
+### Changed
+
+- **Module-owned coverage budgets (`CF-336`)**: Data, charting, catalog, and executable examples now verify their own coverage floors, redistributing the former combined examples budget without reducing its weighted line or branch minimum.
+
+### Breaking
+
+- **Reusable example components have focused artifacts (`CF-336`)**: Direct consumers of `ta4jexamples.datasources`, `ta4jexamples.charting`, the named calendar strategies, or the two named rule implementations must replace their `ta4j-examples` dependency with `ta4j-data`, `ta4j-charting`, or `ta4j-catalog` at the same ta4j version. The examples module consumes those same implementations. Market data files now live under `ta4j-data/src/main/resources`; their classpath names are unchanged. The CLI is built and released separately from the ta4j reactor.
+
+### Fixed
+
+- **Keep rejected named-component scans out of lookups**: Classes discovered in a package are committed only after the entire package passes simple-name conflict checks. A failed scan leaves existing registrations and successful packages intact, and retries cannot resolve an arbitrary conflicting class.
+- **Explicit CSV loading policies**: `CsvFileBarSeriesDataSource` retains permissive malformed-row handling by default and offers an explicit strict-loading overload for applications that must reject partial input.
+- **Locale-independent walk-forward calibration metrics**: `WalkForwardTuner` now updates case-insensitive Brier, log-loss and calibration-error metric names consistently across system locales, including Turkish. Its calibration-metric benchmark exercises the same production path.
 
 ## 0.28.0 (2026-11-02)
 

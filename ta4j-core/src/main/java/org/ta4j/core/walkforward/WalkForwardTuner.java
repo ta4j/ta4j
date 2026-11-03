@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.PriorityQueue;
@@ -269,9 +270,9 @@ public final class WalkForwardTuner<C, P, O> {
             }
         }
 
-        patchCalibrationMetrics(globalMetrics, chosen);
+        patchCalibrationMetrics(globalMetrics, chosen.brier, chosen.logLoss, chosen.ece);
         for (Map<String, Num> foldMetricMap : foldMetrics.values()) {
-            patchCalibrationMetrics(foldMetricMap, chosen);
+            patchCalibrationMetrics(foldMetricMap, chosen.brier, chosen.logLoss, chosen.ece);
         }
 
         return new CalibrationSelection(chosenName, predicted.size(), rawScores.ece, plattScores.ece, isotonicEce,
@@ -296,16 +297,16 @@ public final class WalkForwardTuner<C, P, O> {
         return DoubleNumFactory.getInstance();
     }
 
-    private static void patchCalibrationMetrics(Map<String, Num> metricMap, CalibrationScores scores) {
+    static void patchCalibrationMetrics(Map<String, Num> metricMap, Num brier, Num logLoss, Num ece) {
         for (Map.Entry<String, Num> entry : metricMap.entrySet()) {
-            String normalized = entry.getKey().toLowerCase();
+            String normalized = entry.getKey().toLowerCase(Locale.ROOT);
             if (normalized.contains("brier")) {
-                entry.setValue(scores.brier);
+                entry.setValue(brier);
             } else if (normalized.contains("logloss") || normalized.contains("log_loss")
                     || normalized.contains("log-loss")) {
-                entry.setValue(scores.logLoss);
+                entry.setValue(logLoss);
             } else if (normalized.contains("ece")) {
-                entry.setValue(scores.ece);
+                entry.setValue(ece);
             }
         }
     }

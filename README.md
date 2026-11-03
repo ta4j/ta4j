@@ -122,6 +122,20 @@ Run another example by overriding the configured main class:
 ./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest
 ```
 
+### Reuse data, charts, and named catalogs
+
+Reusable components are published alongside `ta4j-core`, without a dependency on the executable examples:
+
+| Artifact | Ownership |
+| --- | --- |
+| `org.ta4j:ta4j-data` | CSV/JSON and HTTP bar-series sources, including bundled market data |
+| `org.ta4j:ta4j-charting` | Chart builders, workflows, display, and storage |
+| `org.ta4j:ta4j-catalog` | Named calendar strategies and reusable named rules |
+
+Use the same version as `ta4j-core`. Existing `ta4jexamples.datasources`, `ta4jexamples.charting`, and catalog class names are unchanged; downstream applications should depend on these artifacts instead of `ta4j-examples`.
+
+The command-line application has independent build, versioning, and release ownership in [`ta4j/ta4j-cli`](https://github.com/ta4j/ta4j-cli). It is not a module of this reactor; its README documents the compatible ta4j version and packaged backtest, walk-forward, sweep, and forecast commands.
+
 ### Use the core API
 
 The essential model is:
@@ -164,11 +178,11 @@ A typical ta4j application follows one path:
 
 ### Sourcing market data
 
-`ta4j-core` works with any OHLCV source. The `ta4j-examples` module includes a shared `BarSeriesDataSource` model and ready-to-run loaders for:
+`ta4j-core` works with any OHLCV source. The `ta4j-data` artifact supplies a shared `BarSeriesDataSource` model and ready-to-run loaders for:
 
-- [Yahoo Finance](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceHttpBarSeriesDataSource.java) for stocks, ETFs, and crypto
-- [Coinbase](ta4j-examples/src/main/java/ta4jexamples/datasources/CoinbaseHttpBarSeriesDataSource.java) for cryptocurrency pairs
-- [CSV](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvFileBarSeriesDataSource.java), [JSON](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonFileBarSeriesDataSource.java), and trade-level [Bitstamp CSV](ta4j-examples/src/main/java/ta4jexamples/datasources/BitStampCsvTradesFileBarSeriesDataSource.java)
+- [Yahoo Finance](ta4j-data/src/main/java/ta4jexamples/datasources/YahooFinanceHttpBarSeriesDataSource.java) for stocks, ETFs, and crypto
+- [Coinbase](ta4j-data/src/main/java/ta4jexamples/datasources/CoinbaseHttpBarSeriesDataSource.java) for cryptocurrency pairs
+- [CSV](ta4j-data/src/main/java/ta4jexamples/datasources/CsvFileBarSeriesDataSource.java), [JSON](ta4j-data/src/main/java/ta4jexamples/datasources/JsonFileBarSeriesDataSource.java), and trade-level [Bitstamp CSV](ta4j-data/src/main/java/ta4jexamples/datasources/BitStampCsvTradesFileBarSeriesDataSource.java)
 
 For production systems, adapt your broker, exchange, database, REST API, or WebSocket feed into bars and keep normalization, gap handling, and corporate-action adjustments explicit.
 

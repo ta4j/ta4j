@@ -61,7 +61,7 @@ public class Quickstart {
             System.err.println(
                     "   [ERROR] Failed to load price data. The Bitstamp CSV file may be missing from the classpath.");
             System.err.println(
-                    "   [TIP] Ensure the file 'Bitstamp-BTC-USD-PT5M-20131125_20131201.csv' exists in src/main/resources");
+                    "   [TIP] Ensure ta4j-data is on the classpath; it supplies 'Bitstamp-BTC-USD-PT5M-20131125_20131201.csv'.");
             return;
         }
         System.out.printf("   [OK] Loaded %d bars of price data%n", series.getBarCount());

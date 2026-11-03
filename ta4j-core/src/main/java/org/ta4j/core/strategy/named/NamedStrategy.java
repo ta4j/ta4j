@@ -3,29 +3,15 @@
  */
 package org.ta4j.core.strategy.named;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.named.NamedComponentRegistry;
 import org.ta4j.core.serialization.ComponentDescriptor;
 
-import java.io.IOException;
-import java.lang.reflect.Modifier;
-import java.net.JarURLConnection;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-import java.util.stream.Stream;
 
 /**
  * Base class for strategies that can be reconstructed from compact name tokens.
@@ -179,11 +165,8 @@ public abstract class NamedStrategy extends BaseStrategy {
      */
     public static final String SERIALIZED_TYPE = NamedStrategy.class.getSimpleName();
 
-    private static final Map<String, Class<? extends NamedStrategy>> REGISTRY = new ConcurrentHashMap<>();
-    private static final Logger LOGGER = LoggerFactory.getLogger(NamedStrategy.class);
-    private static final String[] DEFAULT_SCAN_PACKAGES = { "org.ta4j.core.strategy.named" };
-    private static final Set<String> SCANNED_PACKAGES = ConcurrentHashMap.newKeySet();
-    private static final AtomicBoolean DEFAULT_PACKAGES_INITIALIZED = new AtomicBoolean();
+    private static final NamedComponentRegistry<NamedStrategy> REGISTRY = new NamedComponentRegistry<>(
+            NamedStrategy.class, "strategy", "NamedStrategy", NamedStrategy.class, "org.ta4j.core.strategy.named");
 
     /**
      * Protected constructor that allows subclasses to provide the fully formatted
@@ -216,11 +199,7 @@ public abstract class NamedStrategy extends BaseStrategy {
      * strategies.
      */
     public static void initializeRegistry(String... basePackages) {
-        ensureDefaultRegistryInitialized();
-        if (basePackages == null || basePackages.length == 0) {
-            return;
-        }
-        scanPackages(basePackages);
+        REGISTRY.initializeRegistry(basePackages);
     }
 
     /**
@@ -231,15 +210,7 @@ public abstract class NamedStrategy extends BaseStrategy {
      * @param type strategy subtype
      */
     public static void registerImplementation(Class<? extends NamedStrategy> type) {
-        Objects.requireNonNull(type, "type");
-        String key = type.getSimpleName();
-        REGISTRY.compute(key, (name, existing) -> {
-            if (existing != null && existing != type) {
-                throw new IllegalStateException(
-                        "Named strategy already registered for simple name " + name + ": " + existing.getName());
-            }
-            return type;
-        });
+        REGISTRY.registerImplementation(type);
     }
 
     /**
@@ -252,22 +223,19 @@ public abstract class NamedStrategy extends BaseStrategy {
      *         {@code false} if it was not registered
      */
     public static boolean unregisterImplementation(Class<? extends NamedStrategy> type) {
-        Objects.requireNonNull(type, "type");
-        String key = type.getSimpleName();
-        return REGISTRY.remove(key, type);
+        return REGISTRY.unregisterImplementation(type);
     }
 
     /**
-     * Resolves a previously registered named strategy type.
+     * Resolves a registered named strategy type, initializing the default registry
+     * first so strategies registered through the default package scan are visible
+     * to a plain lookup.
      *
      * @param simpleName simple class name (without package)
      * @return optional containing the registered type
      */
     public static Optional<Class<? extends NamedStrategy>> lookup(String simpleName) {
-        if (simpleName == null || simpleName.isBlank()) {
-            return Optional.empty();
-        }
-        return Optional.ofNullable(REGISTRY.get(simpleName));
+        return REGISTRY.lookup(simpleName);
     }
 
     /**
@@ -279,18 +247,7 @@ public abstract class NamedStrategy extends BaseStrategy {
      * @return compact strategy label
      */
     public static String buildLabel(Class<? extends NamedStrategy> type, String... parameters) {
-        Objects.requireNonNull(type, "type");
-        if (parameters == null || parameters.length == 0) {
-            return type.getSimpleName();
-        }
-        for (int i = 0; i < parameters.length; i++) {
-            String parameter = Objects.requireNonNull(parameters[i], "parameters[" + i + "]");
-            if (parameter.indexOf('_') >= 0) {
-                throw new IllegalArgumentException(
-                        "Named strategy parameters cannot contain underscores: parameters[" + i + "]");
-            }
-        }
-        return type.getSimpleName() + '_' + String.join("_", parameters);
+        return REGISTRY.buildLabel(type, parameters);
     }
 
     /**
@@ -301,11 +258,7 @@ public abstract class NamedStrategy extends BaseStrategy {
      * @throws IllegalArgumentException if label is null or blank
      */
     public static List<String> splitLabel(String label) {
-        Objects.requireNonNull(label, "label");
-        if (label.isBlank()) {
-            throw new IllegalArgumentException("Named strategy label cannot be blank");
-        }
-        return Collections.unmodifiableList(Arrays.asList(label.split("_", -1)));
+        return REGISTRY.splitLabel(label);
     }
 
     /**
@@ -364,6 +317,15 @@ public abstract class NamedStrategy extends BaseStrategy {
     }
 
     /**
+     * Restores the default-scan baseline for tests: clears the scanned-package set
+     * and the initialized flag so the next {@link #initializeRegistry(String...)}
+     * or default lookup re-scans. Registered implementations are not removed.
+     */
+    static void resetRegistryStateForTests() {
+        REGISTRY.resetScanState();
+    }
+
+    /**
      * Helper used by the serialization layer to enforce that a strategy has been
      * registered.
      *
@@ -371,135 +333,7 @@ public abstract class NamedStrategy extends BaseStrategy {
      * @return registered type
      */
     public static Class<? extends NamedStrategy> requireRegistered(String simpleName) {
-        ensureDefaultRegistryInitialized();
-        return lookup(simpleName).orElseThrow(() -> new IllegalArgumentException("Unknown named strategy '" + simpleName
-                + "'. Ensure it is registered via NamedStrategy.registerImplementation() or initializeRegistry()."));
-    }
-
-    private static void ensureDefaultRegistryInitialized() {
-        if (DEFAULT_PACKAGES_INITIALIZED.compareAndSet(false, true)) {
-            scanPackages(DEFAULT_SCAN_PACKAGES);
-        }
-    }
-
-    private static void scanPackages(String... basePackages) {
-        if (basePackages == null || basePackages.length == 0) {
-            return;
-        }
-        ClassLoader loader = detectClassLoader();
-        for (String basePackage : basePackages) {
-            String normalized = normalizePackage(basePackage);
-            if (normalized.isEmpty() || !SCANNED_PACKAGES.add(normalized)) {
-                continue;
-            }
-            scanPackage(normalized, loader);
-        }
-    }
-
-    private static ClassLoader detectClassLoader() {
-        ClassLoader loader = Thread.currentThread().getContextClassLoader();
-        if (loader == null) {
-            loader = NamedStrategy.class.getClassLoader();
-        }
-        return loader;
-    }
-
-    private static String normalizePackage(String basePackage) {
-        if (basePackage == null) {
-            return "";
-        }
-        return basePackage.trim().replace('/', '.');
-    }
-
-    private static void scanPackage(String basePackage, ClassLoader loader) {
-        String path = basePackage.replace('.', '/');
-        try {
-            Enumeration<URL> resources = loader.getResources(path);
-            while (resources.hasMoreElements()) {
-                URL url = resources.nextElement();
-                try {
-                    String protocol = url.getProtocol();
-                    if ("file".equals(protocol)) {
-                        scanDirectory(basePackage, Paths.get(url.toURI()), loader);
-                    } else if ("jar".equals(protocol)) {
-                        scanJar(basePackage, url, loader);
-                    }
-                } catch (URISyntaxException ex) {
-                    LOGGER.debug("Invalid URI while scanning package {}", basePackage, ex);
-                } catch (IOException ex) {
-                    LOGGER.debug("Failed to scan package {} from {}", basePackage, url, ex);
-                }
-            }
-        } catch (IOException ex) {
-            LOGGER.debug("Unable to enumerate resources for package {}", basePackage, ex);
-        }
-    }
-
-    private static void scanDirectory(String basePackage, Path directory, ClassLoader loader) throws IOException {
-        if (!Files.isDirectory(directory)) {
-            return;
-        }
-        try (Stream<Path> stream = Files.walk(directory)) {
-            stream.filter(path -> Files.isRegularFile(path) && path.getFileName().toString().endsWith(".class"))
-                    .forEach(path -> {
-                        String className = toClassName(basePackage, directory, path);
-                        loadNamedStrategy(className, loader);
-                    });
-        }
-    }
-
-    private static String toClassName(String basePackage, Path root, Path file) {
-        Path relative = root.relativize(file);
-        String name = relative.toString().replace('/', '.').replace('\\', '.');
-        if (name.endsWith(".class")) {
-            name = name.substring(0, name.length() - 6);
-        }
-        if (name.isEmpty()) {
-            return basePackage;
-        }
-        return basePackage + '.' + name;
-    }
-
-    private static void scanJar(String basePackage, URL packageUrl, ClassLoader loader) throws IOException {
-        java.net.URLConnection connection = packageUrl.openConnection();
-        if (!(connection instanceof JarURLConnection jarConnection)) {
-            return;
-        }
-        try (JarFile jarFile = jarConnection.getJarFile()) {
-            String packagePath = basePackage.replace('.', '/') + '/';
-            Enumeration<JarEntry> entries = jarFile.entries();
-            while (entries.hasMoreElements()) {
-                JarEntry entry = entries.nextElement();
-                if (entry.isDirectory()) {
-                    continue;
-                }
-                String name = entry.getName();
-                if (!name.endsWith(".class") || !name.startsWith(packagePath)) {
-                    continue;
-                }
-                String className = name.substring(0, name.length() - 6).replace('/', '.');
-                loadNamedStrategy(className, loader);
-            }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void loadNamedStrategy(String className, ClassLoader loader) {
-        if (className == null || className.isBlank()) {
-            return;
-        }
-        try {
-            Class<?> candidate = Class.forName(className, false, loader);
-            if (candidate == NamedStrategy.class || candidate.isInterface()
-                    || Modifier.isAbstract(candidate.getModifiers())) {
-                return;
-            }
-            if (NamedStrategy.class.isAssignableFrom(candidate)) {
-                registerImplementation((Class<? extends NamedStrategy>) candidate);
-            }
-        } catch (ClassNotFoundException | LinkageError ex) {
-            LOGGER.debug("Unable to inspect named strategy class {}", className, ex);
-        }
+        return REGISTRY.requireRegistered(simpleName);
     }
 
     /**
