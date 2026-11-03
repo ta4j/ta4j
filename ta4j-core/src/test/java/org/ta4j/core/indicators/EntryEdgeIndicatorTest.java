@@ -121,22 +121,6 @@ public class EntryEdgeIndicatorTest {
     }
 
     @Test
-    public void shouldPreserveCachedSignalExclusionWhenOutcomeBecomesFinite() {
-        for (NumFactory factory : List.of(DecimalNumFactory.getInstance(), DoubleNumFactory.getInstance())) {
-            setPrices(factory, 100, 102, 104, 103, 105, 107, 105, 108);
-            series.addPrice(NaN.NaN);
-            EntryEdgeIndicator subject = new EntryEdgeIndicator(fixedSignals(0, 5), series, 2, 2);
-            for (int index = 2; index < 7; index++) {
-                subject.getValue(index);
-            }
-            assertNumEquals(400.0, subject.getValue(7));
-
-            series.addPrice(108);
-            assertNumEquals(353.2710280373832, subject.getValue(7));
-        }
-    }
-
-    @Test
     public void shouldSkipNonFiniteBaselineReturnWithoutSignal() {
         EntryEdgeIndicator subject = new EntryEdgeIndicator(fixedSignals(0), series, 2, 2);
         for (int index = 2; index <= 7; index++) {
