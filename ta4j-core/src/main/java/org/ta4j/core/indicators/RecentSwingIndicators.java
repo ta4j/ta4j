@@ -612,7 +612,7 @@ public final class RecentSwingIndicators {
                 // it only if that history is still current, so a concurrent update
                 // cannot label stale pivots with the new revision.
                 final PivotMemo computed = new PivotMemo(clampedIndex, series.getBarHistoryRevision(),
-                        series.getBeginIndex(), series.getEndIndex(), null);
+                        series.getBeginIndex(), series.getEndIndex(), TerminalBar.capture(series), null);
                 result = calculate(clampedIndex);
                 if (computed.matches(series, clampedIndex)) {
                     final PivotMemo published = computed.withPivots(result);
@@ -670,15 +670,34 @@ public final class RecentSwingIndicators {
         }
     }
 
-    private record PivotMemo(int index, long revision, int beginIndex, int endIndex, List<SwingPivot> pivots) {
+    /**
+     * Detector result plus the history it was computed from. The terminal bar's
+     * values are part of that history because a bar that cannot publish its own
+     * mutations can change without moving the series revision.
+     */
+    private record PivotMemo(int index, long revision, int beginIndex, int endIndex, TerminalBar terminalBar,
+            List<SwingPivot> pivots) {
 
         private PivotMemo withPivots(final List<SwingPivot> detected) {
-            return new PivotMemo(index, revision, beginIndex, endIndex, detected);
+            return new PivotMemo(index, revision, beginIndex, endIndex, terminalBar, detected);
         }
 
         private boolean matches(final BarSeries series, final int queriedIndex) {
             return index == queriedIndex && revision == series.getBarHistoryRevision()
-                    && beginIndex == series.getBeginIndex() && endIndex == series.getEndIndex();
+                    && beginIndex == series.getBeginIndex() && endIndex == series.getEndIndex()
+                    && Objects.equals(terminalBar, TerminalBar.capture(series));
+        }
+    }
+
+    private record TerminalBar(Bar bar, Num open, Num high, Num low, Num close, Num volume, Num amount, long trades) {
+
+        private static TerminalBar capture(final BarSeries series) {
+            if (series.isEmpty()) {
+                return null;
+            }
+            final Bar bar = series.getLastBar();
+            return new TerminalBar(bar, bar.getOpenPrice(), bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(),
+                    bar.getVolume(), bar.getAmount(), bar.getTrades());
         }
     }
 }
