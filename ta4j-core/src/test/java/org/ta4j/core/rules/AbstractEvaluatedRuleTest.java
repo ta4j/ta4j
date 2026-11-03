@@ -3,19 +3,19 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.EvaluatedRule;
 import org.ta4j.core.Indicator;
@@ -35,7 +35,7 @@ public class AbstractEvaluatedRuleTest {
     private BarSeries series;
     private ClosePriceIndicator close;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         traceLogger = new TraceTestLogger();
         traceLogger.open();
@@ -43,7 +43,7 @@ public class AbstractEvaluatedRuleTest {
         close = new ClosePriceIndicator(series);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         traceLogger.close();
     }
