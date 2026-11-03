@@ -618,8 +618,8 @@ public class BaseTradingRecord implements TradingRecord {
         }
         ExecutionMatchPolicy matchPolicy = source instanceof BaseTradingRecord baseRecord ? baseRecord.matchPolicy
                 : ExecutionMatchPolicy.FIFO;
-        BaseTradingRecord projected = new WindowProjectedTradingRecord(recordConfig(source.getStartingType(), matchPolicy,
-                source.getTransactionCostModel(), source.getHoldingCostModel(), start, end, contract,
+        BaseTradingRecord projected = new WindowProjectedTradingRecord(recordConfig(source.getStartingType(),
+                matchPolicy, source.getTransactionCostModel(), source.getHoldingCostModel(), start, end, contract,
                 source.getInitialCapital(), source.getInitialMarginRate(), List.of()));
         NumFactory feeFactory = positions.isEmpty() ? projected.getTotalFees().getNumFactory()
                 : positions.getFirst().getEntry().getPricePerAsset().getNumFactory();
@@ -2444,13 +2444,12 @@ public class BaseTradingRecord implements TradingRecord {
         return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
     }
 
-    record RecordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
-            CostModel transactionCostModel, CostModel holdingCostModel, PositionBook positionBook, Integer startIndex,
-            Integer endIndex, int nextTradeIndex, boolean terminalTradeIndexRecorded, long modificationCount,
-            Num totalFees, Num feeCompensation, NumFactory numFactory, long nextSequence,
-            FuturesContract futuresContract, Num initialCapital, Num initialMarginRate,
-            List<FuturesFunding> fundingSchedule, List<FuturesCashFlow> cashFlows,
-            Map<String, FuturesCashFlow> processedEvents) {
+    record RecordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy, CostModel transactionCostModel,
+            CostModel holdingCostModel, PositionBook positionBook, Integer startIndex, Integer endIndex,
+            int nextTradeIndex, boolean terminalTradeIndexRecorded, long modificationCount, Num totalFees,
+            Num feeCompensation, NumFactory numFactory, long nextSequence, FuturesContract futuresContract,
+            Num initialCapital, Num initialMarginRate, List<FuturesFunding> fundingSchedule,
+            List<FuturesCashFlow> cashFlows, Map<String, FuturesCashFlow> processedEvents) {
     }
 
     /**

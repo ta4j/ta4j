@@ -31,7 +31,9 @@ final class WindowProjectedTradingRecord extends BaseTradingRecord {
         super(startingType, startIndex, endIndex, transactionCostModel, holdingCostModel);
     }
 
-    /** Creates a read-only futures projection from a prepared record configuration. */
+    /**
+     * Creates a read-only futures projection from a prepared record configuration.
+     */
     WindowProjectedTradingRecord(RecordConfig config) {
         super(config);
     }
