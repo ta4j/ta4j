@@ -3,10 +3,15 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import java.util.List;
+import java.util.Objects;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Cost model that uses recorded trade costs (fees) instead of recomputing them.
@@ -29,9 +34,12 @@ public final class RecordedTradeCostModel implements CostModel {
         if (entry == null) {
             return zero;
         }
-        Num total = entry.getIndex() <= finalIndex ? entry.getCost() : zero;
-        if (exit != null && exit.getIndex() <= finalIndex) {
-            total = total.plus(exit.getCost());
+        if (entry.getFuturesContract() != null) {
+            return sumFuturesFillCosts(position, finalIndex, this);
+        }
+        Num total = calculate(entry, finalIndex);
+        if (exit != null) {
+            total = total.plus(total.getNumFactory().numOf(calculate(exit, finalIndex).getDelegate()));
         }
         return total;
     }
@@ -44,10 +52,14 @@ public final class RecordedTradeCostModel implements CostModel {
         if (entry == null) {
             return zero;
         }
-        if (exit == null) {
-            return entry.getCost();
+        if (entry.getFuturesContract() != null) {
+            return sumFuturesFillCosts(position, Integer.MAX_VALUE, this);
         }
-        return entry.getCost().plus(exit.getCost());
+        Num total = calculate(entry, Integer.MAX_VALUE);
+        if (exit != null) {
+            total = total.plus(total.getNumFactory().numOf(calculate(exit, Integer.MAX_VALUE).getDelegate()));
+        }
+        return total;
     }
 
     @Override
@@ -56,8 +68,100 @@ public final class RecordedTradeCostModel implements CostModel {
     }
 
     @Override
+    public Num calculate(TradeFill fill) {
+        Objects.requireNonNull(fill, "fill");
+        if (fill.futuresContract() == null) {
+            return fill.fee();
+        }
+        if (!fill.hasRecordedFees()) {
+            throw new IllegalArgumentException(
+                    "native fill has no recorded fees; configure a modeled transaction cost or supply fees");
+        }
+        return fill.fee();
+    }
+
+    @Override
+    public List<TradeFee> calculateFees(TradeFill fill) {
+        Objects.requireNonNull(fill, "fill");
+        if (fill.futuresContract() == null) {
+            throw new IllegalArgumentException("fee components are only defined for futures fills");
+        }
+        if (!fill.hasRecordedFees()) {
+            throw new IllegalArgumentException(
+                    "native fill has no recorded fees; configure a modeled transaction cost or supply fees");
+        }
+        return fill.fees();
+    }
+
+    @Override
     public boolean equals(CostModel otherModel) {
         return otherModel instanceof RecordedTradeCostModel;
+    }
+
+    /**
+     * Keeps one compensation across resolved fee components of entry and exit
+     * fills, before rounding the total.
+     */
+    static Num sumFuturesFillCosts(Position position, int finalIndex, CostModel model) {
+        NumFactory factory = position.getEntry().getPricePerAsset().getNumFactory();
+        Num sum = factory.zero();
+        Num compensation = factory.zero();
+        Trade[] trades = { position.getEntry(), position.getExit() };
+        for (Trade trade : trades) {
+            if (trade == null) {
+                continue;
+            }
+            for (TradeFill fill : Trade.executionFillsOf(trade)) {
+                if (fill.index() < 0 || fill.index() > finalIndex) {
+                    continue;
+                }
+                List<TradeFee> components = fill.fees();
+                int componentCount = fill.hasRecordedFees() ? components.size() : 1;
+                for (int componentIndex = 0; componentIndex < componentCount; componentIndex++) {
+                    Num fee = fill.hasRecordedFees() ? components.get(componentIndex).settlementAmount()
+                            : model.calculate(fill);
+                    Num normalized = factory.numOf(fee.getDelegate());
+                    if (!Num.isFinite(normalized) || (!fee.isZero() && normalized.isZero())) {
+                        throw new IllegalArgumentException(
+                                "futures fee must be finite and representable in position number factory");
+                    }
+                    Num nextSum = sum.plus(normalized);
+                    if (!Num.isFinite(nextSum)) {
+                        throw new IllegalArgumentException(
+                                "futures fee total must be finite in position number factory");
+                    }
+                    Num correction = sum.abs().isGreaterThanOrEqual(normalized.abs())
+                            ? sum.minus(nextSum).plus(normalized)
+                            : normalized.minus(nextSum).plus(sum);
+                    compensation = compensation.plus(correction);
+                    if (!Num.isFinite(compensation)) {
+                        throw new IllegalArgumentException(
+                                "futures fee total must be finite in position number factory");
+                    }
+                    sum = nextSum;
+                }
+            }
+        }
+        Num total = sum.plus(compensation);
+        if (!Num.isFinite(total)) {
+            throw new IllegalArgumentException("futures fee total must be finite in position number factory");
+        }
+        return total;
+    }
+
+    private Num calculate(Trade trade, int finalIndex) {
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
+        if (fills.isEmpty()) {
+            return trade.getFuturesContract() == null && trade.getIndex() <= finalIndex ? trade.getCost()
+                    : trade.getCost().getNumFactory().zero();
+        }
+        Num total = trade.getPricePerAsset().getNumFactory().zero();
+        for (TradeFill fill : fills) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                total = total.plus(total.getNumFactory().numOf(calculate(fill).getDelegate()));
+            }
+        }
+        return total;
     }
 
     private Num zeroFor(Trade entry, Trade exit) {

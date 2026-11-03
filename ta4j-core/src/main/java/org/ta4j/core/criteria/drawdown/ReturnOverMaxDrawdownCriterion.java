@@ -159,7 +159,14 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
         if (position == null || position.getEntry() == null || position.isOpened()) {
             return returnRepresentation.toRepresentationFromRateOfReturn(series.numFactory().zero());
         }
-        return calculateTradingRecord(series, new BaseTradingRecord(position));
+        if (position.getFuturesContract() == null) {
+            return calculateTradingRecord(series, new BaseTradingRecord(position));
+        }
+        EquityCurveMode mode = openPositionHandling == OpenPositionHandling.IGNORE ? EquityCurveMode.REALIZED
+                : equityCurveMode;
+        CashFlow cashFlow = new CashFlow(series, position, mode);
+        Num maxDrawdown = Drawdown.amount(series, new BaseTradingRecord(position), cashFlow);
+        return toRepresentation(calculateNetReturn(cashFlow), maxDrawdown);
     }
 
     @Override
@@ -211,5 +218,13 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
         }
         Num rawRatio = netReturn.dividedBy(maxDrawdown);
         return returnRepresentation.toRepresentationFromRateOfReturn(rawRatio);
+    }
+
+    private static int lastExecutedIndex(org.ta4j.core.Trade trade) {
+        int lastIndex = trade.getIndex();
+        for (org.ta4j.core.TradeFill fill : org.ta4j.core.Trade.executionFillsOf(trade)) {
+            lastIndex = Math.max(lastIndex, fill.index());
+        }
+        return lastIndex;
     }
 }

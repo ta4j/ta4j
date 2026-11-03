@@ -18,15 +18,20 @@ import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
+import org.ta4j.core.analysis.cost.FuturesTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.BooleanRule;
@@ -36,6 +41,136 @@ import org.ta4j.core.walkforward.WalkForwardConfig;
 public class ExitOnRunEndModelTest {
 
     private final NumFactory numFactory = DecimalNumFactory.getInstance();
+
+    @Test
+    public void closesNativeFuturesAtTheLogicalLastClose() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(100, 110, 500).build();
+            FuturesContract contract = nativeContract(factory);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+            BarSeriesManager manager = new BarSeriesManager(series,
+                    new ExitOnRunEndModel(new TradeOnCurrentCloseModel()));
+
+            manager.run(new BaseStrategy(new FixedRule(0), BooleanRule.FALSE), record, factory.one(), 0, 1);
+
+            assertTrue(record.isClosed());
+            assertEquals(1, record.getPositionCount());
+            Position position = record.getPositions().getFirst();
+            assertEquals(0, position.getProfit().compareTo(factory.numOf(10)));
+            TradeFill exit = position.getExit().getFills().getFirst();
+            assertEquals(1, exit.index());
+            assertEquals(series.getBar(1).getEndTime(), exit.time());
+            assertEquals(contract, exit.futuresContract());
+            assertEquals(ExecutionSide.SELL, exit.side());
+            assertEquals(factory.numOf(110), exit.price());
+            assertEquals(factory.one(), exit.amount());
+            assertTrue(exit.hasRecordedFees());
+            assertTrue(exit.fees().isEmpty());
+        }
+    }
+
+    @Test
+    public void nativeTerminalCloseRetainsFeesAndSplitsCappedLotsAfterCutoff() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(100, 110).build();
+            FuturesContract contract = nativeContract(factory).toBuilder()
+                    .maximumQuantity(factory.one())
+                    .tradingDisabledAt(series.getBar(1).getEndTime())
+                    .build();
+            FuturesTransactionCostModel fees = FuturesTransactionCostModel.builder()
+                    .makerRate(factory.numOf(0.01))
+                    .takerRate(factory.numOf(0.01))
+                    .build();
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .matchPolicy(ExecutionMatchPolicy.FIFO)
+                    .transactionCostModel(fees)
+                    .build();
+            for (int i = 0; i < 2; i++) {
+                record.operate(TradeFill.builder()
+                        .futuresContract(contract)
+                        .index(0)
+                        .time(series.getBar(0).getEndTime())
+                        .price(factory.hundred())
+                        .amount(factory.one())
+                        .side(ExecutionSide.BUY)
+                        .fees(List.of())
+                        .build());
+            }
+
+            new ExitOnRunEndModel(new TradeOnNextOpenModel()).onRunEnd(1, record, series);
+
+            assertTrue(record.isClosed());
+            assertTrue(record.getOpenPositions().isEmpty());
+            assertEquals(2, record.getPositionCount());
+            for (Position position : record.getPositions()) {
+                TradeFill exit = position.getExit().getFills().getFirst();
+                assertEquals(1, exit.index());
+                assertEquals(series.getBar(1).getEndTime(), exit.time());
+                assertEquals(factory.numOf(110), exit.price());
+                assertEquals(factory.one(), exit.amount());
+                assertEquals(contract, exit.futuresContract());
+                assertTrue(exit.hasRecordedFees());
+                assertEquals(1.1, exit.fee().doubleValue(), 1e-12);
+                assertEquals(8.9, position.getProfit().doubleValue(), 1e-12);
+            }
+        }
+    }
+
+    @Test
+    public void nativeCustomFactoryWalkForwardFoldsEndFlatWithoutFailures() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            for (int i = 0; i < 48; i++) {
+                series.barBuilder()
+                        .openPrice(100 + 10 * i)
+                        .highPrice(100 + 10 * i)
+                        .lowPrice(100 + 10 * i)
+                        .closePrice(100 + 10 * i)
+                        .volume(10)
+                        .add();
+            }
+            FuturesContract contract = nativeContract(factory);
+            BarSeriesManager manager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+                    new TradeOnCurrentCloseModel(),
+                    (type, begin, end, tx, holding) -> BaseTradingRecord.builder()
+                            .startingType(type)
+                            .startIndex(begin)
+                            .endIndex(end)
+                            .transactionCostModel(tx)
+                            .holdingCostModel(holding)
+                            .futuresContract(contract)
+                            .build());
+            WalkForwardConfig config = new WalkForwardConfig(12, 6, 6, 0, 0, 6, 3, List.of(2), 1, List.of(1), 42L);
+
+            StrategyWalkForwardExecutionResult result = manager.runWalkForward(
+                    new BaseStrategy(BooleanRule.TRUE, BooleanRule.FALSE), TradeType.BUY, factory.one(), config);
+
+            assertTrue(result.foldFailures().isEmpty());
+            assertEquals(6, result.folds().size());
+            assertFoldsEndFlat(series, result);
+            for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
+                Position position = fold.tradingRecord().getPositions().getFirst();
+                assertEquals(50, position.getProfit().doubleValue(), 1e-12);
+                assertEquals(contract, position.getExit().getFills().getFirst().futuresContract());
+                assertEquals(series.getBar(fold.split().testEnd()).getEndTime(),
+                        position.getExit().getFills().getFirst().time());
+            }
+        }
+    }
+
+    private static FuturesContract nativeContract(NumFactory factory) {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(factory.one())
+                .build();
+    }
 
     @Test
     public void closesOpenPositionAtTheLastCloseAndChargesTheTransactionCost() {

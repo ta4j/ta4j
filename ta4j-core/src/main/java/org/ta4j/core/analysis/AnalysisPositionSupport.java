@@ -148,9 +148,11 @@ final class AnalysisPositionSupport {
      * Materializes a curve without evaluating user code under the series read lock.
      * The record bounds are read first, with no lock held; the window is captured
      * in one short read scope; the bars a holding-cost model may read before the
-     * window are captured in another; holding costs are computed unlocked; the
+     * window are captured in another; holding costs are computed unlocked; the spot
      * curve is built under a last short read scope while every captured bar value
-     * is verified. A changed or evicted window is captured again.
+     * is verified. A native futures builder can invoke a custom mark, so it runs
+     * unlocked between two value checks. A changed or evicted window is captured
+     * again.
      *
      * @throws IllegalStateException if the window was evicted or changed during
      *                               every attempt
@@ -183,6 +185,21 @@ final class AnalysisPositionSupport {
                 if (holdingCost != null) {
                     holdingCosts.put(position, holdingCost);
                 }
+            }
+            if (FuturesPerformanceSupport.isFutures(record)) {
+                if (!series.withReadLock(() -> window.isUnchangedIn(series)))
+                    continue;
+                T candidate;
+                try {
+                    candidate = builder.build(window, positions, holdingCosts);
+                } catch (RuntimeException failure) {
+                    if (series.withReadLock(() -> window.isUnchangedIn(series)))
+                        throw failure;
+                    continue;
+                }
+                if (series.withReadLock(() -> window.isUnchangedIn(series)))
+                    return candidate;
+                continue;
             }
             T built = series.withReadLock(() -> {
                 if (!window.isUnchangedIn(series)) {
@@ -241,6 +258,36 @@ final class AnalysisPositionSupport {
      */
     static void updateCapturedCurve(BarSeries series, Window window, PricedPosition priced, OffsetNumBuffer values,
             Consumer<OffsetNumBuffer> update) {
+        updateCapturedCurve(series, window, priced, values, update, false);
+    }
+
+    /**
+     * Native updates can invoke custom marks, so evaluate them between read checks.
+     */
+    static void updateCapturedCurve(BarSeries series, Window window, PricedPosition priced, OffsetNumBuffer values,
+            Consumer<OffsetNumBuffer> update, boolean evaluateUnlocked) {
+        if (evaluateUnlocked) {
+            if (!series.withReadLock(() -> priced.isUnchangedIn(series, window))) {
+                throw changedWindow(series);
+            }
+            OffsetNumBuffer staged = values.copy();
+            try {
+                update.accept(staged);
+            } catch (RuntimeException failure) {
+                if (series.withReadLock(() -> priced.isUnchangedIn(series, window)))
+                    throw failure;
+                throw changedWindow(series);
+            }
+            boolean published = series.withReadLock(() -> {
+                if (!priced.isUnchangedIn(series, window))
+                    return false;
+                values.replaceWith(staged);
+                return true;
+            });
+            if (!published)
+                throw changedWindow(series);
+            return;
+        }
         boolean applied = series.withReadLock(() -> {
             if (!priced.isUnchangedIn(series, window)) {
                 return false;
@@ -327,6 +374,11 @@ final class AnalysisPositionSupport {
         Trade entry = position.getEntry();
         if (entry == null || entry.getIndex() > finalIndex || entry.getIndex() > window.bufferEndIndex()) {
             return -1;
+        }
+        if (FuturesPerformanceSupport.isFutures(position)) {
+            // Native curves carry account settlement history. The first exit of a
+            // multi-fill trade neither ends residual exposure nor later settlements.
+            return window.isEmpty() ? -1 : Math.min(finalIndex, window.endIndex());
         }
         int endIndex = curve.determineEndIndex(position, finalIndex, window.bufferEndIndex());
         if (endIndex < window.beginIndex() && !(carryPrunedHistory && window.carriesBeforeWindow(position))) {
@@ -522,5 +574,10 @@ final class AnalysisPositionSupport {
             positions.add(openPosition);
         }
         return positions;
+    }
+
+    private static IllegalStateException changedWindow(BarSeries series) {
+        return new IllegalStateException("Bar series '" + series.getName()
+                + "' changed inside this curve's window since it was materialized; build a new curve to analyse the changed bars");
     }
 }

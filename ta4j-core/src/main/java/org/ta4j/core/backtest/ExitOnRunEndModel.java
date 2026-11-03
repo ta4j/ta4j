@@ -92,7 +92,8 @@ public final class ExitOnRunEndModel implements TradeExecutionModel {
         ExecutionTarget target = ExecutionModelSupport.resolveExecutionTarget(lastProcessedIndex, barSeries,
                 PriceSource.CURRENT_CLOSE);
         if (target != null) {
-            tradingRecord.operate(target.index(), target.price(), tradingRecord.getCurrentPosition().amount());
+            ExecutionModelSupport.execute(tradingRecord, barSeries, target, tradingRecord.getCurrentPosition().amount(),
+                    PriceSource.CURRENT_CLOSE);
         }
     }
 }
