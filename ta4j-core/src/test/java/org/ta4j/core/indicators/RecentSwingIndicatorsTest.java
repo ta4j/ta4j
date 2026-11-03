@@ -11,6 +11,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
@@ -107,6 +108,85 @@ public class RecentSwingIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         assertThat(pair.latestHigh(4)).get()
                 .satisfies(point -> assertThat(point.price()).isEqualByComparingTo(numOf(15)));
         assertThat(pair.highs().getSwingPointIndexesUpTo(2)).isEmpty();
+    }
+
+    @Test
+    public void detectorPivotsAreNotRetainedForEveryScannedIndex() {
+        final double[] closes = new double[200];
+        for (int i = 0; i < closes.length; i++) {
+            closes[i] = 100 + (i % 2 == 0 ? i : -i);
+        }
+        final BarSeries series = seriesFromCloses(closes);
+        final AtomicInteger detections = new AtomicInteger();
+        final SwingDetector detector = (bars, index, degree) -> {
+            detections.incrementAndGet();
+            return SwingDetectorResult.fromPivots(List.of(new SwingPivot(Math.max(0, index - 1),
+                    bars.getBar(Math.max(0, index - 1)).getHighPrice(), SwingPivotType.HIGH)), degree);
+        };
+        final Pair pair = RecentSwingIndicators.fromDetector(series, detector);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            pair.highs().getValue(i);
+        }
+        final int firstPass = detections.get();
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            pair.highs().getValue(i);
+        }
+
+        // One detection per scanned index plus the shared series-end lookup; the
+        // end lookup is memoized across price reads instead of per index.
+        assertThat(firstPass).isLessThanOrEqualTo(series.getBarCount() + 2);
+        final CachedIndicator<?> pivots = (CachedIndicator<?>) pair.highs()
+                .getDependencies()
+                .stream()
+                .filter(dependency -> dependency.getClass().getSimpleName().equals("DetectorPivotIndicator"))
+                .findFirst()
+                .orElseThrow();
+        for (int i = series.getBeginIndex(); i < series.getEndIndex(); i++) {
+            assertThat(pivots.isCached(i)).as("pivot list cached at %s", i).isFalse();
+        }
+        assertThat(pair.highs().getValue(series.getEndIndex()))
+                .isEqualByComparingTo(series.getBar(series.getEndIndex() - 1).getHighPrice());
+    }
+
+    @Test
+    public void detectorPivotMemoSeesInPlaceTerminalBarMutation() {
+        final BarSeries source = seriesFromCloses(10, 12, 9, 14);
+        final Bar terminal = source.getLastBar();
+        final AtomicReference<Num> high = new AtomicReference<>(terminal.getHighPrice());
+        // A custom Bar whose high changes without publishing a series revision.
+        final Bar mutable = (Bar) Proxy.newProxyInstance(Bar.class.getClassLoader(), new Class<?>[] { Bar.class },
+                (proxy, method, arguments) -> {
+                    if (method.getName().equals("getHighPrice")) {
+                        return high.get();
+                    }
+                    try {
+                        return method.invoke(terminal, arguments);
+                    } catch (InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                });
+        final BarSeries series = (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(),
+                new Class<?>[] { BarSeries.class }, (proxy, method, arguments) -> {
+                    if (method.getName().equals("getLastBar")
+                            || (method.getName().equals("getBar") && (int) arguments[0] == source.getEndIndex())) {
+                        return mutable;
+                    }
+                    try {
+                        return method.invoke(source, arguments);
+                    } catch (InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                });
+        final SwingDetector detector = (bars, index, degree) -> SwingDetectorResult.fromPivots(
+                List.of(new SwingPivot(index, bars.getBar(index).getHighPrice(), SwingPivotType.HIGH)), degree);
+        final Pair pair = RecentSwingIndicators.fromDetector(series, detector);
+        final int endIndex = series.getEndIndex();
+
+        assertThat(pair.highs().getPriceIndicator().getValue(endIndex)).isEqualByComparingTo(numOf(14));
+        high.set(numOf(20));
+
+        assertThat(pair.highs().getPriceIndicator().getValue(endIndex)).isEqualByComparingTo(numOf(20));
     }
 
     @Test

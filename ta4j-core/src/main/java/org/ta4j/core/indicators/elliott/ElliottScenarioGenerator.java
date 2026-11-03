@@ -545,7 +545,7 @@ public final class ElliottScenarioGenerator {
         if (swings.size() <= waveCount) {
             return DecompositionSearchResult.empty();
         }
-        final List<SwingPivotPoint> pivots = limitPivotsForDecomposition(extractPivots(swings));
+        final List<SwingPivotPoint> pivots = decompositionPivots(swings);
         final BestDecomposition best = new BestDecomposition();
         final AtomicInteger branches = new AtomicInteger();
         final AtomicInteger prunedBranches = new AtomicInteger();
@@ -572,7 +572,7 @@ public final class ElliottScenarioGenerator {
         if (swings.size() <= waveCount) {
             return DecompositionSearchResult.empty();
         }
-        final List<SwingPivotPoint> pivots = limitPivotsForDecomposition(extractPivots(swings));
+        final List<SwingPivotPoint> pivots = decompositionPivots(swings);
         final BestDecomposition best = new BestDecomposition();
         final AtomicInteger branches = new AtomicInteger();
         final AtomicInteger prunedBranches = new AtomicInteger();
@@ -743,50 +743,65 @@ public final class ElliottScenarioGenerator {
         return List.copyOf(pivots);
     }
 
-    private List<SwingPivotPoint> limitPivotsForDecomposition(final List<SwingPivotPoint> pivots) {
-        if (pivots.size() <= MAX_DECOMPOSITION_PIVOTS) {
-            return pivots;
+    /**
+     * Returns the pivots searched by anchor-first decompositions: every pivot of a
+     * short segment, or the first and last pivot plus evenly spread internal pivots
+     * of a long one.
+     * <p>
+     * Every starting point of a long swing history runs this selection, so it reads
+     * only the pivots it keeps instead of materializing the whole segment;
+     * otherwise one generation pass would be quadratic in the swing count.
+     */
+    List<SwingPivotPoint> decompositionPivots(final List<ElliottSwing> swings) {
+        final int pivotCount = swings.size() + 1;
+        if (pivotCount <= MAX_DECOMPOSITION_PIVOTS) {
+            return extractPivots(swings);
         }
 
-        final List<SwingPivotPoint> limited = new ArrayList<>(MAX_DECOMPOSITION_PIVOTS);
-        limited.add(pivots.getFirst());
-
         final int internalTarget = MAX_DECOMPOSITION_PIVOTS - 2;
-        final int internalSourceCount = pivots.size() - 2;
-        final boolean[] selected = new boolean[pivots.size()];
-        selected[0] = true;
-        selected[pivots.size() - 1] = true;
-
+        final int internalSourceCount = pivotCount - 2;
+        final java.util.TreeSet<Integer> selected = new java.util.TreeSet<>();
         for (int slot = 0; slot < internalTarget; slot++) {
             final double fraction = (slot + 1.0) / (internalTarget + 1.0);
             int sourceIndex = 1 + (int) Math.round(fraction * (internalSourceCount - 1));
-            sourceIndex = Math.max(1, Math.min(pivots.size() - 2, sourceIndex));
-            while (selected[sourceIndex] && sourceIndex < pivots.size() - 2) {
+            sourceIndex = Math.max(1, Math.min(pivotCount - 2, sourceIndex));
+            while (selected.contains(sourceIndex) && sourceIndex < pivotCount - 2) {
                 sourceIndex++;
             }
-            while (selected[sourceIndex] && sourceIndex > 1) {
+            while (selected.contains(sourceIndex) && sourceIndex > 1) {
                 sourceIndex--;
             }
-            if (selected[sourceIndex]) {
-                continue;
+            if (!selected.contains(sourceIndex)) {
+                selected.add(sourceIndex);
             }
-            selected[sourceIndex] = true;
         }
 
-        for (int index = 1; index < pivots.size() - 1 && limited.size() < MAX_DECOMPOSITION_PIVOTS - 1; index++) {
-            if (selected[index]) {
-                limited.add(pivots.get(index));
+        final List<SwingPivotPoint> limited = new ArrayList<>(MAX_DECOMPOSITION_PIVOTS);
+        limited.add(pivotAt(swings, 0));
+        for (int index : selected) {
+            if (limited.size() >= MAX_DECOMPOSITION_PIVOTS - 1) {
+                break;
             }
+            limited.add(pivotAt(swings, index));
         }
-        for (int index = 1; index < pivots.size() - 1 && limited.size() < MAX_DECOMPOSITION_PIVOTS - 1; index++) {
-            if (!selected[index]) {
-                limited.add(pivots.get(index));
+        for (int index = 1; index < pivotCount - 1 && limited.size() < MAX_DECOMPOSITION_PIVOTS - 1; index++) {
+            if (!selected.contains(index)) {
+                limited.add(pivotAt(swings, index));
             }
         }
 
         limited.sort(java.util.Comparator.comparingInt(SwingPivotPoint::index));
-        limited.add(pivots.getLast());
+        limited.add(pivotAt(swings, pivotCount - 1));
         return List.copyOf(limited);
+    }
+
+    private static SwingPivotPoint pivotAt(final List<ElliottSwing> swings, final int pivotIndex) {
+        if (pivotIndex == 0) {
+            final ElliottSwing first = swings.get(0);
+            return new SwingPivotPoint(first.fromIndex(), first.fromPrice());
+        }
+        final ElliottSwing swing = swings.get(pivotIndex - 1);
+        return new SwingPivotPoint(swing.toIndex(), swing.toPrice());
     }
 
     private ElliottSwing swingBetween(final ElliottDegree degree, final List<SwingPivotPoint> pivots,

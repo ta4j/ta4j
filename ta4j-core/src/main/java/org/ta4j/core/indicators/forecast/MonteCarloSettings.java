@@ -11,6 +11,12 @@ import java.util.TreeSet;
  * Technique-independent Monte Carlo forecast settings.
  *
  * <p>
+ * Every forecast simulates {@code iterationCount} paths of {@code horizon}
+ * steps and holds one terminal value per path, so both settings are bounded: at
+ * most {@value #MAX_HORIZON} bars, {@value #MAX_ITERATION_COUNT} paths and
+ * {@value #MAX_PATH_STEPS} simulated steps per forecast.
+ *
+ * <p>
  * Method-specific configuration lives on the
  * {@link org.ta4j.core.analysis.montecarlo.MonteCarloMethod MonteCarloMethod}
  * implementation chosen by the caller.
@@ -18,9 +24,22 @@ import java.util.TreeSet;
 record MonteCarloSettings(int horizon, int iterationCount, int lookbackBarCount, long seed,
         List<Double> quantileProbabilities) {
 
+    static final int MAX_HORIZON = 10_000;
+    static final int MAX_ITERATION_COUNT = 1_000_000;
+    static final long MAX_PATH_STEPS = 1_000_000_000L;
+
     MonteCarloSettings {
         if (horizon < 1 || iterationCount < 1 || lookbackBarCount < 1) {
             throw new IllegalArgumentException("horizon, iterationCount, and lookbackBarCount must be >= 1");
+        }
+        if (horizon > MAX_HORIZON) {
+            throw new IllegalArgumentException("horizon must be <= " + MAX_HORIZON);
+        }
+        if (iterationCount > MAX_ITERATION_COUNT) {
+            throw new IllegalArgumentException("iterationCount must be <= " + MAX_ITERATION_COUNT);
+        }
+        if ((long) horizon * iterationCount > MAX_PATH_STEPS) {
+            throw new IllegalArgumentException("horizon * iterationCount must be <= " + MAX_PATH_STEPS);
         }
         List<Double> input = Objects.requireNonNull(quantileProbabilities, "quantileProbabilities must not be null");
         if (input.isEmpty()) {

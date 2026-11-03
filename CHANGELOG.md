@@ -1,5 +1,14 @@
 ## Unreleased
 
+### Breaking
+
+- **Untrusted analysis-criterion JSON only restores ta4j criteria (`CF-756`)**: `AnalysisCriterion.fromJson(...)`, `AnalysisCriterionSerialization.fromJson(...)` and `fromDescriptor(...)` now reject fully qualified class names outside the `org.ta4j.core.criteria` package tree before the class is loaded, initialized or constructed. Shorthand expressions still build any criterion type produced by an alias registered in the supplied `NamedAssetRegistry`. To restore custom criteria from data you control, call the new `AnalysisCriterionSerialization.fromTrustedJson(...)` or `fromTrustedDescriptor(...)`.
+- **Resource limits on descriptor-reachable parameters (`CF-756`)**: settings that previously allowed unbounded CPU or memory now fail fast with `IllegalArgumentException`. LPPL profiles accept at most 100,000 grid points, 10,000 optimizer evaluations and 100,000,000 model evaluations per fit; `RWIHighIndicator` and `RWILowIndicator` accept `barCount` up to 1,000; Monte Carlo forecasts accept at most 10,000 horizon bars, 1,000,000 paths and 1,000,000,000 path steps; `RoughVolatilityForecastStateIndicator` accepts a horizon up to 10,000; `OnlineChangePointForecastStateIndicator` accepts `maximumRunLength` up to 10,000; trend-line indicators accept at most 512 swing points and 130,816 candidate pairs; and shorthand numeric arguments may expand to at most 1,000 plain digits. Defaults are unchanged and stay well inside every limit.
+
+### Fixed
+
+- **Lower memory and CPU on long histories (`CF-756`)**: detector-backed recent-swing pairs no longer cache a full pivot list for every scanned bar, `MutualInformationIndicator` stores only occupied bins instead of a `binCount²` matrix, RWI indicators share one true-range source across their ATR helpers, and `ElliottScenarioGenerator` is linear rather than quadratic in the number of swings with unchanged results.
+
 ### Changed
 
 - **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases, including low-precision decimal totals, reconstruct from the existing calculation when reuse is unsafe.

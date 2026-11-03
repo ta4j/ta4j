@@ -38,6 +38,12 @@ public final class NamedAssetRegistry {
     private static final Pattern JSON_NUMBER_LITERAL = Pattern
             .compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
     private static final Pattern JSON_INTEGER_LITERAL = Pattern.compile("-?(?:0|[1-9]\\d*)");
+    /**
+     * Largest number of digits a shorthand numeric argument may expand to in plain
+     * notation. It admits any value a {@code double} or ordinary decimal price can
+     * hold while rejecting exponent-only payloads that expand to huge strings.
+     */
+    static final int MAX_PLAIN_NUMBER_DIGITS = 1_000;
     private static final AtomicReference<NamedAssetRegistry> DEFAULT_REGISTRY = new AtomicReference<>();
 
     private final Map<NamedAssetKind, Map<String, Binding>> bindings;
@@ -113,6 +119,19 @@ public final class NamedAssetRegistry {
         Objects.requireNonNull(kind, "kind");
         ParsedExpression parsed = new Parser(expression, location).parseExpressionDocument();
         return toDescriptor(kind, parsed, location);
+    }
+
+    /**
+     * Returns whether an alias is registered for an asset family.
+     *
+     * @param kind  owning asset family
+     * @param alias shorthand alias, without arguments
+     * @return {@code true} when a binding exists for the alias
+     * @since 0.28.1
+     */
+    public boolean isRegistered(NamedAssetKind kind, String alias) {
+        Objects.requireNonNull(kind, "kind");
+        return alias != null && bindings.getOrDefault(kind, Map.of()).containsKey(alias);
     }
 
     /**
@@ -1208,11 +1227,20 @@ public final class NamedAssetRegistry {
         if (!JSON_NUMBER_LITERAL.matcher(trimmed).matches()) {
             throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed);
         }
+        BigDecimal decimal;
         try {
-            BigDecimal decimal = new BigDecimal(trimmed);
-            return decimal.stripTrailingZeros().toPlainString();
+            decimal = new BigDecimal(trimmed).stripTrailingZeros();
         } catch (NumberFormatException ex) {
             throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed, ex);
         }
+        // An exponent expands to that many plain digits, so "1e999999999" would
+        // otherwise allocate a gigabyte-sized string from a short expression.
+        long plainDigits = decimal.scale() < 0 ? (long) decimal.precision() - decimal.scale()
+                : Math.max(decimal.precision(), decimal.scale() + 1L);
+        if (plainDigits > MAX_PLAIN_NUMBER_DIGITS) {
+            throw new IllegalArgumentException("Numeric argument at " + location + " needs more than "
+                    + MAX_PLAIN_NUMBER_DIGITS + " plain digits: " + trimmed);
+        }
+        return decimal.toPlainString();
     }
 }

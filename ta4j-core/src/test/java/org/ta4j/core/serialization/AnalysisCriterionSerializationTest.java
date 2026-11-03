@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Duration;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.AnalysisCriterion;
@@ -22,6 +23,7 @@ import org.ta4j.core.criteria.SharpeRatioCriterion;
 import org.ta4j.core.criteria.custom.CustomPackageCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
 
 public class AnalysisCriterionSerializationTest {
@@ -171,6 +173,63 @@ public class AnalysisCriterionSerializationTest {
         assertThat(InitializerProbe.initialized).isFalse();
     }
 
+    @Test
+    public void untrustedJsonRejectsCustomCriterionBeforeInitializingOrConstructingIt() {
+        String json = "{\"type\":\"" + ExternalCriterionProbe.class.getName() + "\"}";
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> AnalysisCriterion.fromJson(json));
+
+        assertThat(exception).hasMessageContaining("Unknown analysis criterion type")
+                .hasMessageContaining(ExternalCriterionProbe.class.getName());
+        assertThat(ExternalCriterionProbe.Probe.initialized).isFalse();
+        assertThat(ExternalCriterionProbe.Probe.constructed).isFalse();
+    }
+
+    @Test
+    public void untrustedExpressionRejectsUnregisteredCustomCriterionClassName() {
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> AnalysisCriterion.fromExpression(ExternalCriterionProbe.class.getName()));
+
+        assertThat(exception).hasMessageContaining("Unknown analysis criterion type");
+        assertThat(ExternalCriterionProbe.Probe.initialized).isFalse();
+        assertThat(ExternalCriterionProbe.Probe.constructed).isFalse();
+    }
+
+    @Test
+    public void untrustedSimpleNameResolvesOnlyInsideCriteriaPackages() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> AnalysisCriterion.fromJson("{\"type\":\"AnalysisCriterionSerializationTest\"}"));
+
+        assertThat(exception).hasMessageContaining("Unknown analysis criterion type");
+    }
+
+    @Test
+    public void trustedJsonRestoresCustomCriterionOutsideTa4jPackages() {
+        String json = new TrustedExternalCriterion().toJson();
+
+        AnalysisCriterion restored = AnalysisCriterionSerialization.fromTrustedJson(json);
+
+        assertThat(json).contains(TrustedExternalCriterion.class.getName());
+        assertThat(restored).isInstanceOf(TrustedExternalCriterion.class);
+        assertThrows(IllegalArgumentException.class, () -> AnalysisCriterion.fromJson(json));
+    }
+
+    @Test
+    public void registeredAliasMayProduceCustomCriterionType() {
+        NamedAssetRegistry registry = NamedAssetRegistry.builder()
+                .withDefaults()
+                .registerAnalysisCriterion("ExternalProbe", List.of(),
+                        args -> ComponentDescriptor.typeOnly(TrustedExternalCriterion.class.getName()))
+                .build();
+
+        AnalysisCriterion restored = AnalysisCriterion.fromExpression(" ExternalProbe ", registry);
+
+        assertThat(restored).isInstanceOf(TrustedExternalCriterion.class);
+        assertThat(AnalysisCriterion.fromExpression("NetProfit", registry)).isInstanceOf(NetProfitCriterion.class);
+    }
+
     private static final class DurationBackedCriterion implements AnalysisCriterion {
 
         private final Duration duration;
@@ -182,6 +241,24 @@ public class AnalysisCriterionSerializationTest {
         private DurationBackedCriterion(Duration duration) {
             this.duration = duration;
         }
+
+        @Override
+        public Num calculate(BarSeries series, Position position) {
+            return series.numFactory().zero();
+        }
+
+        @Override
+        public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+            return series.numFactory().zero();
+        }
+
+        @Override
+        public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+            return criterionValue1.isGreaterThan(criterionValue2);
+        }
+    }
+
+    public static final class TrustedExternalCriterion implements AnalysisCriterion {
 
         @Override
         public Num calculate(BarSeries series, Position position) {

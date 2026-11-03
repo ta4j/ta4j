@@ -17,6 +17,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
+import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ToleranceSettings;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ScoringWeights;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
@@ -248,6 +249,23 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(segment.secondIndex).isEqualTo(4);
         assertThat(indicator.getMaxSwingPointsForTrendline()).isEqualTo(2);
         assertThat(indicator.getMaxCandidatePairs()).isEqualTo(3);
+    }
+
+    @Test
+    public void shouldRejectSearchCapsAboveTheirMaximum() {
+        final var series = seriesFromLows(10, 7, 9, 6, 8);
+        final var swingIndicator = new StaticSwingIndicator(new LowPriceIndicator(series), List.of(0, 1, 2, 3, 4));
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new TrendLineSupportIndicator(swingIndicator, 10, 0.30d, 0.20d, 0.15d, 0.20d, 0.15d,
+                        ToleranceSettings.defaultSettings(), Integer.MAX_VALUE, 3));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new TrendLineSupportIndicator(swingIndicator, 10, 0.30d, 0.20d, 0.15d, 0.20d, 0.15d,
+                        ToleranceSettings.defaultSettings(), 2, Integer.MAX_VALUE));
+        final var widest = new TrendLineSupportIndicator(swingIndicator, 10, 0.30d, 0.20d, 0.15d, 0.20d, 0.15d,
+                ToleranceSettings.defaultSettings(), AbstractTrendLineIndicator.MAX_SWING_POINTS_FOR_TRENDLINE,
+                AbstractTrendLineIndicator.MAX_CANDIDATE_PAIRS);
+        assertThat(widest.getMaxCandidatePairs()).isEqualTo(512 * 511 / 2);
     }
 
     @Test

@@ -110,6 +110,34 @@ public class MonteCarloPriceForecastIndicatorTest
     }
 
     @Test
+    public void rejectsSimulationWorkBeyondTheForecastBudget() {
+        BarSeries series = constantSeries(3, 100);
+        FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.LOG, numOf(0), numOf(0),
+                numOf(0));
+        FixedReturnStateIndicator state = new FixedReturnStateIndicator(returns, ReturnRepresentation.LOG);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> MonteCarloPriceForecastIndicator.builder(close, state)
+                        .horizon(MonteCarloSettings.MAX_HORIZON + 1)
+                        .build());
+        assertThrows(IllegalArgumentException.class,
+                () -> MonteCarloPriceForecastIndicator.builder(close, state)
+                        .iterationCount(MonteCarloSettings.MAX_ITERATION_COUNT + 1)
+                        .build());
+        assertThrows(IllegalArgumentException.class,
+                () -> MonteCarloPriceForecastIndicator.builder(close, state)
+                        .horizon(MonteCarloSettings.MAX_HORIZON)
+                        .iterationCount(MonteCarloSettings.MAX_ITERATION_COUNT)
+                        .build());
+        MonteCarloPriceForecastIndicator largest = MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(MonteCarloSettings.MAX_HORIZON)
+                .iterationCount((int) (MonteCarloSettings.MAX_PATH_STEPS / MonteCarloSettings.MAX_HORIZON))
+                .build();
+        assertEquals(MonteCarloSettings.MAX_HORIZON, largest.getHorizon());
+    }
+
+    @Test
     public void rejectsNonLogStateIndicator() {
         BarSeries series = constantSeries(3, 100);
         FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.DECIMAL, numOf(0),

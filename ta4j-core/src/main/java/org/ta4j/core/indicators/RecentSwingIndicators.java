@@ -567,12 +567,23 @@ public final class RecentSwingIndicators {
         }
     }
 
+    /**
+     * Detector pivots for one queried index.
+     * <p>
+     * Each result lists every pivot up to its index, so caching one per index (as
+     * {@link CachedIndicator} would) holds quadratic memory once the recent-swing
+     * tracker has scanned a long series. Only two results are kept: the latest
+     * scanned index, which the tracker queries in order, and the series end, which
+     * every swing-price read asks for.
+     */
     private static final class DetectorPivotIndicator extends CachedIndicator<List<SwingPivot>> {
 
         private final SwingDetector detector;
         private long observedRevision;
         private int observedEndIndex;
         private Bar observedLastBar;
+        private PivotMemo scanMemo;
+        private PivotMemo endMemo;
 
         private DetectorPivotIndicator(final BarSeries series, final SwingDetector detector) {
             super(series);
@@ -588,8 +599,30 @@ public final class RecentSwingIndicators {
                 return calculate(index);
             }
             invalidateIfHistoryChanged();
-            final List<SwingPivot> result = super.getValue(index);
             final BarSeries series = getBarSeries();
+            final int clampedIndex = series.isEmpty() ? index
+                    : Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
+            final boolean atEnd = !series.isEmpty() && clampedIndex == series.getEndIndex();
+            final PivotMemo current = atEnd ? endMemo : scanMemo;
+            final List<SwingPivot> result;
+            if (current != null && current.matches(series, clampedIndex)) {
+                result = current.pivots();
+            } else {
+                // Tag the memo with the history observed before detection and publish
+                // it only if that history is still current, so a concurrent update
+                // cannot label stale pivots with the new revision.
+                final PivotMemo computed = new PivotMemo(clampedIndex, series.getBarHistoryRevision(),
+                        series.getBeginIndex(), series.getEndIndex(), TerminalBar.capture(series), null);
+                result = calculate(clampedIndex);
+                if (computed.matches(series, clampedIndex)) {
+                    final PivotMemo published = computed.withPivots(result);
+                    if (atEnd) {
+                        endMemo = published;
+                    } else {
+                        scanMemo = published;
+                    }
+                }
+            }
             observedRevision = series.getBarHistoryRevision();
             observedEndIndex = series.getEndIndex();
             observedLastBar = observedRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
@@ -611,6 +644,13 @@ public final class RecentSwingIndicators {
             return 0;
         }
 
+        @Override
+        protected synchronized void invalidateCache() {
+            scanMemo = null;
+            endMemo = null;
+            super.invalidateCache();
+        }
+
         private void invalidateIfHistoryChanged() {
             final BarSeries series = getBarSeries();
             final long currentRevision = series.getBarHistoryRevision();
@@ -627,6 +667,37 @@ public final class RecentSwingIndicators {
                 observedEndIndex = currentEndIndex;
                 observedLastBar = currentLastBar;
             }
+        }
+    }
+
+    /**
+     * Detector result plus the history it was computed from. The terminal bar's
+     * values are part of that history because a bar that cannot publish its own
+     * mutations can change without moving the series revision.
+     */
+    private record PivotMemo(int index, long revision, int beginIndex, int endIndex, TerminalBar terminalBar,
+            List<SwingPivot> pivots) {
+
+        private PivotMemo withPivots(final List<SwingPivot> detected) {
+            return new PivotMemo(index, revision, beginIndex, endIndex, terminalBar, detected);
+        }
+
+        private boolean matches(final BarSeries series, final int queriedIndex) {
+            return index == queriedIndex && revision == series.getBarHistoryRevision()
+                    && beginIndex == series.getBeginIndex() && endIndex == series.getEndIndex()
+                    && Objects.equals(terminalBar, TerminalBar.capture(series));
+        }
+    }
+
+    private record TerminalBar(Bar bar, Num open, Num high, Num low, Num close, Num volume, Num amount, long trades) {
+
+        private static TerminalBar capture(final BarSeries series) {
+            if (series.isEmpty()) {
+                return null;
+            }
+            final Bar bar = series.getLastBar();
+            return new TerminalBar(bar, bar.getOpenPrice(), bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(),
+                    bar.getVolume(), bar.getAmount(), bar.getTrades());
         }
     }
 }

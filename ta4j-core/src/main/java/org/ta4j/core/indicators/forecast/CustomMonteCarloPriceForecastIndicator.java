@@ -135,7 +135,7 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
         /**
          * Sets the positive forecast horizon in bars.
          *
-         * @param value horizon in bars
+         * @param value horizon in bars, at most 10,000
          * @return this builder
          * @since 0.27.1
          */
@@ -147,7 +147,8 @@ public final class CustomMonteCarloPriceForecastIndicator extends CachedIndicato
         /**
          * Sets the positive number of simulated terminal prices.
          *
-         * @param value number of paths
+         * @param value number of paths, at most 1,000,000 and at most 1,000,000,000
+         *              path steps (horizon times paths)
          * @return this builder
          * @since 0.27.1
          */
