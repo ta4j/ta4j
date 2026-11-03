@@ -1232,6 +1232,19 @@ class BaseTradingRecordTest {
         private final long modificationCount;
         private final Num totalFees;
         private final long nextSequence;
+        private final int fundingCursor = 0;
+        private final boolean readOnly = false;
+        private final boolean terminalTradeIndexRecorded = false;
+        private final Object cashFlows = new java.util.ArrayList<>();
+        private final Object eventHorizon = null;
+        private final Object feeCompensation = null;
+        private final Object fundingSchedule = new java.util.ArrayList<>();
+        private final Object futuresContract = null;
+        private final Object initialCapital = null;
+        private final Object initialMarginRate = null;
+        private final Object marketSnapshots = new java.util.ArrayList<>();
+        private final Object positionSnapshots = new java.util.ArrayList<>();
+        private final Object processedEvents = new java.util.HashMap<>();
 
         private SerializedRecordState(TradeType startingType, ExecutionMatchPolicy matchPolicy, Object positionBook,
                 int nextTradeIndex, long nextSequence) {
@@ -1257,6 +1270,9 @@ class BaseTradingRecordTest {
         private final ExecutionMatchPolicy matchPolicy;
         private final Object openLots;
         private final Object closedPositions;
+        private final Object deferredImportedCashFlows = new java.util.ArrayList<>();
+        private final Object futuresContract = null;
+        private final Object latestImportedExecutionTime = null;
 
         private SerializedPositionBookState(TradeType startingType, ExecutionMatchPolicy matchPolicy, Object openLots,
                 Object closedPositions) {

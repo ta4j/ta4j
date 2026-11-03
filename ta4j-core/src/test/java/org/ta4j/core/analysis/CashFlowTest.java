@@ -2963,8 +2963,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, curve.getBaselineValue());
         assertEquals(2, curve.getSize());
         if (metadataOnly) {
-            assertTrue(curve.hasInitialReturn(), "values=" + curve.stream().toList() + ", baseline=" + curve.getBaselineValue()
-                    + ", initialReturn=" + curve.hasInitialReturn());
+            assertTrue(curve.hasInitialReturn(), "values=" + curve.stream().toList() + ", baseline="
+                    + curve.getBaselineValue() + ", initialReturn=" + curve.hasInitialReturn());
         } else {
             assertNumEquals(1.1, curve.getValue(2));
             assertNumEquals(1.1, curve.getValue(3));

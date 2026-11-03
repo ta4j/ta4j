@@ -174,7 +174,7 @@ public class BaseTradingRecord implements TradingRecord {
         this(recordConfig(startingType, matchPolicy, transactionCostModel, holdingCostModel, startIndex, endIndex));
     }
 
-    private BaseTradingRecord(RecordConfig config) {
+    BaseTradingRecord(RecordConfig config) {
         this.startingType = config.startingType();
         this.matchPolicy = config.matchPolicy();
         this.transactionCostModel = config.transactionCostModel();
@@ -618,7 +618,7 @@ public class BaseTradingRecord implements TradingRecord {
         }
         ExecutionMatchPolicy matchPolicy = source instanceof BaseTradingRecord baseRecord ? baseRecord.matchPolicy
                 : ExecutionMatchPolicy.FIFO;
-        BaseTradingRecord projected = new BaseTradingRecord(recordConfig(source.getStartingType(), matchPolicy,
+        BaseTradingRecord projected = new WindowProjectedTradingRecord(recordConfig(source.getStartingType(), matchPolicy,
                 source.getTransactionCostModel(), source.getHoldingCostModel(), start, end, contract,
                 source.getInitialCapital(), source.getInitialMarginRate(), List.of()));
         NumFactory feeFactory = positions.isEmpty() ? projected.getTotalFees().getNumFactory()
@@ -2444,7 +2444,7 @@ public class BaseTradingRecord implements TradingRecord {
         return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
     }
 
-    private record RecordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
+    record RecordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
             CostModel transactionCostModel, CostModel holdingCostModel, PositionBook positionBook, Integer startIndex,
             Integer endIndex, int nextTradeIndex, boolean terminalTradeIndexRecorded, long modificationCount,
             Num totalFees, Num feeCompensation, NumFactory numFactory, long nextSequence,

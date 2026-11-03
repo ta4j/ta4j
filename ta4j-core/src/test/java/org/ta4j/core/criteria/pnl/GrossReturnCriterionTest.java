@@ -113,7 +113,6 @@ public class GrossReturnCriterionTest extends AbstractPnlCriterionTest {
         assertNumEquals(1.8018, criterion.calculate(series, new BaseTradingRecord(record.getPositions())));
     }
 
-
     private static final Instant FUTURES_T0 = Instant.parse("2025-01-01T00:00:00Z");
 
     private FuturesContract grossLinearBtcPerpetual() {

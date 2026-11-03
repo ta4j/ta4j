@@ -207,7 +207,6 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
         }
     }
 
-
     @Test
     public void futuresRecordTotalsRecordedSettlementFeesOnly() {
         FuturesContract contract = linearBtcPerpetual();

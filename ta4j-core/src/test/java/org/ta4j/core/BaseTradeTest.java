@@ -296,6 +296,8 @@ class BaseTradeTest {
         private String orderId;
         private String correlationId;
         private Num cost = NUM_FACTORY.zero();
+        private Object futuresContract;
+        private Object feeComponents = List.of();
     }
 
     private BaseTrade copyTrade(BaseTrade original) throws Exception {

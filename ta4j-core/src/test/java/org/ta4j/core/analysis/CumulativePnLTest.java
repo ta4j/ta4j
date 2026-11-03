@@ -1136,7 +1136,8 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertEquals(2 * periods + 1, pnl.getSize());
         // settled positions are folded once instead of being re-measured on every later
         // bar
-        assertTrue(holdingCosts.calls() <= 3 * periods, "holding costs were recomputed " + holdingCosts.calls() + " times");
+        assertTrue(holdingCosts.calls() <= 3 * periods,
+                "holding costs were recomputed " + holdingCosts.calls() + " times");
     }
 
     private static BarSeries flatRuntimeSeries(NumFactory numFactory, int barCount) {

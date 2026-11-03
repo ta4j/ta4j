@@ -487,7 +487,6 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         assertNumEquals(expected, criterion.calculate(series, record, window, context));
     }
 
-
     @Test
     public void multiFillFuturesBlockUsesLastExecutedIndex() {
         org.ta4j.core.FuturesContract contract = futuresContract();

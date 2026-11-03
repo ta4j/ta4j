@@ -663,6 +663,8 @@ public class PositionTest {
         private final Trade entry;
         private final Trade exit;
         private final TradeType startingType;
+        private final Object futuresContract = null;
+        private final Object cashFlows = new java.util.ArrayList<>();
 
         private SerializedPositionState(TradeType startingType, Trade entry, Trade exit) {
             this.startingType = startingType;
