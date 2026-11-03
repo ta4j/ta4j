@@ -138,9 +138,18 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
             if (!Num.isFinite(sum)) {
                 return null;
             }
-            if (outgoing != null && !rollingSum.isZero()) {
-                Num threshold = rollingSum.abs().dividedBy(getBarSeries().numFactory().numOf(100000000));
-                if (retained.abs().isLessThan(threshold) || sum.abs().isLessThan(threshold)) {
+            if (outgoing != null) {
+                Num outgoingMagnitude = outgoing.abs();
+                Num previousMagnitude = rollingSum.abs();
+                Num retainedMagnitude = retained.abs();
+                Num currentMagnitude = current.abs();
+                Num removalScale = outgoingMagnitude.isGreaterThan(previousMagnitude) ? outgoingMagnitude
+                        : previousMagnitude;
+                Num additionScale = currentMagnitude.isGreaterThan(retainedMagnitude) ? currentMagnitude
+                        : retainedMagnitude;
+                Num divisor = getBarSeries().numFactory().numOf(100000000);
+                if (retainedMagnitude.isLessThan(removalScale.dividedBy(divisor))
+                        || sum.abs().isLessThan(additionScale.dividedBy(divisor))) {
                     return null;
                 }
             }
