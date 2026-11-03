@@ -10,12 +10,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.IndicatorFamilyResult;
 import org.ta4j.core.num.Num;
 
+@Tag("analysis-demo")
 public class IndicatorFamilyAnalysisDemoTest {
 
     @Test
