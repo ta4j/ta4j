@@ -23,6 +23,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final Indicator<Num> highPriceIndicator;
     private final transient HighestValueIndicator highestHighPriceIndicator;
+    private final transient AroonExtremeIndexIndicator extremeIndexIndicator;
     private final transient Num barCountNum;
 
     /**
@@ -39,6 +40,9 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
         this.barCountNum = getBarSeries().numFactory().numOf(barCount);
         // + 1 needed for last possible iteration in loop
         this.highestHighPriceIndicator = new HighestValueIndicator(highPriceIndicator, barCount + 1);
+        this.extremeIndexIndicator = barCount > 0 && barCount < Integer.MAX_VALUE
+                ? new AroonExtremeIndexIndicator(highPriceIndicator, barCount, true)
+                : null;
     }
 
     /**
@@ -57,14 +61,19 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
         if (getBarSeries().getBar(index).getHighPrice().isNaN())
             return NaN;
 
-        // Getting the number of bars since the highest close price
-        int endIndex = Math.max(0, index - barCount);
-        int nbBars = 0;
-        for (int i = index; i > endIndex; i--) {
-            if (highPriceIndicator.getValue(i).isEqual(highestHighPriceIndicator.getValue(index))) {
-                break;
+        int nbBars;
+        if (extremeIndexIndicator != null) {
+            int extremeIndex = extremeIndexIndicator.getValue(index);
+            nbBars = extremeIndex < 0 ? Math.min(index, barCount) : Math.min(index - extremeIndex, barCount);
+        } else {
+            int endIndex = Math.max(0, index - barCount);
+            nbBars = 0;
+            for (int i = index; i > endIndex; i--) {
+                if (highPriceIndicator.getValue(i).isEqual(highestHighPriceIndicator.getValue(index))) {
+                    break;
+                }
+                nbBars++;
             }
-            nbBars++;
         }
 
         final var numFactory = getBarSeries().numFactory();

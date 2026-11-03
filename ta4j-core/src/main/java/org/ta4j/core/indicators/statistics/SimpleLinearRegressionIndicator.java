@@ -7,6 +7,9 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.averages.LWMAIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -36,6 +39,9 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
     private Num slope;
     private Num intercept;
     private final SimpleLinearRegressionType type;
+    private final transient LWMAIndicator weightedAverage;
+    private final transient RunningTotalIndicator total;
+    private final transient RunningTotalIndicator prefixWeighted;
 
     /**
      * Constructor for the y-values of the formula (y = slope * x + intercept).
@@ -59,6 +65,19 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
         this.indicator = indicator;
         this.barCount = barCount;
         this.type = type;
+        this.weightedAverage = new LWMAIndicator(indicator, barCount);
+        this.total = new RunningTotalIndicator(indicator, barCount);
+        this.prefixWeighted = new RunningTotalIndicator(new CachedIndicator<Num>(indicator) {
+            @Override
+            protected Num calculate(int index) {
+                return indicator.getValue(index).multipliedBy(getBarSeries().numFactory().numOf((long) index + 1));
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return indicator.getCountOfUnstableBars();
+            }
+        }, barCount);
     }
 
     @Override
@@ -67,6 +86,10 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
         if (index - startIndex + 1 < 2) {
             // Not enough observations to compute a regression line
             return NaN;
+        }
+        Num rolling = calculateRolling(startIndex, index);
+        if (rolling != null) {
+            return rolling;
         }
         calculateRegressionLine(startIndex, index);
 
@@ -79,6 +102,43 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
         }
 
         return slope.multipliedBy(getBarSeries().numFactory().numOf(index)).plus(intercept);
+    }
+
+    private Num calculateRolling(int start, int index) {
+        var factory = getBarSeries().numFactory();
+        int count = index - start + 1;
+        boolean fullWindow = count == barCount && index >= weightedAverage.getCountOfUnstableBars();
+        if (barCount < 2 || barCount > 10000 || index > 1000000 || (!fullWindow && start != 0)
+                || (factory.zero() instanceof DecimalNum decimal && decimal.getMathContext().getPrecision() < 16)) {
+            return null;
+        }
+        try {
+            long observations = count;
+            Num n = factory.numOf(observations);
+            Num sumX = factory.numOf(observations * (observations + 1) / 2);
+            Num sumX2 = factory.numOf(observations * (observations + 1) * (2 * observations + 1) / 6);
+            Num sumY = total.getValue(index);
+            Num sumXY = fullWindow ? weightedAverage.getValue(index).multipliedBy(sumX)
+                    : prefixWeighted.getValue(index);
+            Num first = n.multipliedBy(sumXY);
+            Num second = sumX.multipliedBy(sumY);
+            Num numerator = first.minus(second);
+            Num denominator = n.multipliedBy(sumX2).minus(sumX.multipliedBy(sumX));
+            if (!Num.isFinite(sumY) || !Num.isFinite(sumXY) || !Num.isFinite(numerator) || !Num.isFinite(denominator)
+                    || denominator.isZero() || numerator.abs()
+                            .isLessThanOrEqual(first.abs().max(second.abs()).dividedBy(factory.numOf(100000000)))) {
+                return null;
+            }
+            Num lineSlope = numerator.dividedBy(denominator);
+            Num xBar = factory.numOf(start).plus(factory.numOf(count - 1).dividedBy(factory.numOf(2)));
+            Num lineIntercept = sumY.dividedBy(n).minus(lineSlope.multipliedBy(xBar));
+            Num result = type == SimpleLinearRegressionType.SLOPE ? lineSlope
+                    : type == SimpleLinearRegressionType.INTERCEPT ? lineIntercept
+                            : lineSlope.multipliedBy(factory.numOf(index)).plus(lineIntercept);
+            return Num.isFinite(result) ? result : null;
+        } catch (ArithmeticException e) {
+            return null;
+        }
     }
 
     @Override

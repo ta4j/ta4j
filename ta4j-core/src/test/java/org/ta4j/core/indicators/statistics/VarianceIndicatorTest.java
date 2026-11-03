@@ -9,6 +9,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -98,6 +99,31 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         VarianceIndicator variance = VarianceIndicator.ofPopulation(source, 3);
 
         assertNumEquals(0, variance.getValue(2));
+    }
+
+    @Test
+    public void historicalReplacementAndExpirationUpdateVariance() {
+        var series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6)
+                .build();
+        var variance = new VarianceIndicator(new ClosePriceIndicator(series), 3);
+        for (int i = 0; i <= 3; i++) {
+            variance.getValue(i);
+        }
+        var old = series.getBar(1);
+        series.replaceBar(1,
+                series.barBuilder()
+                        .timePeriod(old.getTimePeriod())
+                        .endTime(old.getEndTime())
+                        .openPrice(20)
+                        .highPrice(20)
+                        .lowPrice(20)
+                        .closePrice(20)
+                        .volume(old.getVolume())
+                        .build());
+
+        assertNumEquals(91, variance.getValue(3));
+        assertNumEquals(1, variance.getValue(4));
     }
 
     @Test
