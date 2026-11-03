@@ -576,11 +576,13 @@ class ElliottScenarioGeneratorTest {
         assertThat(pivots).hasSize(16);
         assertThat(pivots.getFirst().index()).isZero();
         assertThat(pivots.getLast().index()).isEqualTo(swingCount * 5);
-        assertThat(pivots).isSortedAccordingTo(java.util.Comparator.comparingInt(ElliottScenarioGenerator.SwingPivotPoint::index));
+        assertThat(pivots).isSortedAccordingTo(
+                java.util.Comparator.comparingInt(ElliottScenarioGenerator.SwingPivotPoint::index));
         // Each generation pass selects pivots once per starting point, so reading
         // the whole segment here would make generation quadratic in swing count.
         assertThat(reads.get()).isLessThanOrEqualTo(16);
-        assertThat(generator.decompositionPivots(swings.subList(0, 15))).isEqualTo(generator.extractPivots(swings.subList(0, 15)));
+        assertThat(generator.decompositionPivots(swings.subList(0, 15)))
+                .isEqualTo(generator.extractPivots(swings.subList(0, 15)));
     }
 
     private boolean invokePartialImpulseBranchValidator(final List<ElliottSwing> swings,

@@ -66,9 +66,9 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * The posterior for every evaluated bar is cached with one component per
  * retained run length, so memory grows with evaluated bars times
- * {@code maximumRunLength + 1}. The run length is therefore limited to
- * 10,000; use a series {@code maximumBarCount} to bound the
- * number of cached bars on long or live histories.
+ * {@code maximumRunLength + 1}. The run length is therefore limited to 10,000;
+ * use a series {@code maximumBarCount} to bound the number of cached bars on
+ * long or live histories.
  *
  * @since 0.23.1
  */

@@ -443,10 +443,10 @@ public class OnlineChangePointForecastStateIndicatorTest
                 () -> OnlineChangePointForecastStateIndicator.builder(log.returns()).expectedRunLength(1).build());
         assertThrows(IllegalArgumentException.class,
                 () -> OnlineChangePointForecastStateIndicator.builder(log.returns()).maximumRunLength(0).build());
-        assertThrows(IllegalArgumentException.class, () -> OnlineChangePointForecastStateIndicator
-                .builder(log.returns())
-                .maximumRunLength(OnlineChangePointForecastStateIndicator.MAX_RUN_LENGTH + 1)
-                .build());
+        assertThrows(IllegalArgumentException.class,
+                () -> OnlineChangePointForecastStateIndicator.builder(log.returns())
+                        .maximumRunLength(OnlineChangePointForecastStateIndicator.MAX_RUN_LENGTH + 1)
+                        .build());
         assertThrows(IllegalArgumentException.class,
                 () -> OnlineChangePointForecastStateIndicator.builder(log.returns()).topRunLengthCount(254).build());
         assertThrows(IllegalArgumentException.class,

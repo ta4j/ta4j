@@ -15,13 +15,12 @@ import java.util.Objects;
  * evaluated, so every result is usable without look-ahead.
  *
  * <p>
- * Every fit costs roughly {@code (grid points + maxEvaluations) * window}
- * model evaluations, where the grid holds one point per searched critical
- * offset, exponent and frequency. Profiles are rejected when the grid exceeds
- * 100,000 points, the optimizer budget exceeds
- * 10,000 evaluations, or the combined work exceeds
- * 100,000,000 model evaluations per fitted bar. The defaults use well under 1% of
- * that budget.
+ * Every fit costs roughly {@code (grid points + maxEvaluations) * window} model
+ * evaluations, where the grid holds one point per searched critical offset,
+ * exponent and frequency. Profiles are rejected when the grid exceeds 100,000
+ * points, the optimizer budget exceeds 10,000 evaluations, or the combined work
+ * exceeds 100,000,000 model evaluations per fitted bar. The defaults use well
+ * under 1% of that budget.
  *
  * @since 0.23.1
  */
@@ -87,8 +86,8 @@ public final class LPPLCalibrationProfile {
         }
         long gridPoints = criticalSteps * mSteps * omegaSteps;
         if ((gridPoints + maxEvaluations) * window > MAX_FIT_WORK) {
-            throw new IllegalArgumentException("(grid points + maxEvaluations) * window must be at most "
-                    + MAX_FIT_WORK + " model evaluations per fit");
+            throw new IllegalArgumentException("(grid points + maxEvaluations) * window must be at most " + MAX_FIT_WORK
+                    + " model evaluations per fit");
         }
         this.window = window;
         this.minM = minM;

@@ -31,16 +31,17 @@ import org.ta4j.core.named.NamedAssetRegistry;
  * rather than silently emitted as default instances.
  * <p>
  * <b>Trust boundary.</b> Descriptor {@code type} strings are untrusted by
- * default. {@link #fromJson(String)} and {@link #fromDescriptor(ComponentDescriptor)}
- * only construct criteria that ta4j itself ships in the
- * {@code org.ta4j.core.criteria} package tree; any other fully qualified class
- * name is rejected before it is initialized or constructed. Shorthand
- * expressions may also construct the types produced by aliases registered in
- * the supplied {@link NamedAssetRegistry}, because registration is an explicit
- * decision made by Java code. Callers that restore custom criteria from data
- * they control can opt in with {@link #fromTrustedJson(String)} or
- * {@link #fromTrustedDescriptor(ComponentDescriptor)}; never pass external input
- * to those methods.
+ * default. {@link #fromJson(String)} and
+ * {@link #fromDescriptor(ComponentDescriptor)} only construct criteria that
+ * ta4j itself ships in the {@code org.ta4j.core.criteria} package tree; any
+ * other fully qualified class name is rejected before it is initialized or
+ * constructed. Shorthand expressions may also construct the types produced by
+ * aliases registered in the supplied {@link NamedAssetRegistry}, because
+ * registration is an explicit decision made by Java code. Callers that restore
+ * custom criteria from data they control can opt in with
+ * {@link #fromTrustedJson(String)} or
+ * {@link #fromTrustedDescriptor(ComponentDescriptor)}; never pass external
+ * input to those methods.
  *
  * @since 0.23.1
  */
@@ -111,8 +112,8 @@ public final class AnalysisCriterionSerialization {
      * <p>
      * The descriptor is treated as untrusted: only criteria in the
      * {@code org.ta4j.core.criteria} package tree can be restored. Use
-     * {@link #fromTrustedDescriptor(ComponentDescriptor)} for custom criteria
-     * from trusted data.
+     * {@link #fromTrustedDescriptor(ComponentDescriptor)} for custom criteria from
+     * trusted data.
      *
      * @param descriptor descriptor
      * @return reconstructed criterion
@@ -127,8 +128,8 @@ public final class AnalysisCriterionSerialization {
     }
 
     /**
-     * Rebuilds any analysis criterion, including custom criteria outside ta4j,
-     * from canonical descriptor JSON that the caller trusts.
+     * Rebuilds any analysis criterion, including custom criteria outside ta4j, from
+     * canonical descriptor JSON that the caller trusts.
      * <p>
      * The named class is initialized and one of its constructors, including
      * non-public ones, is invoked. Only pass JSON that your own code produced or
@@ -144,8 +145,8 @@ public final class AnalysisCriterionSerialization {
     }
 
     /**
-     * Rebuilds any analysis criterion, including custom criteria outside ta4j,
-     * from a descriptor that the caller trusts.
+     * Rebuilds any analysis criterion, including custom criteria outside ta4j, from
+     * a descriptor that the caller trusts.
      * <p>
      * The named class is initialized and one of its constructors, including
      * non-public ones, is invoked. Only pass descriptors that your own code
@@ -217,10 +218,9 @@ public final class AnalysisCriterionSerialization {
      * Rebuilds an analysis criterion from a compact named shorthand expression
      * using the supplied registry.
      * <p>
-     * A registered alias may produce any criterion type, because registering it
-     * is a decision made by Java code. An unregistered alias falls back to a
-     * criterion type name and is treated as untrusted, like
-     * {@link #fromJson(String)}.
+     * A registered alias may produce any criterion type, because registering it is
+     * a decision made by Java code. An unregistered alias falls back to a criterion
+     * type name and is treated as untrusted, like {@link #fromJson(String)}.
      *
      * @param expression shorthand expression
      * @param registry   named asset registry

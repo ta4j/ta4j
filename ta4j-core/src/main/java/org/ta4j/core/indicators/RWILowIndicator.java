@@ -36,14 +36,10 @@ public class RWILowIndicator extends CachedIndicator<Num> {
      *
      * @param series   the bar series
      * @param barCount the time frame, at most 1,000
-     * @throws IllegalArgumentException if {@code barCount} exceeds
-     *                                  1,000
+     * @throws IllegalArgumentException if {@code barCount} exceeds 1,000
      */
     public RWILowIndicator(BarSeries series, int barCount) {
-        if (barCount > MAX_BAR_COUNT) {
-            throw new IllegalArgumentException("barCount must be at most " + MAX_BAR_COUNT);
-        }
-        int helperCount = Math.max(0, barCount + 1);
+        int helperCount = helperCount(barCount);
         ATRIndicator[] averages = new ATRIndicator[helperCount];
         TRIndicator trueRange = barCount >= 2 ? new TRIndicator(series) : null;
         for (int n = 2; n <= barCount; n++) {
@@ -56,6 +52,13 @@ public class RWILowIndicator extends CachedIndicator<Num> {
         for (int n = 2; n <= barCount; n++) {
             sqrtValues[n] = series.numFactory().numOf(n).sqrt();
         }
+    }
+
+    private static int helperCount(int barCount) {
+        if (barCount > MAX_BAR_COUNT) {
+            throw new IllegalArgumentException("barCount must be at most " + MAX_BAR_COUNT);
+        }
+        return Math.max(0, barCount + 1);
     }
 
     @Override

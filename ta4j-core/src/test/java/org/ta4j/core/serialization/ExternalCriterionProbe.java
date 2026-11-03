@@ -11,9 +11,9 @@ import org.ta4j.core.num.Num;
 
 /**
  * Criterion outside {@code org.ta4j.core.criteria} that records whether
- * deserialization initialized or constructed it. Tests must only reference
- * this class through {@code ExternalCriterionProbe.class} and {@link Probe},
- * so it stays uninitialized unless deserialization initializes it.
+ * deserialization initialized or constructed it. Tests must only reference this
+ * class through {@code ExternalCriterionProbe.class} and {@link Probe}, so it
+ * stays uninitialized unless deserialization initializes it.
  */
 public final class ExternalCriterionProbe implements AnalysisCriterion {
 

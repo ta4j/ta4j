@@ -55,9 +55,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     public static final int DEFAULT_MAX_CANDIDATE_PAIRS = 2048;
 
     /**
-     * Largest accepted {@code maxSwingPointsForTrendline}. Each recomputation
-     * pairs every retained swing point with every later one and scores each pair
-     * against all retained points, so its work grows with the cube of this value.
+     * Largest accepted {@code maxSwingPointsForTrendline}. Each recomputation pairs
+     * every retained swing point with every later one and scores each pair against
+     * all retained points, so its work grows with the cube of this value.
      *
      * @since 0.28.1
      */
@@ -70,8 +70,8 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
      *
      * @since 0.28.1
      */
-    public static final int MAX_CANDIDATE_PAIRS = MAX_SWING_POINTS_FOR_TRENDLINE
-            * (MAX_SWING_POINTS_FOR_TRENDLINE - 1) / 2;
+    public static final int MAX_CANDIDATE_PAIRS = MAX_SWING_POINTS_FOR_TRENDLINE * (MAX_SWING_POINTS_FOR_TRENDLINE - 1)
+            / 2;
 
     private final RecentSwingIndicator swingIndicator;
     private final transient Indicator<Num> priceIndicator;

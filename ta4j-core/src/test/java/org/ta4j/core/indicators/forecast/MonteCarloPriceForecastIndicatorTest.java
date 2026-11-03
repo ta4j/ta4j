@@ -117,16 +117,19 @@ public class MonteCarloPriceForecastIndicatorTest
         FixedReturnStateIndicator state = new FixedReturnStateIndicator(returns, ReturnRepresentation.LOG);
         ClosePriceIndicator close = new ClosePriceIndicator(series);
 
-        assertThrows(IllegalArgumentException.class, () -> MonteCarloPriceForecastIndicator.builder(close, state)
-                .horizon(MonteCarloSettings.MAX_HORIZON + 1)
-                .build());
-        assertThrows(IllegalArgumentException.class, () -> MonteCarloPriceForecastIndicator.builder(close, state)
-                .iterationCount(MonteCarloSettings.MAX_ITERATION_COUNT + 1)
-                .build());
-        assertThrows(IllegalArgumentException.class, () -> MonteCarloPriceForecastIndicator.builder(close, state)
-                .horizon(MonteCarloSettings.MAX_HORIZON)
-                .iterationCount(MonteCarloSettings.MAX_ITERATION_COUNT)
-                .build());
+        assertThrows(IllegalArgumentException.class,
+                () -> MonteCarloPriceForecastIndicator.builder(close, state)
+                        .horizon(MonteCarloSettings.MAX_HORIZON + 1)
+                        .build());
+        assertThrows(IllegalArgumentException.class,
+                () -> MonteCarloPriceForecastIndicator.builder(close, state)
+                        .iterationCount(MonteCarloSettings.MAX_ITERATION_COUNT + 1)
+                        .build());
+        assertThrows(IllegalArgumentException.class,
+                () -> MonteCarloPriceForecastIndicator.builder(close, state)
+                        .horizon(MonteCarloSettings.MAX_HORIZON)
+                        .iterationCount(MonteCarloSettings.MAX_ITERATION_COUNT)
+                        .build());
         MonteCarloPriceForecastIndicator largest = MonteCarloPriceForecastIndicator.builder(close, state)
                 .horizon(MonteCarloSettings.MAX_HORIZON)
                 .iterationCount((int) (MonteCarloSettings.MAX_PATH_STEPS / MonteCarloSettings.MAX_HORIZON))

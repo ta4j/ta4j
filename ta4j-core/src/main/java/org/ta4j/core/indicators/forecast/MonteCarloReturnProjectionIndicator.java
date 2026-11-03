@@ -199,8 +199,8 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         /**
          * Sets the positive number of simulated terminal paths.
          *
-         * @param value number of paths, at most 1,000,000 and at most
-         *              1,000,000,000 path steps (horizon times paths)
+         * @param value number of paths, at most 1,000,000 and at most 1,000,000,000
+         *              path steps (horizon times paths)
          * @return this builder
          * @since 0.22.9
          */

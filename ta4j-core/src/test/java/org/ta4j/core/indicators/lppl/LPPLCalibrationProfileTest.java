@@ -53,12 +53,10 @@ class LPPLCalibrationProfileTest {
     void rejectsSearchSettingsBeyondTheFitWorkBudget() {
         LPPLCalibrationProfile defaults = LPPLCalibrationProfile.defaults();
 
+        assertThrows(IllegalArgumentException.class, () -> defaults.withExponentSearch(0.1, 0.9, Integer.MAX_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> defaults.withCriticalTimeSearch(1, Integer.MAX_VALUE, 1));
         assertThrows(IllegalArgumentException.class,
-                () -> defaults.withExponentSearch(0.1, 0.9, Integer.MAX_VALUE));
-        assertThrows(IllegalArgumentException.class,
-                () -> defaults.withCriticalTimeSearch(1, Integer.MAX_VALUE, 1));
-        assertThrows(IllegalArgumentException.class, () -> defaults.withExponentSearch(0.1, 0.9, 1_000)
-                .withFrequencySearch(6.0, 13.0, 1_000));
+                () -> defaults.withExponentSearch(0.1, 0.9, 1_000).withFrequencySearch(6.0, 13.0, 1_000));
         assertThrows(IllegalArgumentException.class,
                 () -> defaults.withOptimizerSettings(LPPLCalibrationProfile.MAX_EVALUATIONS + 1, 0.75));
         assertThrows(IllegalArgumentException.class, () -> defaults.withWindow(Integer.MAX_VALUE));

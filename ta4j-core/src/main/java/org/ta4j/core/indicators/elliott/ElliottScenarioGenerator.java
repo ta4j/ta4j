@@ -745,11 +745,11 @@ public final class ElliottScenarioGenerator {
 
     /**
      * Returns the pivots searched by anchor-first decompositions: every pivot of a
-     * short segment, or the first and last pivot plus evenly spread internal
-     * pivots of a long one.
+     * short segment, or the first and last pivot plus evenly spread internal pivots
+     * of a long one.
      * <p>
-     * Every starting point of a long swing history runs this selection, so it
-     * reads only the pivots it keeps instead of materializing the whole segment;
+     * Every starting point of a long swing history runs this selection, so it reads
+     * only the pivots it keeps instead of materializing the whole segment;
      * otherwise one generation pass would be quadratic in the swing count.
      */
     List<SwingPivotPoint> decompositionPivots(final List<ElliottSwing> swings) {

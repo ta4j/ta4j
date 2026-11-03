@@ -573,8 +573,8 @@ public final class RecentSwingIndicators {
      * Each result lists every pivot up to its index, so caching one per index (as
      * {@link CachedIndicator} would) holds quadratic memory once the recent-swing
      * tracker has scanned a long series. Only two results are kept: the latest
-     * scanned index, which the tracker queries in order, and the series end,
-     * which every swing-price read asks for.
+     * scanned index, which the tracker queries in order, and the series end, which
+     * every swing-price read asks for.
      */
     private static final class DetectorPivotIndicator extends CachedIndicator<List<SwingPivot>> {
 

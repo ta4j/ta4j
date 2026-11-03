@@ -12,8 +12,8 @@ import java.util.TreeSet;
  *
  * <p>
  * Every forecast simulates {@code iterationCount} paths of {@code horizon}
- * steps and holds one terminal value per path, so both settings are bounded:
- * at most {@value #MAX_HORIZON} bars, {@value #MAX_ITERATION_COUNT} paths and
+ * steps and holds one terminal value per path, so both settings are bounded: at
+ * most {@value #MAX_HORIZON} bars, {@value #MAX_ITERATION_COUNT} paths and
  * {@value #MAX_PATH_STEPS} simulated steps per forecast.
  *
  * <p>
