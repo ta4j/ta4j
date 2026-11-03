@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Fixed
+
+- **`NaN` stays a singleton after deserialization**: deserialized `NaN` values resolve to the shared `NaN.NaN` instance, so identity checks keep working, and streams that omit its class data are rejected with `InvalidObjectException`.
 
 ## 0.28.0 (2026-11-02)
 
