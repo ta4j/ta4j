@@ -57,9 +57,16 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
             LSMAIndicator.class, KiJunV2Indicator.class, VIDYAIndicator.class, VWMAIndicator.class);
 
     private final Indicator<Num> movingAverage;
+    private transient boolean warnedUnavailableSource;
 
     /**
      * Constructor.
+     *
+     * The moving average may use a different series, but its absolute indices must
+     * identify the intended corresponding observations. No time or offset mapping
+     * is applied. If a read fails beyond a nonempty cross-series source's end, this
+     * indicator logs one advisory warning per instance and rethrows the original
+     * exception. This does not detect or prove index misalignment.
      *
      * @param series        the bar series
      * @param movingAverage the moving average
@@ -87,8 +94,26 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Bar currentBar = getBarSeries().getBar(index);
         Num closePrice = currentBar.getClosePrice();
-        Num maValue = movingAverage.getValue(index);
+        Num maValue;
+        try {
+            maValue = movingAverage.getValue(index);
+        } catch (IndexOutOfBoundsException exception) {
+            warnIfSourceReadUnavailable(index);
+            throw exception;
+        }
         return (closePrice.minus(maValue)).dividedBy(maValue);
+    }
+
+    private synchronized void warnIfSourceReadUnavailable(int index) {
+        BarSeries source = movingAverage.getBarSeries();
+        int endIndex = source.getEndIndex();
+        if (!warnedUnavailableSource && log.isWarnEnabled() && source != getBarSeries() && endIndex >= 0
+                && index > endIndex) {
+            warnedUnavailableSource = true;
+            log.warn("{}: cross-series source read at index {} failed; source ends at {}. "
+                    + "Ensure corresponding observations use the same absolute indices and are available when read",
+                    getClass().getSimpleName(), index, endIndex);
+        }
     }
 
     @Override

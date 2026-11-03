@@ -82,7 +82,10 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     /**
      * Constructor for recursive indicators bound to an explicit bar series that
-     * also read related indicators possibly backed by a different series.
+     * also read related indicators possibly backed by a different series. Source
+     * change indices are used directly in the consumer's index space; same-index
+     * reads require corresponding absolute indices across series, as described by
+     * {@link CachedIndicator#CachedIndicator(BarSeries, Indicator...)}.
      *
      * @param series       the backing bar series
      * @param dependencies related indicators retained so full-tail invalidations

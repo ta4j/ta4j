@@ -370,6 +370,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Dependencies are retained so full-tail invalidations propagate to this
      * indicator on head advance.
      *
+     * <p>
+     * Source changes use their absolute indices directly to invalidate the consumer
+     * cache; there is no implicit time or offset mapping. When reading different
+     * series at the same index, callers must ensure that index denotes
+     * corresponding observations. Different retained heads, capacities, or end
+     * indices do not by themselves imply incompatible coordinates, and equal ranges
+     * do not prove correspondence.
+     *
      * @param series       the backing bar series
      * @param dependencies related indicators retained so full-tail invalidations
      *                     propagate to this indicator

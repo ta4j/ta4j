@@ -31,6 +31,13 @@ import java.util.stream.Stream;
 public interface Indicator<T> {
 
     /**
+     * Returns the value at an absolute bar index.
+     *
+     * <p>
+     * For indicators combining different series at the same index, callers must
+     * ensure that the index denotes the intended corresponding observation in each
+     * series; equal index ranges alone do not establish this relationship.
+     *
      * @param index the bar index
      * @return the value of the indicator
      */
@@ -198,6 +205,13 @@ public interface Indicator<T> {
      * propagate bounded-series head-advance invalidation from a rebaselining source
      * through intervening wrappers, so the walk reaches every component of a
      * composed indicator instead of stopping at the first non-cached wrapper.
+     *
+     * <p>
+     * For dependencies backed by another series,
+     * {@link org.ta4j.core.indicators.CachedIndicator} uses source change indices
+     * directly in the consumer's index space. Same-index composition therefore
+     * requires corresponding absolute indices for both reads and invalidation; this
+     * graph does not declare an index mapping.
      *
      * <p>
      * The graph is a construction-order DAG: a wrapper can only declare sources it
