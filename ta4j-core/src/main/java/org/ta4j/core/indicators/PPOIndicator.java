@@ -48,7 +48,7 @@ public class PPOIndicator extends CachedIndicator<Num> {
     }
 
     private PPOIndicator(Config config) {
-        super(config.indicator());
+        super(config.shortTermEma(), config.longTermEma());
         this.indicator = config.indicator();
         this.shortTermEma = config.shortTermEma();
         this.longTermEma = config.longTermEma();

@@ -48,6 +48,22 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void dependenciesExposeSharedHelpersBeforeAnyRead() {
+        MACDVIndicator macd = new MACDVIndicator(series, 2, 3, 1);
+        assertThat(macd.getDependencies()).containsExactly(macd.getShortAtrIndicator(), macd.getLongAtrIndicator(),
+                macd.getShortTermVolumeWeightedEma(), macd.getLongTermVolumeWeightedEma());
+        assertThat(macd.getValue(20)).isEqualByComparingTo(macd.getShortTermVolumeWeightedEma()
+                .getValue(20)
+                .minus(macd.getLongTermVolumeWeightedEma().getValue(20)));
+        MACDVIndicator equalPeriods = new MACDVIndicator(series, 2, 2, 1);
+        assertThat(equalPeriods.getLongAtrIndicator()).isSameAs(equalPeriods.getShortAtrIndicator());
+        assertThat(equalPeriods.getDependencies()).containsExactly(equalPeriods.getShortAtrIndicator(),
+                equalPeriods.getLongAtrIndicator(), equalPeriods.getShortTermVolumeWeightedEma(),
+                equalPeriods.getLongTermVolumeWeightedEma());
+        assertThat(equalPeriods.getValue(20)).isEqualByComparingTo(numFactory.zero());
+    }
+
+    @Test
     public void primesWeightedAveragesBeforeWarmupOnShortMovingWindow() {
         TraceTestLogger capture = new TraceTestLogger();
         capture.open();

@@ -49,6 +49,25 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
     }
 
     @Test
+    public void dependenciesExposeTheCalculatedBranches() {
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        VolatilityNormalizedMACDIndicator macd = new VolatilityNormalizedMACDIndicator(close, 2, 3, 2);
+        assertThat(macd.getDependencies()).hasSize(3);
+        EMAIndicator fast = (EMAIndicator) macd.getDependencies().get(0);
+        EMAIndicator slow = (EMAIndicator) macd.getDependencies().get(1);
+        ATRIndicator atr = (ATRIndicator) macd.getDependencies().get(2);
+        assertThat(fast.getDependencies()).containsExactly(close);
+        assertThat(slow.getDependencies()).containsExactly(close);
+        assertThat(fast.getBarCount()).isEqualTo(2);
+        assertThat(slow.getBarCount()).isEqualTo(3);
+        assertThat(macd.getValue(20)).isEqualByComparingTo(
+                fast.getValue(20).minus(slow.getValue(20)).dividedBy(atr.getValue(20)).multipliedBy(numOf(100)));
+        assertThat(macd.getFastEma()).isNotSameAs(fast);
+        assertThat(macd.getSlowEma()).isNotSameAs(slow);
+        assertThat(macd.getAtrIndicator()).isNotSameAs(atr);
+    }
+
+    @Test
     public void primesAveragesBeforeWarmupOnShortMovingWindow() {
         TraceTestLogger capture = new TraceTestLogger();
         capture.open();

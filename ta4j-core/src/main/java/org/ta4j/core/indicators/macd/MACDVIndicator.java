@@ -52,10 +52,10 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     private final int longBarCount;
     private final int defaultSignalBarCount;
 
-    private transient VWMAIndicator shortTermVwema;
-    private transient VWMAIndicator longTermVwema;
-    private transient ATRIndicator shortAtrIndicator;
-    private transient ATRIndicator longAtrIndicator;
+    private final transient VWMAIndicator shortTermVwema;
+    private final transient VWMAIndicator longTermVwema;
+    private final transient ATRIndicator shortAtrIndicator;
+    private final transient ATRIndicator longAtrIndicator;
 
     /**
      * Constructor with:
@@ -140,12 +140,27 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     }
 
     private MACDVIndicator(ValidatedConfig config) {
-        super(config.priceIndicator());
+        BarSeries series = config.priceIndicator().getBarSeries();
+        VolumeIndicator volume = new VolumeIndicator(series);
+        ATRIndicator shortAtr = new ATRIndicator(series, config.shortBarCount());
+        ATRIndicator longAtr = config.shortBarCount() == config.longBarCount() ? shortAtr
+                : new ATRIndicator(series, config.longBarCount());
+        Indicator<Num> shortWeights = NumericIndicator.of(volume).dividedBy(shortAtr);
+        Indicator<Num> longWeights = shortAtr == longAtr ? shortWeights
+                : NumericIndicator.of(volume).dividedBy(longAtr);
+        VWMAIndicator shortAverage = new VWMAIndicator(config.priceIndicator(), shortWeights, config.shortBarCount(),
+                EMAIndicator::new);
+        VWMAIndicator longAverage = new VWMAIndicator(config.priceIndicator(), longWeights, config.longBarCount(),
+                EMAIndicator::new);
+        super(shortAtr, longAtr, shortAverage, longAverage);
         this.priceIndicator = config.priceIndicator();
         this.shortBarCount = config.shortBarCount();
         this.longBarCount = config.longBarCount();
         this.defaultSignalBarCount = config.signalBarCount();
-        ensureSubIndicatorsInitialized();
+        this.shortAtrIndicator = shortAtr;
+        this.longAtrIndicator = longAtr;
+        this.shortTermVwema = shortAverage;
+        this.longTermVwema = longAverage;
     }
 
     private static void validateBarCounts(int shortBarCount, int longBarCount) {
@@ -232,16 +247,18 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @return short-term volume-weighted EMA indicator
      * @since 0.19
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Existing API deliberately returns the shared VWMA helper; a copy would change its identity and consumed history.")
     public VWMAIndicator getShortTermVolumeWeightedEma() {
-        return getShortTermVwema();
+        return shortTermVwema;
     }
 
     /**
      * @return long-term volume-weighted EMA indicator
      * @since 0.19
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Existing API deliberately returns the shared VWMA helper; a copy would change its identity and consumed history.")
     public VWMAIndicator getLongTermVolumeWeightedEma() {
-        return getLongTermVwema();
+        return longTermVwema;
     }
 
     /**
@@ -251,7 +268,6 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Deliberate public accessor for a shared sub-indicator. Indicators are "
             + "effectively immutable after construction; the reference is shared, not mutated.")
     public ATRIndicator getShortAtrIndicator() {
-        ensureSubIndicatorsInitialized();
         return shortAtrIndicator;
     }
 
@@ -262,7 +278,6 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Deliberate public accessor for a shared sub-indicator. Indicators are "
             + "effectively immutable after construction; the reference is shared, not mutated.")
     public ATRIndicator getLongAtrIndicator() {
-        ensureSubIndicatorsInitialized();
         return longAtrIndicator;
     }
 
@@ -585,7 +600,6 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        ensureSubIndicatorsInitialized();
         shortAtrIndicator.getValue(index);
         if (longAtrIndicator != shortAtrIndicator) {
             longAtrIndicator.getValue(index);
@@ -616,55 +630,9 @@ public class MACDVIndicator extends CachedIndicator<Num> {
         return true;
     }
 
-    /**
-     * Treats the lazily created VWMA and ATR sub-indicators as part of this
-     * indicator's source graph. A rebaselining source inside those chains (for
-     * example an ATR whose TR source requires full invalidation) must propagate a
-     * whole-cache discard here even though the sub-indicators are not
-     * constructor-registered dependencies.
-     */
-    @Override
-    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        ensureSubIndicatorsInitialized();
-        return minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex, shortTermVwema, longTermVwema,
-                shortAtrIndicator, longAtrIndicator);
-    }
-
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(getShortTermVwema().getCountOfUnstableBars(), getLongTermVwema().getCountOfUnstableBars());
+        return Math.max(shortTermVwema.getCountOfUnstableBars(), longTermVwema.getCountOfUnstableBars());
     }
 
-    private VWMAIndicator getShortTermVwema() {
-        ensureSubIndicatorsInitialized();
-        return shortTermVwema;
-    }
-
-    private VWMAIndicator getLongTermVwema() {
-        ensureSubIndicatorsInitialized();
-        return longTermVwema;
-    }
-
-    private void ensureSubIndicatorsInitialized() {
-        if (shortTermVwema != null && longTermVwema != null && shortAtrIndicator != null && longAtrIndicator != null) {
-            return;
-        }
-
-        BarSeries series = priceIndicator.getBarSeries();
-        VolumeIndicator volumeIndicator = new VolumeIndicator(series);
-
-        shortAtrIndicator = new ATRIndicator(series, shortBarCount);
-        Indicator<Num> shortVolumeWeights = NumericIndicator.of(volumeIndicator).dividedBy(shortAtrIndicator);
-        shortTermVwema = new VWMAIndicator(priceIndicator, shortVolumeWeights, shortBarCount, EMAIndicator::new);
-
-        if (shortBarCount == longBarCount) {
-            longAtrIndicator = shortAtrIndicator;
-            longTermVwema = new VWMAIndicator(priceIndicator, shortVolumeWeights, longBarCount, EMAIndicator::new);
-            return;
-        }
-
-        longAtrIndicator = new ATRIndicator(series, longBarCount);
-        Indicator<Num> longVolumeWeights = NumericIndicator.of(volumeIndicator).dividedBy(longAtrIndicator);
-        longTermVwema = new VWMAIndicator(priceIndicator, longVolumeWeights, longBarCount, EMAIndicator::new);
-    }
 }

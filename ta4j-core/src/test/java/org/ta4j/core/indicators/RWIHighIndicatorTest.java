@@ -6,6 +6,8 @@ package org.ta4j.core.indicators;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
@@ -27,6 +29,23 @@ public class RWIHighIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> 
     public RWIHighIndicatorTest(NumFactory numFactory) {
         super((data, params) -> new RWIHighIndicator(data, (int) params[0]), numFactory);
         xls = new XLSIndicatorTest(this.getClass(), "RWIHL.xls", 8, numFactory);
+    }
+
+    @Test
+    public void dependenciesExposeEachCalculatedAtr() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            series.barBuilder().openPrice(10).highPrice(12).lowPrice(8).closePrice(10).add();
+        }
+        RWIHighIndicator rwi = new RWIHighIndicator(series, 3);
+        assertThat(rwi.getDependencies()).hasSize(2);
+        for (int i = 0; i < 2; i++) {
+            ATRIndicator atr = (ATRIndicator) rwi.getDependencies().get(i);
+            assertThat(atr.getCountOfUnstableBars()).isEqualTo(i + 2);
+            assertThat(atr.getValue(4)).isEqualByComparingTo(numOf(4));
+        }
+        assertThat(rwi.getValue(4)).isEqualByComparingTo(numFactory.one().dividedBy(numOf(2).sqrt()));
+        assertThat(new RWIHighIndicator(series, 1).getDependencies()).isEmpty();
     }
 
     @Test

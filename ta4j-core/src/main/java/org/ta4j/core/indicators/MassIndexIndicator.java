@@ -32,13 +32,15 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
      * @param barCount    the time frame
      */
     public MassIndexIndicator(BarSeries series, int emaBarCount, int barCount) {
-        super(series);
-        final var highLowDifferential = BinaryOperationIndicator.difference(new HighPriceIndicator(series),
-                new LowPriceIndicator(series));
+        BinaryOperationIndicator highLowDifferential = BinaryOperationIndicator
+                .difference(new HighPriceIndicator(series), new LowPriceIndicator(series));
+        EMAIndicator first = new EMAIndicator(highLowDifferential, emaBarCount);
+        EMAIndicator second = new EMAIndicator(first, emaBarCount);
+        super(first, second);
         this.emaBarCount = emaBarCount;
         this.barCount = barCount;
-        this.singleEma = new EMAIndicator(highLowDifferential, emaBarCount);
-        this.doubleEma = new EMAIndicator(singleEma, emaBarCount); // Not the same formula as DoubleEMAIndicator
+        this.singleEma = first;
+        this.doubleEma = second; // Not the same formula as DoubleEMAIndicator
     }
 
     @Override

@@ -5,6 +5,7 @@ package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -30,6 +31,23 @@ public class PPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
                         22.68, 23.10, 21.40, 20.17)
                 .build();
         closePriceIndicator = new ClosePriceIndicator(series);
+    }
+
+    @Test
+    public void dependenciesExposeTheCalculatedAverages() {
+        PPOIndicator ppo = new PPOIndicator(closePriceIndicator, 2, 3);
+        assertThat(ppo.getDependencies()).hasSize(2);
+        EMAIndicator shortEma = (EMAIndicator) ppo.getDependencies().get(0);
+        EMAIndicator longEma = (EMAIndicator) ppo.getDependencies().get(1);
+        assertThat(shortEma.getBarCount()).isEqualTo(2);
+        assertThat(longEma.getBarCount()).isEqualTo(3);
+        assertThat(shortEma.getDependencies()).containsExactly(closePriceIndicator);
+        assertThat(longEma.getDependencies()).containsExactly(closePriceIndicator);
+        Num expected = shortEma.getValue(10)
+                .minus(longEma.getValue(10))
+                .dividedBy(longEma.getValue(10))
+                .multipliedBy(numOf(100));
+        assertThat(ppo.getValue(10)).isEqualByComparingTo(expected);
     }
 
     @Test
