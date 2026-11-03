@@ -35,19 +35,22 @@ public class EDMAIndicator extends CachedIndicator<Num> {
      * @param displacement the Exponential Moving Average displacement
      */
     public EDMAIndicator(Indicator<Num> indicator, int barCount, int displacement) {
-        // The source is registered so a rebaselining input (e.g., a stochastic)
-        // invalidates the whole displaced cache after a series head advance.
-        super(indicator);
+        this(indicator, barCount, displacement, new EMAIndicator(indicator, barCount));
+    }
+
+    private EDMAIndicator(Indicator<Num> indicator, int barCount, int displacement, EMAIndicator ema) {
+        super(ema);
         this.indicator = indicator;
         this.barCount = barCount;
         this.displacement = displacement;
-        this.ema = new EMAIndicator(indicator, barCount);
+        this.ema = ema;
         int emaUnstableBars = indicator.getCountOfUnstableBars() + barCount;
         this.unstableBars = Math.max(0, emaUnstableBars + displacement);
     }
 
     @Override
     protected Num calculate(int index) {
+        ema.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
@@ -62,6 +65,15 @@ public class EDMAIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;
+    }
+
+    /**
+     * @return {@code true}, because the displaced EMA retains full-history state
+     * @since 0.27.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     @Override

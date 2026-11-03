@@ -94,9 +94,9 @@ public class RebalancePolicyTest {
 
     /** ALPHA holds {@code units} at the bar's close price with a 60% target. */
     private static RebalancePolicy.Context context(PortfolioSeries series, int index, Num units, Num cash) {
-        Num[] prices = { series.getClosePrice(series.getAssets().getFirst(), index) };
-        Num value = cash.plus(prices[0].multipliedBy(units));
-        return new RebalancePolicy.Context(series, index, prices, new Num[] { units }, cash, value,
+        Num price = series.getClosePrice(series.getAssets().getFirst(), index);
+        Num value = cash.plus(price.multipliedBy(units));
+        return new RebalancePolicy.Context(series, index, new Num[] { units }, cash, value,
                 new Num[] { series.numFactory().numOf(0.6) });
     }
 

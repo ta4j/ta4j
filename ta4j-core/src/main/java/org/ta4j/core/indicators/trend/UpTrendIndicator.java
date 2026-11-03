@@ -40,15 +40,18 @@ public class UpTrendIndicator extends AbstractIndicator<Boolean> {
 
     @Override
     public Boolean getValue(final int index) {
+        Num strength = directionStrengthIndicator.getValue(index);
+        // Advance both direction chains while their current raw inputs still exist.
+        minusDIIndicator.getValue(index);
+        plusDIIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return false;
         }
 
         // calculate trend excluding this bar
-        final var previousIndex = index - 1;
-        return this.directionStrengthIndicator.getValue(index).isGreaterThan(strengthThreshold)
-                && this.minusDIIndicator.getValue(previousIndex)
-                        .isLessThan(this.plusDIIndicator.getValue(previousIndex));
+        final int previousIndex = index - 1;
+        return strength.isGreaterThan(strengthThreshold) && this.minusDIIndicator.getValue(previousIndex)
+                .isLessThan(this.plusDIIndicator.getValue(previousIndex));
     }
 
     @Override

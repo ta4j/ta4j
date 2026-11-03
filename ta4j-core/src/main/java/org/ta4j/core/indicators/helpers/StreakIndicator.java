@@ -42,13 +42,13 @@ public class StreakIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        Num current = indicator.getValue(index);
         // Return NaN during unstable period
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
 
         int beginIndex = getBarSeries().getBeginIndex();
-        Num current = indicator.getValue(index);
         if (Num.isNaNOrNull(current)) {
             return NaN;
         }

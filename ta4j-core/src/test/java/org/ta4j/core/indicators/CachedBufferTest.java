@@ -139,6 +139,21 @@ public class CachedBufferTest {
     }
 
     @Test
+    public void testGetOrElseDistinguishesMissingFromCachedNull() {
+        CachedBuffer<Integer> buffer = CachedBuffer.of(10);
+        buffer.put(3, 30);
+        buffer.put(4, null);
+
+        assertEquals(30, buffer.getOrElse(3, () -> -1));
+        assertNull(buffer.getOrElse(4, () -> -1));
+        assertEquals(-1, buffer.getOrElse(5, () -> -1));
+
+        buffer.synchronize(4, 10, -1);
+
+        assertEquals(-1, buffer.getOrElse(3, () -> -1));
+    }
+
+    @Test
     public void testSynchronizeClearsWhenChangeIsAtOrBelowFirstCachedIndex() {
         CachedBuffer<Integer> buffer = CachedBuffer.of(10);
         for (int i = 3; i < 8; i++) {

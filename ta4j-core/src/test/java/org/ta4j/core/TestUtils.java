@@ -298,15 +298,15 @@ public class TestUtils {
      * package, so tests outside {@code org.ta4j.core} construct such series through
      * this factory.
      *
-     * @param bars            the bar data
-     * @param beginIndex      the first retained index
-     * @param endIndex        the last available index
-     * @param maximumBarCount the maximum number of retained bars
+     * @param bars             the bar data
+     * @param beginIndex       the first retained index
+     * @param endIndex         the last available index
+     * @param removedBarsCount the number of bars preceding the retained storage
      * @return the saturated series
      */
     public static BaseBarSeries saturatedRetainedWindowSeries(List<Bar> bars, int beginIndex, int endIndex,
-            int maximumBarCount) {
-        return new BaseBarSeries("saturated", bars, beginIndex, endIndex, maximumBarCount, false,
+            int removedBarsCount) {
+        return new BaseBarSeries("saturated", bars, beginIndex, endIndex, removedBarsCount, false,
                 DoubleNumFactory.getInstance(), new MockBarBuilderFactory());
     }
 

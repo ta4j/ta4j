@@ -12,7 +12,9 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -22,6 +24,30 @@ public class TRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
 
     public TRIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void startsCurrentAndLaggedRecursiveInputsBeforeWarmUpEnds() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(2);
+        TRIndicator range = new TRIndicator(new EMAIndicator(new HighPriceIndicator(series), 3),
+                new EMAIndicator(new LowPriceIndicator(series), 3),
+                new EMAIndicator(new ClosePriceIndicator(series), 3));
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (int index = 0; index < 12; index++) {
+                series.barBuilder().highPrice(12).lowPrice(10).closePrice(11).add();
+                Num value = range.getValue(index);
+                if (index < 4) {
+                    assertTrue(value.isNaN());
+                } else {
+                    assertNumEquals(2, value);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

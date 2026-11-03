@@ -24,6 +24,7 @@ import org.ta4j.core.TradingRecord;
 import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Bar;
@@ -163,11 +164,15 @@ public final class ChartBuilder {
 
     private static BarSeries snapshotSeries(final BarSeries series) {
         BarSeries resolvedSeries = Objects.requireNonNull(series, "Series cannot be null");
-        return new BaseBarSeriesBuilder().withName(resolvedSeries.getName())
-                .withNumFactory(resolvedSeries.numFactory())
-                .withBars(resolvedSeries.getBarData())
-                .withMaxBarCount(resolvedSeries.getMaximumBarCount())
-                .build();
+        // Copy the window and its absolute indices together. Build outside the lock:
+        // validation may invoke the numeric factory supplied by the caller.
+        BaseBarSeriesBuilder snapshot = resolvedSeries
+                .withReadLock(() -> new BaseBarSeriesBuilder().withName(resolvedSeries.getName())
+                        .withNumFactory(resolvedSeries.numFactory())
+                        .withBars(resolvedSeries.getBarData())
+                        .withBeginIndex(Math.max(0, resolvedSeries.getBeginIndex()))
+                        .withMaxBarCount(resolvedSeries.getMaximumBarCount()));
+        return snapshot.build();
     }
 
     private void validateChannelOverlays() {
@@ -1159,6 +1164,7 @@ public final class ChartBuilder {
     public static final class PlotDefinition {
         private final PlotType type;
         private final BarSeries series;
+        private final BarSeries sourceSeries;
         private final Indicator<Num> baseIndicator;
         private final TradingRecord tradingRecord;
         private final List<OverlayDefinition> overlays;
@@ -1169,7 +1175,8 @@ public final class ChartBuilder {
                 TradingRecord tradingRecord, List<OverlayDefinition> overlays,
                 List<ChannelOverlayDefinition> channelOverlays, List<HorizontalMarkerDefinition> horizontalMarkers) {
             this.type = type;
-            this.series = snapshotSeries(Objects.requireNonNull(series, "Plot series cannot be null"));
+            this.sourceSeries = Objects.requireNonNull(series, "Plot series cannot be null");
+            this.series = snapshotSeries(sourceSeries);
             this.baseIndicator = baseIndicator;
             this.tradingRecord = tradingRecord;
             this.overlays = List.copyOf(overlays);
@@ -1211,6 +1218,29 @@ public final class ChartBuilder {
          */
         public BarSeries series() {
             return snapshotSeries(series);
+        }
+
+        /**
+         * Checks whether a series supplies this plot's captured bars. Read-only views
+         * of the same source also match; the live source is not exposed.
+         *
+         * @param candidate the series to compare
+         * @return whether both refer to the same source
+         * @since 0.27.1
+         */
+        public boolean hasSameSource(BarSeries candidate) {
+            return IndicatorUtils.isSameSeries(sourceSeries, candidate);
+        }
+
+        /**
+         * Checks whether another plot captures bars from the same source.
+         *
+         * @param candidate the plot to compare
+         * @return whether both plots refer to the same source
+         * @since 0.27.1
+         */
+        public boolean hasSameSource(PlotDefinition candidate) {
+            return candidate != null && hasSameSource(candidate.sourceSeries);
         }
 
         /**

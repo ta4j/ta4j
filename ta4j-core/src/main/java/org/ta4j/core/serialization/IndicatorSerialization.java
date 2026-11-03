@@ -231,7 +231,7 @@ public final class IndicatorSerialization {
         }
         try {
             return instantiate(series, descriptor);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | LinkageError e) {
             if (e instanceof IndicatorSerializationException) {
                 throw e;
             }
@@ -1029,7 +1029,7 @@ public final class IndicatorSerialization {
                 list.add(type);
                 return list;
             });
-        } catch (ClassNotFoundException ignored) {
+        } catch (ClassNotFoundException | LinkageError ignored) {
             // Ignore classes that cannot be loaded
         }
     }

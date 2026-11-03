@@ -10,8 +10,10 @@ import static org.ta4j.core.TestUtils.saturatedRetainedWindowSeries;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,6 +29,9 @@ import org.ta4j.core.*;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.averages.EDMAIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.KAMAIndicator;
+import org.ta4j.core.indicators.averages.JMAIndicator;
+import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.VIDYAIndicator;
 import org.ta4j.core.indicators.averages.WildersMAIndicator;
@@ -38,10 +43,26 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.indicators.macd.MACDVIndicator;
+import org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator;
+import org.ta4j.core.indicators.volume.ChaikinOscillatorIndicator;
+import org.ta4j.core.indicators.pivotpoints.FibonacciReversalIndicator;
+import org.ta4j.core.indicators.pivotpoints.DeMarkReversalIndicator;
+import org.ta4j.core.indicators.pivotpoints.DeMarkPivotPointIndicator;
+import org.ta4j.core.indicators.pivotpoints.DeMarkReversalIndicator.DeMarkPivotLevel;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
+import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
+import org.ta4j.core.indicators.pivotpoints.PivotLevel;
+import org.ta4j.core.indicators.pivotpoints.PivotPointIndicator;
+import org.ta4j.core.indicators.pivotpoints.StandardReversalIndicator;
+import org.ta4j.core.indicators.pivotpoints.TimeLevel;
+import org.ta4j.core.indicators.statistics.CusumIndicator;
+import org.ta4j.core.indicators.statistics.EwmaVarianceIndicator;
 import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
 import org.ta4j.core.indicators.statistics.ZScoreIndicator;
 import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
+import org.ta4j.core.indicators.volume.OnBalanceVolumeIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
@@ -70,11 +91,159 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void shortWindowWarningIsAdvisoryAndOncePerDistinctCapacity() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open("%level|%msg%n");
+        try {
+            CachedIndicator<Num> indicator = new CachedIndicator<>(series) {
+                @Override
+                protected Num calculate(int index) {
+                    return numFactory.numOf(index);
+                }
+
+                @Override
+                public int getCountOfUnstableBars() {
+                    return 7;
+                }
+            };
+            assertNumEquals(12, indicator.getValue(12));
+            series.setMaximumBarCount(7);
+            assertNumEquals(12, indicator.getValue(12));
+            series.setMaximumBarCount(8);
+            assertNumEquals(12, indicator.getValue(12));
+            assertThat(capture.getLogOutput().lines().filter(line -> line.startsWith("WARN|"))).isEmpty();
+            for (int capacity : new int[] { 6, 5, 6 }) {
+                series.setMaximumBarCount(capacity);
+                assertNumEquals(12, indicator.getValue(12));
+                assertNumEquals(12, indicator.getValue(12));
+            }
+            List<String> warnings = capture.getLogOutput().lines().filter(line -> line.startsWith("WARN|")).toList();
+            assertThat(warnings).hasSize(2);
+            assertThat(warnings.get(0)).contains("maximumBarCount 6", "unstable bars 7", "not blocked");
+            assertThat(warnings.get(1)).contains("maximumBarCount 5", "unstable bars 7", "not blocked");
+        } finally {
+            capture.close();
+        }
+    }
+
+    @Test
+    public void shortWindowWarningRechecksDynamicUnstableCount() {
+        AtomicInteger unstableBars = new AtomicInteger(3);
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open("%level|%msg%n");
+        try {
+            CachedIndicator<Num> indicator = new CachedIndicator<>(series) {
+                @Override
+                protected Num calculate(int index) {
+                    return numFactory.numOf(index);
+                }
+
+                @Override
+                public int getCountOfUnstableBars() {
+                    return unstableBars.get();
+                }
+            };
+            series.setMaximumBarCount(4);
+            assertNumEquals(12, indicator.getValue(12));
+            assertThat(capture.getLogOutput().lines().filter(line -> line.startsWith("WARN|"))).isEmpty();
+            unstableBars.set(5);
+            assertNumEquals(12, indicator.getValue(12));
+            unstableBars.set(6);
+            assertNumEquals(12, indicator.getValue(12));
+            List<String> warnings = capture.getLogOutput().lines().filter(line -> line.startsWith("WARN|")).toList();
+            assertThat(warnings).singleElement().asString().contains("maximumBarCount 4", "unstable bars 5");
+        } finally {
+            capture.close();
+        }
+    }
+
+    @Test
+    public void concurrentReadersWarnOnceForEachIndicatorInstance() throws Exception {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open("%level|%msg%n");
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        CountDownLatch ready = new CountDownLatch(4);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            CachedIndicator<Num> first = new CachedIndicator<>(series) {
+                @Override
+                protected Num calculate(int index) {
+                    return numFactory.numOf(index);
+                }
+
+                @Override
+                public int getCountOfUnstableBars() {
+                    return 7;
+                }
+            };
+            CachedIndicator<Num> second = new CachedIndicator<>(series) {
+                @Override
+                protected Num calculate(int index) {
+                    return numFactory.numOf(index);
+                }
+
+                @Override
+                public int getCountOfUnstableBars() {
+                    return 7;
+                }
+            };
+            series.setMaximumBarCount(4);
+            List<Future<Num>> results = new ArrayList<>();
+            for (int reader = 0; reader < 4; reader++) {
+                results.add(executor.submit(() -> {
+                    ready.countDown();
+                    assertTrue(start.await(5, TimeUnit.SECONDS));
+                    assertNumEquals(12, first.getValue(12));
+                    return second.getValue(12);
+                }));
+            }
+            assertTrue(ready.await(5, TimeUnit.SECONDS));
+            start.countDown();
+            for (Future<Num> result : results) {
+                assertNumEquals(12, result.get(5, TimeUnit.SECONDS));
+            }
+            List<String> warnings = capture.getLogOutput().lines().filter(line -> line.startsWith("WARN|")).toList();
+            assertThat(warnings).hasSize(2)
+                    .allSatisfy(warning -> assertThat(warning).contains("maximumBarCount 4", "unstable bars 7",
+                            "not blocked"));
+            assertThat(warnings.get(0)).isNotEqualTo(warnings.get(1));
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+            try {
+                assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+            } finally {
+                capture.close();
+            }
+        }
+    }
+
+    @Test
     public void ifCacheWorks() {
         var sma = new SMAIndicator(new ClosePriceIndicator(series), 3);
         Num firstTime = sma.getValue(4);
         Num secondTime = sma.getValue(4);
         assertEquals(firstTime, secondTime);
+    }
+
+    @Test
+    public void compoundRecursiveStateRemainsBoundedAfterLongContinuation() {
+        for (int window : new int[] { 1, 2, 64 }) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(window);
+            CachedIndicator<Num> indicator = new JMAIndicator(new ClosePriceIndicator(moving), 3, 50, 2);
+            CachedIndicator<?> state = (CachedIndicator<?>) indicator.getDependencies().get(0);
+            for (int i = 0; i < 1024; i++) {
+                moving.barBuilder().closePrice(20 + (i * 7) % 13).add();
+                indicator.getValue(i);
+                for (CachedIndicator<?> cached : List.of(indicator, state)) {
+                    CachedBuffer<?> buffer = cached.getCache();
+                    assertTrue(buffer.getCapacity() <= window, "allocation must stay within the retained window");
+                    assertTrue(buffer.getHighestResultIndex() - buffer.getFirstCachedIndex() + 1 <= window,
+                            "retained state must not grow with stream length");
+                }
+            }
+        }
     }
 
     @Test
@@ -424,9 +593,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // value is recursive by definition even when it does not extend
         // RecursiveCachedIndicator: the head-advance cache floor must not
         // evict the retained band and reseed it from a different history.
-        // SMMA is the deliberate exception: it re-anchors its chain at the
-        // retained head (see SMMAIndicatorTest), so this test uses a plain
-        // self-recursive subclass that keeps the default policy.
+        // This test uses a plain self-recursive subclass that keeps the default
+        // policy without depending on any averaging implementation.
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1d, 2d, 3d, 4d, 5d, 6d, 7d)
                 .build();
@@ -1929,6 +2097,44 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
+    /**
+     * A bar that does not publish its own mutations and, once armed, changes its
+     * close price right after its amount is next read.
+     */
+    private static final class CloseChangingBar extends BaseBar {
+
+        private static final long serialVersionUID = 1L;
+        private volatile Num close;
+        private volatile Num closeOnNextAmountRead;
+
+        private CloseChangingBar(Bar source) {
+            super(source.getTimePeriod(), source.getBeginTime(), source.getEndTime(), source.getOpenPrice(),
+                    source.getHighPrice(), source.getLowPrice(), source.getClosePrice(), source.getVolume(),
+                    source.getAmount(), source.getTrades());
+            close = source.getClosePrice();
+        }
+
+        private void changeCloseOnNextAmountRead(Num newClose) {
+            closeOnNextAmountRead = newClose;
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return close;
+        }
+
+        @Override
+        public Num getAmount() {
+            Num amount = super.getAmount();
+            Num newClose = closeOnNextAmountRead;
+            if (newClose != null) {
+                closeOnNextAmountRead = null;
+                close = newClose;
+            }
+            return amount;
+        }
+    }
+
     private final static class BlockingTradesBar implements Bar {
 
         private final AtomicBoolean blockingEnabled = new AtomicBoolean();
@@ -2262,6 +2468,262 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void recursiveDependentFollowsSourceThatExplicitlyRequiresFullInvalidation() {
+        // A pivot reversal rebaselines every value after a head advance; a
+        // recursive consumer cannot continue its chain across that discontinuity.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        PivotPointIndicator pivot = new PivotPointIndicator(barSeries, TimeLevel.BARBASED);
+        StandardReversalIndicator reversal = new StandardReversalIndicator(pivot, PivotLevel.RESISTANCE_1);
+        EMAIndicator dependent = new EMAIndicator(reversal, 2);
+
+        assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(1));
+    }
+
+    @Test
+    public void oneBarRecursiveChainDiscardsConsumedPredecessorWhenSourceResets() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(1);
+        EMAIndicator dependent = new EMAIndicator(new HeadAdvanceDiscardingIndicator(series), 1);
+        for (int index = 0; index < 4; index++) {
+            series.barBuilder().closePrice(10 + index).add();
+            assertTrue(dependent.getValue(index).isNaN(), "a reset must restart the one-bar warm-up");
+        }
+    }
+
+    @Test
+    public void registeredCompositeHelpersPreserveReadEveryBarContinuation() {
+        List<Function<BarSeries, Indicator<Num>>> factories = List.of(
+                input -> new MACDIndicator(new ClosePriceIndicator(input), 2, 3),
+                input -> new PPOIndicator(new ClosePriceIndicator(input), 2, 3),
+                input -> new MassIndexIndicator(input, 2, 3), input -> new RWIHighIndicator(input, 3),
+                input -> new RWILowIndicator(input, 3), input -> new MACDVIndicator(input, 2, 3, 1),
+                input -> new VolatilityNormalizedMACDIndicator(input, 2, 3, 2),
+                input -> new ChaikinOscillatorIndicator(input, 2, 3));
+        for (Function<BarSeries, Indicator<Num>> factory : factories) {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(8);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            Indicator<Num> actual = factory.apply(moving);
+            Indicator<Num> expected = factory.apply(unbounded);
+            for (int i = 0; i < 24; i++) {
+                int close = 20 + i * 7 % 11;
+                for (BarSeries input : List.of(moving, unbounded)) {
+                    input.barBuilder()
+                            .openPrice(close)
+                            .highPrice(close + 2 + i % 3)
+                            .lowPrice(close - 2)
+                            .closePrice(close)
+                            .volume(10 + i)
+                            .add();
+                }
+                assertNumEquals(expected.getValue(i), actual.getValue(i));
+                if (i >= 12) {
+                    assertThat(actual.getValue(i).isNaN()).as(actual.getClass().getSimpleName()).isFalse();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void registeredCompositeHelpersPropagateExplicitSourceResetsToRecursiveConsumers() {
+        List<Function<BarSeries, Indicator<Num>>> sources = List.of(
+                input -> new StochasticIndicator(new ClosePriceIndicator(input), 3),
+                input -> new StandardReversalIndicator(new PivotPointIndicator(input, TimeLevel.BARBASED),
+                        PivotLevel.RESISTANCE_1),
+                input -> new FibonacciReversalIndicator(new PivotPointIndicator(input, TimeLevel.BARBASED), 0.382,
+                        FibonacciReversalIndicator.FibReversalTyp.RESISTANCE),
+                input -> new DeMarkReversalIndicator(new DeMarkPivotPointIndicator(input, TimeLevel.BARBASED),
+                        DeMarkPivotLevel.RESISTANCE));
+        List<Function<Indicator<Num>, Indicator<Num>>> consumers = List.of(input -> new MACDIndicator(input, 2, 3),
+                input -> new PPOIndicator(input, 2, 3), input -> new MACDVIndicator(input, 2, 3, 1),
+                input -> new VolatilityNormalizedMACDIndicator(input, 2, 3, 2));
+        for (Function<BarSeries, Indicator<Num>> sourceFactory : sources) {
+            for (Function<Indicator<Num>, Indicator<Num>> consumerFactory : consumers) {
+                BarSeries input = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+                for (int i = 0; i < 24; i++) {
+                    int close = 20 + i * 7 % 11;
+                    input.barBuilder()
+                            .highPrice(close + 2)
+                            .lowPrice(close - 2)
+                            .openPrice(close - 1)
+                            .closePrice(close)
+                            .volume(10 + i)
+                            .add();
+                }
+                Indicator<Num> source = sourceFactory.apply(input);
+                Indicator<Num> composite = consumerFactory.apply(source);
+                EMAIndicator actual = new EMAIndicator(composite, 2);
+                for (int i = 0; i < 24; i++) {
+                    actual.getValue(i);
+                }
+                assertThat(actual.getValue(23).isNaN()).as(composite.getClass().getSimpleName()).isFalse();
+                input.setMaximumBarCount(12);
+                // The long price average must restart its three-bar warm-up,
+                // even through an otherwise continuing outer EMA. Independent
+                // OHLC/volume branches retain their own consumed history.
+                for (int i = input.getBeginIndex(); i < input.getBeginIndex() + 3; i++) {
+                    assertThat(actual.getValue(i).isNaN())
+                            .as("%s over %s at %s", composite.getClass().getSimpleName(),
+                                    source.getClass().getSimpleName(), i)
+                            .isTrue();
+                }
+                assertThat(actual.getValue(23).isNaN()).as(composite.getClass().getSimpleName()).isFalse();
+            }
+        }
+    }
+
+    @Test
+    public void recursiveDependentContinuesWithStatisticalSources() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        barSeries.setMaximumBarCount(6);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        EMAIndicator expected = new EMAIndicator(new EwmaVarianceIndicator(unbounded, 2, 0.5), 2);
+        EMAIndicator dependent = new EMAIndicator(new EwmaVarianceIndicator(barSeries, 2, 0.5), 2);
+        int finiteAfterHeadAdvance = 0;
+        for (int i = 0; i < 12; i++) {
+            barSeries.barBuilder().closePrice(10 + (i * 7) % 5).add();
+            unbounded.barBuilder().closePrice(10 + (i * 7) % 5).add();
+            Num value = dependent.getValue(i);
+            assertNumEquals(expected.getValue(i), value);
+            if (barSeries.getBeginIndex() > 0 && !value.isNaN()) {
+                finiteAfterHeadAdvance++;
+            }
+        }
+
+        assertTrue(finiteAfterHeadAdvance > 0);
+    }
+
+    @Test
+    public void recursiveIndicatorIgnoresResetHookOfSourceOnSeriesThatDidNotAdvance() {
+        // An explicitly resetting source resets only when its own series advances.
+        // When only the consumer's series advances, the source on the other series
+        // did not reset, so the consumer keeps continuing its chain.
+        BarSeries seriesB = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 20; i++) {
+            seriesB.barBuilder().closePrice(10 + i % 3).add();
+        }
+        HeadAdvanceDiscardingIndicator sourceOnB = new HeadAdvanceDiscardingIndicator(seriesB);
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        seriesA.setMaximumBarCount(5);
+        RecursiveCachedIndicator<Num> chainLength = new RecursiveCachedIndicator<>(seriesA, sourceOnB) {
+            @Override
+            protected Num calculate(int index) {
+                sourceOnB.getValue(index);
+                Num one = getBarSeries().numFactory().one();
+                return index <= getBarSeries().getBeginIndex() ? one : getValue(index - 1).plus(one);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+
+        for (int i = 0; i < 20; i++) {
+            seriesA.barBuilder().closePrice(10).add();
+            assertNumEquals(i + 1, chainLength.getValue(i));
+        }
+
+        // Once the source's own series advances, the source resets and so must the
+        // consumer: the chain restarts at the consumer's retained head.
+        seriesB.setMaximumBarCount(20);
+        seriesB.barBuilder().closePrice(10).add();
+        int endIndex = seriesA.getEndIndex();
+        assertNumEquals(endIndex - seriesA.getBeginIndex() + 1, chainLength.getValue(endIndex));
+    }
+
+    @Test
+    public void recursiveChainReplaysFullyRetainedGapAfterConsumedTerminal() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(2);
+        EMAIndicator actual = new EMAIndicator(new ClosePriceIndicator(moving), 2);
+        EMAIndicator expected = new EMAIndicator(new ClosePriceIndicator(unbounded), 2);
+        for (int index = 0; index < 6; index++) {
+            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
+            unbounded.barBuilder().closePrice(10 + index * 7 % 11).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+        }
+        for (int index = 6; index < 8; index++) {
+            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
+            unbounded.barBuilder().closePrice(10 + index * 7 % 11).add();
+        }
+
+        assertEquals(6, moving.getBeginIndex());
+        assertNumEquals(expected.getValue(7), actual.getValue(7));
+        assertNumEquals(expected.getValue(6), actual.getValue(6));
+        moving.barBuilder().closePrice(17).add();
+        unbounded.barBuilder().closePrice(17).add();
+        assertNumEquals(expected.getValue(8), actual.getValue(8));
+    }
+
+    @Test
+    public void recursiveChainReseedsWhenGapInputHasBeenRemoved() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        moving.setMaximumBarCount(2);
+        EMAIndicator actual = new EMAIndicator(new ClosePriceIndicator(moving), 2);
+        for (int index = 0; index < 6; index++) {
+            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
+            actual.getValue(index);
+        }
+        for (int index = 6; index < 9; index++) {
+            moving.barBuilder().closePrice(10 + index * 7 % 11).add();
+        }
+
+        EMAIndicator fresh = new EMAIndicator(new ClosePriceIndicator(moving), 2);
+        assertTrue(actual.getValue(8).isNaN());
+        assertNumEquals(fresh.getValue(8), actual.getValue(8));
+        moving.barBuilder().closePrice(17).add();
+        assertNumEquals(fresh.getValue(9), actual.getValue(9));
+    }
+
+    @Test
+    public void removedIndexReadServesRetainedRecurrenceOfRecursiveIndicator() {
+        // A removed index maps to the first available bar. For a recursive
+        // indicator read continuously, that bar holds a retained full-history value,
+        // which the removed read must serve instead of re-seeding through
+        // calculate(0).
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        barSeries.setMaximumBarCount(20);
+        KAMAIndicator kama = new KAMAIndicator(new ClosePriceIndicator(barSeries), 3, 2, 30);
+        for (int i = 0; i < 40; i++) {
+            barSeries.barBuilder().closePrice(10 + (i % 5) + i * 0.1).add();
+            kama.getValue(i);
+        }
+        int beginIndex = barSeries.getBeginIndex();
+
+        assertNumEquals(kama.getValue(beginIndex), kama.getValue(beginIndex - 1));
+        assertNumEquals(kama.getValue(beginIndex), kama.getValue(0));
+    }
+
+    @Test
+    public void promotedTerminalValueIsDroppedWhenItsBarChangesDuringPromotion() {
+        // The former terminal bar does not publish its own mutations and changes
+        // after its intact check but before its value reaches the main cache. Once
+        // no longer terminal, nothing fingerprints it, so the promoted value must
+        // be dropped rather than continue the recursive chain.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 4; i++) {
+            barSeries.barBuilder().closePrice(10 + i).add();
+        }
+        CloseChangingBar terminal = new CloseChangingBar(barSeries.barBuilder().closePrice(20).build());
+        barSeries.addBar(terminal);
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(barSeries), 2);
+        assertNumEquals(new EMAIndicator(new ClosePriceIndicator(barSeries), 2).getValue(4), ema.getValue(4));
+
+        terminal.changeCloseOnNextAmountRead(numFactory.numOf(40));
+        barSeries.barBuilder().closePrice(22).add();
+        Num appended = ema.getValue(5);
+
+        EMAIndicator fresh = new EMAIndicator(new ClosePriceIndicator(barSeries), 2);
+        assertNumEquals(40, barSeries.getBar(4).getClosePrice());
+        assertNumEquals(fresh.getValue(5), appended);
+        assertNumEquals(fresh.getValue(4), ema.getValue(4));
+    }
+
+    @Test
     public void vidyaReadsFarRetainedTailIterativelyWhenSeriesHeadAdvances() {
         assertFarRetainedTailRecomputesWithoutRecursing(series -> {
             StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(series), 14);
@@ -2421,31 +2883,37 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     @Test
     public void pearsonCorrelationRecomputesRetainedWindowAfterSeriesHeadAdvance() {
-        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        barSeries.setMaximumBarCount(3);
-        double[] closes = { 100d, 101d, 105d };
-        double[] volumes = { 1d, 2d, 3d };
-        for (int i = 0; i < 3; i++) {
-            barSeries.barBuilder()
-                    .openPrice(closes[i])
-                    .closePrice(closes[i])
-                    .highPrice(closes[i] + 1d)
-                    .lowPrice(closes[i] - 1d)
-                    .volume(volumes[i])
-                    .add();
-        }
-        PearsonCorrelationIndicator correlation = new PearsonCorrelationIndicator(new ClosePriceIndicator(barSeries),
-                new VolumeIndicator(barSeries, 3), 3);
-        // The closes [100, 101, 105] against volumes [1, 2, 3] are not linear.
-        Num before = correlation.getValue(2);
-        assertTrue(before.isLessThan(numFactory.one()));
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            barSeries.setMaximumBarCount(3);
+            double[] closes = { 100d, 101d, 105d };
+            double[] volumes = { 1d, 2d, 3d };
+            for (int i = 0; i < 3; i++) {
+                barSeries.barBuilder()
+                        .openPrice(closes[i])
+                        .closePrice(closes[i])
+                        .highPrice(closes[i] + 1d)
+                        .lowPrice(closes[i] - 1d)
+                        .volume(volumes[i])
+                        .add();
+            }
+            PearsonCorrelationIndicator correlation = new PearsonCorrelationIndicator(
+                    new ClosePriceIndicator(barSeries), new VolumeIndicator(barSeries, 3), 3);
+            // The closes [100, 101, 105] against volumes [1, 2, 3] are not linear.
+            Num before = correlation.getValue(2);
+            assertTrue(before.isLessThan(numFactory.one()));
 
-        // Appending a fourth bar advances the head past index 0. Index 2's
-        // window shrinks to the perfectly linear pair [101, 105] vs [2, 3], so
-        // the cached pre-advance correlation must not survive.
-        barSeries.barBuilder().openPrice(109d).closePrice(109d).highPrice(110d).lowPrice(108d).volume(4d).add();
-        assertEquals(1, barSeries.getBeginIndex());
-        assertNumEquals(1, correlation.getValue(2));
+            // Appending a fourth bar advances the head past index 0. Index 2's
+            // window shrinks to the perfectly linear pair [101, 105] vs [2, 3], so
+            // the cached pre-advance correlation must not survive.
+            barSeries.barBuilder().openPrice(109d).closePrice(109d).highPrice(110d).lowPrice(108d).volume(4d).add();
+            assertEquals(1, barSeries.getBeginIndex());
+            assertNumEquals(1, correlation.getValue(2));
+        } finally {
+            capture.close();
+        }
     }
 
     @Test
@@ -2611,12 +3079,13 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     /**
      * A cross-series dependency reached only through an intermediate indicator
-     * backed by the consumer's own series must still be observed: the EMA consumes
-     * a distance indicator on seriesA whose moving average reads seriesB, so
-     * advancing seriesB alone must recompute the cached EMA values.
+     * backed by the consumer's own series must still be observed, and a
+     * dependency-series head advance applies the same policy as an own-series one:
+     * the windowed distance is re-evaluated, while the recursive EMA keeps its
+     * retained chain.
      */
     @Test
-    public void nestedCrossSeriesDependencyHeadAdvanceInvalidatesDependentCache() {
+    public void nestedCrossSeriesDependencyHeadAdvanceKeepsRecursiveChain() {
         BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
         BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10d, 20d, 30d, 40d, 50d, 60d)
@@ -2624,19 +3093,184 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
                 new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
         EMAIndicator ema = new EMAIndicator(distance, 2);
+        Num distanceBefore2 = distance.getValue(2);
         Num before2 = ema.getValue(2);
         Num before3 = ema.getValue(3);
         seriesB.setMaximumBarCount(4); // head advances; the EMA never reads seriesB directly
-        Num after2 = ema.getValue(2);
-        Num after3 = ema.getValue(3);
 
-        DistanceFromMAIndicator freshDistance = new DistanceFromMAIndicator(seriesA,
+        // The EMA consumed distance(2) while seriesB still held its full window, so
+        // its chain stays the full-history value (#1666) ...
+        assertNumEquals(before2, ema.getValue(2));
+        assertNumEquals(before3, ema.getValue(3));
+        // ... while the windowed distance is still re-evaluated against seriesB's
+        // retained window.
+        assertThat(distance.getValue(2)).isNotEqualTo(distanceBefore2);
+    }
+
+    @Test
+    public void crossSeriesDependencyHeadAdvanceKeepsConsumerIndexSpace() {
+        // seriesB advances its head to index 8 while seriesA still retains every
+        // bar. The recursive EMA's cache lives in seriesA's index space, so its
+        // values below seriesB's head must not be evicted and re-seeded.
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d, 40d, 50d, 60d, 70d, 80d, 90d, 100d, 110d, 120d)
+                .build();
+        DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
                 new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
-        EMAIndicator freshEma = new EMAIndicator(freshDistance, 2);
-        assertNumEquals(freshEma.getValue(2), after2);
-        assertNumEquals(freshEma.getValue(3), after3);
-        assertThat(after2).isNotEqualTo(before2);
-        assertThat(after3).isNotEqualTo(before3);
+        EMAIndicator ema = new EMAIndicator(distance, 2);
+        Num before2 = ema.getValue(2);
+        Num before3 = ema.getValue(3);
+
+        seriesB.setMaximumBarCount(4);
+        assertEquals(8, seriesB.getBeginIndex());
+
+        assertNumEquals(before2, ema.getValue(2));
+        assertNumEquals(before3, ema.getValue(3));
+    }
+
+    @Test
+    public void advancingConsumerHeadKeepsPredecessorWhenSourceStillRetainsLookback() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        Indicator<Num> source = new TRIndicator(sourceSeries);
+        RecursiveCachedIndicator<Num> actual = cumulativeOn(bounded, source);
+        RecursiveCachedIndicator<Num> expected = cumulativeOn(unbounded, source);
+        for (int index = 0; index < 6; index++) {
+            double close = 100 + index * 7 % 19;
+            sourceSeries.barBuilder().highPrice(close + 1).lowPrice(close - 1).closePrice(close).add();
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+        }
+    }
+
+    private RecursiveCachedIndicator<Num> cumulativeOn(BarSeries series, Indicator<Num> source) {
+        return new RecursiveCachedIndicator<Num>(series, source) {
+            @Override
+            protected Num calculate(int index) {
+                if (index == 0) {
+                    return source.getValue(0);
+                }
+                Num previous = getCachedValueOrNull(index - 1);
+                return (previous == null ? getValue(index - 1) : previous).plus(source.getValue(index));
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+    }
+
+    @Test
+    public void advancingConsumerHeadKeepsPredecessorWhenRawRecursiveSourceSeriesIsUnpruned() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        Indicator<Num> source = new OnBalanceVolumeIndicator(sourceSeries);
+        RecursiveCachedIndicator<Num> actual = cumulativeOn(bounded, source);
+        RecursiveCachedIndicator<Num> expected = cumulativeOn(unbounded, source);
+        for (int index = 0; index < 6; index++) {
+            double close = 100 + index * 7 % 19;
+            sourceSeries.barBuilder().closePrice(close).volume(10 + index).add();
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            assertNumEquals(expected.getValue(index), actual.getValue(index));
+        }
+    }
+
+    @Test
+    public void transparentWrappersKeepRecursiveWarmupAcrossOneBarHeadAdvances() {
+        BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bounded.setMaximumBarCount(1);
+        EMAIndicator boundedInner = new EMAIndicator(new ClosePriceIndicator(bounded), 3);
+        EMAIndicator unboundedInner = new EMAIndicator(new ClosePriceIndicator(unbounded), 3);
+        EMAIndicator actual = new EMAIndicator(NumericIndicator.of(UnaryOperationIndicator
+                .abs(BinaryOperationIndicator.sum(boundedInner, new ClosePriceIndicator(bounded)))), 3);
+        EMAIndicator expected = new EMAIndicator(NumericIndicator.of(UnaryOperationIndicator
+                .abs(BinaryOperationIndicator.sum(unboundedInner, new ClosePriceIndicator(unbounded)))), 3);
+        for (int index = 0; index < 12; index++) {
+            double close = index * 7 % 19 - 9;
+            bounded.barBuilder().closePrice(close).add();
+            unbounded.barBuilder().closePrice(close).add();
+            // The inner recurrence is already live when the wrapped consumer reads it.
+            assertNumEquals(unboundedInner.getValue(index), boundedInner.getValue(index));
+            Num expectedValue = expected.getValue(index);
+            Num actualValue = actual.getValue(index);
+            if (Num.isFinite(expectedValue)) {
+                assertNumEquals(expectedValue, actualValue);
+            } else {
+                assertTrue(actualValue.isNaN());
+            }
+        }
+        assertFalse(actual.getValue(11).isNaN());
+    }
+
+    @Test
+    public void undeclaredRawLookbackDoesNotBridgeRemovedPredecessor() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        RecursiveCachedIndicator<Num> actual = rawPriceChanges(moving);
+        for (int index = 0; index < 4; index++) {
+            moving.barBuilder().closePrice(100 + index * 3).add();
+            assertNumEquals(index * 3, actual.getValue(index));
+        }
+        moving.setMaximumBarCount(1);
+        assertNumEquals(9, actual.getValue(3));
+        moving.barBuilder().closePrice(115).add();
+        assertNumEquals(rawPriceChanges(moving).getValue(4), actual.getValue(4));
+    }
+
+    private RecursiveCachedIndicator<Num> rawPriceChanges(BarSeries series) {
+        return new RecursiveCachedIndicator<Num>(series) {
+            @Override
+            protected Num calculate(int index) {
+                if (index == 0) {
+                    return numOf(0);
+                }
+                Num previous = getCachedValueOrNull(index - 1);
+                return (previous == null ? getValue(index - 1) : previous).plus(series.getBar(index).getClosePrice())
+                        .minus(series.getBar(index - 1).getClosePrice());
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+    }
+
+    @Test
+    public void rawRecursiveTerminalEditKeepsFullHistoryRecurrenceInPrunedWindow() {
+        for (boolean observeEdit : List.of(false, true)) {
+            BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            bounded.setMaximumBarCount(3);
+            RecursiveCachedIndicator<Num> actual = rawPriceChanges(bounded);
+            RecursiveCachedIndicator<Num> expected = rawPriceChanges(unbounded);
+            for (int index = 0; index < 8; index++) {
+                double close = 100 + index * 7 % 19;
+                bounded.barBuilder().closePrice(close).add();
+                unbounded.barBuilder().closePrice(close).add();
+                assertNumEquals(expected.getValue(index), actual.getValue(index));
+            }
+
+            bounded.getLastBar().addPrice(numOf(150));
+            unbounded.getLastBar().addPrice(numOf(150));
+            if (observeEdit) {
+                assertNumEquals(expected.getValue(7), actual.getValue(7));
+            }
+            for (int index = 8; index < 11; index++) {
+                double close = 100 + index * 7 % 19;
+                bounded.barBuilder().closePrice(close).add();
+                unbounded.barBuilder().closePrice(close).add();
+                assertNumEquals(expected.getValue(index), actual.getValue(index));
+            }
+        }
     }
 
     /**

@@ -82,6 +82,14 @@ public class LinearBorrowingCostModelTest {
     }
 
     @Test
+    public void entryValueAndIndexDistanceIgnoreChangedExitMark() {
+        Position position = new Position(Trade.sellAt(10, DoubleNum.valueOf(100), DoubleNum.valueOf(2)),
+                Trade.buyAt(14, DoubleNum.valueOf(250), DoubleNum.valueOf(2)), new ZeroCostModel(), borrowingModel);
+        assertNumEquals(8, position.getHoldingCost(14));
+        assertNumEquals(8, position.getHoldingCost());
+    }
+
+    @Test
     public void testEquality() {
         LinearBorrowingCostModel model = new LinearBorrowingCostModel(0.1);
         CostModel modelSameClass = new LinearBorrowingCostModel(0.2);

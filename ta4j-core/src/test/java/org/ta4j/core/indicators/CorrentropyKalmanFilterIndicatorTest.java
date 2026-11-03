@@ -3,12 +3,16 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -46,6 +50,33 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
 
     public CorrentropyKalmanFilterIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void startsRecursiveMeasurementAndNoiseBeforeWarmUpEnds() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            for (boolean residualOnly : new boolean[] { false, true }) {
+                BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+                series.setMaximumBarCount(2);
+                ClosePriceIndicator close = new ClosePriceIndicator(series);
+                CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(
+                        new EMAIndicator(close, 3), new EMAIndicator(close, 3), new EMAIndicator(close, 3), numOf(2));
+                Indicator<Num> output = residualOnly ? filter.residual() : filter;
+                for (int index = 0; index < 8; index++) {
+                    series.barBuilder().closePrice(10).add();
+                    Num value = output.getValue(index);
+                    if (index < 3) {
+                        Assertions.assertTrue(value.isNaN());
+                    } else {
+                        assertNumEquals(residualOnly ? 0 : 10, value);
+                    }
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     private Indicator<Num> closePrice;
@@ -475,25 +506,31 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
 
     @Test
     public void retainedSeriesInitializesWhenBeginIndexIsPastTheStableBoundary() {
-        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(10, 10.1, 10.2, 10.3, 50, 10.4)
-                .build();
-        MockIndicator source = new MockIndicator(series, 3, numOf(10), numOf(10.1), numOf(10.2), numOf(10.3), numOf(50),
-                numOf(10.4));
-        Indicator<Num> q = constant(series, 1e-3);
-        Indicator<Num> r = constant(series, 0.2);
-        series.setMaximumBarCount(2);
-        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(source, q, r, numOf(2));
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                    .withData(10, 10.1, 10.2, 10.3, 50, 10.4)
+                    .build();
+            MockIndicator source = new MockIndicator(series, 3, numOf(10), numOf(10.1), numOf(10.2), numOf(10.3),
+                    numOf(50), numOf(10.4));
+            Indicator<Num> q = constant(series, 1e-3);
+            Indicator<Num> r = constant(series, 0.2);
+            series.setMaximumBarCount(2);
+            CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(source, q, r, numOf(2));
 
-        Assertions.assertEquals(4, series.getBeginIndex());
-        Assertions.assertEquals(50.0, filter.getValue(4).doubleValue(), 0.0);
-        Assertions.assertEquals(1.0, filter.measurementWeight().getValue(4).doubleValue(), 0.0);
+            Assertions.assertEquals(4, series.getBeginIndex());
+            Assertions.assertEquals(50.0, filter.getValue(4).doubleValue(), 0.0);
+            Assertions.assertEquals(1.0, filter.measurementWeight().getValue(4).doubleValue(), 0.0);
 
-        // A pruned request aliases the first available bar; with a non-zero
-        // unstable-bar count the residual view must remap the index before the
-        // warm-up check instead of reporting NaN for an otherwise stable state.
-        Assertions.assertEquals(0.0, filter.residual().getValue(0).doubleValue(), 0.0);
-        Assertions.assertEquals(0.0, filter.residual().getValue(4).doubleValue(), 0.0);
+            // A pruned request aliases the first available bar; with a non-zero
+            // unstable-bar count the residual view must remap the index before the
+            // warm-up check instead of reporting NaN for an otherwise stable state.
+            Assertions.assertEquals(0.0, filter.residual().getValue(0).doubleValue(), 0.0);
+            Assertions.assertEquals(0.0, filter.residual().getValue(4).doubleValue(), 0.0);
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

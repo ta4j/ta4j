@@ -6,12 +6,14 @@ package org.ta4j.core.indicators.averages;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -22,6 +24,31 @@ public class EDMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     public EDMAIndicatorTest(NumFactory numFunction) {
         super(numFunction);
+    }
+
+    @Test
+    public void primesCurrentEmaBeforeServingCausalDisplacedValuesOnShortWindow() {
+        TraceTestLogger capture = new TraceTestLogger();
+        capture.open();
+        try {
+            BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            moving.setMaximumBarCount(4);
+            EDMAIndicator indicator = new EDMAIndicator(new ClosePriceIndicator(moving), 5, 2);
+            for (int index = 0; index < 24; index++) {
+                moving.barBuilder().closePrice(100 + index).add();
+                Num value = indicator.getValue(index);
+                if (index < 7) {
+                    assertThat(value.isNaN()).isTrue();
+                } else {
+                    // EMA(5) seeds at index 5; its displaced ramp has lag two.
+                    int sourceIndex = index - 2;
+                    double expected = 100 + sourceIndex - 2 + 2 * Math.pow(2d / 3, sourceIndex - 5);
+                    assertNumEquals(expected, value);
+                }
+            }
+        } finally {
+            capture.close();
+        }
     }
 
     @Test

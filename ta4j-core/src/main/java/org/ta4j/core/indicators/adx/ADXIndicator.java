@@ -32,11 +32,19 @@ public class ADXIndicator extends CachedIndicator<Num> {
      * @param adxBarCount the bar count for {@link #averageDXIndicator}
      */
     public ADXIndicator(BarSeries series, int diBarCount, int adxBarCount) {
-        super(series);
+        this(diBarCount, adxBarCount, new DXIndicator(series, diBarCount));
+    }
+
+    private ADXIndicator(int diBarCount, int adxBarCount, DXIndicator dxIndicator) {
+        this(diBarCount, adxBarCount, dxIndicator, new MMAIndicator(dxIndicator, adxBarCount));
+    }
+
+    private ADXIndicator(int diBarCount, int adxBarCount, DXIndicator dxIndicator, MMAIndicator averageDXIndicator) {
+        super(averageDXIndicator);
         this.diBarCount = diBarCount;
         this.adxBarCount = adxBarCount;
-        this.dxIndicator = new DXIndicator(series, diBarCount);
-        this.averageDXIndicator = new MMAIndicator(dxIndicator, adxBarCount);
+        this.dxIndicator = dxIndicator;
+        this.averageDXIndicator = averageDXIndicator;
     }
 
     /**
@@ -52,12 +60,23 @@ public class ADXIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        // The outer average does not read DX while its own chain is warming up.
+        dxIndicator.getValue(index);
         return averageDXIndicator.getValue(index);
     }
 
     @Override
     public int getCountOfUnstableBars() {
         return dxIndicator.getCountOfUnstableBars() + averageDXIndicator.getCountOfUnstableBars();
+    }
+
+    /**
+     * @return {@code true}, because the Wilder averages retain full-history state
+     * @since 0.27.1
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     @Override

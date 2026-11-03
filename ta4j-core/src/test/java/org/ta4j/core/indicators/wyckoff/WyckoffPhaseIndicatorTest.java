@@ -246,6 +246,46 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
     }
 
     /**
+     * Verifies that a phase transition index survives the head advance that follows
+     * it on a moving series read every bar, together with the phase it describes.
+     */
+    @Test
+    public void shouldKeepTransitionIndexAcrossHeadAdvances() {
+        BarSeries moving = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var indicator = WyckoffPhaseIndicator.builder(moving)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .withTolerances(numOf(0.02), numOf(0.05))
+                .withVolumeThresholds(numOf(1.4), numOf(0.6))
+                .build();
+        moving.setMaximumBarCount(indicator.getCountOfUnstableBars() + 2);
+
+        WyckoffPhase previous = WyckoffPhase.UNKNOWN;
+        int expectedTransition = -1;
+        int transitionsBeforeHeadAdvance = 0;
+        for (int i = 0; i <= accumulationSeries.getEndIndex(); i++) {
+            var bar = accumulationSeries.getBar(i);
+            moving.barBuilder()
+                    .openPrice(bar.getOpenPrice())
+                    .highPrice(bar.getHighPrice())
+                    .lowPrice(bar.getLowPrice())
+                    .closePrice(bar.getClosePrice())
+                    .volume(bar.getVolume())
+                    .add();
+            if (moving.getBeginIndex() > 0 && expectedTransition == i - 1) {
+                transitionsBeforeHeadAdvance++;
+            }
+            WyckoffPhase phase = indicator.getValue(i);
+            if (phase.cycleType() != previous.cycleType() || phase.phaseType() != previous.phaseType()) {
+                expectedTransition = i;
+            }
+            assertThat(indicator.getLastPhaseTransitionIndex(i)).isEqualTo(expectedTransition);
+            previous = phase;
+        }
+        assertThat(transitionsBeforeHeadAdvance).isPositive();
+    }
+
+    /**
      * Adds bar.
      */
     private void addBar(BarSeries series, double open, double high, double low, double close, double volume) {

@@ -7,15 +7,28 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
 import java.util.List;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -111,15 +124,10 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
-    public void rebaselinesTrendAndCumulativeMeasurementWhenSeriesHeadAdvances() {
-        // Bars 3..70 repeat the bar-2 trend basis (high + low + close = 30) with
-        // zero volume, so the equal-basis recursion carries the -1 direction of
-        // the decreasing bars 0..2 across the plateau while every plateau volume
-        // force stays NaN, leaving the short and long EMAs NaN at index 70. Once
-        // the head advances into the plateau the trend base case must return +1
-        // and the cumulative measurement must restart from the retained window;
-        // the first non-zero-volume bars read afterwards reset the EMAs to their
-        // own volume force and expose the re-baselined direction exactly.
+    public void continuesNegativeTrendAndCumulativeMeasurementThroughZeroVolumePlateau() {
+        // Equal-basis bars retain the negative direction established at indexes
+        // 1..2, even after those bars leave the window. Zero volume resets the
+        // EMAs, not the trend or cumulative measurement.
         final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(10).closePrice(10).highPrice(14).lowPrice(10).volume(1000).add(); // basis 34
         series.barBuilder().openPrice(9).closePrice(9).highPrice(13).lowPrice(9).volume(1000).add(); // basis 31
@@ -135,27 +143,13 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
         series.setMaximumBarCount(12);
         assertThat(series.getBeginIndex()).isEqualTo(61);
 
-        // With the re-baselined +1 direction the cumulative measurement restarts
-        // at 3 and grows by 3 per equal-trend bar (33 and 36 at indexes 71 and
-        // 72), so the volume forces are 1000 * 100 * |2*3/33 - 1| = 100000 * 27/33
-        // and 1000 * 100 * |2*3/36 - 1| = 100000 * 30/36. Both EMAs reset to the
-        // index-71 volume force, so the index-72 oscillator is
-        // 100000 * (30/36 - 27/33) / 6 = 100000 / 396.
-        assertNumEquals(numFactory.numOf(100000d / 396d), oscillator.getValue(72), 1e-9);
+        // Cumulative measurement is 218 at index 71 and 221 at index 72.
+        // Both EMAs recover at 71; their multipliers differ by 1/6 at 72.
+        assertNumEquals(numFactory.numOf(-300000d / (218d * 221d)), oscillator.getValue(72), 1e-9);
     }
 
     @Test
-    public void rebaselinesDownstreamCachesWhenSeriesHeadAdvances() {
-        // Warm caches computed before the advance must not survive it anywhere
-        // in the downstream chain. Bars 0..2 decrease (basis 34, 31, 30) and
-        // bars 3..70 repeat basis 30 with non-zero volume, so pre-advance reads
-        // cache a negative-direction volume force, both EMAs, and the outer
-        // oscillator across the plateau. Bars 71..72 lift the basis to 34.
-        // After the head advances to index 61 the trend base case flips to +1
-        // and the cumulative measurement rebaselines, so every cached tail
-        // value - volume force, EMAs, and outer oscillator - is stale. A
-        // post-advance read must equal what a cold indicator over the same
-        // retained window computes, not the warm pre-advance value.
+    public void preservesComputedRetainedValuesInsteadOfReanchoringToFreshHistory() {
         final BarSeries series = klingerPlateauSeries();
         final KlingerVolumeOscillatorIndicator oscillator = new KlingerVolumeOscillatorIndicator(series, 3, 5);
         final Num preAdvanceValue = oscillator.getValue(72);
@@ -169,8 +163,254 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
         final KlingerVolumeOscillatorIndicator cold = new KlingerVolumeOscillatorIndicator(advancedSeries, 3, 5);
 
         final Num postAdvanceValue = oscillator.getValue(72);
-        assertThat(postAdvanceValue).isEqualByComparingTo(cold.getValue(72));
-        assertThat(postAdvanceValue.isEqual(preAdvanceValue)).isFalse();
+        assertThat(postAdvanceValue).isEqualByComparingTo(preAdvanceValue);
+        assertThat(postAdvanceValue.isEqual(cold.getValue(72))).isFalse();
+    }
+
+    @Test
+    public void continuesAcrossWindowsShorterThanWarmup() {
+        for (int capacity : new int[] { 2, 3, 8, 32 }) {
+            BarSeries bounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            bounded.setMaximumBarCount(capacity);
+            BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            KlingerVolumeOscillatorIndicator continued = new KlingerVolumeOscillatorIndicator(bounded, 3, 5);
+            KlingerVolumeOscillatorIndicator reference = new KlingerVolumeOscillatorIndicator(unbounded, 3, 5);
+            for (int index = 0; index < 160; index++) {
+                appendContinuationBar(bounded, index);
+                appendContinuationBar(unbounded, index);
+                assertSameNumOrNaN(reference.getValue(index), continued.getValue(index));
+                for (int retained = bounded.getBeginIndex(); retained < index; retained++) {
+                    assertSameNumOrNaN(reference.getValue(retained), continued.getValue(retained));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void freshAndLostPredecessorChainsSeedFromIndependentRetainedHistory() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(12);
+        KlingerVolumeOscillatorIndicator continued = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+        for (int index = 0; index < 32; index++) {
+            appendContinuationBar(series, index);
+            continued.getValue(index);
+        }
+        assertFreshRetainedReference(series, new KlingerVolumeOscillatorIndicator(series, 3, 5));
+
+        // Skip enough observations to lose every predecessor, not just its inputs.
+        for (int index = 32; index < 64; index++) {
+            appendContinuationBar(series, index);
+        }
+        assertFreshRetainedReference(series, continued);
+    }
+
+    @Test
+    public void restartsTheCompleteWarmupAfterSeedingAtAPositiveRetainedHead() {
+        for (boolean readBeforeGap : new boolean[] { false, true }) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            series.setMaximumBarCount(12);
+            KlingerVolumeOscillatorIndicator actual = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+            for (int index = 0; index < 32; index++) {
+                appendContinuationBar(series, index + 45);
+                if (readBeforeGap && index == 15) {
+                    actual.getValue(index);
+                }
+            }
+            if (!readBeforeGap) {
+                actual = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+            }
+            int beginIndex = series.getBeginIndex();
+            assertThat(Num.isNaNOrNull(actual.getValue(beginIndex + 5))).isTrue();
+            assertThat(Num.isFinite(actual.getValue(beginIndex + 6))).isTrue();
+            assertFreshRetainedReference(series, actual);
+        }
+    }
+
+    private void assertFreshRetainedReference(BarSeries series, KlingerVolumeOscillatorIndicator actual) {
+        BarSeries independent = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(series.getBarData())
+                .build();
+        KlingerVolumeOscillatorIndicator reference = new KlingerVolumeOscillatorIndicator(independent, 3, 5);
+        int beginIndex = series.getBeginIndex();
+        assertThat(actual.getCountOfUnstableBars()).isEqualTo(6);
+        assertSameNumOrNaN(reference.getValue(series.getEndIndex() - beginIndex),
+                actual.getValue(series.getEndIndex()));
+        for (int index = beginIndex; index <= series.getEndIndex(); index++) {
+            assertSameNumOrNaN(reference.getValue(index - beginIndex), actual.getValue(index));
+        }
+    }
+
+    @Test
+    public void explicitResetOnEitherPriceRebuildsTheWholeContinuedChain() {
+        for (boolean resetHigh : new boolean[] { true, false }) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            KlingerVolumeOscillatorIndicator continued = resettingPriceOscillator(series, resetHigh);
+            for (int index = 0; index < 80; index++) {
+                appendContinuationBar(series, index);
+                continued.getValue(index);
+            }
+            Num before = continued.getValue(79);
+            series.setMaximumBarCount(24);
+            KlingerVolumeOscillatorIndicator fresh = resettingPriceOscillator(series, resetHigh);
+            Num rebuilt = continued.getValue(79);
+            assertThat(Num.isFinite(rebuilt)).isTrue();
+            assertSameNumOrNaN(fresh.getValue(79), rebuilt);
+            assertThat(rebuilt.isEqual(before)).isFalse();
+            for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+                assertSameNumOrNaN(fresh.getValue(index), continued.getValue(index));
+            }
+        }
+    }
+
+    private KlingerVolumeOscillatorIndicator resettingPriceOscillator(BarSeries series, boolean resetHigh) {
+        Indicator<Num> resetting = new CachedIndicator<Num>(series) {
+            @Override
+            protected Num calculate(int index) {
+                Num offset = numFactory.numOf(getBarSeries().getBeginIndex());
+                return resetHigh ? getBarSeries().getBar(index).getHighPrice().plus(offset)
+                        : getBarSeries().getBar(index).getLowPrice().minus(offset);
+            }
+
+            @Override
+            protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+                return true;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        return new KlingerVolumeOscillatorIndicator(resetHigh ? resetting : new HighPriceIndicator(series),
+                resetHigh ? new LowPriceIndicator(series) : resetting, new ClosePriceIndicator(series),
+                new VolumeIndicator(series), 3, 5);
+    }
+
+    @Test
+    public void terminalMutationThenAppendPreservesTheRevisedHistory() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(2);
+        BarSeries unbounded = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        KlingerVolumeOscillatorIndicator continued = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+        KlingerVolumeOscillatorIndicator reference = new KlingerVolumeOscillatorIndicator(unbounded, 3, 5);
+        for (int index = 0; index < 90; index++) {
+            appendContinuationBar(series, index);
+            appendContinuationBar(unbounded, index);
+            assertSameNumOrNaN(reference.getValue(index), continued.getValue(index));
+            if (index >= 10 && index % 3 == 0) {
+                for (BarSeries mutated : new BarSeries[] { series, unbounded }) {
+                    mutated.getLastBar().addTrade(numFactory.numOf(7), numFactory.numOf(50 + index % 7));
+                    mutated.getLastBar().addPrice(numFactory.numOf(25 - index % 4));
+                }
+                assertSameNumOrNaN(reference.getValue(index), continued.getValue(index));
+            }
+        }
+    }
+
+    @Test
+    public void steadyAppendSourceWorkDoesNotGrowWithRetentionCapacity() {
+        int baselineWork = -1;
+        for (int capacity : new int[] { 2, 8, 32, 128 }) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            series.setMaximumBarCount(capacity);
+            AtomicInteger reads = new AtomicInteger();
+            Indicator<Num> high = new HighPriceIndicator(series) {
+                @Override
+                public Num getValue(int index) {
+                    reads.incrementAndGet();
+                    return super.getValue(index);
+                }
+            };
+            KlingerVolumeOscillatorIndicator oscillator = new KlingerVolumeOscillatorIndicator(high,
+                    new LowPriceIndicator(series), new ClosePriceIndicator(series), new VolumeIndicator(series), 3, 5);
+            for (int index = 0; index < 160; index++) {
+                appendContinuationBar(series, index);
+                oscillator.getValue(index);
+            }
+            int before = reads.get();
+            for (int index = 160; index < 240; index++) {
+                appendContinuationBar(series, index);
+                int beforeAppendRead = reads.get();
+                oscillator.getValue(index);
+                assertThat(reads.get() - beforeAppendRead).isLessThanOrEqualTo(8);
+            }
+            int work = reads.get() - before;
+            if (baselineWork < 0) {
+                baselineWork = work;
+            } else {
+                assertThat(work).isEqualTo(baselineWork);
+            }
+        }
+    }
+
+    @Test
+    public void retriesTheWholeChainWhenConcurrentPruningRemovesAnInputMidRead() throws Exception {
+        BarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(24);
+        for (int index = 0; index < 24; index++) {
+            appendContinuationBar(series, index);
+        }
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicBoolean armed = new AtomicBoolean(true);
+        Indicator<Num> close = new AbstractIndicator<Num>(series) {
+            @Override
+            public Num getValue(int index) {
+                if (index == 19 && armed.compareAndSet(true, false)) {
+                    entered.countDown();
+                    try {
+                        assertTrue(release.await(5, TimeUnit.SECONDS), "head-race source was not released");
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError(interrupted);
+                    }
+                }
+                return getBarSeries().getBar(index).getClosePrice();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        KlingerVolumeOscillatorIndicator raced = new KlingerVolumeOscillatorIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), close, new VolumeIndicator(series), 3, 5);
+        ExecutorService executor = Executors.newSingleThreadExecutor(task -> {
+            Thread thread = new Thread(task, "klinger-head-race");
+            thread.setDaemon(true);
+            return thread;
+        });
+        try {
+            Future<Num> read = executor.submit(() -> raced.getValue(23));
+            assertTrue(entered.await(5, TimeUnit.SECONDS), "head-race source was not reached");
+            for (int index = 24; index < 48; index++) {
+                appendContinuationBar(series, index);
+            }
+            release.countDown();
+            KlingerVolumeOscillatorIndicator fresh = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+            assertSameNumOrNaN(fresh.getValue(23), read.get(5, TimeUnit.SECONDS));
+            assertFreshRetainedReference(series, raced);
+        } finally {
+            release.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    private static void appendContinuationBar(BarSeries series, int index) {
+        int phase = index % 80;
+        double basis = phase < 3 ? 120 - phase * 3 : phase < 45 ? 114 : 114 + 3 * ((phase - 45) % 9);
+        double measurement = 2 + index % 5;
+        double close = basis / 3;
+        double volume = phase >= 15 && phase < 28 ? 0 : 1000 + index % 11 * 37;
+        series.barBuilder()
+                .timePeriod(Duration.ofSeconds(1))
+                .endTime(Instant.EPOCH.plusSeconds(index + 1L))
+                .openPrice(close)
+                .closePrice(close)
+                .highPrice(close + measurement / 2)
+                .lowPrice(close - measurement / 2)
+                .volume(volume)
+                .add();
     }
 
     private BarSeries klingerPlateauSeries() {

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -32,17 +33,53 @@ public class LowestValueIndicator extends CachedIndicator<Num> {
 
     @Override
     public Num calculate(int index) {
-        if (indicator.getValue(index).isNaN() && barCount != 1) {
-            return new LowestValueIndicator(indicator, barCount - 1).getValue(index - 1);
+        Num currentVal = indicator.getValue(index);
+
+        BarSeries series = indicator.getBarSeries();
+        int beginIndex = Math.max(0, series != null ? series.getBeginIndex() : 0);
+
+        if (currentVal.isNaN()) {
+            if (barCount == 1) {
+                return currentVal;
+            }
+            int end = Math.max(beginIndex, index - barCount + 1);
+            Num lowest = currentVal;
+            for (int i = index - 1; i >= end; i--) {
+                Num val = indicator.getValue(i);
+                if (!val.isNaN()) {
+                    if (lowest.isNaN() || lowest.isGreaterThan(val)) {
+                        lowest = val;
+                    }
+                }
+            }
+            return lowest;
         }
 
-        // TODO optimize algorithm, compare previous minimum with current value without
-        // looping
-        int end = Math.max(0, index - barCount + 1);
-        Num lowest = indicator.getValue(index);
+        if (index > beginIndex && isCached(index - 1)) {
+            Num lowestPrev = getValue(index - 1);
+            if (!lowestPrev.isNaN()) {
+                if (currentVal.isLessThan(lowestPrev)) {
+                    return currentVal;
+                }
+                int oldStartIndex = index - barCount;
+                if (oldStartIndex < beginIndex) {
+                    return lowestPrev;
+                }
+                Num droppedVal = indicator.getValue(oldStartIndex);
+                if (droppedVal.isNaN() || lowestPrev.isLessThan(droppedVal)) {
+                    return lowestPrev;
+                }
+            }
+        }
+
+        int end = Math.max(beginIndex, index - barCount + 1);
+        Num lowest = currentVal;
         for (int i = index - 1; i >= end; i--) {
-            if (lowest.isGreaterThan(indicator.getValue(i))) {
-                lowest = indicator.getValue(i);
+            Num val = indicator.getValue(i);
+            if (!val.isNaN()) {
+                if (lowest.isGreaterThan(val)) {
+                    lowest = val;
+                }
             }
         }
         return lowest;

@@ -59,6 +59,8 @@ public class PiercingIndicator extends CachedIndicator<Boolean> {
 
     @Override
     protected Boolean calculate(int index) {
+        // Confirmation state advances on every bar, not only when a pattern matches.
+        boolean downTrend = trendIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return false;
         }
@@ -75,7 +77,7 @@ public class PiercingIndicator extends CachedIndicator<Boolean> {
         return firstBar.isBearish() && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.isBullish() && secondBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.getOpenPrice().isLessThan(firstBar.getClosePrice())
-                && secondBar.getClosePrice().isGreaterThan(firstBarMiddlePoint) && this.trendIndicator.getValue(index);
+                && secondBar.getClosePrice().isGreaterThan(firstBarMiddlePoint) && downTrend;
     }
 
     @Override

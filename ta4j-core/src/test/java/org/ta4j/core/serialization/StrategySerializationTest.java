@@ -45,6 +45,15 @@ import org.ta4j.core.strategy.named.NamedStrategyFixture;
 
 public class StrategySerializationTest {
 
+    @Test
+    public void fromDescriptorWrapsMissingFactoryMethodDependency() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeStrategy"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class);
+        }
+    }
+
     /**
      * Cleans up static registrations made by test fixtures to prevent interference
      * between test runs, especially when tests execute in parallel or the test

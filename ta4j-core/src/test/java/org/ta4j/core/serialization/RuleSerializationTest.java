@@ -65,6 +65,80 @@ import org.ta4j.core.rules.XorRule;
  */
 public class RuleSerializationTest {
 
+    @Test
+    public void fromDescriptorWrapsMissingConstructorDependency() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeRule"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class);
+        }
+    }
+
+    @Test
+    public void fromDescriptorKeepsMissingDependencyCauseOfNestedRule() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeNestedRule"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class)
+                    .hasMessageContaining(MissingDependencyFixture.BrokenRule.class.getName());
+        }
+    }
+
+    @Test
+    public void fromDescriptorKeepsMissingDependencyCauseOfTwiceNestedRule() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeTwiceNestedRule"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class)
+                    .hasMessageContaining(MissingDependencyFixture.BrokenRule.class.getName());
+        }
+    }
+
+    @Test
+    public void fromDescriptorKeepsMissingDependencyCauseOfChainLinkRule() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> fixture.invoke("deserializeChainLinkRule"));
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class)
+                    .hasMessageContaining(MissingDependencyFixture.BrokenRule.class.getName());
+        }
+    }
+
+    @Test
+    public void fromDescriptorKeepsMissingDependencyCauseOfNestedIndicator() throws Exception {
+        try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
+            RuntimeException exception = assertThrows(RuntimeException.class,
+                    () -> fixture.invoke("deserializeNestedIndicatorRule"));
+            assertThat(exception.getClass().getName()).isEqualTo(IndicatorSerializationException.class.getName());
+            assertThat(exception).hasCauseInstanceOf(NoClassDefFoundError.class);
+        }
+    }
+
+    @Test
+    public void fromDescriptorStillReportsConstructorMismatchOfNestedRule() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("NotRule")
+                .addComponent(ComponentDescriptor.typeOnly("OverIndicatorRule"))
+                .build();
+
+        RuleSerializationException exception = assertThrows(RuleSerializationException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessageContaining("No compatible constructor").hasNoCause();
+    }
+
+    @Test
+    public void fromDescriptorStillRebuildsNestedRule() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        ComponentDescriptor descriptor = RuleSerialization.describe(new NotRule(BooleanRule.TRUE));
+
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(restored).isInstanceOf(NotRule.class);
+        assertThat(restored.isSatisfied(0)).isFalse();
+    }
+
     // ==================== Nested Components Tests ====================
 
     /**

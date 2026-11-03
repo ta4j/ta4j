@@ -456,24 +456,20 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
                 // agree.
                 return getValue(effectiveIndex);
             }
+            NumFactory numFactory = getBarSeries().numFactory();
+            Num measurement = normalizeInput(indicator.getValue(effectiveIndex), numFactory);
+            Num processNoise = normalizeInput(processNoiseIndicator.getValue(effectiveIndex), numFactory);
+            Num measurementNoise = normalizeInput(measurementNoiseIndicator.getValue(effectiveIndex), numFactory);
             if (effectiveIndex < getCountOfUnstableBars()) {
                 return KalmanState.UNINITIALIZED;
             }
             if (effectiveIndex == getBarSeries().getBeginIndex()) {
-                NumFactory numFactory = getBarSeries().numFactory();
-                Num measurement = normalizeInput(indicator.getValue(effectiveIndex), numFactory);
-                Num processNoise = normalizeInput(processNoiseIndicator.getValue(effectiveIndex), numFactory);
-                Num measurementNoise = normalizeInput(measurementNoiseIndicator.getValue(effectiveIndex), numFactory);
                 if (isValidJointObservation(measurement, processNoise, measurementNoise)) {
                     return initialize(measurement, processNoise, measurementNoise);
                 }
                 return KalmanState.UNINITIALIZED;
             }
 
-            NumFactory numFactory = getBarSeries().numFactory();
-            Num measurement = normalizeInput(indicator.getValue(effectiveIndex), numFactory);
-            Num processNoise = normalizeInput(processNoiseIndicator.getValue(effectiveIndex), numFactory);
-            Num measurementNoise = normalizeInput(measurementNoiseIndicator.getValue(effectiveIndex), numFactory);
             KalmanState previous = getValue(effectiveIndex - 1);
             if (!isValidJointObservation(measurement, processNoise, measurementNoise)) {
                 return previous.preserved();

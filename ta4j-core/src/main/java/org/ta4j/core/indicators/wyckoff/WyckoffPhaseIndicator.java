@@ -42,6 +42,10 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
     private final transient WyckoffEventDetector eventDetector;
 
     private final transient Map<Integer, WyckoffStructureTracker.StructureSnapshot> structureSnapshots;
+    /**
+     * Last phase transition index per computed bar. Like the cached phases it
+     * describes, an entry survives head advances while its bar is retained.
+     */
     private final transient Map<Integer, Integer> lastTransitionIndices;
     private final transient RevisionBoundCache revisionBoundCache;
 
@@ -126,7 +130,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
             return WyckoffPhase.UNKNOWN;
         }
-        revisionBoundCache.reconcile(structureSnapshots, lastTransitionIndices);
+        revisionBoundCache.reconcileRetaining(lastTransitionIndices, structureSnapshots);
         final WyckoffStructureTracker.StructureSnapshot structure = structureTracker.snapshot(index);
         final WyckoffVolumeProfile.VolumeSnapshot volume = volumeProfile.snapshot(index);
         structureSnapshots.put(index, structure);
@@ -266,7 +270,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      * @since 0.22.3
      */
     public int getLastPhaseTransitionIndex(int index) {
-        revisionBoundCache.reconcile(structureSnapshots, lastTransitionIndices);
+        revisionBoundCache.reconcileRetaining(lastTransitionIndices, structureSnapshots);
         final Integer transition = lastTransitionIndices.get(index);
         if (transition != null) {
             return transition;
@@ -285,7 +289,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      * Ensures structure snapshot.
      */
     private WyckoffStructureTracker.StructureSnapshot ensureStructureSnapshot(int index) {
-        revisionBoundCache.reconcile(structureSnapshots, lastTransitionIndices);
+        revisionBoundCache.reconcileRetaining(lastTransitionIndices, structureSnapshots);
         WyckoffStructureTracker.StructureSnapshot snapshot = structureSnapshots.get(index);
         if (snapshot == null) {
             snapshot = structureTracker.snapshot(index);

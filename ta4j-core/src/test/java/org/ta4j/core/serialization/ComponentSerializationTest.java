@@ -422,4 +422,11 @@ public class ComponentSerializationTest {
         assertThat(ComponentDescriptor.typeOnly(String.class.getName()).getTypeClass()).isEqualTo(String.class);
         assertThat(ComponentDescriptor.typeOnly("NoSuchComponent").getTypeClass()).isNull();
     }
+
+    @Test
+    public void resolveSubtypeHandlesUnresolvableClassesAndLinkageErrorsGracefully() {
+        assertThat(ComponentDescriptor.resolveSubtype("NonExistentClass", Object.class)).isNull();
+        assertThat(ComponentDescriptor.resolveSubtype("org.ta4j.core.serialization.MissingClass", Object.class))
+                .isNull();
+    }
 }

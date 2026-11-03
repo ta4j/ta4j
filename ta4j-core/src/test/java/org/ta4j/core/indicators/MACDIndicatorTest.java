@@ -33,6 +33,22 @@ public class MACDIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     @Test
+    public void dependenciesExposeTheCalculatedAverages() {
+        ClosePriceIndicator close = new ClosePriceIndicator(data);
+        MACDIndicator macd = new MACDIndicator(close, 2, 3);
+        assertThat(macd.getDependencies()).hasSize(2);
+        EMAIndicator shortEma = (EMAIndicator) macd.getDependencies().get(0);
+        EMAIndicator longEma = (EMAIndicator) macd.getDependencies().get(1);
+        assertThat(shortEma.getBarCount()).isEqualTo(2);
+        assertThat(longEma.getBarCount()).isEqualTo(3);
+        assertThat(shortEma.getDependencies()).containsExactly(close);
+        assertThat(longEma.getDependencies()).containsExactly(close);
+        assertThat(macd.getValue(10)).isEqualByComparingTo(shortEma.getValue(10).minus(longEma.getValue(10)));
+        assertThat(macd.getShortTermEma()).isNotSameAs(shortEma);
+        assertThat(macd.getLongTermEma()).isNotSameAs(longEma);
+    }
+
+    @Test
     public void throwsErrorOnIllegalArguments() {
         assertThrows(IllegalArgumentException.class, () -> {
             new MACDIndicator(new ClosePriceIndicator(data), 10, 5);

@@ -232,7 +232,8 @@ public interface RebalancePolicy {
     /**
      * Pre-trade portfolio state at one aligned bar's close, handed to
      * {@link RebalancePolicy#shouldRebalance(Context)}. Weights are fractions of
-     * the pre-trade portfolio value and are computed on demand.
+     * the pre-trade portfolio value and are computed on demand. Each context
+     * retains its bar's state and may be kept for comparison with later callbacks.
      *
      * @since 0.25.1
      */
@@ -240,18 +241,15 @@ public interface RebalancePolicy {
 
         private final PortfolioSeries series;
         private final int index;
-        private final Num[] prices;
         private final Num[] units;
         private final Num cash;
         private final Num portfolioValue;
         private final Num[] targetWeights;
         private Num maxDrift;
 
-        Context(PortfolioSeries series, int index, Num[] prices, Num[] units, Num cash, Num portfolioValue,
-                Num[] targetWeights) {
+        Context(PortfolioSeries series, int index, Num[] units, Num cash, Num portfolioValue, Num[] targetWeights) {
             this.series = series;
             this.index = index;
-            this.prices = prices;
             this.units = units;
             this.cash = cash;
             this.portfolioValue = portfolioValue;
@@ -297,7 +295,7 @@ public interface RebalancePolicy {
          */
         public Num getAssetWeight(String asset) {
             int position = position(asset);
-            return weight(prices[position].multipliedBy(units[position]));
+            return weight(series.closePrice(position, index).multipliedBy(units[position]));
         }
 
         /**
@@ -328,7 +326,7 @@ public interface RebalancePolicy {
                 Num targetCash = one;
                 Num drift = series.numFactory().zero();
                 for (int position = 0; position < units.length; position++) {
-                    Num weight = weight(prices[position].multipliedBy(units[position]));
+                    Num weight = weight(series.closePrice(position, index).multipliedBy(units[position]));
                     drift = drift.max(weight.minus(targetWeights[position]).abs());
                     targetCash = targetCash.minus(targetWeights[position]);
                 }

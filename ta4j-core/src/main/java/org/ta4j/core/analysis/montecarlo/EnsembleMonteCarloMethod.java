@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.SplittableRandom;
+import java.util.function.IntFunction;
+import java.util.random.RandomGenerator;
 
 import org.ta4j.core.num.Num;
 
@@ -18,6 +20,8 @@ import org.ta4j.core.num.Num;
  * The first technique draws {@code iterationCount / 2} samples and the second
  * the remainder, each under its own {@link SplittableRandom} seeded from two
  * consecutive {@code nextLong()} draws of {@link MonteCarloContext#random()}.
+ * When the parent context carries per-path streams, the first technique's paths
+ * use parent paths {@code [0, iterationCount / 2)} and the second's the rest.
  * The pooled result is unstable when the budget is below 2 or either component
  * breaks the seam contract.
  */
@@ -37,8 +41,8 @@ final class EnsembleMonteCarloMethod implements MonteCarloMethod {
             return null;
         }
         int half = context.iterationCount() / 2;
-        MonteCarloContext firstContext = subContext(context, half);
-        MonteCarloContext secondContext = subContext(context, context.iterationCount() - half);
+        MonteCarloContext firstContext = subContext(context, half, 0);
+        MonteCarloContext secondContext = subContext(context, context.iterationCount() - half, half);
         List<Num> firstSamples = MonteCarloArithmetic.normalizeSamples(first.terminalReturns(firstContext),
                 firstContext);
         if (firstSamples == null) {
@@ -55,9 +59,17 @@ final class EnsembleMonteCarloMethod implements MonteCarloMethod {
         return pooled;
     }
 
-    private static MonteCarloContext subContext(MonteCarloContext context, int count) {
+    /**
+     * Each component keeps its own sequential stream; when the parent carries
+     * per-path streams, the component's paths map onto the parent's paths starting
+     * at {@code firstPath}, so pooled samples stay path-order independent.
+     */
+    private static MonteCarloContext subContext(MonteCarloContext context, int count, int firstPath) {
+        IntFunction<RandomGenerator> perPathRandoms = context.perPathRandoms() == null ? null
+                : path -> context.randomForPath(firstPath + path);
         return new MonteCarloContext(context.index(), context.horizon(), count, context.historicalLogReturns(),
-                context.moments(), new SplittableRandom(context.random().nextLong()), context.numFactory());
+                context.moments(), new SplittableRandom(context.random().nextLong()), context.numFactory(),
+                perPathRandoms);
     }
 
     @Override
