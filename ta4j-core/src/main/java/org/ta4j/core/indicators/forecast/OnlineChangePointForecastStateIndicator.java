@@ -63,10 +63,20 @@ import org.ta4j.core.num.NumFactory;
  * incorporated into growth components only; this keeps the component parameters
  * aligned with the predictive probabilities used by the recurrence.
  *
+ * <p>
+ * The posterior for every evaluated bar is cached with one component per
+ * retained run length, so memory grows with evaluated bars times
+ * {@code maximumRunLength + 1}. The run length is therefore limited to
+ * 10,000; use a series {@code maximumBarCount} to bound the
+ * number of cached bars on long or live histories.
+ *
  * @since 0.23.1
  */
 public final class OnlineChangePointForecastStateIndicator extends AbstractIndicator<OnlineChangePointForecastState>
         implements ReturnForecastStateIndicator<OnlineChangePointForecastState> {
+
+    /** Largest accepted {@code maximumRunLength}. */
+    static final int MAX_RUN_LENGTH = 10_000;
 
     private final ReturnIndicator returnIndicator;
     private final double expectedRunLength;
@@ -347,7 +357,7 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         /**
          * Sets the largest retained run length.
          *
-         * @param value positive retained run length below {@link Integer#MAX_VALUE}
+         * @param value positive retained run length, at most 10,000
          * @return this builder
          * @since 0.23.1
          */
@@ -460,8 +470,8 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
             if (!Double.isFinite(expectedRunLength) || expectedRunLength <= 1d) {
                 throw new IllegalArgumentException("expectedRunLength must be finite and > 1");
             }
-            if (maximumRunLength < 1 || maximumRunLength == Integer.MAX_VALUE) {
-                throw new IllegalArgumentException("maximumRunLength must be in [1, Integer.MAX_VALUE - 1]");
+            if (maximumRunLength < 1 || maximumRunLength > MAX_RUN_LENGTH) {
+                throw new IllegalArgumentException("maximumRunLength must be in [1, " + MAX_RUN_LENGTH + "]");
             }
             if (topRunLengthCount < 1 || topRunLengthCount > maximumRunLength + 1) {
                 throw new IllegalArgumentException("topRunLengthCount must be in [1, maximumRunLength + 1]");
