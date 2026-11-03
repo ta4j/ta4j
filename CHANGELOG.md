@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+
+- **Rules that explain their decisions**: implement `EvaluatedRule<R>` to return a typed result from `evaluate(index, tradingRecord)` (a score, a threshold, whether data was available) and derive the boolean with `toBoolean(result)`, so strategies keep using `isSatisfied` while dashboards, logs and tests read the same result that drove the signal. Extend `AbstractEvaluatedRule<R>` to get trace logging of each decision for free. `EvaluatedRuleExample` shows a confidence gate that treats a `NaN` score as unavailable rather than zero and a trade-budget rule that snapshots exposure at evaluation time.
 
 ## 0.28.0 (2026-11-02)
 
