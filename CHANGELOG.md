@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+
+- **Indicator family analysis**: `org.ta4j.core.analysis.IndicatorFamilyManager` analyzes named indicators with canonical ordering, complete-link threshold cohesion, producer-owned immutable diagnostics, unavailable NaN pair scores, and an 8,128-pair admission budget, with an S&P 500 example. Variance/covariance keep relative unstable-bar counts for public stability and caching; family eligibility separately includes retained history and source warm-up, with terminal-safe index arithmetic.
 
 ## 0.28.0 (2026-11-02)
 

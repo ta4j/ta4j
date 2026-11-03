@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;
@@ -13,9 +17,11 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.NumFactory;
 
 public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -96,6 +102,52 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     }
 
     @Test
+    public void preservesFiniteCovarianceWhenAnchorDifferencesOverflow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+        Indicator<Num> large = new FixedIndicator<>(series, numFactory.numOf(-1e308), numFactory.numOf(1e308));
+        Indicator<Num> small = new FixedIndicator<>(series, numFactory.numOf(-1e-308), numFactory.numOf(1e-308));
+
+        Num expected = numFactory.numOf(1e308).multipliedBy(numFactory.numOf(1e-308));
+        assertNumEquals(expected, new CovarianceIndicator(large, small, 2).getValue(1));
+        assertNumEquals(expected, new CovarianceIndicator(small, large, 2).getValue(1));
+
+        // Dividing the tiny source before multiplication would underflow for
+        // DoubleNum even though its covariance with the large source is finite.
+        small = new FixedIndicator<>(series, numFactory.numOf(-Double.MIN_VALUE), numFactory.numOf(Double.MIN_VALUE));
+        Num expectedTiny = numFactory.numOf(1e308).multipliedBy(numFactory.numOf(Double.MIN_VALUE));
+        assertNumEquals(1, new CovarianceIndicator(large, small, 2).getValue(1).dividedBy(expectedTiny));
+        assertNumEquals(1, new CovarianceIndicator(small, large, 2).getValue(1).dividedBy(expectedTiny));
+
+        BarSeries threeBars = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        large = new FixedIndicator<>(threeBars, numFactory.numOf(-1e308), numFactory.zero(), numFactory.numOf(1e308));
+        small = new FixedIndicator<>(threeBars, numFactory.numOf(-1e-308), numFactory.zero(), numFactory.numOf(1e-308));
+        Num expectedThree = expected.multipliedBy(numFactory.two()).dividedBy(numFactory.numOf(3));
+        assertNumEquals(expectedThree, new CovarianceIndicator(large, small, 3).getValue(2), 1e-14);
+        assertNumEquals(expectedThree, new CovarianceIndicator(small, large, 3).getValue(2), 1e-14);
+    }
+
+    @Test
+    public void missingSingletonAtRetainedIndexIsUnavailable() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+        series.setMaximumBarCount(1);
+        Indicator<Num> missing = new FixedIndicator<>(series, NaN.NaN, NaN.NaN);
+        Indicator<Num> valid = new FixedIndicator<>(series, numFactory.one(), numFactory.two());
+
+        assertThat(new CovarianceIndicator(missing, valid, 1).getValue(1).isNaN()).isTrue();
+        assertThat(new CovarianceIndicator(valid, missing, 1).getValue(1).isNaN()).isTrue();
+    }
+
+    @Test
+    public void missingSingletonDuringZeroOriginWarmupIsUnavailable() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1).build();
+        Indicator<Num> missing = new FixedIndicator<>(series, NaN.NaN);
+        Indicator<Num> valid = new FixedIndicator<>(series, numFactory.one());
+
+        assertThat(new CovarianceIndicator(missing, valid, 2).getValue(0).isNaN()).isTrue();
+        assertThat(new CovarianceIndicator(valid, missing, 2).getValue(0).isNaN()).isTrue();
+    }
+
+    @Test
     public void anchorsWindowAtBeginIndexAfterRemoval() {
         // Evict the first four bars so beginIndex = 4; the retained (close, volume)
         // pairs sit at absolute indices 4..9: (5,10) (6,5) (7,14) (8,7) (9,18) (10,9).
@@ -111,10 +163,11 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
         var covar = new CovarianceIndicator(new ClosePriceIndicator(pruned), new VolumeIndicator(pruned, 1), 6);
 
-        // Window [4..7]: closes {5,6,7,8}, volumes {10,5,14,7}: sum of products = 0
-        assertNumEquals(0, covar.getValue(7));
-        // Window [4..8]: sum of products = 18 over 5 observations
-        assertNumEquals(3.6, covar.getValue(8));
+        // Four retained pairs are insufficient for the six-bar window.
+        assertThat(covar.getValue(7).isNaN()).isTrue();
+        // Five pairs remain unavailable; the complete window starts at index nine.
+        assertThat(covar.getValue(8).isNaN()).isTrue();
+        assertThat(covar.getCountOfUnstableBars()).isEqualTo(5);
         // Window [4..9]: sum of products = 13.5 over 6 observations
         assertNumEquals(2.25, covar.getValue(9));
     }
@@ -134,5 +187,91 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         // Perfectly linear pairs (2,5), (4,10), (6,15), (8,20), (10,25):
         // population covariance = sum((x - 6)(y - 15)) / 5 = 100 / 5
         assertNumEquals(20, covar.getValue(4));
+    }
+
+    @Test
+    public void retainedWindowBoundaryRequiresFullStableHistory() {
+        BarSeries retained = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        retained.setMaximumBarCount(4);
+        ClosePriceIndicator source = new ClosePriceIndicator(retained);
+        CovarianceIndicator metric = new CovarianceIndicator(source, source, 3);
+        assertThat(metric.getCountOfUnstableBars()).isEqualTo(2);
+        assertThat(metric.getValue(3).isNaN()).isTrue();
+        assertNumEquals(2.0 / 3, metric.getValue(4));
+    }
+
+    @Test
+    public void terminalIndexWindowVisitsSourceExactlyOnce() {
+        BarSeries fixture = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1).build();
+        BarSeries terminalSeries = new org.ta4j.core.BaseBarSeries("terminal", List.of()) {
+            @Override
+            public org.ta4j.core.Bar getBar(int index) {
+                assertThat(index).isEqualTo(Integer.MAX_VALUE);
+                return fixture.getBar(0);
+            }
+
+            @Override
+            public NumFactory numFactory() {
+                return numFactory;
+            }
+
+            @Override
+            public int getBeginIndex() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getBarCount() {
+                return 1;
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return false;
+            }
+
+            @Override
+            public int getMaximumBarCount() {
+                return 1;
+            }
+
+            @Override
+            public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long revision) {
+                return new BarSeriesChangeSnapshot(0, Integer.MAX_VALUE, Integer.MAX_VALUE - 1, 1, Integer.MAX_VALUE);
+            }
+        };
+        Indicator<Num> source = new org.ta4j.core.indicators.helpers.ConstantIndicator<>(terminalSeries,
+                numFactory.one()) {
+            @Override
+            public Num getValue(int index) {
+                assertThat(index).isEqualTo(Integer.MAX_VALUE);
+                return numFactory.one();
+            }
+        };
+        CovarianceIndicator metric = new CovarianceIndicator(source, source, 1);
+        assertNumEquals(0, metric.calculate(Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void retainedBoundaryAlsoHonorsSourceWarmup() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+                .build();
+        series.setMaximumBarCount(8);
+        Indicator<Num> source = new ClosePriceIndicator(series) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 4;
+            }
+        };
+        CovarianceIndicator metric = new CovarianceIndicator(source, source, 3);
+        assertThat(metric.getCountOfUnstableBars()).isEqualTo(6);
+        assertThat(metric.getValue(7).isNaN()).isTrue();
+        assertNumEquals(2.0 / 3, metric.getValue(8));
     }
 }

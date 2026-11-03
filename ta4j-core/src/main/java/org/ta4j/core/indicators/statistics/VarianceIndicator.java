@@ -18,6 +18,12 @@ import org.ta4j.core.num.NumFactory;
  * {@code n - 1}) for rolling windows. Use {@link #ofPopulation(Indicator, int)}
  * (or the {@link SampleType} constructor) when population variance is required.
  * </p>
+ * Warm-up and partial retained windows preserve legacy calculation values. The
+ * unstable-bar count is relative to the retained begin and requires a full
+ * window of stable source values; it does not suppress partial-window
+ * calculations. In contrast, {@link CovarianceIndicator} returns an unavailable
+ * value for incomplete retained windows, so correlation remains unavailable
+ * until the full window is stable.
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 
@@ -77,15 +83,16 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);
+        final int startIndex = (int) Math.max(Math.max(0L, getBarSeries().getBeginIndex()),
+                (long) index - barCount + 1L);
         final int numberOfObservations = index - startIndex + 1;
         NumFactory numFactory = getBarSeries().numFactory();
         Num anchor = indicator.getValue(startIndex);
         Num averageOffset = numFactory.zero();
         Num squaredDeviationTotal = numFactory.zero();
         int observationCount = 1;
-        for (int i = startIndex + 1; i <= index; i++) {
-            Num offset = indicator.getValue(i).minus(anchor);
+        for (long i = (long) startIndex + 1L; i <= (long) index; i++) {
+            Num offset = indicator.getValue((int) i).minus(anchor);
             observationCount++;
             Num difference = offset.minus(averageOffset);
             averageOffset = averageOffset.plus(difference.dividedBy(numFactory.numOf(observationCount)));
@@ -100,7 +107,8 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return indicator.getCountOfUnstableBars() + barCount - 1;
+        long unstableBars = (long) indicator.getCountOfUnstableBars() + barCount - 1L;
+        return CorrelationWindowSupport.clampUnstableBars(unstableBars);
     }
 
     @Override

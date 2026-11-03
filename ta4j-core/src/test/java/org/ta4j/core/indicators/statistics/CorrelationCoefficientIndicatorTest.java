@@ -3,6 +3,16 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import org.ta4j.core.serialization.IndicatorSerialization;
+
+import org.ta4j.core.serialization.ComponentDescriptor;
+
+import org.ta4j.core.mocks.MockBarBuilderFactory;
+
+import org.ta4j.core.BaseBarSeriesBuilder;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
@@ -132,12 +142,11 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
 
         ClosePriceIndicator close = new ClosePriceIndicator(pruned);
         VolumeIndicator volume = new VolumeIndicator(pruned, 1);
-        // Window [4..8]: covariance = 3.6, variance(close) = 2, variance(volume) =
-        // 22.16
-        // -> correlation = 3.6 / sqrt(2 * 22.16) = 0.5408
-        assertNumEquals(0.5408, new CorrelationCoefficientIndicator(close, volume, 6).getValue(8));
-        // Sample scaling (n / (n - 1)) cancels in the correlation ratio
-        assertNumEquals(0.5408, CorrelationCoefficientIndicator.ofSample(close, volume, 6).getValue(8));
+        // Window [4..8] has only five retained observations; a six-bar window is
+        // unavailable until index 9, so population and sample correlation are NaN.
+        assertThat(new CorrelationCoefficientIndicator(close, volume, 6).getValue(8).isNaN()).isTrue();
+        // Sample correlation uses the same full-window availability boundary
+        assertThat(CorrelationCoefficientIndicator.ofSample(close, volume, 6).getValue(8).isNaN()).isTrue();
         // Window [4..9]: covariance = 2.25, variances = 17.5/6 and 113.5/6 -> 0.3029
         assertNumEquals(0.3029, new CorrelationCoefficientIndicator(close, volume, 6).getValue(9));
     }
@@ -169,4 +178,59 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
                 new CorrelationCoefficientIndicator(close, volume, 8, SampleType.SAMPLE), stableIndexes(series)));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void roundTripSerializationPreservesSampleTypeSelection() {
+        BarSeries series = close.getBarSeries();
+        CorrelationCoefficientIndicator sample = CorrelationCoefficientIndicator.ofSample(close, volume, 5);
+        ComponentDescriptor sampleDescriptor = sample.toDescriptor();
+
+        assertThat(sampleDescriptor.getParameters()).containsEntry("sampleType", "SAMPLE");
+
+        Indicator<Num> fromDescriptor = (Indicator<Num>) IndicatorSerialization.fromDescriptor(series,
+                sampleDescriptor);
+        assertThat(fromDescriptor).isInstanceOf(CorrelationCoefficientIndicator.class);
+        ComponentDescriptor fromDescriptorValue = fromDescriptor.toDescriptor();
+        assertThat(fromDescriptorValue.getParameters()).containsEntry("sampleType", "SAMPLE");
+
+        Indicator<Num> fromJson = (Indicator<Num>) IndicatorSerialization.fromJson(series, sample.toJson());
+        assertThat(fromJson).isInstanceOf(CorrelationCoefficientIndicator.class);
+        ComponentDescriptor fromJsonDescriptor = fromJson.toDescriptor();
+        assertThat(fromJsonDescriptor.getParameters()).containsEntry("sampleType", "SAMPLE");
+        for (int index = 0; index <= series.getEndIndex(); index++) {
+            assertThat(fromJson.getValue(index)).isEqualTo(sample.getValue(index));
+        }
+    }
+
+    @Test
+    public void rollingSeriesCorrelationMatchesVisibleWindowOnly() {
+        double[][] values = { { 6, 100 }, { 7, 105 }, { 9, 130 }, { 12, 160 }, { 11, 150 }, { 10, 90 }, { 14, 180 },
+                { 9, 95 } };
+        BarSeries rollingSeries = seriesWithCloseAndVolume(values);
+        rollingSeries.setMaximumBarCount(7);
+        BarSeries visibleSeries = seriesWithCloseAndVolume(new double[][] { { 7, 105 }, { 9, 130 }, { 12, 160 },
+                { 11, 150 }, { 10, 90 }, { 14, 180 }, { 9, 95 } });
+        CorrelationCoefficientIndicator rollingCorrelation = CorrelationCoefficientIndicator
+                .ofPopulation(new ClosePriceIndicator(rollingSeries), new VolumeIndicator(rollingSeries), 5);
+        CorrelationCoefficientIndicator visibleCorrelation = CorrelationCoefficientIndicator
+                .ofPopulation(new ClosePriceIndicator(visibleSeries), new VolumeIndicator(visibleSeries), 5);
+
+        int stableIndex = rollingSeries.getBeginIndex() + rollingCorrelation.getCountOfUnstableBars();
+        assertThat(rollingCorrelation.getCountOfUnstableBars()).isEqualTo(4);
+        assertThat(rollingCorrelation.getValue(stableIndex - 1).isNaN()).isTrue();
+        for (int index = stableIndex; index <= rollingSeries.getEndIndex(); index++) {
+            assertNumEquals(visibleCorrelation.getValue(index - rollingSeries.getBeginIndex()),
+                    rollingCorrelation.getValue(index), 1.0e-12);
+        }
+    }
+
+    private BarSeries seriesWithCloseAndVolume(double[][] values) {
+        BarSeries barSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .build();
+        for (double[] value : values) {
+            barSeries.barBuilder().closePrice(value[0]).volume(value[1]).add();
+        }
+        return barSeries;
+    }
 }
