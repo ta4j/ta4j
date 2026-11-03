@@ -12,7 +12,9 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Indicator-Pearson-Correlation
@@ -25,6 +27,9 @@ import org.ta4j.core.num.Num;
  *      http://www.statisticshowto.com/probability-and-statistics/correlation-coefficient-formula/</a>
  */
 public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
+
+    private static final long EXACT_INTEGER_BOUND = 1L << 49;
+    private static final long EXACT_INTEGER_INPUT_BOUND = 1L << 24;
 
     private final Indicator<Num> indicator1;
     private final Indicator<Num> indicator2;
@@ -39,6 +44,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
     private transient Num rollingXX;
     private transient Num rollingYY;
     private transient Num rollingXY;
+    private transient Num rollingExactIntegerMagnitude;
 
     /**
      * Constructor.
@@ -112,6 +118,8 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
         Num Sxx = zero;
         Num Syy = zero;
         Num Sxy = zero;
+        Num exactIntegerMagnitude = snapshot != null && !terminal && snapshot.revision() >= 0
+                && (zero instanceof DoubleNum || zero instanceof DecimalNum) ? zero : null;
 
         for (int i = start; i <= index; i++) {
 
@@ -123,6 +131,9 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
             Sxy = Sxy.plus(x.multipliedBy(y));
             Sxx = Sxx.plus(x.multipliedBy(x));
             Syy = Syy.plus(y.multipliedBy(y));
+            if (exactIntegerMagnitude != null) {
+                exactIntegerMagnitude = extendExactIntegerMagnitude(exactIntegerMagnitude, x, y);
+            }
         }
         if (snapshot != null && !terminal && snapshot.revision() >= 0 && Num.isFinite(Sx) && Num.isFinite(Sy)
                 && Num.isFinite(Sxx) && Num.isFinite(Syy) && Num.isFinite(Sxy) && rollingLock.tryLock()) {
@@ -132,6 +143,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
                 rollingXX = Sxx;
                 rollingYY = Syy;
                 rollingXY = Sxy;
+                rollingExactIntegerMagnitude = exactIntegerMagnitude;
                 rollingUpdates = 0;
                 rollingStart = start;
                 rollingIndex = index;
@@ -171,26 +183,60 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
             Num sxx = rollingXX;
             Num syy = rollingYY;
             Num sxy = rollingXY;
+            NumFactory factory = getBarSeries().numFactory();
+            Num threshold = factory.numOf(1000000000);
+            Num exactIntegerMagnitude = rollingExactIntegerMagnitude == null ? null
+                    : extendExactIntegerMagnitude(rollingExactIntegerMagnitude, x, y);
+            Num xx = x.multipliedBy(x);
+            Num yy = y.multipliedBy(y);
+            Num xy = x.multipliedBy(y);
             if (oldX != null) {
-                sx = sx.minus(oldX);
-                sy = sy.minus(oldY);
-                sxx = sxx.minus(oldX.multipliedBy(oldX));
-                syy = syy.minus(oldY.multipliedBy(oldY));
-                sxy = sxy.minus(oldX.multipliedBy(oldY));
+                Num oldXX = oldX.multipliedBy(oldX);
+                Num oldYY = oldY.multipliedBy(oldY);
+                Num oldXY = oldX.multipliedBy(oldY);
+                Num remainingX = sx.minus(oldX);
+                Num remainingY = sy.minus(oldY);
+                Num remainingXX = sxx.minus(oldXX);
+                Num remainingYY = syy.minus(oldYY);
+                Num remainingXY = sxy.minus(oldXY);
+                // Check before adding the new value: it can hide a lost residual.
+                if (exactIntegerMagnitude == null && (losesSignificance(sx, oldX, remainingX, threshold, true)
+                        || losesSignificance(sy, oldY, remainingY, threshold, true)
+                        || losesSignificance(sxx, oldXX, remainingXX, threshold, true)
+                        || losesSignificance(syy, oldYY, remainingYY, threshold, true)
+                        || losesSignificance(sxy, oldXY, remainingXY, threshold, true))) {
+                    return null;
+                }
+                sx = remainingX;
+                sy = remainingY;
+                sxx = remainingXX;
+                syy = remainingYY;
+                sxy = remainingXY;
             }
-            sx = sx.plus(x);
-            sy = sy.plus(y);
-            sxx = sxx.plus(x.multipliedBy(x));
-            syy = syy.plus(y.multipliedBy(y));
-            sxy = sxy.plus(x.multipliedBy(y));
-            Num n = getBarSeries().numFactory().numOf(count);
+            Num nextX = sx.plus(x);
+            Num nextY = sy.plus(y);
+            Num nextXX = sxx.plus(xx);
+            Num nextYY = syy.plus(yy);
+            Num nextXY = sxy.plus(xy);
+            if (exactIntegerMagnitude == null && (losesSignificance(sx, x, nextX, threshold, false)
+                    || losesSignificance(sy, y, nextY, threshold, false)
+                    || losesSignificance(sxx, xx, nextXX, threshold, false)
+                    || losesSignificance(syy, yy, nextYY, threshold, false)
+                    || losesSignificance(sxy, xy, nextXY, threshold, false))) {
+                return null;
+            }
+            sx = nextX;
+            sy = nextY;
+            sxx = nextXX;
+            syy = nextYY;
+            sxy = nextXY;
+            Num n = factory.numOf(count);
             Num xTerm = n.multipliedBy(sxx);
             Num yTerm = n.multipliedBy(syy);
             Num xyTerm = n.multipliedBy(sxy);
             Num xVariance = xTerm.minus(sx.multipliedBy(sx));
             Num yVariance = yTerm.minus(sy.multipliedBy(sy));
             Num covariance = xyTerm.minus(sx.multipliedBy(sy));
-            Num threshold = getBarSeries().numFactory().numOf(1000000000);
             if (!Num.isFinite(sx) || !Num.isFinite(sy) || !Num.isFinite(sxx) || !Num.isFinite(syy) || !Num.isFinite(sxy)
                     || !Num.isFinite(xVariance) || !Num.isFinite(yVariance) || !Num.isFinite(covariance)
                     || xVariance.abs().isLessThanOrEqual(xTerm.abs().dividedBy(threshold))
@@ -210,6 +256,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
                 rollingXX = sxx;
                 rollingYY = syy;
                 rollingXY = sxy;
+                rollingExactIntegerMagnitude = exactIntegerMagnitude;
                 rollingUpdates++;
                 rollingStart = start;
                 rollingIndex = target;
@@ -221,6 +268,34 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
         } finally {
             rollingLock.unlock();
         }
+    }
+
+    private Num extendExactIntegerMagnitude(Num maximum, Num x, Num y) {
+        if (!Num.isFinite(x) || !Num.isFinite(y)) {
+            return null;
+        }
+        NumFactory factory = getBarSeries().numFactory();
+        Num xMagnitude = x.abs();
+        Num yMagnitude = y.abs();
+        Num nextMaximum = maximum.max(xMagnitude).max(yMagnitude);
+        if (nextMaximum.isGreaterThan(factory.numOf(EXACT_INTEGER_INPUT_BOUND))
+                || !isExactInteger(x, xMagnitude, factory.one()) || !isExactInteger(y, yMagnitude, factory.one())) {
+            return null;
+        }
+        // Bound every integer product and its accumulated sum, including an update.
+        Num bound = nextMaximum.multipliedBy(nextMaximum).multipliedBy(factory.numOf((long) barCount + 1));
+        return bound.isLessThanOrEqual(factory.numOf(EXACT_INTEGER_BOUND)) ? nextMaximum : null;
+    }
+
+    private static boolean isExactInteger(Num value, Num magnitude, Num one) {
+        return (value instanceof DoubleNum
+                || (value instanceof DecimalNum decimal && decimal.getMathContext().getPrecision() >= 16))
+                && (magnitude.isZero() || (magnitude.isGreaterThanOrEqual(one) && value.isEqual(value.floor())));
+    }
+
+    private static boolean losesSignificance(Num before, Num operand, Num result, Num threshold, boolean subtract) {
+        return !before.isZero() && !operand.isZero() && (before.isPositive() == operand.isPositive()) == subtract
+                && result.abs().isLessThanOrEqual(before.abs().max(operand.abs()).dividedBy(threshold));
     }
 
     @Override

@@ -154,7 +154,8 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
             double current = signedForwardReturn(lastEligibleIndex);
             double outgoing = baselineStart == previousBaselineStart ? Double.NaN
                     : signedForwardReturn(previousBaselineStart);
-            boolean signal = Boolean.TRUE.equals(signalIndicator.getValue(lastEligibleIndex));
+            // Preserve the scan's cached classification if the forward outcome changes.
+            boolean signal = latestMaturedSignalIndexIndicator.getValue(lastEligibleIndex) == lastEligibleIndex;
             Num result = advance(checkpoint, previousBegin, previousBaselineStart, revision, changes, index,
                     baselineStart, current, outgoing, signal, terminal);
             if (result != null) {
@@ -232,6 +233,9 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
                     || changes.removedThroughIndex() >= begin) {
                 return null;
             }
+            if (signal && !Double.isFinite(current)) {
+                return null;
+            }
             double baseline = rollingBaselineTotal;
             int baselineCount = rollingBaselineCount;
             if (start != oldStart && Double.isFinite(outgoing)) {
@@ -242,7 +246,7 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
                 baseline += current;
                 baselineCount++;
             }
-            boolean addSignal = signal && Double.isFinite(current);
+            boolean addSignal = signal;
             SignalReturn removed = addSignal && rollingSignals.size() == lookbackSignals ? rollingSignals.peekFirst()
                     : null;
             double signalTotal = rollingSignalTotal - (removed == null ? 0 : removed.value())
