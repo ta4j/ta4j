@@ -30,7 +30,9 @@ import static org.ta4j.core.num.NaN.NaN;
  * {@link #getToleranceSettings()}. By default, searches are capped to the most
  * recent {@value #DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE} swing points and
  * {@value #DEFAULT_MAX_CANDIDATE_PAIRS} candidate pairs; use the extended
- * constructors to widen the search if needed.
+ * constructors to widen the search up to
+ * {@value #MAX_SWING_POINTS_FOR_TRENDLINE} swing points and
+ * {@value #MAX_CANDIDATE_PAIRS} pairs.
  *
  * @since 0.20
  */
@@ -51,6 +53,25 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
      * evaluation order.
      */
     public static final int DEFAULT_MAX_CANDIDATE_PAIRS = 2048;
+
+    /**
+     * Largest accepted {@code maxSwingPointsForTrendline}. Each recomputation
+     * pairs every retained swing point with every later one and scores each pair
+     * against all retained points, so its work grows with the cube of this value.
+     *
+     * @since 0.28.1
+     */
+    public static final int MAX_SWING_POINTS_FOR_TRENDLINE = 512;
+
+    /**
+     * Largest accepted {@code maxCandidatePairs}: every pair of
+     * {@value #MAX_SWING_POINTS_FOR_TRENDLINE} swing points. Candidate geometries
+     * are retained between recomputations, so this bounds their memory.
+     *
+     * @since 0.28.1
+     */
+    public static final int MAX_CANDIDATE_PAIRS = MAX_SWING_POINTS_FOR_TRENDLINE
+            * (MAX_SWING_POINTS_FOR_TRENDLINE - 1) / 2;
 
     private final RecentSwingIndicator swingIndicator;
     private final transient Indicator<Num> priceIndicator;
@@ -152,11 +173,12 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (barCount < 2) {
             throw new IllegalArgumentException("barCount must be at least 2 to build a trend line");
         }
-        if (maxSwingPointsForTrendline < 2) {
-            throw new IllegalArgumentException("maxSwingPointsForTrendline must be at least 2");
+        if (maxSwingPointsForTrendline < 2 || maxSwingPointsForTrendline > MAX_SWING_POINTS_FOR_TRENDLINE) {
+            throw new IllegalArgumentException(
+                    "maxSwingPointsForTrendline must be between 2 and " + MAX_SWING_POINTS_FOR_TRENDLINE);
         }
-        if (maxCandidatePairs < 1) {
-            throw new IllegalArgumentException("maxCandidatePairs must be at least 1");
+        if (maxCandidatePairs < 1 || maxCandidatePairs > MAX_CANDIDATE_PAIRS) {
+            throw new IllegalArgumentException("maxCandidatePairs must be between 1 and " + MAX_CANDIDATE_PAIRS);
         }
     }
 

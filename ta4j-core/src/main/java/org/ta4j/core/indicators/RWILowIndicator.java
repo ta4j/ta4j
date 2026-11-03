@@ -35,9 +35,9 @@ public class RWILowIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series   the bar series
-     * @param barCount the time frame, at most {@value #MAX_BAR_COUNT}
+     * @param barCount the time frame, at most 1,000
      * @throws IllegalArgumentException if {@code barCount} exceeds
-     *                                  {@value #MAX_BAR_COUNT}
+     *                                  1,000
      */
     public RWILowIndicator(BarSeries series, int barCount) {
         if (barCount > MAX_BAR_COUNT) {

@@ -18,9 +18,9 @@ import java.util.Objects;
  * Every fit costs roughly {@code (grid points + maxEvaluations) * window}
  * model evaluations, where the grid holds one point per searched critical
  * offset, exponent and frequency. Profiles are rejected when the grid exceeds
- * {@value #MAX_GRID_POINTS} points, the optimizer budget exceeds
- * {@value #MAX_EVALUATIONS} evaluations, or the combined work exceeds
- * {@value #MAX_FIT_WORK} per fitted bar. The defaults use well under 1% of
+ * 100,000 points, the optimizer budget exceeds
+ * 10,000 evaluations, or the combined work exceeds
+ * 100,000,000 model evaluations per fitted bar. The defaults use well under 1% of
  * that budget.
  *
  * @since 0.23.1
