@@ -133,10 +133,16 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
                     || changes.removedThroughIndex() >= previousStart) {
                 return null;
             }
-            Num sum = outgoing == null ? rollingSum.plus(current) : rollingSum.minus(outgoing).plus(current);
-            if (!Num.isFinite(sum) || (outgoing != null && !rollingSum.isZero() && sum.abs()
-                    .isLessThan(rollingSum.abs().dividedBy(getBarSeries().numFactory().numOf(100000000))))) {
+            Num retained = outgoing == null ? rollingSum : rollingSum.minus(outgoing);
+            Num sum = retained.plus(current);
+            if (!Num.isFinite(sum)) {
                 return null;
+            }
+            if (outgoing != null && !rollingSum.isZero()) {
+                Num threshold = rollingSum.abs().dividedBy(getBarSeries().numFactory().numOf(100000000));
+                if (retained.abs().isLessThan(threshold) || sum.abs().isLessThan(threshold)) {
+                    return null;
+                }
             }
             if (!terminal) {
                 rollingSum = sum;
