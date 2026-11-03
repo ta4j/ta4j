@@ -89,6 +89,30 @@ public class LowestValueIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
+    public void historicalReplacementUpdatesAndExpiresExtremum() {
+        var series = (BaseBarSeries) data;
+        var lowest = new LowestValueIndicator(new ClosePriceIndicator(series), 4);
+        for (int i = 0; i <= 3; i++) {
+            lowest.getValue(i);
+        }
+
+        var original = series.getBar(1);
+        series.replaceBar(1,
+                series.barBuilder()
+                        .timePeriod(original.getTimePeriod())
+                        .endTime(original.getEndTime())
+                        .openPrice(-20)
+                        .highPrice(-20)
+                        .lowPrice(-20)
+                        .closePrice(-20)
+                        .volume(original.getVolume())
+                        .build());
+
+        assertNumEquals(-20, lowest.getValue(4));
+        assertNumEquals(3, lowest.getValue(5));
+    }
+
+    @Test
     public void withRemovedBars() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 5, 8, 12, 15).build();
         series.setMaximumBarCount(4);
