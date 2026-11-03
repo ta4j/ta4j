@@ -29,7 +29,7 @@ final class JniCudaNativeBridge implements CudaNativeBridge {
     /**
      * {@inheritDoc}
      *
-     * @since 0.27.1
+     * @since 0.28.1
      */
     @Override
     public CudaProbeResult probe() {
@@ -68,7 +68,7 @@ final class JniCudaNativeBridge implements CudaNativeBridge {
     /**
      * {@inheritDoc}
      *
-     * @since 0.27.1
+     * @since 0.28.1
      */
     @Override
     public CudaEvaluationResult evaluate(NativeForecastRequest request) {

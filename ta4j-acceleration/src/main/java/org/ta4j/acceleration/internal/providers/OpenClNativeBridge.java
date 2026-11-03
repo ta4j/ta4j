@@ -29,7 +29,7 @@ record OpenClEvaluationResult(double totalMicros, double transferMicros, double 
      * Returns an owned copy of the native samples.
      *
      * @return copied log-return samples
-     * @since 0.27.1
+     * @since 0.28.1
      */
     @Override
     public double[] logReturns() {
@@ -44,7 +44,7 @@ final class JniOpenClNativeBridge implements OpenClNativeBridge {
     /**
      * {@inheritDoc}
      *
-     * @since 0.27.1
+     * @since 0.28.1
      */
     @Override
     public OpenClProbeResult probe() {
@@ -85,7 +85,7 @@ final class JniOpenClNativeBridge implements OpenClNativeBridge {
     /**
      * {@inheritDoc}
      *
-     * @since 0.27.1
+     * @since 0.28.1
      */
     @Override
     public OpenClEvaluationResult evaluate(NativeForecastRequest request) {

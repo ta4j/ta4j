@@ -435,7 +435,7 @@ Then add the locally installed platform classifier at the same ta4j version as y
 <dependency>
     <groupId>org.ta4j</groupId>
     <artifactId>ta4j-acceleration</artifactId>
-    <version>0.27.1-SNAPSHOT</version>
+    <version>0.28.1-SNAPSHOT</version>
     <classifier>metal-macos-aarch64</classifier>
 </dependency>
 ```

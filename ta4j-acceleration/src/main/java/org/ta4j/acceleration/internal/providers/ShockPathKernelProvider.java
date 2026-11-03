@@ -58,7 +58,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Provider;
  * {@link ShockPathErrorBound} certifies the requested tolerance for this lane's
  * precision.
  *
- * @since 0.27.1
+ * @since 0.28.1
  */
 abstract class ShockPathKernelProvider implements Provider {
 
@@ -99,7 +99,7 @@ abstract class ShockPathKernelProvider implements Provider {
     /**
      * {@inheritDoc}
      *
-     * @since 0.27.1
+     * @since 0.28.1
      */
     @Override
     public final Assessment assess(KernelRequest request) {
@@ -129,7 +129,7 @@ abstract class ShockPathKernelProvider implements Provider {
     /**
      * {@inheritDoc}
      *
-     * @since 0.27.1
+     * @since 0.28.1
      */
     @Override
     public final KernelResult execute(KernelRequest request) {

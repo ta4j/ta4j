@@ -27,7 +27,7 @@ final class JniMetalNativeBridge implements MetalNativeBridge {
     /**
      * {@inheritDoc}
      *
-     * @since 0.27.1
+     * @since 0.28.1
      */
     @Override
     public MetalProbeResult probe() {
@@ -59,7 +59,7 @@ final class JniMetalNativeBridge implements MetalNativeBridge {
     /**
      * {@inheritDoc}
      *
-     * @since 0.27.1
+     * @since 0.28.1
      */
     @Override
     public MetalEvaluationResult evaluate(NativeForecastRequest request) {

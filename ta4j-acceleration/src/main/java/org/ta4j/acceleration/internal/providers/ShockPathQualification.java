@@ -24,7 +24,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  * instead of engaging an unqualified device. No shipped row is qualified yet,
  * so automatic selection currently keeps every workload scalar.
  *
- * @since 0.27.1
+ * @since 0.28.1
  */
 final class ShockPathQualification {
 
