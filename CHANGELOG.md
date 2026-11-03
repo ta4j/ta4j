@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Changed
+
+- **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases reconstruct from the existing calculation when reuse is unsafe.
 
 ## 0.28.0 (2026-11-02)
 
@@ -12,8 +14,6 @@
 - **Hardware-accelerated Monte Carlo backtests (`CF-336`)**: Backtests using `MonteCarloPriceForecastIndicator` can hand simulation to an installed, qualified acceleration provider without changing strategy code. Enable it with `-Dta4j.acceleration.enabled=auto` on any `Num` series. Missing or unsupported providers and provider failures fall back to CPU evaluation; `AccelerationRuntime.lastDiagnostic()` explains the decision. Stale provider batches are discarded and retried at the next decision index. `BacktestExecutor` runs still throw `IllegalStateException` when a bar in their captured window changes. Other indicators can opt in through `KernelIndicator` and `Kernel`, sharing the arithmetic between CPU and provider execution. Native providers and their hardware qualification are delivered separately.
 
 ### Changed
-
-- **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases reconstruct from the existing calculation when reuse is unsafe.
 
 - **Moving-series guidance for 0.27.0**: the [moving-series continuation example](https://ta4j.github.io/ta4j-wiki/Bar-series-and-bars.html#moving-series-and-continued-indicator-state) and [indicator cache policies](https://ta4j.github.io/ta4j-wiki/Technical-indicators.html#moving-series-cache-policies) explain continued versus fresh indicator state, mutation-aware latest-bar caching and retained-window exceptions in 0.27.0. Later releases extend continuation to additional indicators; consult their changelog entries for those changes.
 - **Leaner `DoubleNum` forecast summaries**: Monte Carlo summaries retain primitive-double sorting for `DoubleNum` samples and skip unused higher moments while keeping moment calculations in `Num` arithmetic and preserving the series' numeric ownership.
