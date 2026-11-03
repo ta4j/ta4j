@@ -6,6 +6,7 @@ package org.ta4j.core.indicators;
 import java.util.Arrays;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -18,6 +19,14 @@ import org.ta4j.core.num.Num;
  */
 public class RWIHighIndicator extends CachedIndicator<Num> {
 
+    /**
+     * Largest accepted {@code barCount}. The indicator keeps one cached ATR per
+     * look-back length, so its memory and per-bar work grow linearly with
+     * {@code barCount}; the cap keeps descriptor-supplied values from allocating
+     * millions of helper indicators.
+     */
+    static final int MAX_BAR_COUNT = 1_000;
+
     private final int barCount;
     private final transient ATRIndicator[] atrIndicators;
     private final transient Num[] sqrtValues;
@@ -26,13 +35,19 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series   the bar series
-     * @param barCount the time frame
+     * @param barCount the time frame, at most {@value #MAX_BAR_COUNT}
+     * @throws IllegalArgumentException if {@code barCount} exceeds
+     *                                  {@value #MAX_BAR_COUNT}
      */
     public RWIHighIndicator(BarSeries series, int barCount) {
+        if (barCount > MAX_BAR_COUNT) {
+            throw new IllegalArgumentException("barCount must be at most " + MAX_BAR_COUNT);
+        }
         int helperCount = Math.max(0, barCount + 1);
         ATRIndicator[] averages = new ATRIndicator[helperCount];
+        TRIndicator trueRange = barCount >= 2 ? new TRIndicator(series) : null;
         for (int n = 2; n <= barCount; n++) {
-            averages[n] = new ATRIndicator(series, n);
+            averages[n] = new ATRIndicator(trueRange, n);
         }
         super(series, Arrays.copyOfRange(averages, Math.min(2, helperCount), helperCount));
         this.barCount = barCount;
