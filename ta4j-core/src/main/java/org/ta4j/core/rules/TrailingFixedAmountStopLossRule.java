@@ -33,6 +33,8 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
     /** The loss distance as an absolute amount. */
     private final Num lossAmount;
 
+    private final PositionPriceExtrema extrema;
+
     /**
      * Constructor.
      *
@@ -48,6 +50,7 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
         this.priceIndicator = config.priceIndicator();
         this.barCount = config.barCount();
         this.lossAmount = config.lossAmount();
+        this.extrema = new PositionPriceExtrema(priceIndicator, barCount, false);
     }
 
     private static Config validatedConfig(Indicator<Num> indicator, Num lossAmount, int barCount) {
@@ -117,8 +120,7 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
             return false;
         }
         boolean buy = currentPosition.getEntry().isBuy();
-        Num extremePrice = buy ? new HighestValueIndicator(priceIndicator, lookback).getValue(index)
-                : new LowestValueIndicator(priceIndicator, lookback).getValue(index);
+        Num extremePrice = extrema.value(index, positionIndex, buy);
         if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(extremePrice)) {
             StopRuleTrace.traceDecision(this, index, false, buy, currentPrice, entryPrice, null, "lossAmount",
                     lossAmount, "priceUnavailable");
@@ -148,11 +150,9 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
             return null;
         }
         int entryIndex = position.getEntry().getIndex();
-        // stopPrice models the initial trailing stop at entry time.
-        int lookback = 1;
         Num extremePrice = position.getEntry().isBuy()
-                ? new HighestValueIndicator(priceIndicator, lookback).getValue(entryIndex)
-                : new LowestValueIndicator(priceIndicator, lookback).getValue(entryIndex);
+                ? new HighestValueIndicator(priceIndicator, 1).getValue(entryIndex)
+                : new LowestValueIndicator(priceIndicator, 1).getValue(entryIndex);
         if (Num.isNaNOrNull(extremePrice)) {
             return null;
         }

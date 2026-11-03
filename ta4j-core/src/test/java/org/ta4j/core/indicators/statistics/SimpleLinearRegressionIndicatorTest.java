@@ -9,10 +9,13 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator.SimpleLinearRegressionType;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -105,6 +108,40 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
         assertNumEquals(8, reg.getValue(7));
         assertNumEquals(9, reg.getValue(8));
         assertNumEquals(10, reg.getValue(9));
+    }
+
+    @Test
+    public void historicalReplacementAndExpirationUpdateAllRegressionOutputs() {
+        BaseBarSeries series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6)
+                .build();
+        var close = new ClosePriceIndicator(series);
+        var predicted = new SimpleLinearRegressionIndicator(close, 3, SimpleLinearRegressionType.Y);
+        var slope = new SimpleLinearRegressionIndicator(close, 3, SimpleLinearRegressionType.SLOPE);
+        var intercept = new SimpleLinearRegressionIndicator(close, 3, SimpleLinearRegressionType.INTERCEPT);
+        for (int index = 0; index <= 3; index++) {
+            predicted.getValue(index);
+            slope.getValue(index);
+            intercept.getValue(index);
+        }
+        Bar old = series.getBar(1);
+        series.replaceBar(1,
+                series.barBuilder()
+                        .timePeriod(old.getTimePeriod())
+                        .endTime(old.getEndTime())
+                        .openPrice(20)
+                        .highPrice(20)
+                        .lowPrice(20)
+                        .closePrice(20)
+                        .volume(old.getVolume())
+                        .build());
+
+        assertNumEquals(1.0, predicted.getValue(3));
+        assertNumEquals(-8.0, slope.getValue(3));
+        assertNumEquals(25.0, intercept.getValue(3));
+        assertNumEquals(5.0, predicted.getValue(4));
+        assertNumEquals(1.0, slope.getValue(4));
+        assertNumEquals(1.0, intercept.getValue(4));
     }
 
     /**
