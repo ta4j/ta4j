@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Fixed
+
+- **Validated tick, volume and amount bar thresholds**: `TickBarBuilder`, `VolumeBarBuilder`, `AmountBarBuilder` and their factories reject non-positive thresholds and null number factories with `IllegalArgumentException`/`NullPointerException`, and deserialized factories reject non-positive thresholds or a missing carry-over policy with `InvalidObjectException`.
 
 ## 0.28.0 (2026-11-02)
 
