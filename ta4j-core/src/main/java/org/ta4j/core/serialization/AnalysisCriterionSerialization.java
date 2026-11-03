@@ -29,6 +29,18 @@ import org.ta4j.core.named.NamedAssetRegistry;
  * Descriptor serialization is lossless-or-fail: constructor state is included
  * when it can be mapped safely, and unsupported stateful criteria are rejected
  * rather than silently emitted as default instances.
+ * <p>
+ * <b>Trust boundary.</b> Descriptor {@code type} strings are untrusted by
+ * default. {@link #fromJson(String)} and {@link #fromDescriptor(ComponentDescriptor)}
+ * only construct criteria that ta4j itself ships in the
+ * {@code org.ta4j.core.criteria} package tree; any other fully qualified class
+ * name is rejected before it is initialized or constructed. Shorthand
+ * expressions may also construct the types produced by aliases registered in
+ * the supplied {@link NamedAssetRegistry}, because registration is an explicit
+ * decision made by Java code. Callers that restore custom criteria from data
+ * they control can opt in with {@link #fromTrustedJson(String)} or
+ * {@link #fromTrustedDescriptor(ComponentDescriptor)}; never pass external input
+ * to those methods.
  *
  * @since 0.23.1
  */
@@ -77,10 +89,16 @@ public final class AnalysisCriterionSerialization {
     }
 
     /**
-     * Rebuilds an analysis criterion from canonical descriptor JSON.
+     * Rebuilds a ta4j analysis criterion from canonical descriptor JSON.
+     * <p>
+     * The JSON is treated as untrusted: only criteria in the
+     * {@code org.ta4j.core.criteria} package tree can be restored. Use
+     * {@link #fromTrustedJson(String)} for custom criteria from trusted data.
      *
      * @param json JSON payload
      * @return reconstructed criterion
+     * @throws IllegalArgumentException if the type is unknown or is not a ta4j
+     *                                  criterion
      * @since 0.23.1
      */
     public static AnalysisCriterion fromJson(String json) {
@@ -89,17 +107,64 @@ public final class AnalysisCriterionSerialization {
     }
 
     /**
-     * Rebuilds an analysis criterion from a descriptor.
+     * Rebuilds a ta4j analysis criterion from a descriptor.
+     * <p>
+     * The descriptor is treated as untrusted: only criteria in the
+     * {@code org.ta4j.core.criteria} package tree can be restored. Use
+     * {@link #fromTrustedDescriptor(ComponentDescriptor)} for custom criteria
+     * from trusted data.
      *
      * @param descriptor descriptor
      * @return reconstructed criterion
-     * @throws IllegalStateException if a resolved criterion has an unavailable
-     *                               dependency
+     * @throws IllegalArgumentException if the type is unknown or is not a ta4j
+     *                                  criterion
+     * @throws IllegalStateException    if a resolved criterion has an unavailable
+     *                                  dependency
      * @since 0.23.1
      */
     public static AnalysisCriterion fromDescriptor(ComponentDescriptor descriptor) {
+        return fromDescriptor(descriptor, false);
+    }
+
+    /**
+     * Rebuilds any analysis criterion, including custom criteria outside ta4j,
+     * from canonical descriptor JSON that the caller trusts.
+     * <p>
+     * The named class is initialized and one of its constructors, including
+     * non-public ones, is invoked. Only pass JSON that your own code produced or
+     * otherwise controls; use {@link #fromJson(String)} for external input.
+     *
+     * @param json trusted JSON payload
+     * @return reconstructed criterion
+     * @since 0.28.1
+     */
+    public static AnalysisCriterion fromTrustedJson(String json) {
+        ComponentDescriptor descriptor = ComponentSerialization.parse(json);
+        return fromTrustedDescriptor(descriptor);
+    }
+
+    /**
+     * Rebuilds any analysis criterion, including custom criteria outside ta4j,
+     * from a descriptor that the caller trusts.
+     * <p>
+     * The named class is initialized and one of its constructors, including
+     * non-public ones, is invoked. Only pass descriptors that your own code
+     * produced or otherwise controls; use
+     * {@link #fromDescriptor(ComponentDescriptor)} for external input.
+     *
+     * @param descriptor trusted descriptor
+     * @return reconstructed criterion
+     * @throws IllegalStateException if a resolved criterion has an unavailable
+     *                               dependency
+     * @since 0.28.1
+     */
+    public static AnalysisCriterion fromTrustedDescriptor(ComponentDescriptor descriptor) {
+        return fromDescriptor(descriptor, true);
+    }
+
+    private static AnalysisCriterion fromDescriptor(ComponentDescriptor descriptor, boolean trusted) {
         Objects.requireNonNull(descriptor, "descriptor");
-        Class<? extends AnalysisCriterion> criterionType = resolveCriterionClass(descriptor.getType());
+        Class<? extends AnalysisCriterion> criterionType = resolveCriterionClass(descriptor.getType(), trusted);
         try {
             return instantiate(criterionType, descriptor);
         } catch (LinkageError ex) {
@@ -151,6 +216,11 @@ public final class AnalysisCriterionSerialization {
     /**
      * Rebuilds an analysis criterion from a compact named shorthand expression
      * using the supplied registry.
+     * <p>
+     * A registered alias may produce any criterion type, because registering it
+     * is a decision made by Java code. An unregistered alias falls back to a
+     * criterion type name and is treated as untrusted, like
+     * {@link #fromJson(String)}.
      *
      * @param expression shorthand expression
      * @param registry   named asset registry
@@ -160,7 +230,13 @@ public final class AnalysisCriterionSerialization {
     public static AnalysisCriterion fromExpression(String expression, NamedAssetRegistry registry) {
         Objects.requireNonNull(registry, "registry");
         ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.ANALYSIS_CRITERION, expression);
-        return fromDescriptor(descriptor);
+        return fromDescriptor(descriptor, registry.isRegistered(NamedAssetKind.ANALYSIS_CRITERION, alias(expression)));
+    }
+
+    private static String alias(String expression) {
+        String trimmed = expression == null ? "" : expression.strip();
+        int argumentsStart = trimmed.indexOf('(');
+        return argumentsStart < 0 ? trimmed : trimmed.substring(0, argumentsStart).strip();
     }
 
     private static String simplifyCriterionType(Class<?> type) {
@@ -430,12 +506,28 @@ public final class AnalysisCriterionSerialization {
         return value;
     }
 
-    private static Class<? extends AnalysisCriterion> resolveCriterionClass(String type) {
+    private static Class<? extends AnalysisCriterion> resolveCriterionClass(String type, boolean trusted) {
         if (type == null || type.isBlank()) {
             throw new IllegalArgumentException("Analysis criterion descriptor missing type");
         }
-        Class<? extends AnalysisCriterion> criterionType = ComponentDescriptor.resolveSubtype(type,
-                AnalysisCriterion.class, CRITERIA_PACKAGES);
+        Class<? extends AnalysisCriterion> criterionType;
+        if (trusted) {
+            criterionType = ComponentDescriptor.resolveSubtype(type, AnalysisCriterion.class, CRITERIA_PACKAGES);
+        } else if (type.indexOf('.') < 0) {
+            // Simple names resolve only inside ta4j's criteria packages, never the
+            // default package.
+            criterionType = null;
+            for (int i = 0; criterionType == null && i < CRITERIA_PACKAGES.length; i++) {
+                criterionType = ComponentDescriptor.resolveSubtype(CRITERIA_PACKAGES[i] + '.' + type,
+                        AnalysisCriterion.class);
+            }
+        } else {
+            // Untrusted fully qualified names are checked before the class is loaded,
+            // so a rejected class is never initialized or constructed.
+            criterionType = type.startsWith(CRITERIA_PACKAGE + '.')
+                    ? ComponentDescriptor.resolveSubtype(type, AnalysisCriterion.class)
+                    : null;
+        }
         if (criterionType == null) {
             throw new IllegalArgumentException("Unknown analysis criterion type: " + type);
         }

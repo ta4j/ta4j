@@ -116,6 +116,19 @@ public final class NamedAssetRegistry {
     }
 
     /**
+     * Returns whether an alias is registered for an asset family.
+     *
+     * @param kind  owning asset family
+     * @param alias shorthand alias, without arguments
+     * @return {@code true} when a binding exists for the alias
+     * @since 0.28.1
+     */
+    public boolean isRegistered(NamedAssetKind kind, String alias) {
+        Objects.requireNonNull(kind, "kind");
+        return alias != null && bindings.getOrDefault(kind, Map.of()).containsKey(alias);
+    }
+
+    /**
      * Attempts to render a descriptor back to a compact expression.
      *
      * @param kind       owning asset family
