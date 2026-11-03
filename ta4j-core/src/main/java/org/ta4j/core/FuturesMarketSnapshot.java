@@ -24,7 +24,7 @@ import org.ta4j.core.num.Num;
  * {@link #fundingTime()}.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 public final class FuturesMarketSnapshot implements Serializable {
 
@@ -78,7 +78,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return new snapshot builder
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static Builder builder() {
         return new Builder();
@@ -86,7 +86,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return a builder pre-populated with this observation
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Builder toBuilder() {
         return new Builder(this);
@@ -94,7 +94,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the observed contract
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is a final value type whose instances are shared by reference; copying the immutable contract per accessor would allocate on every read")
     public FuturesContract contract() {
@@ -103,7 +103,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the instant the venue published this observation
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Instant observedAt() {
         return observedAt;
@@ -111,7 +111,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the data source, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String source() {
         return source;
@@ -119,7 +119,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the mark price, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num markPrice() {
         return markPrice;
@@ -127,7 +127,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the underlying index price, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num indexPrice() {
         return indexPrice;
@@ -135,7 +135,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the settlement price, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num settlementPrice() {
         return settlementPrice;
@@ -144,7 +144,7 @@ public final class FuturesMarketSnapshot implements Serializable {
     /**
      * @return the signed funding rate observed for {@link #fundingTime()}, or
      *         {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num fundingRate() {
         return fundingRate;
@@ -152,7 +152,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the instant the observed funding rate applies to, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Instant fundingTime() {
         return fundingTime;
@@ -160,7 +160,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the observed funding interval, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Duration fundingInterval() {
         return fundingInterval;
@@ -168,7 +168,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the open interest in contracts, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num openInterest() {
         return openInterest;
@@ -176,7 +176,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the venue's maximum leverage, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num maxLeverage() {
         return maxLeverage;
@@ -184,7 +184,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the intraday long margin rate, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num intradayLongMarginRate() {
         return intradayLongMarginRate;
@@ -192,7 +192,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the intraday short margin rate, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num intradayShortMarginRate() {
         return intradayShortMarginRate;
@@ -200,7 +200,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the overnight long margin rate, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num overnightLongMarginRate() {
         return overnightLongMarginRate;
@@ -208,7 +208,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the overnight short margin rate, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num overnightShortMarginRate() {
         return overnightShortMarginRate;
@@ -216,7 +216,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return the maintenance margin rate, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num maintenanceMarginRate() {
         return maintenanceMarginRate;
@@ -224,7 +224,7 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     /**
      * @return immutable non-economic provider labels
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Map<String, String> attributes() {
         return attributes;
@@ -276,7 +276,7 @@ public final class FuturesMarketSnapshot implements Serializable {
     /**
      * Builder for {@link FuturesMarketSnapshot} values.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static final class Builder {
 
@@ -326,7 +326,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param contract futures contract
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
         public Builder contract(FuturesContract contract) {
@@ -339,7 +339,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param observedAt observation instant
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder observedAt(Instant observedAt) {
             this.observedAt = observedAt;
@@ -351,7 +351,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param source data source identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder source(String source) {
             this.source = source;
@@ -363,7 +363,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param markPrice mark price
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder markPrice(Num markPrice) {
             this.markPrice = markPrice;
@@ -375,7 +375,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param indexPrice index price
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder indexPrice(Num indexPrice) {
             this.indexPrice = indexPrice;
@@ -387,7 +387,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param settlementPrice settlement price
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder settlementPrice(Num settlementPrice) {
             this.settlementPrice = settlementPrice;
@@ -399,7 +399,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param fundingRate funding rate
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder fundingRate(Num fundingRate) {
             this.fundingRate = fundingRate;
@@ -411,7 +411,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param fundingTime funding boundary instant
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder fundingTime(Instant fundingTime) {
             this.fundingTime = fundingTime;
@@ -423,7 +423,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param fundingInterval funding interval
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder fundingInterval(Duration fundingInterval) {
             this.fundingInterval = fundingInterval;
@@ -435,7 +435,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param openInterest open interest
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder openInterest(Num openInterest) {
             this.openInterest = openInterest;
@@ -447,7 +447,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param maxLeverage maximum leverage
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder maxLeverage(Num maxLeverage) {
             this.maxLeverage = maxLeverage;
@@ -459,7 +459,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param intradayLongMarginRate intraday long margin rate
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder intradayLongMarginRate(Num intradayLongMarginRate) {
             this.intradayLongMarginRate = intradayLongMarginRate;
@@ -471,7 +471,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param intradayShortMarginRate intraday short margin rate
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder intradayShortMarginRate(Num intradayShortMarginRate) {
             this.intradayShortMarginRate = intradayShortMarginRate;
@@ -483,7 +483,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param overnightLongMarginRate overnight long margin rate
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder overnightLongMarginRate(Num overnightLongMarginRate) {
             this.overnightLongMarginRate = overnightLongMarginRate;
@@ -495,7 +495,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param overnightShortMarginRate overnight short margin rate
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder overnightShortMarginRate(Num overnightShortMarginRate) {
             this.overnightShortMarginRate = overnightShortMarginRate;
@@ -507,7 +507,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param maintenanceMarginRate maintenance margin rate
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder maintenanceMarginRate(Num maintenanceMarginRate) {
             this.maintenanceMarginRate = maintenanceMarginRate;
@@ -519,7 +519,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          *
          * @param attributes additional snapshot attributes
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder attributes(Map<String, String> attributes) {
             this.attributes = attributes == null ? Map.of() : attributes;
@@ -530,7 +530,7 @@ public final class FuturesMarketSnapshot implements Serializable {
          * Builds the immutable market snapshot.
          *
          * @return the configured market snapshot
-         * @since 0.26.1
+         * @since 0.28.1
          */
         public FuturesMarketSnapshot build() {
             return new FuturesMarketSnapshot(this);

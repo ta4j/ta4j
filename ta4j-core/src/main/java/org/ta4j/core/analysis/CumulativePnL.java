@@ -403,7 +403,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      * @param finalIndex           the final index to calculate up to
      * @param equityCurveMode      the calculation mode
      * @param openPositionHandling how to handle open positions
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator,
             int finalIndex, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {

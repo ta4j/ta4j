@@ -296,7 +296,7 @@ public class BaseTradingRecord implements TradingRecord {
      * Creates a builder for a fully configured record.
      *
      * @return new builder
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static Builder builder() {
         return new Builder();
@@ -311,7 +311,7 @@ public class BaseTradingRecord implements TradingRecord {
      * {@link RecordedTradeCostModel} unless a modelled cost is supplied explicitly.
      * </p>
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static final class Builder {
 
@@ -333,7 +333,7 @@ public class BaseTradingRecord implements TradingRecord {
         /**
          * @param startingType entry trade type
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder startingType(TradeType startingType) {
             this.startingType = Objects.requireNonNull(startingType, "startingType");
@@ -343,7 +343,7 @@ public class BaseTradingRecord implements TradingRecord {
         /**
          * @param matchPolicy lot matching policy
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder matchPolicy(ExecutionMatchPolicy matchPolicy) {
             this.matchPolicy = Objects.requireNonNull(matchPolicy, "matchPolicy");
@@ -353,7 +353,7 @@ public class BaseTradingRecord implements TradingRecord {
         /**
          * @param transactionCostModel transaction cost model
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder transactionCostModel(CostModel transactionCostModel) {
             this.transactionCostModel = transactionCostModel;
@@ -363,7 +363,7 @@ public class BaseTradingRecord implements TradingRecord {
         /**
          * @param holdingCostModel holding cost model
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder holdingCostModel(CostModel holdingCostModel) {
             this.holdingCostModel = holdingCostModel;
@@ -373,7 +373,7 @@ public class BaseTradingRecord implements TradingRecord {
         /**
          * @param startIndex optional start index
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder startIndex(Integer startIndex) {
             this.startIndex = startIndex;
@@ -383,7 +383,7 @@ public class BaseTradingRecord implements TradingRecord {
         /**
          * @param endIndex optional end index
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder endIndex(Integer endIndex) {
             this.endIndex = endIndex;
@@ -393,7 +393,7 @@ public class BaseTradingRecord implements TradingRecord {
         /**
          * @param name record name
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder name(String name) {
             this.name = name;
@@ -403,7 +403,7 @@ public class BaseTradingRecord implements TradingRecord {
         /**
          * @param futuresContract traded contract, {@code null} for a spot record
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
         public Builder futuresContract(FuturesContract futuresContract) {
@@ -414,7 +414,7 @@ public class BaseTradingRecord implements TradingRecord {
         /**
          * @param initialCapital account capital in the settlement currency
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder initialCapital(Num initialCapital) {
             this.initialCapital = initialCapital;
@@ -424,7 +424,7 @@ public class BaseTradingRecord implements TradingRecord {
         /**
          * @param initialMarginRate initial margin rate applied to the position notional
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder initialMarginRate(Num initialMarginRate) {
             this.initialMarginRate = initialMarginRate;
@@ -434,7 +434,7 @@ public class BaseTradingRecord implements TradingRecord {
         /**
          * @param fundingSchedule funding events applied to open positions
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder fundingSchedule(List<FuturesFunding> fundingSchedule) {
             this.fundingSchedule = fundingSchedule == null ? List.of() : List.copyOf(fundingSchedule);
@@ -443,7 +443,7 @@ public class BaseTradingRecord implements TradingRecord {
 
         /**
          * @return configured record
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public BaseTradingRecord build() {
             RecordConfig config = recordConfig(startingType, matchPolicy, transactionCostModel, holdingCostModel,
@@ -607,7 +607,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param end       last index of the projected window
      * @return read-only futures trading record containing only the selected
      *         positions and their allocations
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static BaseTradingRecord projectedFutures(TradingRecord source, List<Position> positions, int start, int end) {
         Objects.requireNonNull(source, "source");

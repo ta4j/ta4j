@@ -177,7 +177,7 @@ public class Position implements Serializable {
      * </p>
      *
      * @return the traded contract, or {@code null} for a spot position
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is a final value type whose instances are shared by reference; copying the immutable contract per accessor would allocate on every read")
     public FuturesContract getFuturesContract() {
@@ -194,7 +194,7 @@ public class Position implements Serializable {
      * </p>
      *
      * @return an immutable list of allocated cash flows, never {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public List<FuturesCashFlow> getCashFlows() {
         return cashFlows == null ? List.of() : cashFlows;
@@ -458,7 +458,7 @@ public class Position implements Serializable {
      *                   profit
      * @return immutable signed components, which must be summed without rounding
      *         individual lot subtotals first
-     * @since 0.26.1
+     * @since 0.28.1
      */
     public List<Num> getProfitComponents(int finalIndex, Num markPrice) {
         if (futuresContract != null) {
@@ -486,7 +486,7 @@ public class Position implements Serializable {
      *
      * @param finalIndex the index of the final bar to be considered
      * @return the realized profit in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num getRealizedProfit(int finalIndex) {
         if (futuresContract != null) {
@@ -551,7 +551,7 @@ public class Position implements Serializable {
      *                   for futures positions
      * @param finalIndex the index of the final bar to be considered
      * @return the unrealized profit in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num getUnrealizedProfit(Num markPrice, int finalIndex) {
         if (futuresContract != null) {
@@ -579,7 +579,7 @@ public class Position implements Serializable {
      * @return the return including the base, i.e.
      *         {@code 1 + profit / initialMargin}
      * @throws IllegalArgumentException when the margin is not positive and finite
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num getReturnOnMargin(Num initialMargin, Num finalPrice, int finalIndex) {
         FuturesValidation.requirePositiveFinite(initialMargin, "initialMargin");
@@ -1130,7 +1130,7 @@ public class Position implements Serializable {
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset
      * @param cashFlows            cash flows allocated to this position
-     * @since 0.25.1
+     * @since 0.28.1
      */
     Position(Trade entry, Trade exit, CostModel transactionCostModel, CostModel holdingCostModel,
             List<FuturesCashFlow> cashFlows) {
@@ -1144,7 +1144,7 @@ public class Position implements Serializable {
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset
      * @param cashFlows            cash flows allocated to this position
-     * @since 0.25.1
+     * @since 0.28.1
      */
     Position(Trade entry, CostModel transactionCostModel, CostModel holdingCostModel, List<FuturesCashFlow> cashFlows) {
         this(validateOpenPosition(entry, transactionCostModel, holdingCostModel), cashFlows);

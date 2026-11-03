@@ -148,7 +148,7 @@ public interface Trade extends Serializable {
      * </p>
      *
      * @return the traded contract, or {@code null} for a spot trade
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default FuturesContract getFuturesContract() {
         return null;
@@ -164,7 +164,7 @@ public interface Trade extends Serializable {
      * </p>
      *
      * @return immutable fee components, empty for spot trades
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default List<TradeFee> getFees() {
         return List.of();
@@ -212,7 +212,7 @@ public interface Trade extends Serializable {
      * </p>
      *
      * @return the value of a trade (without transaction cost)
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default Num getValue() {
         FuturesContract contract = getFuturesContract();

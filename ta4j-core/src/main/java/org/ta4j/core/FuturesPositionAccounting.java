@@ -30,7 +30,7 @@ import org.ta4j.core.num.NumFactory;
  * realized economics.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 final class FuturesPositionAccounting {
 
@@ -44,7 +44,7 @@ final class FuturesPositionAccounting {
      * @return the contract carried by the position
      * @throws IllegalStateException when the position is not a futures position or
      *                               has no entry
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static FuturesContract requireContract(Position position) {
         FuturesContract contract = position.getFuturesContract();
@@ -62,7 +62,7 @@ final class FuturesPositionAccounting {
      *                   exit already executed
      * @param finalIndex index up to which executions are recognized
      * @return signed payoff in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num payoff(Position position, Num finalPrice, int finalIndex) {
         FuturesContract contract = requireContract(position);
@@ -180,7 +180,7 @@ final class FuturesPositionAccounting {
      * @param position   futures position
      * @param finalPrice price used for the unexecuted portion
      * @return signed payoff in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num payoff(Position position, Num finalPrice) {
         return payoff(position, finalPrice, Integer.MAX_VALUE);
@@ -191,7 +191,7 @@ final class FuturesPositionAccounting {
      *
      * @param position futures position
      * @return funding credits minus funding debits in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num funding(Position position) {
         return funding(position, Integer.MAX_VALUE);
@@ -204,7 +204,7 @@ final class FuturesPositionAccounting {
      * @param position   futures position
      * @param finalIndex index up to which cash flows are recognized
      * @return funding credits minus funding debits in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num funding(Position position, int finalIndex) {
         return sum(position, FuturesCashFlow.Type.FUNDING, finalIndex);
@@ -215,7 +215,7 @@ final class FuturesPositionAccounting {
      *
      * @param position futures position
      * @return variation margin credits minus debits in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num variationMargin(Position position) {
         return variationMargin(position, Integer.MAX_VALUE);
@@ -228,7 +228,7 @@ final class FuturesPositionAccounting {
      * @param position   futures position
      * @param finalIndex index up to which cash flows are recognized
      * @return variation margin credits minus debits in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num variationMargin(Position position, int finalIndex) {
         return sum(position, FuturesCashFlow.Type.VARIATION_MARGIN, finalIndex);
@@ -240,7 +240,7 @@ final class FuturesPositionAccounting {
      * @param position   futures position
      * @param finalIndex index up to which executions are recognized
      * @return charge-positive fee total
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num executedFees(Position position, int finalIndex) {
         Trade entry = position.getEntry();
@@ -260,7 +260,7 @@ final class FuturesPositionAccounting {
      *
      * @param position futures position
      * @return charge-positive fee total
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num executedFees(Position position) {
         return executedFees(position, Integer.MAX_VALUE);
@@ -278,7 +278,7 @@ final class FuturesPositionAccounting {
      * @param position   futures position
      * @param finalIndex index up to which executions are recognized
      * @return realized profit in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num realizedProfit(Position position, int finalIndex) {
         Num fees = executedFees(position, finalIndex);
@@ -344,7 +344,7 @@ final class FuturesPositionAccounting {
      * @param finalIndex index up to which executions are recognized
      * @return unrealized profit in the settlement currency, zero when the exit has
      *         already executed
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num unrealizedProfit(Position position, Num markPrice, int finalIndex) {
         if (isFullyExecutedExit(position, finalIndex)) {
@@ -366,7 +366,7 @@ final class FuturesPositionAccounting {
      * @param finalPrice price used for the unexecuted portion
      * @return gross return including the base, i.e.
      *         {@code 1 + payoff / entryNotional}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num grossReturn(Position position, Num finalPrice) {
         Trade entry = position.getEntry();
@@ -392,7 +392,7 @@ final class FuturesPositionAccounting {
      * @param finalPrice price used for the unexecuted portion
      * @param finalIndex index up to which executions are recognized
      * @return net profit in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num profit(Position position, Num finalPrice, int finalIndex) {
         return payoff(position, finalPrice, finalIndex).plus(funding(position, finalIndex))
@@ -406,7 +406,7 @@ final class FuturesPositionAccounting {
      *
      * @param position futures position
      * @return executed entry contract count
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num matchedQuantity(Position position) {
         Trade entry = position.getEntry();
@@ -484,7 +484,7 @@ final class FuturesPositionAccounting {
      *         flows as a single slice when there is no fill to allocate to
      * @throws IllegalStateException    when an entry fill has no timestamp
      * @throws IllegalArgumentException when a cash flow has no eligible fill
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static List<List<FuturesCashFlow>> allocateCashFlowsByFill(List<FuturesCashFlow> cashFlows, List<TradeFill> fills,
             NumFactory quantityFactory) {
@@ -549,7 +549,7 @@ final class FuturesPositionAccounting {
      * @param portion portion of the total
      * @param total   total the portion is measured against
      * @return {@code value * portion / total}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num proportional(Num value, Num portion, Num total) {
         if (value.isNaN()) {

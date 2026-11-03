@@ -418,7 +418,7 @@ public class BaseTrade implements Trade {
 
     /**
      * @return the traded contract, or {@code null} for a spot trade
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is immutable, so returning the shared contract value cannot expose mutable trade state")
     @Override
@@ -429,7 +429,7 @@ public class BaseTrade implements Trade {
     /**
      * @return resolved fee components of every fill, in the settlement currency;
      *         empty for a spot trade
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @Override
     public List<TradeFee> getFees() {
@@ -443,7 +443,7 @@ public class BaseTrade implements Trade {
      *
      * @return the contract symbol, the common fill instrument, or {@code null} when
      *         no instrument is available
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @Override
     public String getInstrument() {

@@ -444,7 +444,7 @@ public interface TradingRecord extends Serializable {
      * </p>
      *
      * @return the traded contract, or {@code null} for spot records
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default FuturesContract getFuturesContract() {
         return null;
@@ -461,7 +461,7 @@ public interface TradingRecord extends Serializable {
      * </p>
      *
      * @return the configured starting capital, or {@code null} when absent
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default Num getInitialCapital() {
         return null;
@@ -477,7 +477,7 @@ public interface TradingRecord extends Serializable {
      * </p>
      *
      * @return the configured initial margin rate, or {@code null} when absent
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default Num getInitialMarginRate() {
         return null;
@@ -494,7 +494,7 @@ public interface TradingRecord extends Serializable {
      * </p>
      *
      * @return the configured funding schedule, empty when absent
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default List<FuturesFunding> getFundingSchedule() {
         return List.of();
@@ -513,7 +513,7 @@ public interface TradingRecord extends Serializable {
      * @param funding the observed funding settlement
      * @throws UnsupportedOperationException when the record is not a native futures
      *                                       record
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default void recordFunding(FuturesFunding funding) {
         throw new UnsupportedOperationException("recordFunding(FuturesFunding) requires a native futures record");
@@ -533,7 +533,7 @@ public interface TradingRecord extends Serializable {
      * @param cashFlow the observed cash flow
      * @throws UnsupportedOperationException when the record is not a native futures
      *                                       record
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default void recordCashFlow(FuturesCashFlow cashFlow) {
         throw new UnsupportedOperationException("recordCashFlow(FuturesCashFlow) requires a native futures record");
@@ -544,7 +544,7 @@ public interface TradingRecord extends Serializable {
      * order.
      *
      * @return the recorded cash flows, empty for legacy spot records
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default List<FuturesCashFlow> getCashFlows() {
         return List.of();
@@ -560,7 +560,7 @@ public interface TradingRecord extends Serializable {
      * </p>
      *
      * @param time the time to advance through
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default void advanceTo(Instant time) {
         // Spot records have no scheduled events to apply.
@@ -572,7 +572,7 @@ public interface TradingRecord extends Serializable {
      * @param snapshot the observed snapshot
      * @throws UnsupportedOperationException when the record is not a native futures
      *                                       record
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default void recordMarketSnapshot(FuturesMarketSnapshot snapshot) {
         throw new UnsupportedOperationException(
@@ -583,7 +583,7 @@ public interface TradingRecord extends Serializable {
      * Returns the retained market snapshots in recording order.
      *
      * @return the retained snapshots, empty for legacy spot records
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default List<FuturesMarketSnapshot> getMarketSnapshots() {
         return List.of();
@@ -595,7 +595,7 @@ public interface TradingRecord extends Serializable {
      * @param snapshot the observed snapshot
      * @throws UnsupportedOperationException when the record is not a native futures
      *                                       record
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default void recordPositionSnapshot(FuturesPositionSnapshot snapshot) {
         throw new UnsupportedOperationException(
@@ -606,7 +606,7 @@ public interface TradingRecord extends Serializable {
      * Returns the retained position snapshots in recording order.
      *
      * @return the retained snapshots, empty for legacy spot records
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default List<FuturesPositionSnapshot> getPositionSnapshots() {
         return List.of();

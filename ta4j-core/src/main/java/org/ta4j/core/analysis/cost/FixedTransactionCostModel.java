@@ -82,7 +82,7 @@ public class FixedTransactionCostModel implements CostModel {
      *
      * @param fill the execution fill
      * @return the trading cost of {@code fill}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @Override
     public Num calculate(TradeFill fill) {

@@ -17,7 +17,7 @@ import org.ta4j.core.num.Num;
  * inputs and are not part of the public API.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 final class FuturesValidation {
 

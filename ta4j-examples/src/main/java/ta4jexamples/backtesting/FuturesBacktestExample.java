@@ -39,7 +39,7 @@ import org.ta4j.core.rules.FixedRule;
  * skips the entry because {@link PositionSizer#balance(Number)} returns zero.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 public final class FuturesBacktestExample {
 

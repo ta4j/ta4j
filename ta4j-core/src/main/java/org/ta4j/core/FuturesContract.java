@@ -37,7 +37,7 @@ import org.ta4j.core.num.NumFactory;
  * changed metadata.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 public final class FuturesContract implements Serializable {
 
@@ -47,7 +47,7 @@ public final class FuturesContract implements Serializable {
     /**
      * Listing family of the contract.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public enum ProductType {
 
@@ -61,7 +61,7 @@ public final class FuturesContract implements Serializable {
     /**
      * Notional and settlement convention of the contract.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public enum SettlementType {
 
@@ -184,7 +184,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return new contract builder
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static Builder builder() {
         return new Builder();
@@ -192,7 +192,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return a builder pre-populated with this contract's specification
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Builder toBuilder() {
         return new Builder(this);
@@ -200,7 +200,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the venue that lists the contract
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String venue() {
         return venue;
@@ -208,7 +208,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the venue's symbol, preserved verbatim
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String symbol() {
         return symbol;
@@ -216,7 +216,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the listing family
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public ProductType productType() {
         return productType;
@@ -224,7 +224,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the notional and settlement convention
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public SettlementType settlementType() {
         return settlementType;
@@ -232,7 +232,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the base asset currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String baseCurrency() {
         return baseCurrency;
@@ -240,7 +240,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the quote currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String quoteCurrency() {
         return quoteCurrency;
@@ -248,7 +248,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the currency that realized profit, fees and funding settle in
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String settlementCurrency() {
         return settlementCurrency;
@@ -257,7 +257,7 @@ public final class FuturesContract implements Serializable {
     /**
      * @return base units per contract for a LINEAR contract, quote units per
      *         contract for an INVERSE contract
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num contractSize() {
         return contractSize;
@@ -265,7 +265,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the venue product identifier, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String productId() {
         return productId;
@@ -273,7 +273,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the venue contract code, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String contractCode() {
         return contractCode;
@@ -281,7 +281,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the contract root shared by a rolling family, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String contractRoot() {
         return contractRoot;
@@ -289,7 +289,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the human-readable product name, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String displayName() {
         return displayName;
@@ -297,7 +297,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the venue's expiry classification label, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String contractExpiryType() {
         return contractExpiryType;
@@ -305,7 +305,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the unit the contract root is quoted in, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String contractRootUnit() {
         return contractRootUnit;
@@ -314,7 +314,7 @@ public final class FuturesContract implements Serializable {
     /**
      * @return the exchange expiry, or {@code null}; a perpetual may retain a
      *         far-dated rolling expiry
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Instant expiry() {
         return expiry;
@@ -322,7 +322,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the zone the expiry is expressed in, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public ZoneId expiryTimeZone() {
         return expiryTimeZone;
@@ -330,7 +330,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the instant trading is disabled, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Instant tradingDisabledAt() {
         return tradingDisabledAt;
@@ -338,7 +338,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the minimum price increment, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num priceIncrement() {
         return priceIncrement;
@@ -346,7 +346,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the minimum quantity increment in contracts, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num quantityIncrement() {
         return quantityIncrement;
@@ -354,7 +354,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the minimum order quantity in contracts, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num minimumQuantity() {
         return minimumQuantity;
@@ -362,7 +362,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the maximum order quantity in contracts, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num maximumQuantity() {
         return maximumQuantity;
@@ -371,7 +371,7 @@ public final class FuturesContract implements Serializable {
     /**
      * @return the minimum order size evaluated with {@link #quoteNotional}, or
      *         {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num minimumNotional() {
         return minimumNotional;
@@ -380,7 +380,7 @@ public final class FuturesContract implements Serializable {
     /**
      * @return the maximum order size evaluated with {@link #quoteNotional}, or
      *         {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num maximumNotional() {
         return maximumNotional;
@@ -389,7 +389,7 @@ public final class FuturesContract implements Serializable {
     /**
      * @return whether the venue flags the product as perpetual-style, or
      *         {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Boolean perpetualStyle() {
         return perpetualStyle;
@@ -397,7 +397,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return whether the venue flags continuous trading, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Boolean trading24x7() {
         return trading24x7;
@@ -405,7 +405,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return whether the venue flags a non-crypto underlying, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Boolean nonCrypto() {
         return nonCrypto;
@@ -413,7 +413,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return the venue's risk engine label, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String riskManagedBy() {
         return riskManagedBy;
@@ -421,7 +421,7 @@ public final class FuturesContract implements Serializable {
 
     /**
      * @return immutable non-economic provider identifiers and labels
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Map<String, String> attributes() {
         return attributes;
@@ -434,7 +434,7 @@ public final class FuturesContract implements Serializable {
      * @param price     positive and finite reference price
      * @return base units, {@code contracts * contractSize} for LINEAR and
      *         {@code contracts * contractSize / price} for INVERSE
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num baseQuantity(Num contracts, Num price) {
         Num sized = contractsPerSize(contracts, price);
@@ -456,7 +456,7 @@ public final class FuturesContract implements Serializable {
      * @param contracts contract count, nonnegative and finite
      * @param price     positive and finite reference price
      * @return quote-currency notional
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num quoteNotional(Num contracts, Num price) {
         Num sized = contractsPerSize(contracts, price);
@@ -475,7 +475,7 @@ public final class FuturesContract implements Serializable {
      * @param contracts contract count, nonnegative and finite
      * @param price     positive and finite reference price
      * @return settlement-currency notional
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num settlementNotional(Num contracts, Num price) {
         Num sized = contractsPerSize(contracts, price);
@@ -505,7 +505,7 @@ public final class FuturesContract implements Serializable {
      * @param entryPrice positive and finite entry price
      * @param exitPrice  positive and finite exit price
      * @return profit in the settlement currency, negative for a loss
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num profit(Trade.TradeType entryType, Num contracts, Num entryPrice, Num exitPrice) {
         Objects.requireNonNull(entryType, "entryType");
@@ -555,7 +555,7 @@ public final class FuturesContract implements Serializable {
      * @param referencePrice  positive and finite funding reference price
      * @param fundingRate     signed and finite funding rate
      * @return funding credit when positive, funding debit when negative
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num fundingCashFlow(Num signedContracts, Num referencePrice, Num fundingRate) {
         FuturesValidation.requireFinite(signedContracts, "signedContracts");
@@ -586,7 +586,7 @@ public final class FuturesContract implements Serializable {
      * @param referencePrice positive and finite reference price
      * @param marginRate     nonnegative and finite margin rate
      * @return required margin in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num marginRequirement(Num contracts, Num referencePrice, Num marginRate) {
         FuturesValidation.requireNonNegativeFinite(marginRate, "marginRate");
@@ -614,7 +614,7 @@ public final class FuturesContract implements Serializable {
      * @param collateral     positive and finite collateral in the settlement
      *                       currency
      * @return settlement notional divided by collateral
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num effectiveLeverage(Num contracts, Num referencePrice, Num collateral) {
         FuturesValidation.requirePositiveFinite(collateral, "collateral");
@@ -795,7 +795,7 @@ public final class FuturesContract implements Serializable {
     /**
      * Builder for {@link FuturesContract} values.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static final class Builder {
 
@@ -867,7 +867,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param venue builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder venue(String venue) {
             this.venue = venue;
@@ -879,7 +879,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param symbol builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder symbol(String symbol) {
             this.symbol = symbol;
@@ -891,7 +891,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param productType builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder productType(ProductType productType) {
             this.productType = productType;
@@ -903,7 +903,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param settlementType builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder settlementType(SettlementType settlementType) {
             this.settlementType = settlementType;
@@ -915,7 +915,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param baseCurrency builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder baseCurrency(String baseCurrency) {
             this.baseCurrency = baseCurrency;
@@ -927,7 +927,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param quoteCurrency builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder quoteCurrency(String quoteCurrency) {
             this.quoteCurrency = quoteCurrency;
@@ -939,7 +939,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param settlementCurrency builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder settlementCurrency(String settlementCurrency) {
             this.settlementCurrency = settlementCurrency;
@@ -951,7 +951,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param contractSize builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder contractSize(Num contractSize) {
             this.contractSize = contractSize;
@@ -963,7 +963,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param productId builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder productId(String productId) {
             this.productId = productId;
@@ -975,7 +975,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param contractCode builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder contractCode(String contractCode) {
             this.contractCode = contractCode;
@@ -987,7 +987,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param contractRoot builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder contractRoot(String contractRoot) {
             this.contractRoot = contractRoot;
@@ -999,7 +999,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param displayName builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder displayName(String displayName) {
             this.displayName = displayName;
@@ -1011,7 +1011,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param contractExpiryType builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder contractExpiryType(String contractExpiryType) {
             this.contractExpiryType = contractExpiryType;
@@ -1023,7 +1023,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param contractRootUnit builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder contractRootUnit(String contractRootUnit) {
             this.contractRootUnit = contractRootUnit;
@@ -1035,7 +1035,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param expiry builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder expiry(Instant expiry) {
             this.expiry = expiry;
@@ -1047,7 +1047,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param expiryTimeZone builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder expiryTimeZone(ZoneId expiryTimeZone) {
             this.expiryTimeZone = expiryTimeZone;
@@ -1059,7 +1059,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param tradingDisabledAt builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder tradingDisabledAt(Instant tradingDisabledAt) {
             this.tradingDisabledAt = tradingDisabledAt;
@@ -1071,7 +1071,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param priceIncrement builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder priceIncrement(Num priceIncrement) {
             this.priceIncrement = priceIncrement;
@@ -1083,7 +1083,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param quantityIncrement builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder quantityIncrement(Num quantityIncrement) {
             this.quantityIncrement = quantityIncrement;
@@ -1095,7 +1095,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param minimumQuantity builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder minimumQuantity(Num minimumQuantity) {
             this.minimumQuantity = minimumQuantity;
@@ -1107,7 +1107,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param maximumQuantity builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder maximumQuantity(Num maximumQuantity) {
             this.maximumQuantity = maximumQuantity;
@@ -1119,7 +1119,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param minimumNotional builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder minimumNotional(Num minimumNotional) {
             this.minimumNotional = minimumNotional;
@@ -1131,7 +1131,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param maximumNotional builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder maximumNotional(Num maximumNotional) {
             this.maximumNotional = maximumNotional;
@@ -1143,7 +1143,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param perpetualStyle builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder perpetualStyle(Boolean perpetualStyle) {
             this.perpetualStyle = perpetualStyle;
@@ -1155,7 +1155,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param trading24x7 builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder trading24x7(Boolean trading24x7) {
             this.trading24x7 = trading24x7;
@@ -1167,7 +1167,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param nonCrypto builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder nonCrypto(Boolean nonCrypto) {
             this.nonCrypto = nonCrypto;
@@ -1179,7 +1179,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param riskManagedBy builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder riskManagedBy(String riskManagedBy) {
             this.riskManagedBy = riskManagedBy;
@@ -1191,7 +1191,7 @@ public final class FuturesContract implements Serializable {
          *
          * @param attributes builder value
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder attributes(Map<String, String> attributes) {
             this.attributes = attributes == null ? Map.of() : attributes;
@@ -1202,7 +1202,7 @@ public final class FuturesContract implements Serializable {
          * Builds a futures contract from the configured values.
          *
          * @return immutable futures contract
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public FuturesContract build() {
             return new FuturesContract(this);

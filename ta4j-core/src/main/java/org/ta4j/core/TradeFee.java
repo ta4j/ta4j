@@ -26,7 +26,7 @@ import org.ta4j.core.num.Num;
  * serialization.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 public final class TradeFee implements Serializable {
 
@@ -36,7 +36,7 @@ public final class TradeFee implements Serializable {
     /**
      * Kind of execution cost component.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public enum Type {
 
@@ -92,7 +92,7 @@ public final class TradeFee implements Serializable {
 
     /**
      * @return new fee builder
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static Builder builder() {
         return new Builder();
@@ -100,7 +100,7 @@ public final class TradeFee implements Serializable {
 
     /**
      * @return a builder pre-populated with this fee's components
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Builder toBuilder() {
         return new Builder(this);
@@ -108,7 +108,7 @@ public final class TradeFee implements Serializable {
 
     /**
      * @return the fee component kind
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Type type() {
         return type;
@@ -116,7 +116,7 @@ public final class TradeFee implements Serializable {
 
     /**
      * @return the charge-positive amount in {@link #currency()}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num amount() {
         return amount;
@@ -124,7 +124,7 @@ public final class TradeFee implements Serializable {
 
     /**
      * @return the currency of {@link #amount()}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String currency() {
         return currency;
@@ -133,7 +133,7 @@ public final class TradeFee implements Serializable {
     /**
      * @return the amount converted into the owning fill's settlement currency, or
      *         {@code null} when the conversion has not been bound yet
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num settlementAmount() {
         return settlementAmount;
@@ -141,7 +141,7 @@ public final class TradeFee implements Serializable {
 
     /**
      * @return provenance of a modelled fee, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String source() {
         return source;
@@ -149,7 +149,7 @@ public final class TradeFee implements Serializable {
 
     /**
      * @return schedule timestamp of a modelled fee, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Instant scheduleAsOf() {
         return scheduleAsOf;
@@ -162,7 +162,7 @@ public final class TradeFee implements Serializable {
      * @return an equivalent fee carrying a resolved {@link #settlementAmount()}
      * @throws IllegalArgumentException when the conversion is missing, differing or
      *                                  sign-opposed
-     * @since 0.25.1
+     * @since 0.28.1
      */
     TradeFee resolveFor(String settlementCurrency) {
         Num resolved = SettlementAmountSupport.resolve(amount, currency, settlementAmount, settlementCurrency);
@@ -201,7 +201,7 @@ public final class TradeFee implements Serializable {
     /**
      * Builder for {@link TradeFee} values.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static final class Builder {
 
@@ -229,7 +229,7 @@ public final class TradeFee implements Serializable {
          *
          * @param type fee type
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder type(Type type) {
             this.type = type;
@@ -241,7 +241,7 @@ public final class TradeFee implements Serializable {
          *
          * @param amount charge-positive amount
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder amount(Num amount) {
             this.amount = amount;
@@ -253,7 +253,7 @@ public final class TradeFee implements Serializable {
          *
          * @param currency fee currency
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder currency(String currency) {
             this.currency = currency;
@@ -265,7 +265,7 @@ public final class TradeFee implements Serializable {
          *
          * @param settlementAmount settlement-currency amount
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder settlementAmount(Num settlementAmount) {
             this.settlementAmount = settlementAmount;
@@ -277,7 +277,7 @@ public final class TradeFee implements Serializable {
          *
          * @param source fee source identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder source(String source) {
             this.source = source;
@@ -289,7 +289,7 @@ public final class TradeFee implements Serializable {
          *
          * @param scheduleAsOf schedule effective time
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder scheduleAsOf(Instant scheduleAsOf) {
             this.scheduleAsOf = scheduleAsOf;
@@ -300,7 +300,7 @@ public final class TradeFee implements Serializable {
          * Builds the immutable fee.
          *
          * @return the configured fee
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public TradeFee build() {
             return new TradeFee(this);

@@ -26,7 +26,7 @@ import org.ta4j.core.num.NumFactory;
  * metadata, not a matching rule, and no tick-rounding model is invented here.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 final class FuturesOrderQuantitySupport {
 
@@ -47,7 +47,7 @@ final class FuturesOrderQuantitySupport {
      * @param quantity nonnegative and finite quantity
      * @return the largest increment multiple not meaningfully above
      *         {@code quantity}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num roundDown(FuturesContract contract, Num quantity) {
         Objects.requireNonNull(contract, "contract");
@@ -78,7 +78,7 @@ final class FuturesOrderQuantitySupport {
      * @param quantity nonnegative and finite upper bound
      * @param price    positive and finite execution quote
      * @return a tradable quantity not above {@code quantity}, or zero
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num largestTradable(FuturesContract contract, Num quantity, Num price) {
         Objects.requireNonNull(contract, "contract");
@@ -155,7 +155,7 @@ final class FuturesOrderQuantitySupport {
      * @param quantity candidate order quantity in contracts
      * @param price    execution quote
      * @return {@code true} when the quantity satisfies every declared constraint
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static boolean isTradable(FuturesContract contract, Num quantity, Num price) {
         if (contract == null) {
@@ -180,7 +180,7 @@ final class FuturesOrderQuantitySupport {
      * @throws IllegalArgumentException when the contract is present and the
      *                                  quantity or the quote violates a declared
      *                                  constraint
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static void requireTradable(FuturesContract contract, Num quantity, Num price) {
         if (contract == null) {

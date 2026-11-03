@@ -23,7 +23,7 @@ import org.ta4j.core.num.NumFactory;
  * zero conversion of non-zero dust is allowed.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 final class SettlementAmountSupport {
 
@@ -43,7 +43,7 @@ final class SettlementAmountSupport {
      * @return the resolved amount in {@code settlementCurrency}
      * @throws IllegalArgumentException when the conversion is missing, differing or
      *                                  sign-opposed
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num resolve(Num amount, String currency, Num settlementAmount, String settlementCurrency) {
         FuturesValidation.requireFinite(amount, "amount");
@@ -87,7 +87,7 @@ final class SettlementAmountSupport {
      *                   {@code null} when no fees have been recorded yet
      * @param numFactory factory of the resulting sum
      * @return the total charge in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num sumSettlementAmounts(List<TradeFee> fees, NumFactory numFactory) {
         CompensatedSum sum = new CompensatedSum(numFactory, "fee settlement amount", "fee settlement total");

@@ -38,7 +38,7 @@ import org.ta4j.core.num.NumFactory;
  * mark-to-entry profit when mark-to-market exposure is selected.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 final class FuturesPerformanceSupport {
 
@@ -50,7 +50,7 @@ final class FuturesPerformanceSupport {
      *
      * @param record trading record
      * @return {@code true} for a futures record
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static boolean isFutures(TradingRecord record) {
         return record.getFuturesContract() != null;
@@ -61,7 +61,7 @@ final class FuturesPerformanceSupport {
      *
      * @param position position
      * @return {@code true} for a futures position
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static boolean isFutures(Position position) {
         return position.getFuturesContract() != null;
@@ -79,7 +79,7 @@ final class FuturesPerformanceSupport {
      * @param seriesBegin  first stored index of the analysed series
      * @param markExposure {@code true} when open exposure is marked to the market
      * @return {@code true} when the first reported value is a cumulative seed
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static boolean hasPreWindowActivity(TradingRecord record, int seriesBegin, boolean markExposure) {
         for (Position position : record.getPositions()) {
@@ -110,7 +110,7 @@ final class FuturesPerformanceSupport {
      * @param record trading record
      * @param index  retained series head
      * @return {@code true} when activity occurs at {@code index}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static boolean hasActivityAtIndex(TradingRecord record, int index) {
         for (Position position : record.getPositions()) {
@@ -212,7 +212,7 @@ final class FuturesPerformanceSupport {
      * @param series             analysed bar series
      * @param markPriceIndicator mark price indicator, must not be null
      * @return the shared bar series
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static BarSeries requireMarkSeries(BarSeries series, Indicator<Num> markPriceIndicator) {
         Objects.requireNonNull(markPriceIndicator, "markPriceIndicator");
@@ -228,7 +228,7 @@ final class FuturesPerformanceSupport {
      *                        be {@code null}
      * @return explicit record capital, else the fallback capital
      * @throws IllegalStateException when neither source supplies capital
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num accountCapital(NumFactory numFactory, TradingRecord record, Num fallbackCapital) {
         Num capital = record.getInitialCapital();
@@ -262,7 +262,7 @@ final class FuturesPerformanceSupport {
      *
      * @param position futures position
      * @return entry settlement notional in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num entryNotional(Position position) {
         FuturesContract contract = requireFuturesContract(position);
@@ -292,7 +292,7 @@ final class FuturesPerformanceSupport {
      * @param position position
      * @return the entry settlement notional of a futures position, {@code null} for
      *         a spot position
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num fallbackCapital(Position position) {
         return isFutures(position) ? entryNotional(position) : null;
@@ -308,7 +308,7 @@ final class FuturesPerformanceSupport {
      *
      * @param position single position
      * @return analysis-local trading record
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static TradingRecord analysisRecord(Position position) {
         Objects.requireNonNull(position, "position");
@@ -324,7 +324,7 @@ final class FuturesPerformanceSupport {
      * @param openPositionHandling open position handling
      * @param equityCurveMode      equity curve mode
      * @return {@code true} when unsold price exposure is included
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static boolean includesExposure(OpenPositionHandling openPositionHandling, EquityCurveMode equityCurveMode) {
         return equityCurveMode != EquityCurveMode.REALIZED
@@ -341,7 +341,7 @@ final class FuturesPerformanceSupport {
      * @param markPrice    mark price indicator, {@code null} to value at close
      *                     prices
      * @return cursor that must be consumed with non-decreasing indices
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Cursor cursor(BarSeries series, TradingRecord record, int finalIndex, boolean markExposure,
             Indicator<Num> markPrice) {
@@ -573,7 +573,7 @@ final class FuturesPerformanceSupport {
      * @param record     trading record
      * @param finalIndex last recognized index
      * @return closed positions entered up to the index, followed by open positions
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static List<Position> positions(TradingRecord record, int finalIndex) {
         List<Position> positions = new ArrayList<>();
@@ -597,7 +597,7 @@ final class FuturesPerformanceSupport {
      *         unchanged
      * @throws IllegalArgumentException when the converted value is non-finite or a
      *                                  finite nonzero value collapses to zero
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num toFactory(NumFactory numFactory, Num value) {
         if (Num.isNaNOrNull(value)) {
@@ -636,7 +636,7 @@ final class FuturesPerformanceSupport {
      * contributes realized profit, plus unrealized profit when mark-to-market
      * exposure is selected.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static final class Cursor {
 
@@ -671,7 +671,7 @@ final class FuturesPerformanceSupport {
          * @param index logical bar index, must not move backwards
          * @return realized plus selected marked components, or {@code null} when a
          *         required mark is unavailable
-         * @since 0.25.1
+         * @since 0.28.1
          */
         private ProfitSum profitAt(int index) {
             if (index < lastIndex) {

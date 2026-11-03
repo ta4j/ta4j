@@ -28,7 +28,7 @@ import org.ta4j.core.num.Num;
  * cross-currency values are never summed implicitly.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 public final class FuturesCashFlow implements Serializable {
 
@@ -38,7 +38,7 @@ public final class FuturesCashFlow implements Serializable {
     /**
      * Kind of settled cash movement.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public enum Type {
 
@@ -81,7 +81,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return new cash-flow builder
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static Builder builder() {
         return new Builder();
@@ -89,7 +89,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return a builder pre-populated with this cash flow
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Builder toBuilder() {
         return new Builder(this);
@@ -97,7 +97,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return the contract the cash flow belongs to
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is a final value type whose instances are shared by reference; copying the immutable contract per accessor would allocate on every read")
     public FuturesContract contract() {
@@ -106,7 +106,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return the cash-flow kind
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Type type() {
         return type;
@@ -114,7 +114,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return the stable event identifier used for idempotent recording
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String eventId() {
         return eventId;
@@ -122,7 +122,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return the logical bar index the cash flow is accounted at
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public int index() {
         return index;
@@ -130,7 +130,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return the effective instant of the cash flow
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Instant time() {
         return time;
@@ -138,7 +138,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return the credit-positive amount in {@link #currency()}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num amount() {
         return amount;
@@ -146,7 +146,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return the currency of {@link #amount()}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String currency() {
         return currency;
@@ -155,7 +155,7 @@ public final class FuturesCashFlow implements Serializable {
     /**
      * @return the credit-positive amount resolved into the contract settlement
      *         currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num settlementAmount() {
         return settlementAmount;
@@ -163,7 +163,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return the funding rate used to derive this cash flow, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num rate() {
         return rate;
@@ -171,7 +171,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return the reference price used to derive this cash flow, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num referencePrice() {
         return referencePrice;
@@ -179,7 +179,7 @@ public final class FuturesCashFlow implements Serializable {
 
     /**
      * @return the data source, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String source() {
         return source;
@@ -222,7 +222,7 @@ public final class FuturesCashFlow implements Serializable {
     /**
      * Builder for {@link FuturesCashFlow} values.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static final class Builder {
 
@@ -260,7 +260,7 @@ public final class FuturesCashFlow implements Serializable {
          *
          * @param contract futures contract for this cash flow
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
         public Builder contract(FuturesContract contract) {
@@ -273,7 +273,7 @@ public final class FuturesCashFlow implements Serializable {
          *
          * @param type cash-flow type
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder type(Type type) {
             this.type = type;
@@ -285,7 +285,7 @@ public final class FuturesCashFlow implements Serializable {
          *
          * @param eventId stable event identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder eventId(String eventId) {
             this.eventId = eventId;
@@ -297,7 +297,7 @@ public final class FuturesCashFlow implements Serializable {
          *
          * @param index logical bar index
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder index(int index) {
             this.index = index;
@@ -309,7 +309,7 @@ public final class FuturesCashFlow implements Serializable {
          *
          * @param time effective cash-flow instant
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder time(Instant time) {
             this.time = time;
@@ -321,7 +321,7 @@ public final class FuturesCashFlow implements Serializable {
          *
          * @param amount credit-positive amount
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder amount(Num amount) {
             this.amount = amount;
@@ -333,7 +333,7 @@ public final class FuturesCashFlow implements Serializable {
          *
          * @param currency amount currency
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder currency(String currency) {
             this.currency = currency;
@@ -345,7 +345,7 @@ public final class FuturesCashFlow implements Serializable {
          *
          * @param settlementAmount credit-positive settlement amount
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder settlementAmount(Num settlementAmount) {
             this.settlementAmount = settlementAmount;
@@ -357,7 +357,7 @@ public final class FuturesCashFlow implements Serializable {
          *
          * @param rate funding rate
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder rate(Num rate) {
             this.rate = rate;
@@ -369,7 +369,7 @@ public final class FuturesCashFlow implements Serializable {
          *
          * @param referencePrice reference price
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder referencePrice(Num referencePrice) {
             this.referencePrice = referencePrice;
@@ -381,7 +381,7 @@ public final class FuturesCashFlow implements Serializable {
          *
          * @param source data source identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder source(String source) {
             this.source = source;
@@ -392,7 +392,7 @@ public final class FuturesCashFlow implements Serializable {
          * Builds the immutable cash flow.
          *
          * @return the configured cash flow
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public FuturesCashFlow build() {
             return new FuturesCashFlow(this);

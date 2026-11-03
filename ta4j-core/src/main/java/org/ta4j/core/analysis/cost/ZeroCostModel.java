@@ -26,7 +26,7 @@ public class ZeroCostModel extends FixedTransactionCostModel {
      * Returns zero regardless of recorded execution fees, which belong to the
      * transaction-cost leg and must not become an additional holding charge.
      *
-     * @since 0.26.1
+     * @since 0.28.1
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
@@ -36,7 +36,7 @@ public class ZeroCostModel extends FixedTransactionCostModel {
     /**
      * Returns zero holding or modeled transaction cost for the position.
      *
-     * @since 0.26.1
+     * @since 0.28.1
      */
     @Override
     public Num calculate(Position position) {

@@ -283,7 +283,7 @@ public final class ExcessReturns {
      * @param position             the position to analyse
      * @param equityCurveMode      the equity curve mode
      * @param openPositionHandling how to handle remaining exposure
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy, Position position,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
@@ -296,7 +296,7 @@ public final class ExcessReturns {
      * than cumulative activity before the retained window.
      *
      * @return whether sampling should include the capital-to-first-bar move
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public boolean hasInitialReturn() {
         return cashFlow.hasInitialReturn();

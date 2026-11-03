@@ -22,7 +22,7 @@ import org.ta4j.core.num.Num;
  * {@code null}.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 public final class FuturesPositionSnapshot implements Serializable {
 
@@ -32,7 +32,7 @@ public final class FuturesPositionSnapshot implements Serializable {
     /**
      * Collateral mode of the observed position.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public enum MarginMode {
 
@@ -84,7 +84,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return new snapshot builder
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static Builder builder() {
         return new Builder();
@@ -92,7 +92,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return a builder pre-populated with this observation
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Builder toBuilder() {
         return new Builder(this);
@@ -100,7 +100,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return the observed contract
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is a final value type whose instances are shared by reference; copying the immutable contract per accessor would allocate on every read")
     public FuturesContract contract() {
@@ -109,7 +109,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return the instant the venue published this observation
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Instant observedAt() {
         return observedAt;
@@ -117,7 +117,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return signed contract count, positive for a long position
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num signedContracts() {
         return signedContracts;
@@ -125,7 +125,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return the venue position identifier, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String positionId() {
         return positionId;
@@ -133,7 +133,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return the collateral mode, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public MarginMode marginMode() {
         return marginMode;
@@ -141,7 +141,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return the venue's average entry price, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num averageEntryPrice() {
         return averageEntryPrice;
@@ -149,7 +149,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return posted collateral in the settlement currency, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num collateral() {
         return collateral;
@@ -157,7 +157,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return posted initial margin in the settlement currency, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num initialMargin() {
         return initialMargin;
@@ -165,7 +165,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return posted maintenance margin in the settlement currency, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num maintenanceMargin() {
         return maintenanceMargin;
@@ -173,7 +173,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return the venue margin ratio, or {@code null}; may exceed one
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num marginRatio() {
         return marginRatio;
@@ -181,7 +181,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return the venue-reported leverage, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num leverage() {
         return leverage;
@@ -189,7 +189,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return the venue liquidation price, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num liquidationPrice() {
         return liquidationPrice;
@@ -197,7 +197,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return venue realized profit and loss, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num realizedPnl() {
         return realizedPnl;
@@ -205,7 +205,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return venue unrealized profit and loss, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num unrealizedPnl() {
         return unrealizedPnl;
@@ -213,7 +213,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return the data source, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String source() {
         return source;
@@ -221,7 +221,7 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     /**
      * @return immutable non-economic provider labels
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Map<String, String> attributes() {
         return attributes;
@@ -269,7 +269,7 @@ public final class FuturesPositionSnapshot implements Serializable {
     /**
      * Builder for {@link FuturesPositionSnapshot} values.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static final class Builder {
 
@@ -317,7 +317,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param contract futures contract
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
         public Builder contract(FuturesContract contract) {
@@ -330,7 +330,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param observedAt observation instant
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder observedAt(Instant observedAt) {
             this.observedAt = observedAt;
@@ -342,7 +342,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param signedContracts signed contract count
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder signedContracts(Num signedContracts) {
             this.signedContracts = signedContracts;
@@ -354,7 +354,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param positionId position identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder positionId(String positionId) {
             this.positionId = positionId;
@@ -366,7 +366,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param marginMode margin mode
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder marginMode(MarginMode marginMode) {
             this.marginMode = marginMode;
@@ -378,7 +378,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param averageEntryPrice average entry price
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder averageEntryPrice(Num averageEntryPrice) {
             this.averageEntryPrice = averageEntryPrice;
@@ -390,7 +390,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param collateral collateral
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder collateral(Num collateral) {
             this.collateral = collateral;
@@ -402,7 +402,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param initialMargin initial margin
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder initialMargin(Num initialMargin) {
             this.initialMargin = initialMargin;
@@ -414,7 +414,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param maintenanceMargin maintenance margin
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder maintenanceMargin(Num maintenanceMargin) {
             this.maintenanceMargin = maintenanceMargin;
@@ -426,7 +426,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param marginRatio margin ratio
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder marginRatio(Num marginRatio) {
             this.marginRatio = marginRatio;
@@ -438,7 +438,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param leverage leverage
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder leverage(Num leverage) {
             this.leverage = leverage;
@@ -450,7 +450,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param liquidationPrice liquidation price
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder liquidationPrice(Num liquidationPrice) {
             this.liquidationPrice = liquidationPrice;
@@ -462,7 +462,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param realizedPnl realized profit and loss
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder realizedPnl(Num realizedPnl) {
             this.realizedPnl = realizedPnl;
@@ -474,7 +474,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param unrealizedPnl unrealized profit and loss
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder unrealizedPnl(Num unrealizedPnl) {
             this.unrealizedPnl = unrealizedPnl;
@@ -486,7 +486,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param source data source identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder source(String source) {
             this.source = source;
@@ -498,7 +498,7 @@ public final class FuturesPositionSnapshot implements Serializable {
          *
          * @param attributes additional snapshot attributes
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder attributes(Map<String, String> attributes) {
             this.attributes = attributes == null ? Map.of() : attributes;
@@ -509,9 +509,9 @@ public final class FuturesPositionSnapshot implements Serializable {
          * Builds the immutable position snapshot.
          *
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          * @return the configured position snapshot
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public FuturesPositionSnapshot build() {
             return new FuturesPositionSnapshot(this);

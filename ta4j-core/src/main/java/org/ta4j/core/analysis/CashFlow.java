@@ -486,7 +486,7 @@ public class CashFlow implements PerformanceIndicator {
      *                             considered
      * @param equityCurveMode      the calculation mode
      * @param openPositionHandling how to handle open positions
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
@@ -507,7 +507,7 @@ public class CashFlow implements PerformanceIndicator {
      *                             consider for open positions
      * @param equityCurveMode      the calculation mode
      * @param openPositionHandling how to handle open positions
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int startIndex,
             int finalIndex, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
@@ -522,7 +522,7 @@ public class CashFlow implements PerformanceIndicator {
      * @param position           a single position
      * @param markPriceIndicator mark price indicator on the same series
      * @param equityCurveMode    the calculation mode
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public CashFlow(BarSeries barSeries, Position position, Indicator<Num> markPriceIndicator,
             EquityCurveMode equityCurveMode) {
@@ -536,7 +536,7 @@ public class CashFlow implements PerformanceIndicator {
      * capital.
      *
      * @return whether the cash flow has an initial futures return
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public boolean hasInitialReturn() {
         return initialReturnEligible;

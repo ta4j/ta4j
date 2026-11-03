@@ -37,7 +37,7 @@ import org.ta4j.core.num.NumFactory;
  * alone and never to the additional per-contract charges.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 public final class FuturesTransactionCostModel implements CostModel {
 
@@ -61,7 +61,7 @@ public final class FuturesTransactionCostModel implements CostModel {
 
     /**
      * @return a new model builder
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static Builder builder() {
         return new Builder();
@@ -72,7 +72,7 @@ public final class FuturesTransactionCostModel implements CostModel {
      * @param currentIndex the index up to which executed fills are charged
      * @return the modeled fee of the position portion executed by
      *         {@code currentIndex}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
@@ -96,7 +96,7 @@ public final class FuturesTransactionCostModel implements CostModel {
     /**
      * @param position the position
      * @return the modeled fee of every executed fill of the position
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @Override
     public Num calculate(Position position) {
@@ -107,7 +107,7 @@ public final class FuturesTransactionCostModel implements CostModel {
      * @throws UnsupportedOperationException always: a rate schedule needs the
      *                                       contract settlement terms that this
      *                                       overload does not receive
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @Override
     public Num calculate(Num price, Num amount) {
@@ -118,7 +118,7 @@ public final class FuturesTransactionCostModel implements CostModel {
     /**
      * @param fill the futures execution fill
      * @return the modeled charge of {@code fill} in the settlement currency
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @Override
     public Num calculate(TradeFill fill) {
@@ -137,7 +137,7 @@ public final class FuturesTransactionCostModel implements CostModel {
      * @return the commission component followed by one component per configured
      *         per-contract charge
      * @throws IllegalArgumentException when {@code fill} is not a futures fill
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @Override
     public List<TradeFee> calculateFees(TradeFill fill) {
@@ -258,7 +258,7 @@ public final class FuturesTransactionCostModel implements CostModel {
     /**
      * Builder for {@link FuturesTransactionCostModel} values.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static final class Builder {
 
@@ -278,7 +278,7 @@ public final class FuturesTransactionCostModel implements CostModel {
          *
          * @param makerRate maker fee rate
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder makerRate(Num makerRate) {
             this.makerRate = requireFinite(makerRate, "makerRate");
@@ -290,7 +290,7 @@ public final class FuturesTransactionCostModel implements CostModel {
          *
          * @param takerRate taker fee rate
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder takerRate(Num takerRate) {
             this.takerRate = requireFinite(takerRate, "takerRate");
@@ -302,7 +302,7 @@ public final class FuturesTransactionCostModel implements CostModel {
          *
          * @param minimumPerContract minimum fee per contract
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder minimumPerContract(Num minimumPerContract) {
             this.minimumPerContract = minimumPerContract == null ? null
@@ -316,7 +316,7 @@ public final class FuturesTransactionCostModel implements CostModel {
          * @param type   fee type
          * @param amount per-contract fee amount
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder perContractCharge(TradeFee.Type type, Num amount) {
             Objects.requireNonNull(type, "type");
@@ -329,7 +329,7 @@ public final class FuturesTransactionCostModel implements CostModel {
          *
          * @param defaultLiquidity default liquidity
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder defaultLiquidity(RealtimeBar.Liquidity defaultLiquidity) {
             this.defaultLiquidity = Objects.requireNonNull(defaultLiquidity, "defaultLiquidity");
@@ -341,7 +341,7 @@ public final class FuturesTransactionCostModel implements CostModel {
          *
          * @param source data source identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder source(String source) {
             this.source = source;
@@ -353,7 +353,7 @@ public final class FuturesTransactionCostModel implements CostModel {
          *
          * @param asOf effective instant
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder asOf(Instant asOf) {
             this.asOf = asOf;
@@ -364,9 +364,9 @@ public final class FuturesTransactionCostModel implements CostModel {
          * Builds the immutable futures transaction cost model.
          *
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          * @return the configured futures transaction cost model
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public FuturesTransactionCostModel build() {
             if (makerRate == null || takerRate == null) {

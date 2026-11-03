@@ -21,7 +21,7 @@ import org.ta4j.core.num.Num;
  * persisted as a {@link FuturesCashFlow}.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 public final class FuturesFunding implements Serializable {
 
@@ -51,7 +51,7 @@ public final class FuturesFunding implements Serializable {
 
     /**
      * @return new funding-event builder
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static Builder builder() {
         return new Builder();
@@ -59,7 +59,7 @@ public final class FuturesFunding implements Serializable {
 
     /**
      * @return a builder pre-populated with this event
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Builder toBuilder() {
         return new Builder(this);
@@ -67,7 +67,7 @@ public final class FuturesFunding implements Serializable {
 
     /**
      * @return the contract the event applies to
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is a final value type whose instances are shared by reference; copying the immutable contract per accessor would allocate on every read")
     public FuturesContract contract() {
@@ -76,7 +76,7 @@ public final class FuturesFunding implements Serializable {
 
     /**
      * @return the stable event identifier used for idempotent recording
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String eventId() {
         return eventId;
@@ -84,7 +84,7 @@ public final class FuturesFunding implements Serializable {
 
     /**
      * @return the logical bar index of the funding boundary
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public int index() {
         return index;
@@ -92,7 +92,7 @@ public final class FuturesFunding implements Serializable {
 
     /**
      * @return the funding boundary instant
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Instant time() {
         return time;
@@ -100,7 +100,7 @@ public final class FuturesFunding implements Serializable {
 
     /**
      * @return the signed funding rate; a positive rate charges longs
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num rate() {
         return rate;
@@ -108,7 +108,7 @@ public final class FuturesFunding implements Serializable {
 
     /**
      * @return the positive reference price the rate applies to
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num referencePrice() {
         return referencePrice;
@@ -116,7 +116,7 @@ public final class FuturesFunding implements Serializable {
 
     /**
      * @return the data source, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String source() {
         return source;
@@ -151,7 +151,7 @@ public final class FuturesFunding implements Serializable {
     /**
      * Builder for {@link FuturesFunding} values.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static final class Builder {
 
@@ -181,7 +181,7 @@ public final class FuturesFunding implements Serializable {
          *
          * @param contract futures contract
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
         public Builder contract(FuturesContract contract) {
@@ -194,7 +194,7 @@ public final class FuturesFunding implements Serializable {
          *
          * @param eventId stable event identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder eventId(String eventId) {
             this.eventId = eventId;
@@ -206,7 +206,7 @@ public final class FuturesFunding implements Serializable {
          *
          * @param index logical bar index
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder index(int index) {
             this.index = index;
@@ -218,7 +218,7 @@ public final class FuturesFunding implements Serializable {
          *
          * @param time funding boundary instant
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder time(Instant time) {
             this.time = time;
@@ -230,7 +230,7 @@ public final class FuturesFunding implements Serializable {
          *
          * @param rate signed funding rate
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder rate(Num rate) {
             this.rate = rate;
@@ -242,7 +242,7 @@ public final class FuturesFunding implements Serializable {
          *
          * @param referencePrice positive reference price
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder referencePrice(Num referencePrice) {
             this.referencePrice = referencePrice;
@@ -254,7 +254,7 @@ public final class FuturesFunding implements Serializable {
          *
          * @param source data source identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder source(String source) {
             this.source = source;
@@ -265,7 +265,7 @@ public final class FuturesFunding implements Serializable {
          * Builds the immutable funding event.
          *
          * @return the configured funding event
-         * @since 0.26.1
+         * @since 0.28.1
          */
         public FuturesFunding build() {
             return new FuturesFunding(this);

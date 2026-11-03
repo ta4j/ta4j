@@ -36,7 +36,7 @@ import org.ta4j.core.num.NumFactory;
  * inside the realized profit of an open one.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.28.1
  */
 final class FuturesRecordReturnSupport {
 
@@ -48,7 +48,7 @@ final class FuturesRecordReturnSupport {
      *
      * @param tradingRecord trading record, may be {@code null}
      * @return true when the record trades a native futures contract
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static boolean isFuturesRecord(TradingRecord tradingRecord) {
         return tradingRecord != null && tradingRecord.getFuturesContract() != null;
@@ -67,7 +67,7 @@ final class FuturesRecordReturnSupport {
      * @return total return including the base, i.e. {@code 1 + profit / capital}
      * @throws IllegalStateException when the record has no positive finite initial
      *                               capital
-     * @since 0.25.1
+     * @since 0.28.1
      */
     static Num totalReturn(BarSeries series, TradingRecord tradingRecord, boolean gross) {
         NumFactory numFactory = series.numFactory();

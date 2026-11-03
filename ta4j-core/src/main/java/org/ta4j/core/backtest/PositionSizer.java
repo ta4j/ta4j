@@ -403,7 +403,7 @@ public interface PositionSizer {
          * @param tradingRecord        trading record for the current run
          * @param transactionCostModel transaction cost model
          * @param holdingCostModel     holding cost model
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Context(int signalIndex, int entryIndex, Num entryPrice, Strategy strategy, BarSeries barSeries,
                 TradeType tradeType, TradingRecord tradingRecord, CostModel transactionCostModel,
@@ -469,7 +469,7 @@ public interface PositionSizer {
          * records.
          *
          * @return traded contract, or {@code null} for spot records
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public FuturesContract futuresContract() {
             return tradingRecord.getFuturesContract();

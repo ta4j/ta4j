@@ -51,7 +51,7 @@ public interface CostModel {
      * @return the trading cost of {@code fill}
      * @throws UnsupportedOperationException when {@code fill} is a futures fill and
      *                                       this model does not override the method
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default Num calculate(TradeFill fill) {
         Objects.requireNonNull(fill, "fill");
@@ -75,7 +75,7 @@ public interface CostModel {
      * @param fill the futures execution fill
      * @return the fee components of {@code fill}
      * @throws IllegalArgumentException when {@code fill} is not a futures fill
-     * @since 0.25.1
+     * @since 0.28.1
      */
     default List<TradeFee> calculateFees(TradeFill fill) {
         Objects.requireNonNull(fill, "fill");

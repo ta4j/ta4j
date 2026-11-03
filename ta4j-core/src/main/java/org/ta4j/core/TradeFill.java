@@ -210,7 +210,7 @@ public final class TradeFill implements Serializable {
 
     /**
      * @return new fill builder
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static Builder builder() {
         return new Builder();
@@ -218,7 +218,7 @@ public final class TradeFill implements Serializable {
 
     /**
      * @return a builder pre-populated with this fill
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Builder toBuilder() {
         return new Builder(this);
@@ -295,7 +295,7 @@ public final class TradeFill implements Serializable {
     /**
      * @return instrument identifier; the contract symbol for futures fills, or
      *         {@code null} for spot fills without a label
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String instrument() {
         return instrument;
@@ -303,7 +303,7 @@ public final class TradeFill implements Serializable {
 
     /**
      * @return the traded contract, or {@code null} for a spot fill
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is a final value type whose instances are shared by reference; copying the immutable contract per accessor would allocate on every read")
     public FuturesContract futuresContract() {
@@ -312,7 +312,7 @@ public final class TradeFill implements Serializable {
 
     /**
      * @return the venue liquidity role, or {@code null} when unknown
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public RealtimeBar.Liquidity liquidity() {
         return liquidity;
@@ -320,7 +320,7 @@ public final class TradeFill implements Serializable {
 
     /**
      * @return the venue execution identifier, or {@code null}; never fabricated
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public String executionId() {
         return executionId;
@@ -329,7 +329,7 @@ public final class TradeFill implements Serializable {
     /**
      * @return resolved fee components in the contract settlement currency; empty
      *         for spot fills and for futures fills without recorded components
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public List<TradeFee> fees() {
         return fees == null ? List.of() : fees;
@@ -338,7 +338,7 @@ public final class TradeFill implements Serializable {
     /**
      * @return true when this fill carries an explicit fee component list, even when
      *         it is empty; false when fees are still to be modelled
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public boolean hasRecordedFees() {
         return fees != null;
@@ -346,7 +346,7 @@ public final class TradeFill implements Serializable {
 
     /**
      * @return true when the venue reports this fill as a liquidation
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public boolean liquidation() {
         return liquidation;
@@ -354,7 +354,7 @@ public final class TradeFill implements Serializable {
 
     /**
      * @return true when the venue reports this fill as reduce-only
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public boolean reduceOnly() {
         return reduceOnly;
@@ -362,7 +362,7 @@ public final class TradeFill implements Serializable {
 
     /**
      * @return the market observation attached to this fill, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The captured market snapshot is an immutable value type shared by reference; copying it per accessor would allocate on every read")
     public FuturesMarketSnapshot marketSnapshot() {
@@ -371,7 +371,7 @@ public final class TradeFill implements Serializable {
 
     /**
      * @return the position observation attached to this fill, or {@code null}
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public FuturesPositionSnapshot positionSnapshot() {
         return positionSnapshot;
@@ -471,7 +471,7 @@ public final class TradeFill implements Serializable {
     /**
      * Builder for {@link TradeFill} values.
      *
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public static final class Builder {
 
@@ -521,7 +521,7 @@ public final class TradeFill implements Serializable {
          *
          * @param index logical bar index
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder index(int index) {
             this.index = index;
@@ -533,7 +533,7 @@ public final class TradeFill implements Serializable {
          *
          * @param time execution time
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder time(Instant time) {
             this.time = time;
@@ -545,7 +545,7 @@ public final class TradeFill implements Serializable {
          *
          * @param price execution price
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder price(Num price) {
             this.price = price;
@@ -557,7 +557,7 @@ public final class TradeFill implements Serializable {
          *
          * @param amount executed amount
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder amount(Num amount) {
             this.amount = amount;
@@ -569,7 +569,7 @@ public final class TradeFill implements Serializable {
          *
          * @param fee legacy fee amount
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder fee(Num fee) {
             this.fee = fee;
@@ -581,7 +581,7 @@ public final class TradeFill implements Serializable {
          *
          * @param side execution side
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder side(ExecutionSide side) {
             this.side = side;
@@ -593,7 +593,7 @@ public final class TradeFill implements Serializable {
          *
          * @param orderId order identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder orderId(String orderId) {
             this.orderId = orderId;
@@ -605,7 +605,7 @@ public final class TradeFill implements Serializable {
          *
          * @param correlationId correlation identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder correlationId(String correlationId) {
             this.correlationId = correlationId;
@@ -617,7 +617,7 @@ public final class TradeFill implements Serializable {
          *
          * @param instrument instrument identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder instrument(String instrument) {
             this.instrument = instrument;
@@ -629,7 +629,7 @@ public final class TradeFill implements Serializable {
          *
          * @param futuresContract futures contract
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
         public Builder futuresContract(FuturesContract futuresContract) {
@@ -642,7 +642,7 @@ public final class TradeFill implements Serializable {
          *
          * @param liquidity execution liquidity
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder liquidity(RealtimeBar.Liquidity liquidity) {
             this.liquidity = liquidity;
@@ -654,7 +654,7 @@ public final class TradeFill implements Serializable {
          *
          * @param executionId execution identifier
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder executionId(String executionId) {
             this.executionId = executionId;
@@ -666,7 +666,7 @@ public final class TradeFill implements Serializable {
          *
          * @param fees fee components
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder fees(List<TradeFee> fees) {
             this.fees = fees == null ? null : List.copyOf(fees);
@@ -678,7 +678,7 @@ public final class TradeFill implements Serializable {
          *
          * @param liquidation whether the fill liquidates the position
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder liquidation(boolean liquidation) {
             this.liquidation = liquidation;
@@ -690,7 +690,7 @@ public final class TradeFill implements Serializable {
          *
          * @param reduceOnly whether the fill is reduce-only
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder reduceOnly(boolean reduceOnly) {
             this.reduceOnly = reduceOnly;
@@ -702,7 +702,7 @@ public final class TradeFill implements Serializable {
          *
          * @param marketSnapshot market snapshot
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable market snapshot by reference; the snapshot is never mutated after the fill is built")
         public Builder marketSnapshot(FuturesMarketSnapshot marketSnapshot) {
@@ -715,7 +715,7 @@ public final class TradeFill implements Serializable {
          *
          * @param positionSnapshot position snapshot
          * @return this builder
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public Builder positionSnapshot(FuturesPositionSnapshot positionSnapshot) {
             this.positionSnapshot = positionSnapshot;
@@ -726,7 +726,7 @@ public final class TradeFill implements Serializable {
          * Builds the immutable fill.
          *
          * @return the configured fill
-         * @since 0.25.1
+         * @since 0.28.1
          */
         public TradeFill build() {
             return new TradeFill(this);

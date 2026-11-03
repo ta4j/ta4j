@@ -648,7 +648,7 @@ public class Returns implements PerformanceIndicator {
      *                             calculation method and output format)
      * @param equityCurveMode      the calculation mode
      * @param openPositionHandling how to handle open positions
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int finalIndex,
             ReturnRepresentation representation, EquityCurveMode equityCurveMode,
@@ -705,7 +705,7 @@ public class Returns implements PerformanceIndicator {
     /**
      * @return whether the captured first slot carries a return rather than a
      *         placeholder
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public boolean hasFirstBarReturn() {
         return firstRetainedSlotSeeded;
@@ -718,7 +718,7 @@ public class Returns implements PerformanceIndicator {
      * retained head of the series.
      *
      * @return {@code true} when the first reported value is a cumulative seed
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public boolean hasSeededFirstBarReturn() {
         return seededFirstBarReturn;

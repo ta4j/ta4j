@@ -292,7 +292,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @param position           the position to evaluate
      * @param markPriceIndicator mark price indicator on the same series
      * @return the Calmar ratio
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num calculate(BarSeries series, Position position, Indicator<Num> markPriceIndicator) {
         if (position == null || position.getEntry() == null)
@@ -308,7 +308,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @param tradingRecord      the trading record to evaluate
      * @param markPriceIndicator mark price indicator on the same series
      * @return the Calmar ratio
-     * @since 0.25.1
+     * @since 0.28.1
      */
     public Num calculate(BarSeries series, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator) {
         if (tradingRecord == null)
