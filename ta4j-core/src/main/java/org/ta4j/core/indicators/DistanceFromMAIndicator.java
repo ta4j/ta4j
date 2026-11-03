@@ -107,8 +107,9 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
     private synchronized void warnIfSourceReadUnavailable(int index) {
         BarSeries source = movingAverage.getBarSeries();
         int endIndex = source.getEndIndex();
-        if (!warnedUnavailableSource && log.isWarnEnabled() && source != getBarSeries() && endIndex >= 0
-                && index > endIndex) {
+        if (!warnedUnavailableSource && log.isWarnEnabled()
+                && AbstractIndicator.unwrapBarSeries(source) != AbstractIndicator.unwrapBarSeries(getBarSeries())
+                && endIndex >= 0 && index > endIndex) {
             warnedUnavailableSource = true;
             log.warn("{}: cross-series source read at index {} failed; source ends at {}. "
                     + "Ensure corresponding observations use the same absolute indices and are available when read",

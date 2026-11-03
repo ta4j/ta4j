@@ -35,8 +35,11 @@ public interface Indicator<T> {
      *
      * <p>
      * For indicators combining different series at the same index, callers must
-     * ensure that the index denotes the intended corresponding observation in each
-     * series; equal index ranges alone do not establish this relationship.
+     * ensure that the index is available and denotes the intended corresponding
+     * observation in each series; equal index ranges alone do not establish this
+     * relationship. A {@link BaseBarSeries} returns its first retained bar when a
+     * nonnegative index refers to a removed bar, potentially introducing
+     * look-ahead.
      *
      * @param index the bar index
      * @return the value of the indicator

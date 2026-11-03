@@ -78,6 +78,27 @@ public class DistanceFromMAIndicatorTest extends AbstractIndicatorTest<Indicator
     }
 
     @Test
+    public void sameSeriesReadFailureAfterSeriesResetDoesNotWarnAboutCrossSeries() {
+        ClosePriceIndicator source = new ClosePriceIndicator(data) {
+            @Override
+            public Num getValue(int index) {
+                data.clear();
+                data.barBuilder().closePrice(10).add();
+                return super.getValue(index);
+            }
+        };
+        DistanceFromMAIndicator distance = new DistanceFromMAIndicator(data, new SMAIndicator(source, 1));
+        TraceTestLogger logs = new TraceTestLogger();
+        logs.open();
+        try {
+            assertThrows(IndexOutOfBoundsException.class, () -> distance.getValue(5));
+            assertThat(logs.getLogOutput()).doesNotContain("cross-series source read");
+        } finally {
+            logs.close();
+        }
+    }
+
+    @Test
     public void laggingAndPrunedSourcesDoNotImplyMisalignment() {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20).build();
         DistanceFromMAIndicator distance = new DistanceFromMAIndicator(data,
