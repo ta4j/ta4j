@@ -110,6 +110,45 @@ public class RecentSwingIndicatorsTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void detectorPivotsAreNotRetainedForEveryScannedIndex() {
+        final double[] closes = new double[200];
+        for (int i = 0; i < closes.length; i++) {
+            closes[i] = 100 + (i % 2 == 0 ? i : -i);
+        }
+        final BarSeries series = seriesFromCloses(closes);
+        final AtomicInteger detections = new AtomicInteger();
+        final SwingDetector detector = (bars, index, degree) -> {
+            detections.incrementAndGet();
+            return SwingDetectorResult.fromPivots(List.of(new SwingPivot(Math.max(0, index - 1),
+                    bars.getBar(Math.max(0, index - 1)).getHighPrice(), SwingPivotType.HIGH)), degree);
+        };
+        final Pair pair = RecentSwingIndicators.fromDetector(series, detector);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            pair.highs().getValue(i);
+        }
+        final int firstPass = detections.get();
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            pair.highs().getValue(i);
+        }
+
+        // One detection per scanned index plus the shared series-end lookup; the
+        // end lookup is memoized across price reads instead of per index.
+        assertThat(firstPass).isLessThanOrEqualTo(series.getBarCount() + 2);
+        final CachedIndicator<?> pivots = (CachedIndicator<?>) pair.highs()
+                .getDependencies()
+                .stream()
+                .filter(dependency -> dependency.getClass().getSimpleName().equals("DetectorPivotIndicator"))
+                .findFirst()
+                .orElseThrow();
+        for (int i = series.getBeginIndex(); i < series.getEndIndex(); i++) {
+            assertThat(pivots.isCached(i)).as("pivot list cached at %s", i).isFalse();
+        }
+        assertThat(pair.highs().getValue(series.getEndIndex()))
+                .isEqualByComparingTo(series.getBar(series.getEndIndex() - 1).getHighPrice());
+    }
+
+    @Test
     public void shouldAdaptTolerantConsensusDetector() {
         final BarSeries series = seriesFromCloses(10, 12, 15, 14, 11);
         final SwingDetector first = fixedHighDetector(2, 15);
