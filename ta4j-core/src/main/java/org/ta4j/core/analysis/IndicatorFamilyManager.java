@@ -42,7 +42,7 @@ import org.ta4j.core.num.NumFactory;
  * are skipped. Unstable-bar counts remain relative to the retained begin; the
  * manager translates them to absolute eligibility indexes before sampling.
  *
- * @since 0.26.1
+ * @since 0.28.1
  */
 public final class IndicatorFamilyManager
         implements AnalysisRunner<Map<String, Indicator<Num>>, IndicatorFamilyResult> {
@@ -52,7 +52,7 @@ public final class IndicatorFamilyManager
      * copying or metric construction when this budget is exceeded. History length
      * and metric cost remain the caller's responsibility.
      *
-     * @since 0.26.1
+     * @since 0.28.1
      */
     public static final int MAX_PAIR_COUNT = 8_128;
 
@@ -72,7 +72,7 @@ public final class IndicatorFamilyManager
      *                  {@link #analyze(Map)}
      * @throws IllegalArgumentException if {@code barSeries} is empty
      * @throws NullPointerException     if {@code barSeries} is {@code null}
-     * @since 0.26.1
+     * @since 0.28.1
      */
     public IndicatorFamilyManager(BarSeries barSeries) {
         this(barSeries, DEFAULT_CORRELATION_WINDOW);
@@ -89,7 +89,7 @@ public final class IndicatorFamilyManager
      *                                  {@code correlationWindow} is less than
      *                                  {@code 2}
      * @throws NullPointerException     if {@code barSeries} is {@code null}
-     * @since 0.26.1
+     * @since 0.28.1
      */
     public IndicatorFamilyManager(BarSeries barSeries, int correlationWindow) {
         this(barSeries, correlationWindow, 1);
@@ -107,7 +107,7 @@ public final class IndicatorFamilyManager
      * @throws NullPointerException     if {@code barSeries} or
      *                                  {@code similarityMetricFactory} is
      *                                  {@code null}
-     * @since 0.26.1
+     * @since 0.28.1
      */
     public IndicatorFamilyManager(BarSeries barSeries,
             BiFunction<Indicator<Num>, Indicator<Num>, Indicator<Num>> similarityMetricFactory) {
@@ -132,7 +132,7 @@ public final class IndicatorFamilyManager
      *                                  {@code 2}, or {@code maxParallelism} is less
      *                                  than {@code 1}
      * @throws NullPointerException     if {@code barSeries} is {@code null}
-     * @since 0.26.1
+     * @since 0.28.1
      */
     public IndicatorFamilyManager(BarSeries barSeries, int correlationWindow, int maxParallelism) {
         this(barSeries, defaultSimilarityMetric(correlationWindow), maxParallelism, correlationWindow);
@@ -158,7 +158,7 @@ public final class IndicatorFamilyManager
      * @throws NullPointerException     if {@code barSeries} or
      *                                  {@code similarityMetricFactory} is
      *                                  {@code null}
-     * @since 0.26.1
+     * @since 0.28.1
      */
     public IndicatorFamilyManager(BarSeries barSeries,
             BiFunction<Indicator<Num>, Indicator<Num>, Indicator<Num>> similarityMetricFactory, int maxParallelism) {
@@ -185,7 +185,7 @@ public final class IndicatorFamilyManager
      *
      * @param indicators named indicators, canonicalized by natural String order
      * @return family analysis result
-     * @since 0.26.1
+     * @since 0.28.1
      */
     public IndicatorFamilyResult analyze(Map<String, Indicator<Num>> indicators) {
         return analyze(indicators, DEFAULT_SIMILARITY_THRESHOLD);
@@ -200,7 +200,7 @@ public final class IndicatorFamilyManager
      *                            every pair inside a family; converted with this
      *                            manager's {@link BarSeries} number factory
      * @return family analysis result
-     * @since 0.26.1
+     * @since 0.28.1
      */
     public IndicatorFamilyResult analyze(Map<String, Indicator<Num>> indicators, Number similarityThreshold) {
         Num threshold = requireSimilarityThreshold(similarityThreshold);
@@ -231,7 +231,7 @@ public final class IndicatorFamilyManager
      * @param indicators named indicators to analyze
      * @return family analysis at the default threshold
      * @throws IllegalArgumentException if series is not this manager's series
-     * @since 0.26.1
+     * @since 0.28.1
      */
     @Override
     public IndicatorFamilyResult analyze(BarSeries series, Map<String, Indicator<Num>> indicators) {

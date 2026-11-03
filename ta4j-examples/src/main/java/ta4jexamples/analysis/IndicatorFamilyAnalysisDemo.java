@@ -63,7 +63,7 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * through several similarity thresholds, and logs how broad groupings at lower
  * thresholds split into tighter near-duplicate families at higher thresholds.
  *
- * @since 0.26.1
+ * @since 0.28.1
  */
 public final class IndicatorFamilyAnalysisDemo {
 
@@ -84,7 +84,7 @@ public final class IndicatorFamilyAnalysisDemo {
      * Runs the analysis demo.
      *
      * @param args ignored
-     * @since 0.26.1
+     * @since 0.28.1
      */
     public static void main(String[] args) {
         BarSeries series = loadSeries();
