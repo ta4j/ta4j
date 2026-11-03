@@ -4,6 +4,7 @@
 
 - **Reusable data, charting, and named catalogs (`CF-336`)**: `ta4j-data`, `ta4j-charting`, and `ta4j-catalog` publish the existing loaders, chart workflows, calendar strategies, and named rules without depending on executable examples. Use them from Java applications, examples, or the independently owned [ta4j-cli](https://github.com/ta4j/ta4j-cli) project; existing Java package names and classpath dataset names are preserved.
 - **Rebuild rules from short labels (`CF-336`)**: Register a `NamedRule` subclass once and recreate it from a compact label such as `RsiThresholdRule_BELOW_14_30`. Subclasses call `super(TheirClass.class, parameters...)`; conflicting simple names fail fast rather than resolving by classpath order.
+- **Optional GPU providers in `ta4j-acceleration` (`CF-336`)**: Keep native acceleration in the ta4j reactor, with thin source-built platform-classifier JARs for Metal on Apple silicon, CUDA on Windows/Linux x86-64, and OpenCL on Linux x86-64/aarch64. Java applications can build and locally install a matching classifier with its Maven profile or supply a trusted native-library path; release and snapshot workflows publish the ordinary provider artifact, not platform classifiers. No workload/device rows are qualified yet, so `-Dta4j.acceleration.enabled=auto` currently keeps every forecast scalar, even with an approximate tolerance. Direct provider-SPI kernel runs bypass automatic selection/fallback and do not establish automatic offload or a speedup. The standalone CLI is neither bundled nor required.
 
 ### Changed
 
@@ -18,6 +19,7 @@
 - **Keep rejected named-component scans out of lookups**: Classes discovered in a package are committed only after the entire package passes simple-name conflict checks. A failed scan leaves existing registrations and successful packages intact, and retries cannot resolve an arbitrary conflicting class.
 - **Explicit CSV loading policies**: `CsvFileBarSeriesDataSource` retains permissive malformed-row handling by default and offers an explicit strict-loading overload for applications that must reject partial input.
 - **Locale-independent walk-forward calibration metrics**: `WalkForwardTuner` now updates case-insensitive Brier, log-loss and calibration-error metric names consistently across system locales, including Turkish. Its calibration-metric benchmark exercises the same production path.
+- **Native-provider validation and qualification handoffs (`CF-336`)**: Native requests reject fractional, nonfinite, out-of-range, or output-vector-overflowing dimensions before native initialization. Metal rejects variances that underflow or overflow FP32 and compiles kernels with safe, precise math. Configured CUDA/OpenCL hardware validation fails on initialization or self-test errors instead of skipping. Release manifests include ordinary provider artifacts without promising hosted classifiers. OpenCL validation handles large device inventories and architecture-matched containers; CUDA preflight fails on native tool errors.
 
 ## 0.28.0 (2026-11-02)
 
