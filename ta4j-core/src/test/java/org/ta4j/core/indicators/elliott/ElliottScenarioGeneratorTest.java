@@ -6,7 +6,9 @@ package org.ta4j.core.indicators.elliott;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.AbstractList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -548,6 +550,37 @@ class ElliottScenarioGeneratorTest {
 
         assertThat(set.all()).isEmpty();
         assertThat(limitedGenerator.lastDiagnostics().retainedScenarioCount()).isZero();
+    }
+
+    @Test
+    void longSegmentDecompositionReadsOnlyTheSelectedPivots() {
+        final int swingCount = 10_000;
+        final AtomicInteger reads = new AtomicInteger();
+        final List<ElliottSwing> swings = new AbstractList<>() {
+            @Override
+            public ElliottSwing get(int index) {
+                reads.incrementAndGet();
+                final boolean rising = index % 2 == 0;
+                return new ElliottSwing(index * 5, (index + 1) * 5, numFactory.numOf(rising ? 100 : 110),
+                        numFactory.numOf(rising ? 110 : 100), ElliottDegree.MINOR);
+            }
+
+            @Override
+            public int size() {
+                return swingCount;
+            }
+        };
+
+        final List<ElliottScenarioGenerator.SwingPivotPoint> pivots = generator.decompositionPivots(swings);
+
+        assertThat(pivots).hasSize(16);
+        assertThat(pivots.getFirst().index()).isZero();
+        assertThat(pivots.getLast().index()).isEqualTo(swingCount * 5);
+        assertThat(pivots).isSortedAccordingTo(java.util.Comparator.comparingInt(ElliottScenarioGenerator.SwingPivotPoint::index));
+        // Each generation pass selects pivots once per starting point, so reading
+        // the whole segment here would make generation quadratic in swing count.
+        assertThat(reads.get()).isLessThanOrEqualTo(16);
+        assertThat(generator.decompositionPivots(swings.subList(0, 15))).isEqualTo(generator.extractPivots(swings.subList(0, 15)));
     }
 
     private boolean invokePartialImpulseBranchValidator(final List<ElliottSwing> swings,
