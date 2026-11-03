@@ -12,6 +12,7 @@ import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -63,7 +64,9 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
 
         // Start from the first bar or the start of the window
         int startIndex = Math.max(0, index - barCount + 1);
-        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()) {
+        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()
+                && (!(numFactory.zero() instanceof DecimalNum decimal)
+                        || decimal.getMathContext().getPrecision() >= 16)) {
             sumOfPositiveMoneyFlowVolume = positiveTotal.getValue(index);
             sumOfNegativeMoneyFlowVolume = negativeTotal.getValue(index);
         } else {

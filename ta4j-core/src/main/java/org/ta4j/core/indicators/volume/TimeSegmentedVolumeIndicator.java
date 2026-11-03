@@ -10,6 +10,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.DifferenceIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -66,7 +67,9 @@ public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
 
         // Calculate the TSV for the given period
         int startIndex = Math.max(0, index - barCount + 1);
-        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()) {
+        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()
+                && (!(getBarSeries().numFactory().zero() instanceof DecimalNum decimal)
+                        || decimal.getMathContext().getPrecision() >= 16)) {
             return total.getValue(index);
         }
         for (int i = startIndex; i <= index; i++) {

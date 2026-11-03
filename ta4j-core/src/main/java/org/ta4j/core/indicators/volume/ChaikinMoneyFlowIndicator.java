@@ -8,6 +8,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.CloseLocationValueIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -55,7 +56,9 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         int startIndex = Math.max(0, index - barCount + 1);
         Num sumOfMoneyFlowVolume;
-        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()) {
+        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()
+                && (!(getBarSeries().numFactory().zero() instanceof DecimalNum decimal)
+                        || decimal.getMathContext().getPrecision() >= 16)) {
             sumOfMoneyFlowVolume = moneyFlowTotal.getValue(index);
         } else {
             sumOfMoneyFlowVolume = getBarSeries().numFactory().zero();

@@ -9,6 +9,7 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -49,7 +50,9 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
-        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()) {
+        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()
+                && (!(getBarSeries().numFactory().zero() instanceof DecimalNum decimal)
+                        || decimal.getMathContext().getPrecision() >= 16)) {
             return ratioTotal.getValue(index);
         }
         Num massIndex = getBarSeries().numFactory().zero();

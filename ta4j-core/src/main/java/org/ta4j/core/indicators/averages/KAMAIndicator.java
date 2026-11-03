@@ -7,6 +7,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -87,7 +88,9 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
         int startChangeIndex = Math.max(0, index - barCountEffectiveRatio);
         Num change = currentPrice.minus(price.getValue(startChangeIndex)).abs();
         Num volatility;
-        if (barCountEffectiveRatio > 1 && startChangeIndex >= getBarSeries().getBeginIndex()) {
+        if (barCountEffectiveRatio > 1 && startChangeIndex >= getBarSeries().getBeginIndex()
+                && (!(getBarSeries().numFactory().zero() instanceof DecimalNum decimal)
+                        || decimal.getMathContext().getPrecision() >= 16)) {
             volatility = volatilityTotal.getValue(index);
         } else {
             volatility = getBarSeries().numFactory().zero();

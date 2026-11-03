@@ -7,6 +7,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
 import org.ta4j.core.indicators.helpers.LossIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -49,7 +50,9 @@ public class CMOIndicator extends CachedIndicator<Num> {
         final var numFactory = getBarSeries().numFactory();
         Num sumOfGains;
         Num sumOfLosses;
-        if (barCount > 1 && Math.max(0, index - barCount + 1) >= getBarSeries().getBeginIndex()) {
+        if (barCount > 1 && Math.max(0, index - barCount + 1) >= getBarSeries().getBeginIndex()
+                && (!(numFactory.zero() instanceof DecimalNum decimal)
+                        || decimal.getMathContext().getPrecision() >= 16)) {
             sumOfGains = gains.getValue(index);
             sumOfLosses = losses.getValue(index);
         } else {
