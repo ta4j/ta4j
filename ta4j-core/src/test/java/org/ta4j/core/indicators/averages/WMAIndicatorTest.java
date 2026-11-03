@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
@@ -53,15 +54,13 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void historicalReplacementAndExpirationUpdateWeightedAverages() {
-        var series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(1, 2, 3, 4, 5, 6)
-                .build();
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
         var close = new ClosePriceIndicator(series);
         var wma = new WMAIndicator(close, 3);
         for (int i = 2; i <= 3; i++) {
             wma.getValue(i);
         }
-        var old = series.getBar(1);
+        Bar old = series.getBar(1);
         series.replaceBar(1,
                 series.barBuilder()
                         .timePeriod(old.getTimePeriod())
@@ -79,7 +78,9 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     @Test
     public void weightedAverageRecoversAfterLargeValuesExpire() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1e100, 1e100, 1, 2, 3, 4).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1e100, 1e100, 1, 2, 3, 4)
+                .build();
         var close = new ClosePriceIndicator(series);
         Indicator<Num> average = new WMAIndicator(close, 2);
         average.getValue(1);

@@ -8,6 +8,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
@@ -51,14 +52,12 @@ public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void historicalReplacementAndExpirationUpdateWeightedAverage() {
-        var series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(1, 2, 3, 4, 5, 6)
-                .build();
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
         var average = new LWMAIndicator(new ClosePriceIndicator(series), 3);
         for (int i = 2; i <= 3; i++) {
             average.getValue(i);
         }
-        var old = series.getBar(1);
+        Bar old = series.getBar(1);
         series.replaceBar(1,
                 series.barBuilder()
                         .timePeriod(old.getTimePeriod())
@@ -76,7 +75,9 @@ public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void weightedAverageRecoversAfterLargeValuesExpire() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1e100, 1e100, 1, 2, 3, 4).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1e100, 1e100, 1, 2, 3, 4)
+                .build();
         var average = new LWMAIndicator(new ClosePriceIndicator(series), 2);
         average.getValue(1);
         average.getValue(2);
@@ -104,7 +105,7 @@ public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         average.getValue(3);
         assertNumEquals(14.0 / 6, average.getValue(4));
 
-        var old = series.getBar(4);
+        Bar old = series.getBar(4);
         series.replaceBar(4,
                 series.barBuilder()
                         .timePeriod(old.getTimePeriod())
