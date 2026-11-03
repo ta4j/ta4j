@@ -205,7 +205,7 @@ final class TrendStrengthIndicator extends CachedIndicator<Integer> {
                 checkpointCount = count;
                 checkpointFirst = first;
                 checkpointValue = value;
-                checkpointVersion++;
+                checkpointVersion = version + 1;
             }
         } finally {
             checkpointLock.unlock();
