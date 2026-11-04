@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.statistics;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
@@ -267,7 +268,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         if (rawScaleDecay.compareTo(BigDecimal.ZERO) <= 0 || rawScaleDecay.compareTo(BigDecimal.ONE) >= 0) {
             throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
         }
-        BigDecimal complement = BigDecimal.ONE.subtract(rawScaleDecay);
+        BigDecimal complement = BigDecimal.ONE.subtract(rawScaleDecay, ExactDecimalArithmetic.RECOVERY_CONTEXT);
         Num oneMinusScaleDecay = factory.numOf(complement);
         return new ValidatedScaleDecay(rawScaleDecay, complement, oneMinusScaleDecay);
     }
@@ -383,7 +384,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         if (exactScale == null) {
             exactScale = ExactDecimalArithmetic.exactValueOf(previousScale);
         }
-        BigDecimal exactBound = exactScale.multiply(outlierClipFactor);
+        BigDecimal exactBound = exactScale.multiply(outlierClipFactor, ExactDecimalArithmetic.RECOVERY_CONTEXT);
         NumFactory factory = getBarSeries().numFactory();
         Num narrowed = factory.numOf(exactBound);
         if (Num.isFinite(narrowed)) {
@@ -412,7 +413,9 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
      * deviation saturates.
      */
     static Num exactDeviation(BigDecimal targetMean, Num current, BigDecimal allowance) {
-        BigDecimal exact = targetMean.subtract(ExactDecimalArithmetic.exactValueOf(current)).subtract(allowance);
+        BigDecimal exact = targetMean
+                .subtract(ExactDecimalArithmetic.exactValueOf(current), ExactDecimalArithmetic.RECOVERY_CONTEXT)
+                .subtract(allowance, ExactDecimalArithmetic.RECOVERY_CONTEXT);
         NumFactory factory = current.getNumFactory();
         Num narrowed = factory.numOf(exact);
         if (Num.isFinite(narrowed)) {
@@ -518,8 +521,9 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
                 exactPrevious = ExactDecimalArithmetic.exactValueOf(previous);
             }
             BigDecimal updateWeight = appliedScaleWeight();
-            BigDecimal exactUpdated = exactPrevious.multiply(BigDecimal.ONE.subtract(updateWeight))
-                    .add(ExactDecimalArithmetic.exactValueOf(increment).multiply(updateWeight));
+            MathContext context = ExactDecimalArithmetic.RECOVERY_CONTEXT;
+            BigDecimal exactUpdated = exactPrevious.multiply(BigDecimal.ONE.subtract(updateWeight, context), context)
+                    .add(ExactDecimalArithmetic.exactValueOf(increment).multiply(updateWeight, context), context);
             Num narrowed = getBarSeries().numFactory().numOf(exactUpdated);
             return new ScaleState(narrowed, narrowed.isZero() && exactUpdated.signum() != 0 ? exactUpdated : null);
         }

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import org.junit.jupiter.api.Timeout;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -1032,5 +1033,21 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         public int getCountOfUnstableBars() {
             return 0;
         }
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    public void extremeDecimalParametersDoNotExpandExactArithmetic() {
+        NumFactory decimalFactory = DecimalNumFactory.getInstance(10);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(decimalFactory).withData(1, 2, 3).build();
+        MockIndicator decimalSource = new MockIndicator(series, 0, decimalFactory.numOf(0.010),
+                decimalFactory.numOf(0.010), decimalFactory.numOf(-0.100));
+
+        CusumIndicator tinyDecay = new CusumIndicator(decimalSource, 0, 0.005, 3.0, new BigDecimal("1e-999999999"));
+        CusumIndicator extremeTarget = new CusumIndicator(decimalSource, new BigDecimal("1e999999999"),
+                new BigDecimal("1e-999999999"));
+
+        assertTrue(Num.isFinite(tinyDecay.getValue(2)));
+        assertTrue(Num.isFinite(extremeTarget.getValue(2)));
     }
 }

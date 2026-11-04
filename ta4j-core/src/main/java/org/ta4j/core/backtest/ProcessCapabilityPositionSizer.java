@@ -164,7 +164,8 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             // The true ratio overflows the context factory; damp the lossless
             // decimal forms before narrowing.
             BigDecimal dampedQuotient = rawBaseAmount.divide(
-                    BigDecimal.ONE.add(statistic.bigDecimalValue().divide(rawControlLimit, MathContext.DECIMAL128)),
+                    BigDecimal.ONE.add(statistic.bigDecimalValue().divide(rawControlLimit, MathContext.DECIMAL128),
+                            MathContext.DECIMAL128),
                     MathContext.DECIMAL128);
             return floorOrCapRecoveredQuotient(factory, baseAmountValue, dampedQuotient);
         }
@@ -178,8 +179,8 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
                 && Double.isFinite(standardized.doubleValue())) {
             // A base beyond double range in a double-backed context must damp
             // from its lossless decimal form, not the saturated coercion.
-            BigDecimal dampedQuotient = rawBaseAmount.divide(BigDecimal.ONE.add(standardized.bigDecimalValue()),
-                    MathContext.DECIMAL128);
+            BigDecimal dampedQuotient = rawBaseAmount.divide(
+                    BigDecimal.ONE.add(standardized.bigDecimalValue(), MathContext.DECIMAL128), MathContext.DECIMAL128);
             return floorOrCapRecoveredQuotient(factory, baseAmountValue, dampedQuotient);
         } else {
             damped = baseAmountValue.dividedBy(factory.one().plus(standardized));

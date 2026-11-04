@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.Timeout;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -714,5 +716,22 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         record.operate(Trade.buyAt(7, series, numFactory.one()));
         record.operate(Trade.sellAt(9, series, numFactory.one()));
         return record;
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    public void mixedDirectionExtremeLimitDoesNotExpandExactArithmetic() {
+        // Overflowing ratios force the decimal recovery path, where centering the
+        // limit on the mixed-direction return center used to be exact.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(0.1, 1e308, 0.1, 1e308)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.sellAt(2, series), Trade.buyAt(3, series));
+
+        Num capability = new ProcessCapabilityCriterion(new BigDecimal("1e-999999999")).calculate(series,
+                tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
     }
 }
