@@ -441,6 +441,10 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         assertThrows(IllegalArgumentException.class, () -> new DojiIndicator(series, 0, 0.1));
+        // Boundary rechecks revisit the whole window, so it is bounded.
+        assertThrows(IllegalArgumentException.class,
+                () -> new DojiIndicator(series, CandleThresholdSupport.MAX_AVERAGE_PERIOD + 1, 0.1));
+        new DojiIndicator(series, CandleThresholdSupport.MAX_AVERAGE_PERIOD, 0.1);
         assertThrows(IllegalArgumentException.class, () -> new DojiIndicator(series, 5, -0.1));
         assertThrows(IllegalArgumentException.class, () -> new DojiIndicator(series, 5, Double.NaN));
         assertThrows(IllegalArgumentException.class, () -> new DojiIndicator(series, 5, Double.POSITIVE_INFINITY));

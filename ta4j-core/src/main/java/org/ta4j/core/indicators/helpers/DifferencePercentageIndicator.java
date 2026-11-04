@@ -45,6 +45,10 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final Num percentageThreshold;
     private Num lastNotification;
+    private static final int NOT_SCANNED = Integer.MIN_VALUE;
+    /** Last index folded into {@link #lastNotification} by the sequential scan. */
+    private transient int scannedThrough = NOT_SCANNED;
+    private transient long scannedRevision;
 
     /**
      * Constructor to get the percentage difference from the previous value.
@@ -83,6 +87,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     @Override
     protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
         lastNotification = null;
+        scannedThrough = NOT_SCANNED;
         return super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
     }
 
@@ -98,11 +103,24 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        // calculate all the previous values to get the correct
-        // last notification value for this index
-        for (int i = getBarSeries().getBeginIndex(); i < index; i++) {
-            setLastNotification(i);
+        // The last notification for this index is the result of a sequential scan
+        // of the earlier bars. Continue the previous scan when it is a prefix of
+        // this one instead of rescanning from the head for every index, which made
+        // a full pass quadratic.
+        long revision = getBarSeries().getBarHistoryRevision();
+        int start;
+        if (scannedThrough == NOT_SCANNED || scannedThrough >= index || scannedThrough < beginIndex - 1 || revision < 0
+                || revision != scannedRevision) {
+            lastNotification = null;
+            start = beginIndex;
+        } else {
+            start = scannedThrough + 1;
         }
+        for (int i = start; i < index; i++) {
+            applyNotification(i);
+        }
+        scannedThrough = index - 1;
+        scannedRevision = revision;
 
         if (lastNotification == null) {
             return NaN.NaN;
@@ -113,7 +131,13 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     }
 
     public void setLastNotification(int index) {
-        Num value = indicator.getValue((index));
+        // An external update breaks the sequential scan state.
+        scannedThrough = NOT_SCANNED;
+        applyNotification(index);
+    }
+
+    private void applyNotification(int index) {
+        Num value = indicator.getValue(index);
         if (value.isNaN() || value.isZero()) {
             return;
         }

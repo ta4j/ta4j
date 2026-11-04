@@ -31,6 +31,14 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class SGMAIndicator extends CachedIndicator<Num> {
 
+    /**
+     * Largest accepted window; the coefficient fit allocates
+     * {@code barCount * (polynomialOrder + 1)} values.
+     */
+    static final int MAX_BAR_COUNT = 10_001;
+    /** Largest accepted polynomial order. */
+    static final int MAX_POLYNOMIAL_ORDER = 32;
+
     private final int barCount;
     private final Indicator<Num> indicator; // Input series
     private final Num polynomialOrder; // The degree of the polynomial as a Num
@@ -40,8 +48,10 @@ public class SGMAIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator       an indicator
-     * @param barCount        the Simple Moving Average time frame
-     * @param polynomialOrder the degree of the polynomial, default 2
+     * @param barCount        the Simple Moving Average time frame, odd and at most
+     *                        10,001
+     * @param polynomialOrder the degree of the polynomial, default 2, at most 32
+     * @throws IllegalArgumentException if a parameter is out of range
      */
     public SGMAIndicator(Indicator<Num> indicator, int barCount, int polynomialOrder) {
         this(validatedConfig(indicator, barCount, polynomialOrder));
@@ -65,6 +75,12 @@ public class SGMAIndicator extends CachedIndicator<Num> {
         }
         if (polynomialOrder >= barCount) {
             throw new IllegalArgumentException("Polynomial order must be less than window size.");
+        }
+        if (barCount < 1 || barCount > MAX_BAR_COUNT) {
+            throw new IllegalArgumentException("Window size must be in [1, " + MAX_BAR_COUNT + "].");
+        }
+        if (polynomialOrder < 0 || polynomialOrder > MAX_POLYNOMIAL_ORDER) {
+            throw new IllegalArgumentException("Polynomial order must be in [0, " + MAX_POLYNOMIAL_ORDER + "].");
         }
 
         // Convert int parameters to Num objects

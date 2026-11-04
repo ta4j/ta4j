@@ -40,4 +40,36 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
         assertThat(fresh.getValue(endIndex).isNaN()).isTrue();
         assertThat(existing.getValue(endIndex).isNaN()).isTrue();
     }
+
+    @Test
+    public void sequentialEvaluationScansEachBarOnce() {
+        double[] closes = new double[2_000];
+        for (int i = 0; i < closes.length; i++) {
+            closes[i] = 100 + (i % 7) * 3;
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        java.util.concurrent.atomic.AtomicLong reads = new java.util.concurrent.atomic.AtomicLong();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        org.ta4j.core.Indicator<Num> counting = new org.ta4j.core.indicators.AbstractIndicator<>(series) {
+            @Override
+            public Num getValue(int index) {
+                reads.incrementAndGet();
+                return close.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        DifferencePercentageIndicator incremental = new DifferencePercentageIndicator(counting, numOf(5));
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            Num value = incremental.getValue(i);
+            Num fresh = new DifferencePercentageIndicator(close, numOf(5)).getValue(i);
+            assertThat(value.isNaN() ? fresh.isNaN() : value.isEqual(fresh)).as("index %s", i).isTrue();
+        }
+
+        assertThat(reads.get()).isLessThan(5L * closes.length);
+    }
 }

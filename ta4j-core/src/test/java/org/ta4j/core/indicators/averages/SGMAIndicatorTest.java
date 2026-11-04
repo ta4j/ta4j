@@ -60,6 +60,16 @@ public class SGMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     @Test
+    public void oversizedWindowsAndOrdersAreRejectedBeforeAllocation() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(barSeries);
+
+        assertThrows(IllegalArgumentException.class, () -> new SGMAIndicator(close, 999_999, 999_997));
+        assertThrows(IllegalArgumentException.class, () -> new SGMAIndicator(close, 101, 99));
+        new SGMAIndicator(close, SGMAIndicator.MAX_BAR_COUNT, SGMAIndicator.MAX_POLYNOMIAL_ORDER);
+    }
+
+    @Test
     public void barCountShouldBeGreaterThanPolynomialOrderThrowsException() {
         assertThrows(IllegalArgumentException.class, () -> {
             MockIndicator mock = CsvTestUtils.getCsvFile(SGMAIndicatorTest.class, "SGMA.csv", numFactory);
