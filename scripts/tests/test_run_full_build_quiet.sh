@@ -459,6 +459,31 @@ EOF
   pass "test_progressing_build_is_not_killed_at_timeout_boundary"
 }
 
+test_continuously_progressing_build_is_killed_at_maximum() {
+  echo "Running test_continuously_progressing_build_is_killed_at_maximum"
+  create_test_repo
+  cat > "$TMP/bin/mvn" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$FAKE_MAVEN_ARGS"
+while true; do
+  echo "[INFO] Still printing"
+  /bin/sleep 0.2
+done
+EOF
+  chmod +x "$TMP/bin/mvn"
+
+  local output
+  if output="$(QUIET_BUILD_TIMEOUT_SECONDS=1 QUIET_BUILD_STALL_SECONDS=60 QUIET_BUILD_MAX_SECONDS=2 \
+    run_quiet_build scripts/run-full-build-quiet.sh 2>&1)"; then
+    fail "continuously printing fake Maven should still time out"
+  fi
+
+  expect_contains "$output" "maximum build time 2s" "timeout summary should name the maximum build time"
+
+  finish_test_repo
+  pass "test_continuously_progressing_build_is_killed_at_maximum"
+}
+
 test_watchdog_emits_configured_heartbeat_while_running() {
   echo "Running test_watchdog_emits_configured_heartbeat_while_running"
   create_test_repo
@@ -547,6 +572,7 @@ test_maven_wrapper_is_preferred_when_present
 test_progressing_build_is_not_killed_at_timeout_boundary
 test_watchdog_emits_configured_heartbeat_while_running
 test_stalled_build_is_killed_after_no_progress_window
+test_continuously_progressing_build_is_killed_at_maximum
 test_powershell_entrypoint_classifier_parity
 
 echo

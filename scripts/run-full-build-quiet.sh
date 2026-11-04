@@ -118,6 +118,15 @@ BUILD_STALL_SECONDS="${QUIET_BUILD_STALL_SECONDS:-$BUILD_TIMEOUT_SECONDS}"
 if ! [[ "$BUILD_STALL_SECONDS" =~ ^[0-9]+$ ]] || ((BUILD_STALL_SECONDS <= 0)); then
     BUILD_STALL_SECONDS="$BUILD_TIMEOUT_SECONDS"
 fi
+# Absolute cap that applies even while output keeps progressing: a build that
+# prints continuously (for example a looping test) must still end.
+BUILD_MAX_SECONDS="${QUIET_BUILD_MAX_SECONDS:-5400}"
+if ! [[ "$BUILD_MAX_SECONDS" =~ ^[0-9]+$ ]] || ((BUILD_MAX_SECONDS <= 0)); then
+    BUILD_MAX_SECONDS=5400
+fi
+if ((BUILD_MAX_SECONDS < BUILD_TIMEOUT_SECONDS)); then
+    BUILD_MAX_SECONDS="$BUILD_TIMEOUT_SECONDS"
+fi
 BUILD_HEARTBEAT_SECONDS="${QUIET_BUILD_HEARTBEAT_SECONDS:-60}"
 if ! [[ "$BUILD_HEARTBEAT_SECONDS" =~ ^[0-9]+$ ]] || ((BUILD_HEARTBEAT_SECONDS <= 0)); then
     BUILD_HEARTBEAT_SECONDS=60
@@ -174,6 +183,8 @@ Explicit --goals invocations remain focused and skip repository preflight checks
 The Bash watchdog keeps the default 180-second timeout as the earliest timeout
 point, then allows a build that keeps emitting Maven output to continue until no
 output progresses for QUIET_BUILD_STALL_SECONDS, which defaults to the timeout.
+QUIET_BUILD_MAX_SECONDS (default 5400) ends the build even while output keeps
+progressing, so continuous output cannot keep it running forever.
 QUIET_BUILD_HEARTBEAT_SECONDS controls periodic still-running watchdog output.
 
 Examples:
@@ -507,6 +518,15 @@ run_with_timeout() {
                 printf '%s\n' "$heartbeat_line" >>"$LOG_FILE"
                 last_heartbeat_epoch="$now_epoch"
             fi
+            if ((elapsed >= BUILD_MAX_SECONDS)); then
+                printf 'maximum elapsed=%s max=%s\n' "$elapsed" "$BUILD_MAX_SECONDS" >"$timeout_marker_file"
+                kill -TERM "$command_pid" >/dev/null 2>&1 || true
+                sleep 5
+                if kill -0 "$command_pid" >/dev/null 2>&1; then
+                    kill -KILL "$command_pid" >/dev/null 2>&1 || true
+                fi
+                exit 0
+            fi
             if ((elapsed >= timeout_seconds && idle_seconds >= stall_seconds)); then
                 printf 'elapsed=%s idle=%s stall=%s timeout=%s\n' \
                     "$elapsed" "$idle_seconds" "$stall_seconds" "$timeout_seconds" >"$timeout_marker_file"
@@ -667,7 +687,9 @@ set -o pipefail
 if ((mvn_status != 0 || filter_status != 0)); then
     if ((mvn_status == 124)); then
         timeout_detail="$(cat "$TIMEOUT_MARKER_FILE" 2>/dev/null || true)"
-        if [[ "$timeout_detail" =~ ^elapsed=([0-9]+)[[:space:]]+idle=([0-9]+)[[:space:]]+stall=([0-9]+)[[:space:]]+timeout=([0-9]+)$ ]]; then
+        if [[ "$timeout_detail" =~ ^maximum[[:space:]]+elapsed=([0-9]+)[[:space:]]+max=([0-9]+)$ ]]; then
+            echo "Build: timed out after ${BASH_REMATCH[1]}s (maximum build time ${BASH_REMATCH[2]}s reached while output was still progressing) in $(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
+        elif [[ "$timeout_detail" =~ ^elapsed=([0-9]+)[[:space:]]+idle=([0-9]+)[[:space:]]+stall=([0-9]+)[[:space:]]+timeout=([0-9]+)$ ]]; then
             echo "Build: timed out after ${BASH_REMATCH[1]}s (timeout ${BASH_REMATCH[4]}s; no output progress for ${BASH_REMATCH[2]}s, stall limit ${BASH_REMATCH[3]}s) in $(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
         else
             echo "Build: timed out after ${BUILD_TIMEOUT_SECONDS}s in $(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
