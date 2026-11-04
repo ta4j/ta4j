@@ -418,6 +418,14 @@ public class ChartWorkflowTest {
         assertThrows(IllegalArgumentException.class, () -> chartWorkflow.getChartAsByteArray(chart, 640, -1));
     }
 
+    @Test
+    public void testGetChartAsByteArrayRejectsOversizedResolution() {
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.getChartAsByteArray(chart, 100_000, 360));
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.getChartAsByteArray(chart, 16_000, 16_000));
+    }
+
     // Display scale tests moved to SwingChartDisplayerTest
 
     @Test
