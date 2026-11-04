@@ -4,9 +4,29 @@
 
 - **Untrusted analysis-criterion JSON only restores ta4j criteria (`CF-756`)**: `AnalysisCriterion.fromJson(...)`, `AnalysisCriterionSerialization.fromJson(...)` and `fromDescriptor(...)` now reject fully qualified class names outside the `org.ta4j.core.criteria` package tree before the class is loaded, initialized or constructed. Shorthand expressions still build any criterion type produced by an alias registered in the supplied `NamedAssetRegistry`. To restore custom criteria from data you control, call the new `AnalysisCriterionSerialization.fromTrustedJson(...)` or `fromTrustedDescriptor(...)`.
 - **Resource limits on descriptor-reachable parameters (`CF-756`)**: settings that previously allowed unbounded CPU or memory now fail fast with `IllegalArgumentException`. LPPL profiles accept at most 100,000 grid points, 10,000 optimizer evaluations and 100,000,000 model evaluations per fit; `RWIHighIndicator` and `RWILowIndicator` accept `barCount` up to 1,000; Monte Carlo forecasts accept at most 10,000 horizon bars, 1,000,000 paths and 1,000,000,000 path steps; `RoughVolatilityForecastStateIndicator` accepts a horizon up to 10,000; `OnlineChangePointForecastStateIndicator` accepts `maximumRunLength` up to 10,000; trend-line indicators accept at most 512 swing points and 130,816 candidate pairs; and shorthand numeric arguments may expand to at most 1,000 plain digits. Defaults are unchanged and stay well inside every limit.
+- **Untrusted rule and strategy JSON only restores ta4j types (`CF-756`)**: `RuleSerialization.fromDescriptor(...)`, `StrategySerialization.fromJson(...)` and `fromDescriptor(...)` now reject fully qualified class names outside `org.ta4j.core` before the class is loaded, and only call public constructors of public classes. Rules and strategies nested inside v2 strategy JSON follow the same rule. To restore custom rules or strategies from data you control, call the new `RuleSerialization.fromTrustedDescriptor(...)`, `StrategySerialization.fromTrustedJson(...)` or `fromTrustedDescriptor(...)`.
+- **More resource limits (`CF-756`)**: exact (`precision = 0`) `DecimalNum.pow(...)` rejects results above 100,000 digits and evaluates negative exponents at the default precision; `SGMAIndicator` accepts `barCount` up to 10,001 and polynomial order up to 32; candle threshold baselines accept an average period up to 1,000; `CorrentropyKalmanFilterIndicator` accepts at most 1,000 iterations; bar series hold absolute indexes up to `BaseBarSeries.MAX_BAR_INDEX` (`Integer.MAX_VALUE - 1`); chart images and display panels in `ta4j-examples` are limited to 16,384 pixels per side and 50,000,000 pixels in total.
+- **Retrying detectors and indicators give up on a series that never settles (`CF-756`)**: `AdaptiveZigZagSwingDetector` and `ProminenceSwingDetector` throw `IllegalStateException` after 8 attempts, and cached indicators with internal retries (CUSUM, EWMA variance, EWMA return forecast, EMA family) after 1,000, when the series changes during every evaluation.
+- **`TriggeredRule` windows no longer extend while the trigger holds (`CF-756`)**: a stage's activation window counts from the bar that armed it, and an expired stage re-arms only after its trigger has been unsatisfied for at least one bar.
+- **Walk-forward tuning excludes candidates with any failed fold (`CF-756`)**: `WalkForwardTuner` counts such candidates in `failedCount` instead of ranking them on the folds that survived.
 
 ### Fixed
 
+- **MEDIUM security findings (`CF-756`)**:
+  - Exact `DecimalNum` hashing, CUSUM, EWMA variance, process capability and position sizing no longer expand `BigDecimal` values without bound.
+  - Strategy JSON version detection no longer misreads escaped keys, and indicator descriptors keep extreme numbers in scientific notation instead of expanding them.
+  - `KinematicKalmanPriceForecastIndicator` rejects state sources that are not kinematic.
+  - `DifferencePercentageIndicator` scans incrementally instead of rescanning from the start for every bar.
+  - `FractalSwingDetector` revalidates only the most recent 256 non-publishing bars, so ascending replays stay linear.
+  - Swing result consistency errors report the first mismatch instead of printing both pivot chains.
+  - NaN Elliott confidence scores no longer pass the minimum confidence or sort ahead of valid scenarios.
+  - LPPL residuals that are only rounding noise normalize to 0 instead of saturating at ±1.
+  - `DurationBarAggregator` handles sub-second bars and rejects non-positive periods instead of dividing by zero or looping forever.
+  - `TimeBarBuilder` jumps over trade gaps in one step instead of iterating once per skipped period.
+  - Tick, volume and amount bar builder factories no longer keep every series they have served reachable.
+  - Backtest result and sizing snapshots keep custom `Strategy` implementations instead of rebuilding them as `BaseStrategy`.
+  - `CrossedDownIndicatorRule` keeps its operand order when serialized and restored.
+  - The Maven Wrapper verifies the Maven distribution checksum, the release workflow refuses PR-only release commits after squash or rebase merges, the Elliott Wave snapshot workflow validates its instrument input, and the quiet build script stops at `QUIET_BUILD_MAX_SECONDS` even while output keeps progressing.
 - **Lower memory and CPU on long histories (`CF-756`)**: detector-backed recent-swing pairs no longer cache a full pivot list for every scanned bar, `MutualInformationIndicator` stores only occupied bins instead of a `binCount²` matrix, RWI indicators share one true-range source across their ATR helpers, and `ElliottScenarioGenerator` is linear rather than quadratic in the number of swings with unchanged results.
 
 ### Changed
