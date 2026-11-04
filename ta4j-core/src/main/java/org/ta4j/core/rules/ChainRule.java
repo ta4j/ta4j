@@ -22,6 +22,13 @@ public class ChainRule extends AbstractRule {
 
     private final Rule initialRule;
     private final LinkedList<ChainLink> rulesInChain = new LinkedList<>();
+    /**
+     * Link rules copied once at construction. {@link ChainLink#getRule()} returns a
+     * fresh copy on every call, so reading it per evaluation would rebuild each
+     * link rule through serialization for every bar and threshold step and would
+     * discard the state of stateful link rules.
+     */
+    private final transient Rule[] linkRules;
 
     /** The backing series used to resolve the live begin index, or {@code null}. */
     private final BarSeries series;
@@ -38,13 +45,14 @@ public class ChainRule extends AbstractRule {
         for (ChainLink chainLink : chainLinks) {
             this.rulesInChain.add(Objects.requireNonNull(chainLink, "chainLink cannot be null"));
         }
-        this.series = findBarSeries(initialRule, rulesInChain);
+        this.linkRules = rulesInChain.stream().map(ChainLink::getRule).toArray(Rule[]::new);
+        this.series = findBarSeries(initialRule, linkRules);
     }
 
-    private static BarSeries findBarSeries(Rule initialRule, LinkedList<ChainLink> rulesInChain) {
+    private static BarSeries findBarSeries(Rule initialRule, Rule[] linkRules) {
         return RuleCopies.findBarSeries(initialRule)
-                .or(() -> rulesInChain.stream()
-                        .map(chainLink -> RuleCopies.findBarSeries(chainLink.getRule()))
+                .or(() -> java.util.Arrays.stream(linkRules)
+                        .map(RuleCopies::findBarSeries)
                         .flatMap(Optional::stream)
                         .findFirst())
                 .orElse(null);
@@ -77,8 +85,8 @@ public class ChainRule extends AbstractRule {
                     break;
                 }
 
-                satisfiedWithinThreshold = evaluateChildRule(link.getRule(), "chainRule" + linkIndex, resultingIndex,
-                        tradingRecord);
+                satisfiedWithinThreshold = evaluateChildRule(linkRules[linkIndex], "chainRule" + linkIndex,
+                        resultingIndex, tradingRecord);
 
                 if (satisfiedWithinThreshold) {
                     break;

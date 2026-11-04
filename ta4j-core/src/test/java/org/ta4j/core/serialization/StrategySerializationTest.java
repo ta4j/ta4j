@@ -1393,6 +1393,18 @@ public class StrategySerializationTest {
      * it. The type name deliberately omits "Rule" so rule descriptors reach the
      * strategy-side rule resolver.
      */
+    @Test
+    public void untrustedJsonRejectsCustomTypesThatTrustedJsonRestores() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        Strategy original = new BaseStrategy("Custom", new ta4jtest.external.ExternalRules.TrustedRule(),
+                new ta4jtest.external.ExternalRules.TrustedRule());
+        String json = original.toJson();
+
+        assertThrows(IllegalArgumentException.class, () -> StrategySerialization.fromJson(series, json));
+        Strategy restored = StrategySerialization.fromTrustedJson(series, json);
+        assertThat(restored.toJson()).isEqualTo(json);
+    }
+
     private static final class StaticInitializerProbe {
 
         static {
@@ -1410,11 +1422,11 @@ public class StrategySerializationTest {
         }
     }
 
-    private static final class SerializableRule extends org.ta4j.core.rules.AbstractRule {
+    public static final class SerializableRule extends org.ta4j.core.rules.AbstractRule {
 
         private final boolean satisfied;
 
-        private SerializableRule(boolean satisfied) {
+        public SerializableRule(boolean satisfied) {
             this.satisfied = satisfied;
         }
 
@@ -1533,7 +1545,7 @@ public class StrategySerializationTest {
         }
     }
 
-    private static final class CustomTestStrategy extends BaseStrategy {
+    public static final class CustomTestStrategy extends BaseStrategy {
 
         public CustomTestStrategy(String name, Rule entryRule, Rule exitRule, int unstableBars) {
             super(name, entryRule, exitRule, unstableBars);

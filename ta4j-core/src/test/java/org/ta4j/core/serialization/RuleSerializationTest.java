@@ -278,6 +278,24 @@ public class RuleSerializationTest {
     }
 
     @Test
+    public void crossedDownRoundTripKeepsOperandOrder() {
+        BarSeries series = new MockBarSeriesBuilder().withData(10, 12, 11, 13, 15, 14).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMAIndicator first = new SMAIndicator(close, 2);
+        SMAIndicator second = new SMAIndicator(close, 3);
+        CrossedDownIndicatorRule original = new CrossedDownIndicatorRule(first, second);
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(original);
+        CrossedDownIndicatorRule restored = (CrossedDownIndicatorRule) RuleSerialization.fromDescriptor(series,
+                descriptor);
+
+        assertThat(descriptor.getComponents().get(0).getParameters()).containsEntry("barCount", 2);
+        assertThat(restored.getUp().toString()).isEqualTo(original.getUp().toString());
+        assertThat(restored.getLow().toString()).isEqualTo(original.getLow().toString());
+        assertThat(RuleSerialization.describe(restored)).isEqualTo(descriptor);
+    }
+
+    @Test
     public void extractNestedComponentsWithConstantIndicators() {
         BarSeries series = new MockBarSeriesBuilder().withData(10, 12, 11, 13, 15, 14).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -973,6 +991,41 @@ public class RuleSerializationTest {
     private static final AtomicInteger STATIC_INITIALIZER_PROBE_RUNS = new AtomicInteger();
 
     /** Not a rule or enum; descriptor resolution must never initialize it. */
+    @Test
+    public void untrustedDescriptorRejectsRuleOutsideTa4jWithoutInitializingIt() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor
+                .typeOnly(ta4jtest.external.ExternalRules.UntrustedProbe.class.getName());
+
+        assertThrows(IllegalArgumentException.class, () -> RuleSerialization.fromDescriptor(series, descriptor));
+        assertThat(ta4jtest.external.ExternalRules.PROBE_INITIALIZATIONS).hasValue(0);
+    }
+
+    @Test
+    public void trustedDescriptorRestoresCustomRuleOutsideTa4j() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = RuleSerialization.describe(new ta4jtest.external.ExternalRules.TrustedRule());
+
+        assertThrows(IllegalArgumentException.class, () -> RuleSerialization.fromDescriptor(series, descriptor));
+        assertThat(RuleSerialization.fromTrustedDescriptor(series, descriptor))
+                .isInstanceOf(ta4jtest.external.ExternalRules.TrustedRule.class);
+    }
+
+    @Test
+    public void untrustedDescriptorCannotUseNonPublicConstructors() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        // The private constructor skips the validation the public constructor
+        // performs and wraps an arbitrary rule.
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("org.ta4j.core.rules.elliott.ElliottScenarioTimeStopRule")
+                .addComponent(RuleSerialization.describe(BooleanRule.TRUE))
+                .build();
+
+        assertThrows(RuleSerializationException.class, () -> RuleSerialization.fromDescriptor(series, descriptor));
+        assertThat(RuleSerialization.fromTrustedDescriptor(series, descriptor).getClass().getSimpleName())
+                .isEqualTo("ElliottScenarioTimeStopRule");
+    }
+
     private static final class StaticInitializerProbe {
 
         static {
@@ -983,19 +1036,19 @@ public class RuleSerializationTest {
         }
     }
 
-    private static final class ConstructorPreferenceRule extends AbstractRule {
+    public static final class ConstructorPreferenceRule extends AbstractRule {
 
         private final Num amount;
         private final int barCount;
         private final String constructorUsed;
 
-        ConstructorPreferenceRule(Num amount, int barCount) {
+        public ConstructorPreferenceRule(Num amount, int barCount) {
             this.amount = amount;
             this.barCount = barCount;
             this.constructorUsed = "num";
         }
 
-        ConstructorPreferenceRule(Number amount, int barCount) {
+        public ConstructorPreferenceRule(Number amount, int barCount) {
             this.amount = DecimalNumFactory.getInstance().numOf(amount);
             this.barCount = barCount;
             this.constructorUsed = "number";
@@ -1019,19 +1072,19 @@ public class RuleSerializationTest {
         }
     }
 
-    private static final class OverloadedIndicatorRule extends AbstractRule {
+    public static final class OverloadedIndicatorRule extends AbstractRule {
 
         private final Indicator<Num> indicator;
         private final int barCount;
         private final String constructorUsed;
 
-        OverloadedIndicatorRule(ATRIndicator indicator, int barCount) {
+        public OverloadedIndicatorRule(ATRIndicator indicator, int barCount) {
             this.indicator = indicator;
             this.barCount = barCount;
             this.constructorUsed = "atr";
         }
 
-        OverloadedIndicatorRule(Indicator<Num> indicator, int barCount) {
+        public OverloadedIndicatorRule(Indicator<Num> indicator, int barCount) {
             this.indicator = indicator;
             this.barCount = barCount;
             this.constructorUsed = "generic";
@@ -1055,17 +1108,17 @@ public class RuleSerializationTest {
         }
     }
 
-    private static final class AmbiguousNumericRule extends AbstractRule {
+    public static final class AmbiguousNumericRule extends AbstractRule {
 
         private final Number amount;
         private final Number barCount;
 
-        AmbiguousNumericRule(Integer amount, Long barCount) {
+        public AmbiguousNumericRule(Integer amount, Long barCount) {
             this.amount = amount;
             this.barCount = barCount;
         }
 
-        AmbiguousNumericRule(Long amount, Integer barCount) {
+        public AmbiguousNumericRule(Long amount, Integer barCount) {
             this.amount = amount;
             this.barCount = barCount;
         }
