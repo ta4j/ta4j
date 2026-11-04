@@ -50,10 +50,26 @@ public record SwingDetectorResult(List<SwingPivot> pivots, List<ElliottSwing> sw
         if (!pivots.isEmpty() && !swings.isEmpty()) {
             final List<SwingPivot> derivedPivots = SwingDetectorSupport.pivotsFromSwings(swings);
             if (!derivedPivots.equals(pivots)) {
-                throw new IllegalArgumentException("pivots and swings are inconsistent: pivots derived from the "
-                        + "supplied swings " + derivedPivots + " do not match the supplied pivots " + pivots);
+                throw new IllegalArgumentException(describePivotMismatch(derivedPivots, pivots));
             }
         }
+    }
+
+    /**
+     * Names the first mismatching pivot instead of both full chains, so the message
+     * stays small however many pivots the caller supplied.
+     */
+    private static String describePivotMismatch(final List<SwingPivot> derived, final List<SwingPivot> supplied) {
+        int mismatch = 0;
+        final int shared = Math.min(derived.size(), supplied.size());
+        while (mismatch < shared && derived.get(mismatch).equals(supplied.get(mismatch))) {
+            mismatch++;
+        }
+        final String detail = mismatch < shared
+                ? "pivot " + mismatch + " derived from the swings is " + derived.get(mismatch)
+                        + " but the supplied pivot is " + supplied.get(mismatch)
+                : "the swings derive " + derived.size() + " pivots but " + supplied.size() + " were supplied";
+        return "pivots and swings are inconsistent: " + detail;
     }
 
     /**
