@@ -97,7 +97,14 @@ jobs:
               ;;
           esac
 
-          if [[ ! "${lookback_days}" =~ ^[0-9]+$ ]] || (( lookback_days <= 0 )); then
+          # The instrument is written to GITHUB_OUTPUT and GITHUB_ENV below; a
+          # newline or other control character would inject extra variables.
+          if [[ ! "${instrument}" =~ ^[A-Za-z0-9^][A-Za-z0-9./=^_-]{0,31}$ ]]; then
+            echo "::error::Instrument must be 1-32 characters of letters, digits and . / = ^ _ -."
+            exit 1
+          fi
+
+          if [[ ! "${lookback_days}" =~ ^[0-9]{1,6}$ ]] || (( 10#${lookback_days} <= 0 )); then
             echo "::error::lookbackDays must be a positive integer, got '${lookback_days}'."
             exit 1
           fi
