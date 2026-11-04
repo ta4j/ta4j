@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ConcurrentBarSeries;
@@ -150,35 +151,35 @@ public class BarSeriesManagerTest {
                 .closePrice(2)
                 .build();
         BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first, last))
-                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX - 1)
                 .build();
-        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
-        Strategy terminalRoundTrip = new BaseStrategy(new FixedRule(Integer.MAX_VALUE - 1),
-                new FixedRule(Integer.MAX_VALUE));
+        assertEquals(BaseBarSeries.MAX_BAR_INDEX, series.getEndIndex());
+        Strategy terminalRoundTrip = new BaseStrategy(new FixedRule(BaseBarSeries.MAX_BAR_INDEX - 1),
+                new FixedRule(BaseBarSeries.MAX_BAR_INDEX));
         BarSeriesManager terminalManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
 
         List<Position> positions = terminalManager.run(terminalRoundTrip, TradeType.BUY, HUNDRED).getPositions();
 
         assertEquals(1, positions.size());
-        assertEquals(Integer.MAX_VALUE - 1, positions.get(0).getEntry().getIndex());
-        assertEquals(Integer.MAX_VALUE, positions.get(0).getExit().getIndex());
+        assertEquals(BaseBarSeries.MAX_BAR_INDEX - 1, positions.get(0).getEntry().getIndex());
+        assertEquals(BaseBarSeries.MAX_BAR_INDEX, positions.get(0).getExit().getIndex());
         assertTrue(positions.get(0).isClosed());
     }
 
     @Test
     public void runSkipsClosePositionScanOnSeriesEndingAtMaximumIndex() {
         // The close-position scan must not start from runEndIndex + 1 when the
-        // run ends at Integer.MAX_VALUE: the increment would wrap to a
+        // run ends at BaseBarSeries.MAX_BAR_INDEX: the increment would wrap to a
         // negative index and evaluate bars outside the series.
         final Bar first = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
                 .endTime(Instant.parse("2026-01-01T00:01:00Z"))
                 .closePrice(1)
                 .build();
         BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first))
-                .withBeginIndex(Integer.MAX_VALUE)
+                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX)
                 .build();
-        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
-        Strategy entryOnlyStrategy = new BaseStrategy(new FixedRule(Integer.MAX_VALUE), new FixedRule());
+        assertEquals(BaseBarSeries.MAX_BAR_INDEX, series.getEndIndex());
+        Strategy entryOnlyStrategy = new BaseStrategy(new FixedRule(BaseBarSeries.MAX_BAR_INDEX), new FixedRule());
         BarSeriesManager terminalManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
 
         List<Position> positions = terminalManager.run(entryOnlyStrategy, TradeType.BUY, HUNDRED).getOpenPositions();

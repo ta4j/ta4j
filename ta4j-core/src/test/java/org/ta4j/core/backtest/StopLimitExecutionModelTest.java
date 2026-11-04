@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.Bar;
@@ -203,7 +204,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
 
     @Test
     public void currentCloseSignalOnTerminalBarHasNoActivationBar() {
-        // The bar after Integer.MAX_VALUE cannot exist: stop-limit activation
+        // The bar after BaseBarSeries.MAX_BAR_INDEX cannot exist: stop-limit activation
         // must not wrap to a negative index, which would hand a sizing
         // context a negative entry index and make sizers that read the entry
         // bar throw.
@@ -217,22 +218,22 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
                 .build();
         BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withBars(List.of(bar))
-                .withBeginIndex(Integer.MAX_VALUE)
+                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX)
                 .build();
         StopLimitExecutionModel model = new StopLimitExecutionModel(numOf(0.05), numOf(0.06), numOf(0.5), 2,
                 TradeExecutionModel.PriceSource.CURRENT_CLOSE);
 
-        assertNull(model.estimateEntryTarget(Integer.MAX_VALUE, series, Trade.TradeType.BUY));
+        assertNull(model.estimateEntryTarget(BaseBarSeries.MAX_BAR_INDEX, series, Trade.TradeType.BUY));
 
         TradingRecord tradingRecord = new BaseTradingRecord();
-        model.execute(Integer.MAX_VALUE, tradingRecord, series, numFactory.one());
+        model.execute(BaseBarSeries.MAX_BAR_INDEX, tradingRecord, series, numFactory.one());
         assertEquals(1, model.getRejectedOrders(tradingRecord).size());
         assertTrue(model.getRejectedOrders(tradingRecord).getFirst().reason().contains("activation bar"));
     }
 
     @Test
     public void stopLimitExpiryDoesNotWrapNearMaxValue() {
-        // When activation happens near Integer.MAX_VALUE, the fillable-bar
+        // When activation happens near BaseBarSeries.MAX_BAR_INDEX, the fillable-bar
         // window must not wrap the expiry index negative: the order stays
         // pending past its activation bar and fills on the terminal bar.
         Bar first = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
@@ -261,23 +262,23 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
                 .build();
         BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withBars(List.of(first, second, third))
-                .withBeginIndex(Integer.MAX_VALUE - 2)
+                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX - 2)
                 .build();
         StopLimitExecutionModel model = new StopLimitExecutionModel(numOf(0.05), numOf(0.06), numOf(0.5), 3,
                 TradeExecutionModel.PriceSource.CURRENT_CLOSE);
 
         TradingRecord tradingRecord = new BaseTradingRecord();
-        model.execute(Integer.MAX_VALUE - 2, tradingRecord, series, numFactory.one());
+        model.execute(BaseBarSeries.MAX_BAR_INDEX - 2, tradingRecord, series, numFactory.one());
         assertTrue(model.getPendingOrder(tradingRecord).isPresent());
 
         // Activation bar: the stop is not triggered, so the order must
         // survive instead of expiring through a wrapped expiry index.
-        model.onBar(Integer.MAX_VALUE - 1, tradingRecord, series);
+        model.onBar(BaseBarSeries.MAX_BAR_INDEX - 1, tradingRecord, series);
         assertTrue(model.getPendingOrder(tradingRecord).isPresent());
         assertTrue(model.getRejectedOrders(tradingRecord).isEmpty());
 
         // Terminal bar: trigger and limit are both reached; the order fills.
-        model.onBar(Integer.MAX_VALUE, tradingRecord, series);
+        model.onBar(BaseBarSeries.MAX_BAR_INDEX, tradingRecord, series);
         assertTrue(model.getPendingOrder(tradingRecord).isEmpty());
         assertTrue(model.getRejectedOrders(tradingRecord).isEmpty());
         assertEquals(1, tradingRecord.getTrades().size());
@@ -286,7 +287,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
     @Test
     public void stopLimitTtlIsNotClampedToConstrainedSeriesEnd() {
         // Expiry follows the configured time-to-live, clamped only at
-        // Integer.MAX_VALUE: clamping to a constrained series end instead
+        // BaseBarSeries.MAX_BAR_INDEX: clamping to a constrained series end instead
         // would expire orders before tail bars beyond that end could fill.
         Bar first = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
                 .endTime(Instant.parse("2024-01-01T00:00:00Z"))

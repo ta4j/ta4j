@@ -6,6 +6,7 @@ package org.ta4j.core.criteria.drawdown;
 import org.ta4j.core.analysis.AnalysisWindow;
 import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
 import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BarSeries;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.random.RandomGenerator;
@@ -45,10 +46,10 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d).build();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withBars(source.getBarData())
-                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX - 1)
                 .build();
-        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE - 1, series),
-                Trade.sellAt(Integer.MAX_VALUE, series));
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(BaseBarSeries.MAX_BAR_INDEX - 1, series),
+                Trade.sellAt(BaseBarSeries.MAX_BAR_INDEX, series));
 
         assertNumEquals(0.5,
                 new MonteCarloMaximumDrawdownCriterion(1, null, 42L, Statistics.MAX).calculate(series, record));
@@ -60,12 +61,12 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 80d).build();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withBars(source.getBarData())
-                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX - 1)
                 .build();
         // The entry predates the retained window by ~2^31 bars; only the two
         // retained bars may become block returns.
         BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), numFactory.one()),
-                Trade.sellAt(Integer.MAX_VALUE, series));
+                Trade.sellAt(BaseBarSeries.MAX_BAR_INDEX, series));
 
         Num drawdown = new MonteCarloMaximumDrawdownCriterion(1, null, 42L, Statistics.MAX).calculate(series, record);
 
