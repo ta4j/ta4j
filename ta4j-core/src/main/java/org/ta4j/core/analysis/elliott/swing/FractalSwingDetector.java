@@ -189,6 +189,16 @@ public final class FractalSwingDetector implements SwingDetector {
          */
         private static final int MAX_REPLAY_ATTEMPTS = 8;
 
+        /**
+         * Most recent non-publishing bars revalidated by value on each query. Every
+         * query used to revalidate all of them, which made an ascending replay over a
+         * series of custom bars (or a series without revisions) quadratic. Under the
+         * retained bar mutation contract such bars must not change once a newer bar is
+         * appended, so only the recent window, which covers the bars still inside any
+         * open fractal window, is rechecked.
+         */
+        static final int MAX_REVALIDATED_BARS = 256;
+
         private final ReentrantLock replayLock = new ReentrantLock();
         private final BarSeries series;
         private RecentSwingIndicator swingHigh;
@@ -237,7 +247,7 @@ public final class FractalSwingDetector implements SwingDetector {
          * publish their retained-bar mutations to a BaseBarSeries revision, while an
          * arbitrary Bar implementation may mutate in place without any series signal.
          */
-        private final Map<Integer, BarState> observedUntrackableBars = new LinkedHashMap<>();
+        private final LinkedHashMap<Integer, BarState> observedUntrackableBars = new LinkedHashMap<>();
 
         private final int lookbackLength;
         private final int lookforwardLength;
@@ -604,9 +614,10 @@ public final class FractalSwingDetector implements SwingDetector {
          * apply internally, so stale merge state never survives a mutation they would
          * themselves discard. Revision-aware series changes remain O(1). For legacy
          * series whose revisions cannot observe direct {@link Bar} mutations, the
-         * retained OHLC snapshots are validated when revisions are unavailable.
-         * Untrackable bars are rescanned on every query. Tracked bars keep an
-         * incremental replay, validating the closed part of the window by value.
+         * retained OHLC snapshots are validated when revisions are unavailable. The
+         * most recent {@link #MAX_REVALIDATED_BARS} untrackable bars are rescanned on
+         * every query. Tracked bars keep an incremental replay, validating the closed
+         * part of the window by value.
          *
          * <p>
          * The check reads bars only, so it runs inside the series' short read scope.
@@ -715,8 +726,9 @@ public final class FractalSwingDetector implements SwingDetector {
                 return !series.isEmpty();
             }
             final long snapshotLast = (long) observedBarBaseIndex + observedBars.size() - 1L;
-            final int begin = Math.max(fromIndex, observedBarBaseIndex);
             final int end = (int) Math.min((long) toIndex, snapshotLast);
+            final int begin = (int) Math.max(Math.max((long) fromIndex, observedBarBaseIndex),
+                    (long) end - MAX_REVALIDATED_BARS + 1L);
             for (long index = begin; index <= (long) end; index++) {
                 final int barIndex = (int) index;
                 if (!observedBars.get(barIndex - observedBarBaseIndex).sameAs(BarState.of(series.getBar(barIndex)))) {
@@ -780,6 +792,9 @@ public final class FractalSwingDetector implements SwingDetector {
                 if (isUntrackableBar(bar)) {
                     observedUntrackableBars.put((int) index, BarState.of(bar));
                 }
+            }
+            while (observedUntrackableBars.size() > MAX_REVALIDATED_BARS) {
+                observedUntrackableBars.pollFirstEntry();
             }
         }
     }
