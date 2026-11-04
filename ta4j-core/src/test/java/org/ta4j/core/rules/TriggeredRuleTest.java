@@ -49,6 +49,23 @@ public class TriggeredRuleTest {
     }
 
     @Test
+    public void persistentTriggerDoesNotExtendActivationWindow() {
+        // Trigger holds on bars 2..20; the window must still close two bars after
+        // the arming bar instead of re-arming on every bar.
+        Rule persistentTrigger = new CountingRule(index -> index >= 2 && index <= 20 || index >= 22);
+        Rule delegate = new CountingRule(index -> index == 10 || index == 23);
+        TriggeredRule rule = new TriggeredRule(BooleanRule.FALSE,
+                new Stage(persistentTrigger, delegate, 2, false, ResetPolicy.ON_SATISFACTION));
+
+        for (int index = 0; index <= 21; index++) {
+            assertFalse(rule.isSatisfied(index, null), "bar " + index);
+        }
+        // The trigger released on bar 21, so bar 22 arms a fresh window.
+        assertFalse(rule.isSatisfied(22, null));
+        assertTrue(rule.isSatisfied(23, null));
+    }
+
+    @Test
     public void zeroActivationWindowAllowsOnlySameBarDelegate() {
         TriggeredRule sameBar = new TriggeredRule(BooleanRule.FALSE,
                 new Stage(new IndexRule(2), new IndexRule(2), 0, false, ResetPolicy.ON_SATISFACTION));
