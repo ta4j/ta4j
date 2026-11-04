@@ -73,6 +73,14 @@ public class BaseBarSeries implements BarSeries {
      */
     private int maximumBarCount = Integer.MAX_VALUE;
     /**
+     * Largest absolute bar index a series may hold. It stays one below
+     * {@link Integer#MAX_VALUE} so that inclusive loops ({@code i <= endIndex}) and
+     * exclusive range ends ({@code endIndex + 1}) never overflow.
+     *
+     * @since 0.28.1
+     */
+    public static final int MAX_BAR_INDEX = Integer.MAX_VALUE - 1;
+    /**
      * The number of removed bars.
      */
     private int removedBarsCount = 0;
@@ -128,7 +136,7 @@ public class BaseBarSeries implements BarSeries {
             if (this.removedBarsCount < 0 || this.seriesBeginIndex < this.removedBarsCount) {
                 throw new InvalidObjectException("Removed bars count must be non-negative and <= begin index");
             }
-            if ((long) this.removedBarsCount + this.bars.size() - 1 > Integer.MAX_VALUE) {
+            if ((long) this.removedBarsCount + this.bars.size() - 1 > MAX_BAR_INDEX) {
                 throw new InvalidObjectException("Retained bar indexes exceed the supported integer range");
             }
             if ((long) this.seriesEndIndex >= (long) this.removedBarsCount + this.bars.size()) {
@@ -238,6 +246,14 @@ public class BaseBarSeries implements BarSeries {
                 new TimeBarBuilderFactory());
     }
 
+    private static int requireSupportedIndex(final long absoluteIndex) {
+        if (absoluteIndex > MAX_BAR_INDEX) {
+            throw new ArithmeticException(
+                    "Bar index " + absoluteIndex + " exceeds the supported maximum " + MAX_BAR_INDEX);
+        }
+        return (int) absoluteIndex;
+    }
+
     private static Config validatedConfig(final String name, final List<Bar> bars, final int seriesBeginIndex,
             final int seriesEndIndex, final int removedBarsCount, final boolean constrained,
             final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
@@ -257,6 +273,7 @@ public class BaseBarSeries implements BarSeries {
         if ((long) seriesEndIndex >= (long) removedBarsCount + copiedBars.size()) {
             throw new IllegalArgumentException("End index must be within the offset bar list");
         }
+        requireSupportedIndex((long) removedBarsCount + copiedBars.size() - 1);
         return new Config(name, copiedBars, seriesBeginIndex, seriesEndIndex, removedBarsCount, constrained, numFactory,
                 validatedBarBuilderFactory);
     }
@@ -451,7 +468,7 @@ public class BaseBarSeries implements BarSeries {
     /**
      * @throws NullPointerException if {@code bar} is {@code null}
      * @throws ArithmeticException  if appending would advance a retained or logical
-     *                              absolute index beyond {@link Integer#MAX_VALUE}
+     *                              absolute index beyond {@link #MAX_BAR_INDEX}
      */
     @Override
     @SuppressFBWarnings(value = "AT_STALE_THREAD_WRITE_OF_PRIMITIVE", justification = "BaseBarSeries structural indexes are intentionally single-threaded; concurrent callers must use ConcurrentBarSeries.")
@@ -482,7 +499,7 @@ public class BaseBarSeries implements BarSeries {
             }
         }
 
-        final int newBarIndex = Math.addExact(this.removedBarsCount, this.bars.size());
+        final int newBarIndex = requireSupportedIndex((long) this.removedBarsCount + this.bars.size());
         this.bars.add(bar);
         if (this.seriesBeginIndex == -1) {
             // The begin index is set to 0 if not already initialized:

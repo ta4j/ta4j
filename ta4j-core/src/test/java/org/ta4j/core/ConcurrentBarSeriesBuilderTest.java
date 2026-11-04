@@ -140,22 +140,27 @@ public class ConcurrentBarSeriesBuilderTest extends AbstractIndicatorTest<BarSer
     }
 
     @Test
-    public void testWithBeginIndexSupportsIntegerMaximumWithoutWrapping() {
+    public void testWithBeginIndexStopsOneBelowIntegerMaximum() {
         Bar first = createTestBar(0);
         Bar second = createTestBar(1);
         ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withBars(List.of(first))
                 .withNumFactory(numFactory)
-                .withBeginIndex(Integer.MAX_VALUE)
+                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX)
                 .build();
 
-        assertEquals(Integer.MAX_VALUE, series.getBeginIndex());
-        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
+        assertEquals(BaseBarSeries.MAX_BAR_INDEX, series.getBeginIndex());
+        assertEquals(BaseBarSeries.MAX_BAR_INDEX, series.getEndIndex());
         assertThrows(ArithmeticException.class, () -> series.addBar(second));
         assertEquals(1, series.getBarCount());
         assertThrows(ArithmeticException.class,
-                () -> new ConcurrentBarSeriesBuilder().withBars(List.of(first, second))
+                () -> new ConcurrentBarSeriesBuilder().withBars(List.of(first))
                         .withNumFactory(numFactory)
                         .withBeginIndex(Integer.MAX_VALUE)
+                        .build());
+        assertThrows(ArithmeticException.class,
+                () -> new ConcurrentBarSeriesBuilder().withBars(List.of(first, second))
+                        .withNumFactory(numFactory)
+                        .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX)
                         .build());
     }
 
