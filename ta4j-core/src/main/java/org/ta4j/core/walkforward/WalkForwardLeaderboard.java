@@ -17,8 +17,9 @@ import org.ta4j.core.num.Num;
  * @param evaluatedCount     total candidates evaluated successfully
  * @param keptCount          number of entries retained in ranking output
  * @param primaryHorizonBars optimization horizon used for ranking
- * @param failedCount        number of candidates whose evaluation failed and
- *                           were excluded from the ranking
+ * @param failedCount        number of candidates whose evaluation failed, in
+ *                           whole or in any fold, and were excluded from the
+ *                           ranking
  * @since 0.22.4
  */
 public record WalkForwardLeaderboard<C>(List<Entry<C>> entries, int evaluatedCount, int keptCount,
