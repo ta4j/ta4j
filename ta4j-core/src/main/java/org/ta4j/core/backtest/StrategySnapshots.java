@@ -20,6 +20,11 @@ final class StrategySnapshots {
 
     static Strategy copy(Strategy strategy) {
         Strategy source = Objects.requireNonNull(strategy, "strategy");
+        if (source.getClass() != BaseStrategy.class) {
+            // Rebuilding a subclass or custom Strategy as a BaseStrategy would drop
+            // its overridden entry/exit/operate behavior, so keep the original.
+            return source;
+        }
         return new BaseStrategy(source.getName(), RuleCopies.copy(source.getEntryRule()),
                 RuleCopies.copy(source.getExitRule()), source.getUnstableBars(), source.getStartingType());
     }
