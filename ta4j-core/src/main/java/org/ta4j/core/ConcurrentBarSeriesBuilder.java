@@ -49,7 +49,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
      *
      * @since 0.22.2
      * @throws ArithmeticException if the configured begin index and bars would
-     *                             exceed {@link BaseBarSeries#MAX_BAR_INDEX}
+     *                             exceed {@link Integer#MAX_VALUE}
      */
     @Override
     public ConcurrentBarSeries build() {

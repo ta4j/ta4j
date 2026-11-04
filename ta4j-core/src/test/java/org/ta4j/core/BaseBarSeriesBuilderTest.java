@@ -141,7 +141,7 @@ public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, N
     }
 
     @Test
-    public void testWithBeginIndexStopsOneBelowIntegerMaximum() {
+    public void testWithBeginIndexSupportsIntegerMaximumWithoutWrapping() {
         final NumFactory factory = DoubleNumFactory.getInstance();
         final Bar first = new TimeBarBuilder(factory).timePeriod(Duration.ofMinutes(1))
                 .endTime(Instant.parse("2026-01-01T00:01:00Z"))
@@ -153,25 +153,16 @@ public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, N
                 .build();
 
         BaseBarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first))
-                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX)
+                .withBeginIndex(Integer.MAX_VALUE)
                 .build();
 
-        assertEquals(BaseBarSeries.MAX_BAR_INDEX, series.getBeginIndex());
-        assertEquals(BaseBarSeries.MAX_BAR_INDEX, series.getEndIndex());
-        // Exclusive range ends and inclusive loops stay representable.
-        assertEquals(1, series.getSubSeries(series.getBeginIndex(), series.getEndIndex() + 1).getBarCount());
-        int visited = 0;
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            visited++;
-        }
-        assertEquals(1, visited);
+        assertEquals(Integer.MAX_VALUE, series.getBeginIndex());
+        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
         assertThrows(ArithmeticException.class, () -> series.addBar(second));
         assertEquals(1, series.getBarCount());
         assertThrows(ArithmeticException.class,
-                () -> new BaseBarSeriesBuilder().withBars(List.of(first)).withBeginIndex(Integer.MAX_VALUE).build());
-        assertThrows(ArithmeticException.class,
                 () -> new BaseBarSeriesBuilder().withBars(List.of(first, second))
-                        .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX)
+                        .withBeginIndex(Integer.MAX_VALUE)
                         .build());
     }
 

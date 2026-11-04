@@ -45,7 +45,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
      * {@inheritDoc}
      *
      * @throws ArithmeticException if the configured begin index and bars would
-     *                             exceed {@link BaseBarSeries#MAX_BAR_INDEX}
+     *                             exceed {@link Integer#MAX_VALUE}
      */
     @Override
     public BaseBarSeries build() {

@@ -107,33 +107,23 @@ class BaseBarSeriesSerializationTest {
     }
 
     @Test
-    public void deserializationRejectsIntegerMaximumIndex() throws Exception {
+    public void deserializedExhaustedRetainedOffsetRejectsAppendWithoutMutation() throws Exception {
         SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
         state.bars = new ArrayList<>(List.of(testBars.get(0)));
         state.removedBarsCount = Integer.MAX_VALUE;
         state.seriesBeginIndex = Integer.MAX_VALUE;
-        state.seriesEndIndex = Integer.MAX_VALUE;
-        assertThrows(InvalidObjectException.class, () -> restoreSeriesState(state));
-    }
-
-    @Test
-    public void deserializedExhaustedRetainedOffsetRejectsAppendWithoutMutation() throws Exception {
-        SerializedSeriesState state = new SerializedSeriesState(numFactory, barBuilderFactory);
-        state.bars = new ArrayList<>(List.of(testBars.get(0)));
-        state.removedBarsCount = BaseBarSeries.MAX_BAR_INDEX;
-        state.seriesBeginIndex = BaseBarSeries.MAX_BAR_INDEX;
-        state.seriesEndIndex = BaseBarSeries.MAX_BAR_INDEX - 1;
+        state.seriesEndIndex = Integer.MAX_VALUE - 1;
         BaseBarSeries restored = restoreSeriesState(state);
-        Bar retainedBar = restored.getBar(BaseBarSeries.MAX_BAR_INDEX);
+        Bar retainedBar = restored.getBar(Integer.MAX_VALUE);
         long revision = restored.getBarHistoryRevision();
 
         assertThrows(ArithmeticException.class, () -> restored.addBar(testBars.get(1)));
 
         assertEquals(List.of(retainedBar), restored.getBarData());
-        assertSame(retainedBar, restored.getBar(BaseBarSeries.MAX_BAR_INDEX));
-        assertEquals(BaseBarSeries.MAX_BAR_INDEX, restored.getBeginIndex());
-        assertEquals(BaseBarSeries.MAX_BAR_INDEX - 1, restored.getEndIndex());
-        assertEquals(BaseBarSeries.MAX_BAR_INDEX, restored.getRemovedBarsCount());
+        assertSame(retainedBar, restored.getBar(Integer.MAX_VALUE));
+        assertEquals(Integer.MAX_VALUE, restored.getBeginIndex());
+        assertEquals(Integer.MAX_VALUE - 1, restored.getEndIndex());
+        assertEquals(Integer.MAX_VALUE, restored.getRemovedBarsCount());
         assertEquals(revision, restored.getBarHistoryRevision());
     }
 
