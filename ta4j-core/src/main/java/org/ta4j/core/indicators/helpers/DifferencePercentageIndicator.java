@@ -3,6 +3,14 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.IdentityHashMap;
+import java.util.Set;
+
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.NaN;
@@ -48,7 +56,13 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     private static final int NOT_SCANNED = Integer.MIN_VALUE;
     /** Last index folded into {@link #lastNotification} by the sequential scan. */
     private transient int scannedThrough = NOT_SCANNED;
-    private transient long scannedRevision;
+    /**
+     * Series backing this indicator and every source in its graph. A change to any
+     * of them, not only to this indicator's own series, can alter the bars the scan
+     * already folded in.
+     */
+    private transient BarSeries[] scannedSeries;
+    private transient long[] scannedRevisions;
 
     /**
      * Constructor to get the percentage difference from the previous value.
@@ -107,10 +121,10 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         // of the earlier bars. Continue the previous scan when it is a prefix of
         // this one instead of rescanning from the head for every index, which made
         // a full pass quadratic.
-        long revision = getBarSeries().getBarHistoryRevision();
+        long[] revisions = currentRevisions();
         int start;
-        if (scannedThrough == NOT_SCANNED || scannedThrough >= index || scannedThrough < beginIndex - 1 || revision < 0
-                || revision != scannedRevision) {
+        if (scannedThrough == NOT_SCANNED || scannedThrough >= index || scannedThrough < beginIndex - 1
+                || revisions == null || !Arrays.equals(revisions, scannedRevisions)) {
             lastNotification = null;
             start = beginIndex;
         } else {
@@ -120,7 +134,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
             applyNotification(i);
         }
         scannedThrough = index - 1;
-        scannedRevision = revision;
+        scannedRevisions = revisions;
 
         if (lastNotification == null) {
             return NaN.NaN;
@@ -134,6 +148,44 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         // An external update breaks the sequential scan state.
         scannedThrough = NOT_SCANNED;
         applyNotification(index);
+    }
+
+    /**
+     * @return the history revisions of every series in the source graph, or
+     *         {@code null} when one of them does not track revisions
+     */
+    private long[] currentRevisions() {
+        if (scannedSeries == null) {
+            scannedSeries = collectSeries();
+        }
+        long[] revisions = new long[scannedSeries.length];
+        for (int i = 0; i < scannedSeries.length; i++) {
+            long revision = scannedSeries[i].getBarHistoryRevision();
+            if (revision < 0) {
+                return null;
+            }
+            revisions[i] = revision;
+        }
+        return revisions;
+    }
+
+    private BarSeries[] collectSeries() {
+        Set<BarSeries> series = Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<Indicator<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        Deque<Indicator<?>> pending = new ArrayDeque<>();
+        series.add(getBarSeries());
+        pending.add(indicator);
+        while (!pending.isEmpty()) {
+            Indicator<?> source = pending.removeLast();
+            if (!visited.add(source)) {
+                continue;
+            }
+            if (source.getBarSeries() != null) {
+                series.add(source.getBarSeries());
+            }
+            pending.addAll(source.getDependencies());
+        }
+        return series.toArray(BarSeries[]::new);
     }
 
     private void applyNotification(int index) {

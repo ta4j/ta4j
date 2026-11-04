@@ -325,7 +325,8 @@ public class TriggeredRule extends AbstractRule {
         for (int stageIndex = 0; stageIndex < triggerRules.length; stageIndex++) {
             StageState state = stageStates[stageIndex];
 
-            if (triggerRules[stageIndex].isSatisfied(index, tradingRecord)) {
+            final boolean triggered = triggerRules[stageIndex].isSatisfied(index, tradingRecord);
+            if (triggered) {
                 // An armed stage keeps its original activation bar, and an expired
                 // stage waits for the trigger to release: re-arming on every bar a
                 // persistent trigger holds would keep the window open forever.
@@ -344,7 +345,8 @@ public class TriggeredRule extends AbstractRule {
             }
 
             if (isExpired(stageIndex, state, index)) {
-                state.expire();
+                // Only a trigger still held on the expiring bar must release first.
+                state.expire(triggered);
                 continue;
             }
 
@@ -503,9 +505,9 @@ public class TriggeredRule extends AbstractRule {
             this.activatedAtIndex = index;
         }
 
-        private void expire() {
+        private void expire(boolean triggerHeld) {
             reset();
-            this.awaitingTriggerRelease = true;
+            this.awaitingTriggerRelease = triggerHeld;
         }
 
         private void reset() {

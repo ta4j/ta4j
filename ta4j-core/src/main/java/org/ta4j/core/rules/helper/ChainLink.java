@@ -25,6 +25,8 @@ public class ChainLink {
      */
     private int threshold = 0;
 
+    private transient int ruleVersion;
+
     /**
      * Threshold is the number of bars the provided rule has to be satisfied after
      * the preceding rule.
@@ -51,6 +53,18 @@ public class ChainLink {
      */
     public void setRule(Rule rule) {
         this.rule = Objects.requireNonNull(rule, "rule cannot be null");
+        this.ruleVersion++;
+    }
+
+    /**
+     * Counts {@link #setRule(Rule)} calls, so holders of a copy from
+     * {@link #getRule()} can tell when the copy is out of date.
+     *
+     * @return a value that changes whenever the rule is replaced
+     * @since 0.28.1
+     */
+    public int getRuleVersion() {
+        return ruleVersion;
     }
 
     /**

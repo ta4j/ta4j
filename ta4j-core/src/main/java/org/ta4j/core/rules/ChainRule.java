@@ -23,12 +23,13 @@ public class ChainRule extends AbstractRule {
     private final Rule initialRule;
     private final LinkedList<ChainLink> rulesInChain = new LinkedList<>();
     /**
-     * Link rules copied once at construction. {@link ChainLink#getRule()} returns a
-     * fresh copy on every call, so reading it per evaluation would rebuild each
-     * link rule through serialization for every bar and threshold step and would
-     * discard the state of stateful link rules.
+     * Link rule copies, refreshed only when a link's rule is replaced.
+     * {@link ChainLink#getRule()} returns a fresh copy on every call, so reading it
+     * per evaluation would rebuild each link rule through serialization for every
+     * bar and threshold step and would discard the state of stateful link rules.
      */
-    private final transient Rule[] linkRules;
+    private transient Rule[] linkRules;
+    private transient int[] linkRuleVersions;
 
     /** The backing series used to resolve the live begin index, or {@code null}. */
     private final BarSeries series;
@@ -45,8 +46,21 @@ public class ChainRule extends AbstractRule {
         for (ChainLink chainLink : chainLinks) {
             this.rulesInChain.add(Objects.requireNonNull(chainLink, "chainLink cannot be null"));
         }
-        this.linkRules = rulesInChain.stream().map(ChainLink::getRule).toArray(Rule[]::new);
-        this.series = findBarSeries(initialRule, linkRules);
+        this.series = findBarSeries(initialRule, rulesInChain.stream().map(ChainLink::getRule).toArray(Rule[]::new));
+    }
+
+    private Rule linkRule(final ChainLink link, final int linkIndex) {
+        if (linkRules == null) {
+            // Also rebuilds the copies after Java deserialization.
+            linkRules = new Rule[rulesInChain.size()];
+            linkRuleVersions = new int[rulesInChain.size()];
+        }
+        final int version = link.getRuleVersion();
+        if (linkRules[linkIndex] == null || linkRuleVersions[linkIndex] != version) {
+            linkRules[linkIndex] = link.getRule();
+            linkRuleVersions[linkIndex] = version;
+        }
+        return linkRules[linkIndex];
     }
 
     private static BarSeries findBarSeries(Rule initialRule, Rule[] linkRules) {
@@ -85,7 +99,7 @@ public class ChainRule extends AbstractRule {
                     break;
                 }
 
-                satisfiedWithinThreshold = evaluateChildRule(linkRules[linkIndex], "chainRule" + linkIndex,
+                satisfiedWithinThreshold = evaluateChildRule(linkRule(link, linkIndex), "chainRule" + linkIndex,
                         resultingIndex, tradingRecord);
 
                 if (satisfiedWithinThreshold) {

@@ -66,6 +66,18 @@ public class TriggeredRuleTest {
     }
 
     @Test
+    public void triggerReleasedOnExpiringBarAllowsImmediateRearm() {
+        Rule trigger = new CountingRule(index -> index == 1 || index == 3);
+        Rule delegate = new CountingRule(index -> index == 3);
+        TriggeredRule rule = new TriggeredRule(BooleanRule.FALSE,
+                new Stage(trigger, delegate, 0, false, ResetPolicy.ON_SATISFACTION));
+
+        assertFalse(rule.isSatisfied(1, null));
+        assertFalse(rule.isSatisfied(2, null));
+        assertTrue(rule.isSatisfied(3, null));
+    }
+
+    @Test
     public void zeroActivationWindowAllowsOnlySameBarDelegate() {
         TriggeredRule sameBar = new TriggeredRule(BooleanRule.FALSE,
                 new Stage(new IndexRule(2), new IndexRule(2), 0, false, ResetPolicy.ON_SATISFACTION));

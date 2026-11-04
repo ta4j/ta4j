@@ -72,4 +72,38 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
 
         assertThat(reads.get()).isLessThan(5L * closes.length);
     }
+
+    @Test
+    public void dependencySeriesChangeRescansEarlierBars() {
+        BarSeries backing = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
+        BarSeries dependency = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
+        ClosePriceIndicator dependencyClose = new ClosePriceIndicator(dependency);
+        Indicator<Num> source = new org.ta4j.core.indicators.CachedIndicator<>(backing, dependencyClose) {
+            @Override
+            protected Num calculate(int index) {
+                return dependencyClose.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        DifferencePercentageIndicator indicator = new DifferencePercentageIndicator(source, numFactory.zero());
+
+        assertThat(indicator.getValue(2).isZero()).isTrue();
+
+        org.ta4j.core.Bar original = dependency.getBar(1);
+        ((org.ta4j.core.BaseBarSeries) dependency).replaceBar(1,
+                new org.ta4j.core.bars.TimeBarBuilder(numFactory).timePeriod(original.getTimePeriod())
+                        .endTime(original.getEndTime())
+                        .openPrice(200)
+                        .highPrice(200)
+                        .lowPrice(200)
+                        .closePrice(200)
+                        .volume(0)
+                        .build());
+
+        assertThat(indicator.getValue(2).isEqual(numOf(-50))).as("value %s", indicator.getValue(2)).isTrue();
+    }
 }
