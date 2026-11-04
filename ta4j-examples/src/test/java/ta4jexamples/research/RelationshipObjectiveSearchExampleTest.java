@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -85,20 +84,20 @@ public class RelationshipObjectiveSearchExampleTest {
 
     @Test
     public void eventLoopsTerminateAtTerminalSeriesIndex() {
-        // A series ending at BaseBarSeries.MAX_BAR_INDEX must not wrap the loop index
+        // A series ending at Integer.MAX_VALUE must not wrap the loop index
         // negative; both helpers iterate by a bounded local offset.
         BarSeries series = new BaseBarSeriesBuilder()
                 .withBars(List.of(terminalBar("2024-01-01T00:00:00Z"), terminalBar("2024-01-02T00:00:00Z"),
                         terminalBar("2024-01-03T00:00:00Z")))
-                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX - 2)
+                .withBeginIndex(Integer.MAX_VALUE - 2)
                 .build();
 
         Indicator<Boolean> momentum = RelationshipObjectiveSearchExample.momentumCrossUpEvents(series, 1);
-        assertFalse(momentum.getValue(BaseBarSeries.MAX_BAR_INDEX - 1));
-        assertFalse(momentum.getValue(BaseBarSeries.MAX_BAR_INDEX));
+        assertFalse(momentum.getValue(Integer.MAX_VALUE - 1));
+        assertFalse(momentum.getValue(Integer.MAX_VALUE));
 
         Indicator<Boolean> rally = RelationshipObjectiveSearchExample.rallyAheadEvents(series);
-        assertFalse(rally.getValue(BaseBarSeries.MAX_BAR_INDEX));
+        assertFalse(rally.getValue(Integer.MAX_VALUE));
     }
 
     @Test

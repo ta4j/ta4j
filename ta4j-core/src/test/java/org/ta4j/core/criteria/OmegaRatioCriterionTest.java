@@ -16,7 +16,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ConcurrentBarSeries;
@@ -358,10 +357,10 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 12d, 11d).build();
         BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withBars(source.getBarData())
-                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX - 2)
+                .withBeginIndex(Integer.MAX_VALUE - 2)
                 .build();
-        var record = new BaseTradingRecord(Trade.buyAt(BaseBarSeries.MAX_BAR_INDEX - 2, terminal),
-                Trade.sellAt(BaseBarSeries.MAX_BAR_INDEX, terminal));
+        var record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE - 2, terminal),
+                Trade.sellAt(Integer.MAX_VALUE, terminal));
 
         Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
                 .calculate(terminal, record);

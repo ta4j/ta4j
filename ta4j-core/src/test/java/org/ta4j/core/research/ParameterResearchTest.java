@@ -20,7 +20,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
@@ -1331,7 +1330,7 @@ class ParameterResearchTest {
 
     @Test
     void researchWindowSupportsTerminalMaximumIndex() {
-        // A retained series may legally end at BaseBarSeries.MAX_BAR_INDEX; the window
+        // A retained series may legally end at Integer.MAX_VALUE; the window
         // builder must copy the inclusive source range directly instead of
         // overflowing an exclusive end index. The fixture itself must land on
         // the terminal index, and the objective must read the copied bar so
@@ -1341,9 +1340,9 @@ class ParameterResearchTest {
                 .closePrice(1)
                 .build();
         BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first))
-                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX)
+                .withBeginIndex(Integer.MAX_VALUE)
                 .build();
-        assertThat(series.getEndIndex()).isEqualTo(BaseBarSeries.MAX_BAR_INDEX);
+        assertThat(series.getEndIndex()).isEqualTo(Integer.MAX_VALUE);
 
         ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 2)

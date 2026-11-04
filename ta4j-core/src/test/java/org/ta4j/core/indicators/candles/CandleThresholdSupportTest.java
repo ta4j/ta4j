@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Bar;
 import java.util.Collections;
 import org.ta4j.core.BarSeries;
@@ -684,14 +683,14 @@ public class CandleThresholdSupportTest {
                 .volume(1)
                 .build();
         BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(bar))
-                .withBeginIndex(BaseBarSeries.MAX_BAR_INDEX - 2)
+                .withBeginIndex(Integer.MAX_VALUE - 2)
                 .build();
         CandleThresholdSupport support = new CandleThresholdSupport(series);
 
         // beginIndex + averagePeriod overflows int arithmetic; the boundary must
         // still sit beyond every index the series can address.
-        assertFalse(support.isValid(BaseBarSeries.MAX_BAR_INDEX - 1));
-        assertFalse(support.isValid(BaseBarSeries.MAX_BAR_INDEX));
+        assertFalse(support.isValid(Integer.MAX_VALUE - 1));
+        assertFalse(support.isValid(Integer.MAX_VALUE));
     }
 
     @Test
