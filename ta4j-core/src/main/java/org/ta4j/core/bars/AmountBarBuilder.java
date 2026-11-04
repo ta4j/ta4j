@@ -273,6 +273,15 @@ public class AmountBarBuilder implements BarBuilder {
     }
 
     /**
+     * Binds like {@link #bindTo(BarSeries)} without keeping the series reachable,
+     * for builders cached by a factory that may outlive the series.
+     */
+    AmountBarBuilder bindWeaklyTo(final BarSeries barSeries) {
+        this.barAppender = SeriesBuilderCache.weakAppender(barSeries);
+        return this;
+    }
+
+    /**
      * Ingests a trade into the current amount bar and appends the bar once the
      * amount threshold is met.
      *

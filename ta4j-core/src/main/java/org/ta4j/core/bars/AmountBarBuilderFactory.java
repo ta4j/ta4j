@@ -3,8 +3,6 @@
  */
 package org.ta4j.core.bars;
 
-import java.util.IdentityHashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import org.ta4j.core.BarBuilderFactory;
@@ -20,7 +18,7 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     private final boolean setAmountByVolume;
     private final RemainderCarryOverPolicy carryOverPolicy;
     private final boolean realtimeBars;
-    private transient Map<BarSeries, AmountBarBuilder> barBuilders;
+    private transient SeriesBuilderCache<AmountBarBuilder> barBuilders;
 
     /**
      * Constructor.
@@ -91,18 +89,19 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     @Override
     public synchronized BarBuilder createBarBuilder(final BarSeries series) {
         final BarSeries requestedSeries = Objects.requireNonNull(series);
-        return builders().computeIfAbsent(requestedSeries, this::createBoundBuilder);
+        return builders().get(requestedSeries, this::createBoundBuilder);
     }
 
-    private Map<BarSeries, AmountBarBuilder> builders() {
+    // Package-private for tests.
+    SeriesBuilderCache<AmountBarBuilder> builders() {
         if (barBuilders == null) {
-            barBuilders = new IdentityHashMap<>();
+            barBuilders = new SeriesBuilderCache<>();
         }
         return barBuilders;
     }
 
     private AmountBarBuilder createBoundBuilder(final BarSeries series) {
         return new AmountBarBuilder(series.numFactory(), this.amountThreshold, this.setAmountByVolume,
-                this.realtimeBars, this.carryOverPolicy).bindTo(series);
+                this.realtimeBars, this.carryOverPolicy).bindWeaklyTo(series);
     }
 }

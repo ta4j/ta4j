@@ -3,8 +3,6 @@
  */
 package org.ta4j.core.bars;
 
-import java.util.IdentityHashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import org.ta4j.core.BarBuilderFactory;
@@ -18,7 +16,7 @@ public class TickBarBuilderFactory implements BarBuilderFactory {
 
     private final boolean realtimeBars;
     private final int tickCount;
-    private transient Map<BarSeries, TickBarBuilder> barBuilders;
+    private transient SeriesBuilderCache<TickBarBuilder> barBuilders;
 
     /**
      * Constructor.
@@ -45,17 +43,18 @@ public class TickBarBuilderFactory implements BarBuilderFactory {
     @Override
     public synchronized BarBuilder createBarBuilder(final BarSeries series) {
         final BarSeries requestedSeries = Objects.requireNonNull(series);
-        return builders().computeIfAbsent(requestedSeries, this::createBoundBuilder);
+        return builders().get(requestedSeries, this::createBoundBuilder);
     }
 
-    private Map<BarSeries, TickBarBuilder> builders() {
+    // Package-private for tests.
+    SeriesBuilderCache<TickBarBuilder> builders() {
         if (barBuilders == null) {
-            barBuilders = new IdentityHashMap<>();
+            barBuilders = new SeriesBuilderCache<>();
         }
         return barBuilders;
     }
 
     private TickBarBuilder createBoundBuilder(final BarSeries series) {
-        return new TickBarBuilder(series.numFactory(), this.tickCount, this.realtimeBars).bindTo(series);
+        return new TickBarBuilder(series.numFactory(), this.tickCount, this.realtimeBars).bindWeaklyTo(series);
     }
 }

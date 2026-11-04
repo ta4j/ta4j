@@ -252,6 +252,15 @@ public class VolumeBarBuilder implements BarBuilder {
     }
 
     /**
+     * Binds like {@link #bindTo(BarSeries)} without keeping the series reachable,
+     * for builders cached by a factory that may outlive the series.
+     */
+    VolumeBarBuilder bindWeaklyTo(final BarSeries barSeries) {
+        this.barAppender = SeriesBuilderCache.weakAppender(barSeries);
+        return this;
+    }
+
+    /**
      * Ingests a trade into the current volume bar and appends the bar once the
      * volume threshold is met.
      *
