@@ -315,7 +315,7 @@ public class TickBarBuilder implements BarBuilder {
         }
     }
 
-    private Consumer<Bar> boundBarAppender() {
+    Consumer<Bar> boundBarAppender() {
         return Objects.requireNonNull(barAppender, "barSeries");
     }
 

@@ -55,20 +55,51 @@ final class SeriesBuilderCache<B> {
      * the series, nobody can observe its bars, so dropping later appends loses
      * nothing.
      */
-    static Consumer<Bar> weakAppender(final BarSeries series) {
-        final WeakReference<BarSeries> target = new WeakReference<>(Objects.requireNonNull(series));
-        return bar -> {
-            final BarSeries live = target.get();
-            if (live != null) {
-                live.addBar(bar);
+    static WeakAppender weakAppender(final BarSeries series) {
+        return new WeakAppender(Objects.requireNonNull(series));
+    }
+
+    /**
+     * Clears and enqueues the weak key of {@code series}, exactly as the garbage
+     * collector does once the series becomes unreachable, so eviction can be tested
+     * without depending on collection timing.
+     */
+    synchronized void clearKey(final BarSeries series) {
+        for (SeriesKey key : builders.keySet()) {
+            if (key.get() == series) {
+                key.enqueue();
+                return;
             }
-        };
+        }
     }
 
     private void expungeCollected() {
         Reference<? extends BarSeries> reference;
         while ((reference = collected.poll()) != null) {
             builders.remove(reference);
+        }
+    }
+
+    /** Bar appender that holds its series only weakly. */
+    static final class WeakAppender implements Consumer<Bar> {
+
+        private final WeakReference<BarSeries> target;
+
+        private WeakAppender(final BarSeries series) {
+            this.target = new WeakReference<>(series);
+        }
+
+        @Override
+        public void accept(final Bar bar) {
+            final BarSeries live = target.get();
+            if (live != null) {
+                live.addBar(bar);
+            }
+        }
+
+        /** Clears the reference as the garbage collector would. */
+        void clear() {
+            target.clear();
         }
     }
 

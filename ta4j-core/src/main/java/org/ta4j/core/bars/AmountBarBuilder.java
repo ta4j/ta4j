@@ -509,7 +509,7 @@ public class AmountBarBuilder implements BarBuilder {
         return updated.isZero() ? null : updated;
     }
 
-    private Consumer<Bar> boundBarAppender() {
+    Consumer<Bar> boundBarAppender() {
         return Objects.requireNonNull(barAppender, "barSeries");
     }
 
