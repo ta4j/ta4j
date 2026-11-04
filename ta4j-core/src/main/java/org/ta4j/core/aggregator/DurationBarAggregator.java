@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.bars.TimeBarBuilder;
@@ -31,6 +33,8 @@ public class DurationBarAggregator implements BarAggregator {
      *
      * @param timePeriod the target time period that aggregated bars should have
      */
+    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Rejecting a non-positive period is a "
+            + "documented fail-fast constructor contract; the aggregator holds no resources to leak.")
     public DurationBarAggregator(Duration timePeriod) {
         this(timePeriod, true);
     }
@@ -43,6 +47,8 @@ public class DurationBarAggregator implements BarAggregator {
      *                      be created, otherwise also pending bars
      * @throws IllegalArgumentException if {@code timePeriod} is not positive
      */
+    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Rejecting a non-positive period is a "
+            + "documented fail-fast constructor contract; the aggregator holds no resources to leak.")
     public DurationBarAggregator(Duration timePeriod, boolean onlyFinalBars) {
         this.timePeriod = requirePositive(timePeriod, "timePeriod");
         this.onlyFinalBars = onlyFinalBars;
