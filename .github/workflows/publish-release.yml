@@ -417,7 +417,24 @@ jobs:
                 exit 1
               fi
             else
-              echo "Merge commit ${MERGE_COMMIT} has ${parents:-0} parent(s); accepting release commit from PR metadata."
+              # Squash and rebase merges leave the PR's own commits off the
+              # default branch. Publish the release commit only if its exact tree
+              # landed there through this merge; otherwise later PR-only commits
+              # (or a release commit dropped in the merge) could be published.
+              release_tree=$(git rev-parse "${RELEASE_COMMIT}^{tree}")
+              landed_commit=""
+              for candidate in $(git rev-list --max-count=500 "${MERGE_COMMIT}"); do
+                if [ "$(git rev-parse "${candidate}^{tree}")" = "${release_tree}" ]; then
+                  landed_commit="${candidate}"
+                  break
+                fi
+              done
+              if [ -z "${landed_commit}" ]; then
+                echo "::error::Release commit ${RELEASE_COMMIT} tree does not match any commit that merge ${MERGE_COMMIT} put on origin/${DEFAULT_BRANCH}."
+                echo "::error::Merge release PRs with a merge commit, or publish with workflow_dispatch (recoveryMode=true for a commit that is not on origin/${DEFAULT_BRANCH})."
+                exit 1
+              fi
+              echo "Merge commit ${MERGE_COMMIT} has ${parents:-0} parent(s); release commit ${RELEASE_COMMIT} tree landed on origin/${DEFAULT_BRANCH} as ${landed_commit}."
             fi
           elif ! git merge-base --is-ancestor "${RELEASE_COMMIT}" "origin/${DEFAULT_BRANCH}"; then
             recovery_mode=$(printf '%s' "${RECOVERY_MODE:-false}" | tr '[:upper:]' '[:lower:]')
