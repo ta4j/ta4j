@@ -17,7 +17,11 @@ import java.util.Objects;
  *
  * where {@code dt = tc - t}. The normalized residual is the one-step residual
  * divided by the maximum absolute residual across the calibration window and
- * evaluated bar under this same fitted trajectory.
+ * evaluated bar under this same fitted trajectory. When that maximum is within
+ * floating-point noise of the fitted log price (relative size below
+ * {@code 1e-10}), the fit is treated as exact and the normalized residual is
+ * {@code 0}: dividing rounding noise by rounding noise would otherwise saturate
+ * at {@code -1} or {@code 1}.
  *
  * @param window             trailing calibration window
  * @param status             fit outcome
@@ -81,12 +85,28 @@ public record LPPLFit(int window, LPPLFitStatus status, double a, double b, doub
             if (!nearlyEqual(rms, expectedRms)) {
                 throw new IllegalArgumentException("rms must equal sqrt(rss / window)");
             }
-            double expectedNormalizedResidual = maxAbsResidual == 0.0 ? 0.0
-                    : Math.max(-1.0, Math.min(1.0, residual / maxAbsResidual));
+            double expectedNormalizedResidual = normalizeResidual(residual, maxAbsResidual, predictedLogPrice);
             if (!nearlyEqual(normalizedResidual, expectedNormalizedResidual)) {
                 throw new IllegalArgumentException("normalizedResidual must match residual / maxAbsResidual");
             }
         }
+    }
+
+    /**
+     * Relative size below which residuals are floating-point noise of the fitted
+     * log price rather than a real deviation from the trajectory.
+     */
+    static final double RESIDUAL_NOISE_FLOOR = 1e-10;
+
+    /**
+     * Normalizes a residual by the path maximum, returning {@code 0} when the
+     * maximum is only rounding noise of the fitted log price.
+     */
+    static double normalizeResidual(double residual, double maxAbsResidual, double predictedLogPrice) {
+        if (maxAbsResidual <= RESIDUAL_NOISE_FLOOR * Math.max(1.0, Math.abs(predictedLogPrice))) {
+            return 0.0;
+        }
+        return Math.max(-1.0, Math.min(1.0, residual / maxAbsResidual));
     }
 
     /**
