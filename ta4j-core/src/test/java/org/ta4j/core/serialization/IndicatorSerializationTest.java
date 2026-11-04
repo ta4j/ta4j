@@ -468,4 +468,19 @@ public class IndicatorSerializationTest {
         }
     }
 
+    @Test
+    @org.junit.jupiter.api.Timeout(value = 10, unit = java.util.concurrent.TimeUnit.SECONDS)
+    public void extremeNumericParametersKeepScientificNotation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(org.ta4j.core.num.DecimalNumFactory.getInstance())
+                .withData(1, 2, 3)
+                .build();
+        Indicator<org.ta4j.core.num.Num> huge = new org.ta4j.core.indicators.helpers.ConstantIndicator<>(series,
+                series.numFactory().numOf(new java.math.BigDecimal("1e999999999")));
+
+        String json = IndicatorSerialization.toJson(huge);
+        Indicator<?> restored = IndicatorSerialization.fromJson(series, json);
+
+        org.assertj.core.api.Assertions.assertThat(json.length()).isLessThan(1_000);
+        org.assertj.core.api.Assertions.assertThat(IndicatorSerialization.toJson(restored)).isEqualTo(json);
+    }
 }

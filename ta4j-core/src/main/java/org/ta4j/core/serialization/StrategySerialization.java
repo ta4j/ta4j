@@ -87,7 +87,6 @@ public final class StrategySerialization {
     private static final String V2_ARGS_KEY = "args";
     private static final String DEFAULT_V2_STRATEGY_TYPE = "BaseStrategy";
     private static final int SUPPORTED_V2_VERSION = 2;
-    private static final String VERSION_TOKEN = "\"" + VERSION_KEY + "\"";
     private static final Pattern JSON_INTEGER_LITERAL = Pattern.compile("-?(?:0|[1-9]\\d*)");
     private static final Pattern JSON_NUMBER_LITERAL = Pattern
             .compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
@@ -337,10 +336,8 @@ public final class StrategySerialization {
         if (json == null || json.trim().isEmpty()) {
             return null;
         }
-        if (!json.contains(VERSION_TOKEN)) {
-            return null;
-        }
-
+        // Detect the envelope on the parsed object, not the raw text: a key spelled
+        // with JSON escapes (for example "\u0076ersion") is still "version".
         JsonElement root;
         try {
             root = JsonParser.parseString(json);

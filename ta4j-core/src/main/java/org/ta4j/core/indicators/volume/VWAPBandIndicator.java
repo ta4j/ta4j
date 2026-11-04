@@ -168,11 +168,15 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
         String raw = value.getDelegate().toString();
         try {
             BigDecimal decimal = new BigDecimal(raw).stripTrailingZeros();
+            if (Math.abs((long) decimal.scale()) > 1_000) {
+                // Avoid expanding a compact exponent into millions of plain digits.
+                return decimal.toString();
+            }
             if (decimal.scale() < 0) {
                 decimal = decimal.setScale(0);
             }
             return decimal.toPlainString();
-        } catch (NumberFormatException ex) {
+        } catch (NumberFormatException | ArithmeticException ex) {
             return raw;
         }
     }

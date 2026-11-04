@@ -68,6 +68,12 @@ import org.ta4j.core.num.Num;
 
 public final class IndicatorSerialization {
 
+    /**
+     * Longest plain decimal written for a numeric parameter; larger magnitudes keep
+     * their scientific form.
+     */
+    private static final int MAX_PLAIN_DECIMAL_DIGITS = 1_000;
+
     private static final Logger log = LoggerFactory.getLogger(IndicatorSerialization.class);
     private static final String INDICATOR_PACKAGE = "org.ta4j.core.indicators";
     private static final String PACKAGE_PATH = INDICATOR_PACKAGE.replace('.', '/');
@@ -877,14 +883,29 @@ public final class IndicatorSerialization {
     private static String trimDecimal(String value) {
         try {
             BigDecimal decimal = new BigDecimal(value);
+            if (plainLength(decimal) > MAX_PLAIN_DECIMAL_DIGITS) {
+                // A compact exponent such as 1e999999999 would expand to a billion
+                // plain digits; keep the scientific form, which parses back exactly.
+                return decimal.toString();
+            }
             decimal = decimal.stripTrailingZeros();
             if (decimal.scale() < 0) {
                 decimal = decimal.setScale(0);
             }
             return decimal.toPlainString();
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException | ArithmeticException e) {
             return value;
         }
+    }
+
+    /**
+     * Upper bound on the digits {@link BigDecimal#toPlainString()} would write,
+     * computed without expanding the value.
+     */
+    private static long plainLength(BigDecimal decimal) {
+        long precision = decimal.precision();
+        long scale = decimal.scale();
+        return scale <= 0 ? precision - scale : Math.max(precision, scale) + 1;
     }
 
     private static List<FieldView> collectFields(Indicator<?> indicator) {
