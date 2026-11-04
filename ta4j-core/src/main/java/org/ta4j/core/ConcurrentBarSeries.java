@@ -152,9 +152,10 @@ public class ConcurrentBarSeries extends BaseBarSeries {
             if (!bars.isEmpty()) {
                 final int retainedStartIndex = Math.max(startIndex, super.getBeginIndex());
                 final int start = retainedStartIndex - super.getRemovedBarsCount();
-                final int end = Math.min(endIndex - super.getRemovedBarsCount(), super.getEndIndex() + 1);
+                final int end = BaseBarSeries.retainedEndOffset(start, endIndex, super.getRemovedBarsCount(),
+                        super.getEndIndex(), bars.size());
                 final var builder = new ConcurrentBarSeriesBuilder().withName(getName())
-                        .withBars(cut(bars, start, end))
+                        .withBars(cut(bars, Math.min(start, end), end))
                         .withBeginIndex(super.getRemovedBarsCount() > 0 ? retainedStartIndex : 0)
                         .withNumFactory(super.numFactory())
                         .withBarBuilderFactory(super.barBuilderFactory());

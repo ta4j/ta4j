@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -41,6 +42,28 @@ class ElliottScenarioSetTest {
         assertThat(set.alternatives()).hasSize(2);
         assertThat(set.alternatives().get(0).id()).isEqualTo("medium");
         assertThat(set.alternatives().get(1).id()).isEqualTo("low");
+    }
+
+    @Test
+    void nanConfidenceRanksLastAndTiesWithOtherNaNScores() {
+        Num nan = DoubleNum.valueOf(Double.NaN);
+        ElliottScenario first = ElliottScenario.builder()
+                .id("nan1")
+                .currentPhase(ElliottPhase.WAVE3)
+                .confidence(new ElliottConfidence(nan, nan, nan, nan, nan, nan, "nan"))
+                .type(ScenarioType.IMPULSE)
+                .build();
+        ElliottScenario second = ElliottScenario.builder()
+                .id("nan2")
+                .currentPhase(ElliottPhase.WAVE3)
+                .confidence(new ElliottConfidence(nan, nan, nan, nan, nan, nan, "nan"))
+                .type(ScenarioType.IMPULSE)
+                .build();
+        ElliottScenario valid = createScenario("valid", 0.2, ElliottPhase.WAVE3);
+
+        assertThat(ElliottScenarioSet.byConfidenceDescending().compare(first, second)).isZero();
+        assertThat(ElliottScenarioSet.of(List.of(first, valid, second), 0).base().orElseThrow().id())
+                .isEqualTo("valid");
     }
 
     @Test

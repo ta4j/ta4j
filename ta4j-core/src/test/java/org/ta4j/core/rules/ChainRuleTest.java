@@ -48,6 +48,16 @@ public class ChainRuleTest {
     }
 
     @Test
+    public void replacingALinkRuleAfterConstructionTakesEffect() {
+        ChainLink link = new ChainLink(BooleanRule.FALSE, 0);
+        ChainRule rule = new ChainRule(BooleanRule.TRUE, link);
+
+        assertFalse(rule.isSatisfied(0, null));
+        link.setRule(BooleanRule.TRUE);
+        assertTrue(rule.isSatisfied(0, null));
+    }
+
+    @Test
     public void isSatisfied() {
         assertFalse(chainRule.isSatisfied(0));
         assertTrue(chainRule.isSatisfied(4));

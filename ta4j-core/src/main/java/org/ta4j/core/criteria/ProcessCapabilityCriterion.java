@@ -65,6 +65,12 @@ import org.ta4j.core.num.NumFactory;
  */
 public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
 
+    /**
+     * Digits retained when mixed long and short returns cancel; ample for exact
+     * cancellation of realistic ratios while bounding adversarial exponent gaps.
+     */
+    private static final int CANCELLATION_PRECISION = 10_000;
+
     private final BigDecimal lsl;
     private final BigDecimal usl;
     private final GrossReturnCriterion grossReturnCriterion = new GrossReturnCriterion(
@@ -333,6 +339,11 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         BigDecimal returnCenter = mixedDirections ? BigDecimal.ONE
                 : hasShortReturns ? BigDecimal.valueOf(2) : BigDecimal.ZERO;
         BigDecimal shortReturnBase = BigDecimal.valueOf(2).subtract(returnCenter);
+        // Cancellation between opposing ratios needs more than the recovery
+        // precision, but not unlimited precision: an exact sum of a tiny and a
+        // unit ratio such as 1e-999999999 - 1 would expand to a billion digits.
+        MathContext cancellationContext = new MathContext(Math.max(context.getPrecision(), CANCELLATION_PRECISION),
+                context.getRoundingMode());
         List<BigDecimal> returns = new ArrayList<>();
         for (Position position : positions) {
             if (!position.isClosed()) {
@@ -350,31 +361,31 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
                 // Mixed-direction returns share a center of one:
                 // ratio - 1 and (2 - ratio) - 1 are exact opposites when
                 // their ratios match, so cancellation retains the base.
-                returns.add(returnCenter.signum() == 0 ? ratio : ratio.subtract(returnCenter));
+                returns.add(returnCenter.signum() == 0 ? ratio : ratio.subtract(returnCenter, cancellationContext));
             } else {
                 // All-short returns stay centered at two, preserving ratios
                 // below the factory/context magnitude as -ratio. Mixed returns
                 // center at one, producing 1 - ratio without ever constructing
                 // the precision-losing 2 - ratio intermediate.
-                returns.add(shortReturnBase.subtract(ratio));
+                returns.add(shortReturnBase.subtract(ratio, cancellationContext));
             }
         }
         if (returns.isEmpty()) {
             return factory.zero();
         }
-        BigDecimal centeredLsl = lsl.subtract(returnCenter);
-        BigDecimal centeredUsl = usl == null ? null : usl.subtract(returnCenter);
+        BigDecimal centeredLsl = lsl.subtract(returnCenter, cancellationContext);
+        BigDecimal centeredUsl = usl == null ? null : usl.subtract(returnCenter, cancellationContext);
         BigDecimal sum = BigDecimal.ZERO;
         for (BigDecimal value : returns) {
-            // Exact addition lets opposing long and short ratios cancel before
-            // the finite recovery context rounds their much smaller remainder.
+            // The wide cancellation context lets opposing long and short ratios
+            // cancel before the finite recovery context rounds their remainder.
             // Same-direction recovery keeps its existing bounded-precision path.
-            sum = mixedDirections ? sum.add(value) : sum.add(value, context);
+            sum = sum.add(value, mixedDirections ? cancellationContext : context);
         }
         BigDecimal mean = sum.divide(BigDecimal.valueOf(returns.size()), context);
         BigDecimal squaredSum = BigDecimal.ZERO;
         for (BigDecimal value : returns) {
-            BigDecimal deviation = mixedDirections ? value.subtract(mean) : value.subtract(mean, context);
+            BigDecimal deviation = value.subtract(mean, mixedDirections ? cancellationContext : context);
             squaredSum = squaredSum.add(deviation.multiply(deviation, context), context);
         }
         BigDecimal threeSigma = squaredSum.divide(BigDecimal.valueOf(returns.size()), context)

@@ -133,9 +133,12 @@ public final class WalkForwardTuner<C, P, O> {
                     WalkForwardRunResult<P, O> runResult = engine.run(series, candidate.context(), config,
                             candidate.id(), Map.of("batchIndex", String.valueOf(batchStart / batchSize)));
 
-                    if (!runResult.splits().isEmpty() && runResult.foldFailures().size() == runResult.splits().size()) {
-                        log.warn("Candidate {} failed during walk-forward tuning: all {} folds failed", candidate.id(),
-                                runResult.splits().size());
+                    if (!runResult.foldFailures().isEmpty()) {
+                        // Scoring only the folds that survived would rank the
+                        // candidate on a favorable subset of the history, so a
+                        // candidate with any failed fold is excluded instead.
+                        log.warn("Candidate {} failed during walk-forward tuning: {} of {} folds failed",
+                                candidate.id(), runResult.foldFailures().size(), runResult.splits().size());
                         failed++;
                         continue;
                     }

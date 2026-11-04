@@ -25,6 +25,28 @@ record SwingHistorySnapshot(long revision, int beginIndex, int endIndex, Bar fir
         bars = List.copyOf(bars);
     }
 
+    /**
+     * Detection attempts a query makes before giving up on a series whose history
+     * keeps changing while the detector evaluates it. A feed that mutates the
+     * series continuously would otherwise keep the query retrying forever.
+     */
+    static final int MAX_DETECTION_ATTEMPTS = 8;
+
+    /**
+     * Fails a query whose history changed during the last allowed attempt.
+     *
+     * @param attempt one-based attempt that just observed a history change
+     * @param cause   evaluation failure seen during that attempt, or {@code null}
+     * @throws IllegalStateException once {@code attempt} reaches
+     *                               {@link #MAX_DETECTION_ATTEMPTS}
+     */
+    static void requireAnotherAttempt(final int attempt, final RuntimeException cause) {
+        if (attempt >= MAX_DETECTION_ATTEMPTS) {
+            throw new IllegalStateException("Series history changed during each of " + MAX_DETECTION_ATTEMPTS
+                    + " swing detection attempts; retry once the series is stable", cause);
+        }
+    }
+
     static SwingHistorySnapshot capture(final BarSeries series) {
         final int begin = series.getBeginIndex();
         final int end = series.isEmpty() ? begin - 1 : series.getEndIndex();

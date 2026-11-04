@@ -96,6 +96,10 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     private static final double DEFAULT_KERNEL_BANDWIDTH = 2.0;
 
     private static final int DEFAULT_MAX_ITERATIONS = 20;
+    /**
+     * Largest fixed-point iteration budget the package-private constructor accepts.
+     */
+    static final int MAX_ITERATIONS = 1_000;
 
     private static final double CONVERGENCE_TOLERANCE = 1e-6;
 
@@ -161,8 +165,19 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      */
     CorrentropyKalmanFilterIndicator(Indicator<Num> indicator, Indicator<Num> processNoiseVariance,
             Indicator<Num> measurementNoiseVariance, Num kernelBandwidth, int maxIterations) {
-        this(validateBandwidth(indicator, kernelBandwidth), maxIterations, indicator, processNoiseVariance,
-                measurementNoiseVariance);
+        this(validateBandwidth(indicator, kernelBandwidth), validateMaxIterations(maxIterations), indicator,
+                processNoiseVariance, measurementNoiseVariance);
+    }
+
+    /**
+     * Descriptor reconstruction can reach the package-private constructor, so its
+     * iteration budget is bounded like the public default.
+     */
+    private static int validateMaxIterations(int maxIterations) {
+        if (maxIterations < 1 || maxIterations > MAX_ITERATIONS) {
+            throw new IllegalArgumentException("maxIterations must be in [1, " + MAX_ITERATIONS + "]");
+        }
+        return maxIterations;
     }
 
     private CorrentropyKalmanFilterIndicator(Num kernelBandwidth, int maxIterations, Indicator<Num> indicator,

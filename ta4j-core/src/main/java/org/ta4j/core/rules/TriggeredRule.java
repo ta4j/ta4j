@@ -21,7 +21,11 @@ import org.ta4j.core.TradingRecord;
  * This rule is useful for staged exits and other lifecycle-based rule
  * compositions. A stage becomes active when its trigger rule is satisfied. Once
  * active, the stage delegates satisfaction checks to its delegate rule until
- * the stage expires or is reset by its configured {@link ResetPolicy}.
+ * the stage expires or is reset by its configured {@link ResetPolicy}. The
+ * activation window counts from the bar that armed the stage: the trigger
+ * firing again while the stage is armed does not extend it, and a stage that
+ * expired re-arms only after its trigger has been unsatisfied for at least one
+ * bar.
  * </p>
  *
  * <p>
@@ -321,8 +325,16 @@ public class TriggeredRule extends AbstractRule {
         for (int stageIndex = 0; stageIndex < triggerRules.length; stageIndex++) {
             StageState state = stageStates[stageIndex];
 
-            if (triggerRules[stageIndex].isSatisfied(index, tradingRecord)) {
-                state.activate(index);
+            final boolean triggered = triggerRules[stageIndex].isSatisfied(index, tradingRecord);
+            if (triggered) {
+                // An armed stage keeps its original activation bar, and an expired
+                // stage waits for the trigger to release: re-arming on every bar a
+                // persistent trigger holds would keep the window open forever.
+                if (!state.active && !state.awaitingTriggerRelease) {
+                    state.activate(index);
+                }
+            } else {
+                state.awaitingTriggerRelease = false;
             }
 
             if (!state.active) {
@@ -333,7 +345,8 @@ public class TriggeredRule extends AbstractRule {
             }
 
             if (isExpired(stageIndex, state, index)) {
-                state.reset();
+                // Only a trigger still held on the expiring bar must release first.
+                state.expire(triggered);
                 continue;
             }
 
@@ -484,6 +497,7 @@ public class TriggeredRule extends AbstractRule {
 
     private static final class StageState {
         private boolean active;
+        private boolean awaitingTriggerRelease;
         private int activatedAtIndex = Integer.MIN_VALUE;
 
         private void activate(int index) {
@@ -491,8 +505,14 @@ public class TriggeredRule extends AbstractRule {
             this.activatedAtIndex = index;
         }
 
+        private void expire(boolean triggerHeld) {
+            reset();
+            this.awaitingTriggerRelease = triggerHeld;
+        }
+
         private void reset() {
             this.active = false;
+            this.awaitingTriggerRelease = false;
             this.activatedAtIndex = Integer.MIN_VALUE;
         }
     }

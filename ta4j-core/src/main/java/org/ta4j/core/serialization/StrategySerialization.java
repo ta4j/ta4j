@@ -54,6 +54,15 @@ import org.ta4j.core.strategy.named.NamedStrategy;
  * Deserialization also accepts an opt-in {@code version: 2} authoring envelope
  * and normalizes it back into the canonical descriptor representation before
  * reconstruction.
+ * <p>
+ * <b>Trust boundary.</b> Payloads are untrusted by default:
+ * {@link #fromJson(BarSeries, String)} and
+ * {@link #fromDescriptor(BarSeries, ComponentDescriptor)} only construct
+ * strategy and rule types that ta4j ships (under {@code org.ta4j.core}), reject
+ * other fully qualified class names before they are loaded, and only infer
+ * public constructors. Use {@link #fromTrustedJson(BarSeries, String)} or
+ * {@link #fromTrustedDescriptor(BarSeries, ComponentDescriptor)} for custom
+ * types described by data your own code controls.
  *
  * @since 0.19
  */
@@ -78,7 +87,6 @@ public final class StrategySerialization {
     private static final String V2_ARGS_KEY = "args";
     private static final String DEFAULT_V2_STRATEGY_TYPE = "BaseStrategy";
     private static final int SUPPORTED_V2_VERSION = 2;
-    private static final String VERSION_TOKEN = "\"" + VERSION_KEY + "\"";
     private static final Pattern JSON_INTEGER_LITERAL = Pattern.compile("-?(?:0|[1-9]\\d*)");
     private static final Pattern JSON_NUMBER_LITERAL = Pattern
             .compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
@@ -277,15 +285,59 @@ public final class StrategySerialization {
         return fromDescriptor(series, descriptor);
     }
 
+    /**
+     * Rebuilds any strategy, including custom strategy and rule types outside ta4j,
+     * from canonical or {@code version: 2} JSON that the caller trusts.
+     * <p>
+     * Named classes are initialized and their constructors, including non-public
+     * ones, are invoked. Only pass JSON that your own code produced or otherwise
+     * controls; use {@link #fromJson(BarSeries, String)} for external input.
+     *
+     * @param series bar series to attach to the strategy
+     * @param json   trusted canonical or v2 JSON payload
+     * @return reconstructed strategy
+     * @since 0.28.1
+     */
+    public static Strategy fromTrustedJson(BarSeries series, String json) {
+        return fromTrustedJson(series, json, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Rebuilds any strategy from trusted canonical or {@code version: 2} JSON using
+     * the supplied named asset registry. See
+     * {@link #fromTrustedJson(BarSeries, String)} for the trust requirements.
+     *
+     * @param series   bar series to attach to the strategy
+     * @param json     trusted canonical or v2 JSON payload
+     * @param registry named asset registry
+     * @return reconstructed strategy
+     * @since 0.28.1
+     */
+    public static Strategy fromTrustedJson(BarSeries series, String json, NamedAssetRegistry registry) {
+        return DescriptorTrust.trusted(() -> fromJson(series, json, registry));
+    }
+
+    /**
+     * Rebuilds any strategy, including custom strategy and rule types outside ta4j,
+     * from a descriptor tree that the caller trusts. See
+     * {@link #fromTrustedJson(BarSeries, String)} for the trust requirements.
+     *
+     * @param series     bar series to attach to the strategy
+     * @param descriptor trusted descriptor describing the strategy
+     * @return reconstructed strategy
+     * @since 0.28.1
+     */
+    public static Strategy fromTrustedDescriptor(BarSeries series, ComponentDescriptor descriptor) {
+        return DescriptorTrust.trusted(() -> fromDescriptor(series, descriptor));
+    }
+
     private static ComponentDescriptor tryParseV2Descriptor(BarSeries series, String json,
             NamedAssetRegistry registry) {
         if (json == null || json.trim().isEmpty()) {
             return null;
         }
-        if (!json.contains(VERSION_TOKEN)) {
-            return null;
-        }
-
+        // Detect the envelope on the parsed object, not the raw text: a key spelled
+        // with JSON escapes (for example "\u0076ersion") is still "version".
         JsonElement root;
         try {
             root = JsonParser.parseString(json);
@@ -996,7 +1048,7 @@ public final class StrategySerialization {
         Constructor<?>[] constructors = ruleType.getDeclaredConstructors();
         for (Constructor<?> constructor : constructors) {
             Class<?>[] parameterTypes = constructor.getParameterTypes();
-            if (parameterTypes.length != components.size()) {
+            if (parameterTypes.length != components.size() || !DescriptorTrust.mayInvoke(constructor)) {
                 continue;
             }
             boolean matches = true;
@@ -1043,7 +1095,7 @@ public final class StrategySerialization {
         }
 
         try {
-            Constructor<? extends Rule> constructor = ruleType.getDeclaredConstructor();
+            Constructor<? extends Rule> constructor = inferable(ruleType.getDeclaredConstructor());
             constructor.setAccessible(true);
             return Optional.of(constructor.newInstance());
         } catch (NoSuchMethodException ex) {
@@ -1064,8 +1116,7 @@ public final class StrategySerialization {
         if (type == null || type.isBlank()) {
             return BaseStrategy.class;
         }
-        Class<? extends Strategy> strategyType = ComponentDescriptor.resolveSubtype(type, Strategy.class,
-                STRATEGY_PACKAGE);
+        Class<? extends Strategy> strategyType = DescriptorTrust.resolve(type, Strategy.class, STRATEGY_PACKAGE);
         if (strategyType == null) {
             throw new IllegalArgumentException("Unknown strategy type: " + type);
         }
@@ -1111,8 +1162,8 @@ public final class StrategySerialization {
     private static Strategy instantiateStrategy(Class<? extends Strategy> strategyType, String name, Rule entryRule,
             Rule exitRule, int unstableBars, TradeType startingType) {
         try {
-            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(String.class, Rule.class,
-                    Rule.class, int.class, TradeType.class);
+            Constructor<? extends Strategy> constructor = inferable(strategyType.getDeclaredConstructor(String.class,
+                    Rule.class, Rule.class, int.class, TradeType.class));
             constructor.setAccessible(true);
             return constructor.newInstance(name, entryRule, exitRule, unstableBars, startingType);
         } catch (NoSuchMethodException ex) {
@@ -1122,8 +1173,8 @@ public final class StrategySerialization {
         }
 
         try {
-            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(String.class, Rule.class,
-                    Rule.class, TradeType.class);
+            Constructor<? extends Strategy> constructor = inferable(
+                    strategyType.getDeclaredConstructor(String.class, Rule.class, Rule.class, TradeType.class));
             constructor.setAccessible(true);
             Strategy strategy = constructor.newInstance(name, entryRule, exitRule, startingType);
             strategy.setUnstableBars(unstableBars);
@@ -1135,8 +1186,8 @@ public final class StrategySerialization {
         }
 
         try {
-            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(Rule.class, Rule.class,
-                    int.class, TradeType.class);
+            Constructor<? extends Strategy> constructor = inferable(
+                    strategyType.getDeclaredConstructor(Rule.class, Rule.class, int.class, TradeType.class));
             constructor.setAccessible(true);
             return constructor.newInstance(entryRule, exitRule, unstableBars, startingType);
         } catch (NoSuchMethodException ex) {
@@ -1146,8 +1197,8 @@ public final class StrategySerialization {
         }
 
         try {
-            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(Rule.class, Rule.class,
-                    TradeType.class);
+            Constructor<? extends Strategy> constructor = inferable(
+                    strategyType.getDeclaredConstructor(Rule.class, Rule.class, TradeType.class));
             constructor.setAccessible(true);
             Strategy strategy = constructor.newInstance(entryRule, exitRule, startingType);
             strategy.setUnstableBars(unstableBars);
@@ -1159,8 +1210,8 @@ public final class StrategySerialization {
         }
 
         try {
-            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(String.class, Rule.class,
-                    Rule.class, int.class);
+            Constructor<? extends Strategy> constructor = inferable(
+                    strategyType.getDeclaredConstructor(String.class, Rule.class, Rule.class, int.class));
             constructor.setAccessible(true);
             return constructor.newInstance(name, entryRule, exitRule, unstableBars);
         } catch (NoSuchMethodException ex) {
@@ -1170,8 +1221,8 @@ public final class StrategySerialization {
         }
 
         try {
-            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(String.class, Rule.class,
-                    Rule.class);
+            Constructor<? extends Strategy> constructor = inferable(
+                    strategyType.getDeclaredConstructor(String.class, Rule.class, Rule.class));
             constructor.setAccessible(true);
             Strategy strategy = constructor.newInstance(name, entryRule, exitRule);
             strategy.setUnstableBars(unstableBars);
@@ -1183,8 +1234,8 @@ public final class StrategySerialization {
         }
 
         try {
-            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(Rule.class, Rule.class,
-                    int.class);
+            Constructor<? extends Strategy> constructor = inferable(
+                    strategyType.getDeclaredConstructor(Rule.class, Rule.class, int.class));
             constructor.setAccessible(true);
             Strategy strategy = constructor.newInstance(entryRule, exitRule, unstableBars);
             return strategy;
@@ -1195,7 +1246,8 @@ public final class StrategySerialization {
         }
 
         try {
-            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(Rule.class, Rule.class);
+            Constructor<? extends Strategy> constructor = inferable(
+                    strategyType.getDeclaredConstructor(Rule.class, Rule.class));
             constructor.setAccessible(true);
             Strategy strategy = constructor.newInstance(entryRule, exitRule);
             strategy.setUnstableBars(unstableBars);
@@ -1275,6 +1327,17 @@ public final class StrategySerialization {
             throw new IllegalStateException(
                     "Named strategy missing (BarSeries, String...) constructor: " + strategyType.getName(), ex);
         }
+    }
+
+    /**
+     * Rejects a constructor that inferred reconstruction may not use for untrusted
+     * descriptors, so the caller tries its next candidate.
+     */
+    private static <T> Constructor<T> inferable(Constructor<T> constructor) throws NoSuchMethodException {
+        if (!DescriptorTrust.mayInvoke(constructor)) {
+            throw new NoSuchMethodException("Non-public constructor requires trusted reconstruction: " + constructor);
+        }
+        return constructor;
     }
 
 }

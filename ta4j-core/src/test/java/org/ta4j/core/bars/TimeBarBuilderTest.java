@@ -24,6 +24,7 @@ import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
@@ -229,6 +230,25 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(Instant.parse("2024-01-01T11:00:00Z"), series.getBar(0).getEndTime());
         assertEquals(Instant.parse("2024-01-01T12:00:00Z"), series.getBar(1).getBeginTime());
         assertEquals(Instant.parse("2024-01-01T13:00:00Z"), series.getBar(1).getEndTime());
+    }
+
+    @Test
+    @Timeout(10)
+    public void addTradeJumpsHugeGapWithoutSteppingEachPeriod() {
+        final var period = Duration.ofNanos(1);
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(period))
+                .build();
+        final var builder = series.barBuilder();
+        final var start = Instant.parse("2024-01-01T00:00:00Z");
+        final var later = start.plus(Duration.ofDays(365));
+
+        builder.addTrade(start, numFactory.one(), numFactory.hundred());
+        builder.addTrade(later, numFactory.one(), numOf(110));
+
+        assertEquals(2, series.getBarCount());
+        assertEquals(later, series.getBar(1).getBeginTime());
+        assertEquals(later.plus(period), series.getBar(1).getEndTime());
     }
 
     @Test

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.bars;
 
+import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
@@ -284,6 +285,9 @@ public class TimeBarBuilder implements BarBuilder {
         if (timePeriod == null) {
             throw new IllegalStateException("Time period must be set before ingesting trades");
         }
+        if (timePeriod.isNegative() || timePeriod.isZero()) {
+            throw new IllegalStateException("Time period must be positive");
+        }
         ensureBoundSeries();
         ensureTimeRange(time);
         if (time.isBefore(beginTime)) {
@@ -292,12 +296,16 @@ public class TimeBarBuilder implements BarBuilder {
         }
         Instant previousEndTime = endTime;
         long skippedPeriods = 0;
-        while (!time.isBefore(endTime)) {
+        if (!time.isBefore(endTime)) {
             persistCurrentBarIfPresent();
             resetTradeState();
-            beginTime = endTime;
+            // Jump straight to the period containing the trade: stepping one
+            // period at a time made a huge gap (or a tiny period) loop for as
+            // many periods as the gap spans.
+            final long periodsAfterEnd = wholePeriodsBetween(endTime, time);
+            beginTime = endTime.plus(timePeriod.multipliedBy(periodsAfterEnd));
             endTime = beginTime.plus(timePeriod);
-            skippedPeriods++;
+            skippedPeriods = periodsAfterEnd + 1;
         }
         if (skippedPeriods > 1) {
             long missingPeriods = skippedPeriods - 1;
@@ -340,6 +348,21 @@ public class TimeBarBuilder implements BarBuilder {
         } else if (endTime == null) {
             endTime = beginTime.plus(timePeriod);
         }
+    }
+
+    private long wholePeriodsBetween(final Instant from, final Instant to) {
+        final BigInteger elapsed = toNanos(Duration.between(from, to));
+        final BigInteger periods = elapsed.divide(toNanos(timePeriod));
+        if (periods.bitLength() >= Long.SIZE - 1) {
+            throw new IllegalArgumentException(String.format("Trade time %s is too far beyond %s", to, from));
+        }
+        return periods.longValueExact();
+    }
+
+    private static BigInteger toNanos(final Duration duration) {
+        return BigInteger.valueOf(duration.getSeconds())
+                .multiply(BigInteger.valueOf(1_000_000_000L))
+                .add(BigInteger.valueOf(duration.getNano()));
     }
 
     private Instant alignToTimePeriodStart(final Instant time) {

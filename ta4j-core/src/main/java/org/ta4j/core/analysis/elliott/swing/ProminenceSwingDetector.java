@@ -27,8 +27,9 @@ import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
  * and close values before and after evaluation. A changed history rebuilds the
  * detector's dependent indicators; supported revisions keep constant-size
  * history checks. Indicator evaluation runs outside the detector's series read
- * scopes. Queries retry until the before/after observations agree; continuous
- * mutation can prevent a query from completing.
+ * scopes. Queries retry until the before/after observations agree, at most
+ * eight times; a query against a series that keeps changing throws
+ * {@link IllegalStateException}.
  *
  * @since 0.23.1
  */
@@ -70,7 +71,7 @@ public final class ProminenceSwingDetector implements SwingDetector {
             return new ProminenceSwingDetector(config).detect(series, index, degree);
         }
         try {
-            while (true) {
+            for (int attempt = 1;; attempt++) {
                 final boolean changed = series.withReadLock(() -> {
                     final boolean historyChanged = cachedIndicator != null && cachedSeries.get() == series
                             && observedHistory.hasChangedIn(series, false);
@@ -110,6 +111,7 @@ public final class ProminenceSwingDetector implements SwingDetector {
                 if (!changedDuringEvaluation) {
                     throw evaluationFailure;
                 }
+                SwingHistorySnapshot.requireAnotherAttempt(attempt, evaluationFailure);
             }
         } finally {
             detectionLock.unlock();

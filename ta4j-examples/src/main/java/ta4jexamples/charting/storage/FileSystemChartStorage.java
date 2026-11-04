@@ -9,6 +9,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 
+import ta4jexamples.charting.ChartImageSize;
+
 import java.nio.file.Files;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -50,6 +52,7 @@ public final class FileSystemChartStorage implements ChartStorage {
     public Optional<Path> save(JFreeChart chart, BarSeries series, String chartTitle, int width, int height) {
         Objects.requireNonNull(chart, "Chart cannot be null");
         Objects.requireNonNull(series, "Series cannot be null");
+        ChartImageSize.validate(width, height);
 
         Path targetPath = (chartTitle != null && !chartTitle.trim().isEmpty()) ? buildSavePath(series, chartTitle)
                 : buildSavePath(series);

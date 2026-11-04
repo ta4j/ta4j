@@ -16,6 +16,13 @@ import org.ta4j.core.num.Num;
 public class CrossedDownIndicatorRule extends AbstractRule {
 
     /** The cross indicator */
+    /**
+     * The operands in constructor order. Serialization reads rule fields, and the
+     * cross indicator alone exposes them as {@code low}/{@code up}, which for a
+     * cross-down is the reverse of the constructor order.
+     */
+    private final Indicator<Num> first;
+    private final Indicator<Num> second;
     private final CrossIndicator cross;
 
     /**
@@ -45,6 +52,8 @@ public class CrossedDownIndicatorRule extends AbstractRule {
      * @param second the second indicator
      */
     public CrossedDownIndicatorRule(Indicator<Num> first, Indicator<Num> second) {
+        this.first = first;
+        this.second = second;
         this.cross = new CrossIndicator(first, second);
     }
 

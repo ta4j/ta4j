@@ -651,6 +651,19 @@ test_publish_release_existing_tag_only_fails_real_runs() {
   pass "test_publish_release_existing_tag_only_fails_real_runs"
 }
 
+test_publish_release_rejects_pr_only_release_commits_after_squash() {
+  echo "Running test_publish_release_rejects_pr_only_release_commits_after_squash"
+
+  expect_file_not_contains "$WORKFLOWS/publish-release.yml" "accepting release commit from PR metadata" \
+    "publish-release must not accept a PR-only release commit after a squash or rebase merge"
+  expect_file_contains "$WORKFLOWS/publish-release.yml" 'release_tree=$(git rev-parse "${RELEASE_COMMIT}^{tree}")' \
+    "publish-release should compare the release commit tree with what the merge landed"
+  expect_file_contains "$WORKFLOWS/publish-release.yml" 'tree does not match any commit that merge ${MERGE_COMMIT} put on' \
+    "publish-release should fail when the release tree never landed on the default branch"
+
+  pass "test_publish_release_rejects_pr_only_release_commits_after_squash"
+}
+
 test_github_release_preserves_workflow_support_checkout() {
   echo "Running test_github_release_preserves_workflow_support_checkout"
 
@@ -728,6 +741,7 @@ test_snapshot_and_health_manual_dry_runs_do_not_mutate
 test_snapshot_workflow_guarantees_exact_consumability
 test_line_of_reports_missing_needles_cleanly
 test_publish_release_existing_tag_only_fails_real_runs
+test_publish_release_rejects_pr_only_release_commits_after_squash
 test_github_release_preserves_workflow_support_checkout
 test_github_script_blocks_do_not_redeclare_injected_bindings
 test_github_script_binding_scan_rejects_bad_fixture

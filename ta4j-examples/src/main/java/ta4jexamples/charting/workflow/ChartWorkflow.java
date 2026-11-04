@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import ta4jexamples.charting.ChartImageSize;
 import ta4jexamples.charting.builder.ChartBuilder;
 import ta4jexamples.charting.builder.ChartContext;
 import ta4jexamples.charting.builder.TimeAxisMode;
@@ -1211,12 +1212,7 @@ public final class ChartWorkflow {
     }
 
     private void validateImageSize(int imageWidth, int imageHeight) {
-        if (imageWidth <= 0) {
-            throw new IllegalArgumentException("Image width must be positive");
-        }
-        if (imageHeight <= 0) {
-            throw new IllegalArgumentException("Image height must be positive");
-        }
+        ChartImageSize.validate(imageWidth, imageHeight);
     }
 
     private void validateSeries(BarSeries series) {

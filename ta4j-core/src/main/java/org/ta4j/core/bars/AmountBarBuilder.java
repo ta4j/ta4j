@@ -273,6 +273,15 @@ public class AmountBarBuilder implements BarBuilder {
     }
 
     /**
+     * Binds like {@link #bindTo(BarSeries)} without keeping the series reachable,
+     * for builders cached by a factory that may outlive the series.
+     */
+    AmountBarBuilder bindWeaklyTo(final BarSeries barSeries) {
+        this.barAppender = SeriesBuilderCache.weakAppender(barSeries);
+        return this;
+    }
+
+    /**
      * Ingests a trade into the current amount bar and appends the bar once the
      * amount threshold is met.
      *
@@ -500,7 +509,7 @@ public class AmountBarBuilder implements BarBuilder {
         return updated.isZero() ? null : updated;
     }
 
-    private Consumer<Bar> boundBarAppender() {
+    Consumer<Bar> boundBarAppender() {
         return Objects.requireNonNull(barAppender, "barSeries");
     }
 

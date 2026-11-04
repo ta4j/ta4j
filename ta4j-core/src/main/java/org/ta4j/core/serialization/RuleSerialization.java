@@ -28,6 +28,15 @@ import java.util.*;
  * their inputs into derived indicators without keeping the original constructor
  * arguments may not be fully supported.
  *
+ * <p>
+ * <b>Trust boundary.</b> Descriptors are untrusted by default:
+ * {@link #fromDescriptor(BarSeries, ComponentDescriptor)} only constructs rules
+ * that ta4j ships (types under {@code org.ta4j.core}), rejects other fully
+ * qualified class names before they are loaded, and only infers public
+ * constructors. Use
+ * {@link #fromTrustedDescriptor(BarSeries, ComponentDescriptor)} for custom
+ * rules described by data your own code controls.
+ *
  * @since 0.19
  */
 public final class RuleSerialization {
@@ -244,6 +253,26 @@ public final class RuleSerialization {
     }
 
     /**
+     * Rebuilds any rule, including custom rules outside ta4j, from a descriptor
+     * tree that the caller trusts.
+     * <p>
+     * Named classes are initialized and their constructors, including non-public
+     * ones, are invoked for this rule and every nested rule and strategy component.
+     * Only pass descriptors that your own code produced or otherwise controls; use
+     * {@link #fromDescriptor(BarSeries, ComponentDescriptor)} for external input.
+     *
+     * @param series     series to use for {@link Num} reconstruction and indicator
+     *                   factories
+     * @param descriptor trusted descriptor describing the rule
+     * @return reconstructed rule
+     * @throws NullPointerException if series or descriptor is null
+     * @since 0.28.1
+     */
+    public static Rule fromTrustedDescriptor(BarSeries series, ComponentDescriptor descriptor) {
+        return DescriptorTrust.trusted(() -> fromDescriptor(series, descriptor, null));
+    }
+
+    /**
      * Rebuilds a rule from a descriptor tree, optionally with a parent context for
      * resolving Strategy-level components.
      *
@@ -328,7 +357,7 @@ public final class RuleSerialization {
      * @throws IllegalArgumentException if no matching {@link Rule} type exists
      */
     static Class<? extends Rule> resolveRuleType(String type) {
-        Class<? extends Rule> ruleType = ComponentDescriptor.resolveSubtype(type, Rule.class, RULE_PACKAGE);
+        Class<? extends Rule> ruleType = DescriptorTrust.resolve(type, Rule.class, RULE_PACKAGE);
         if (ruleType == null) {
             throw new IllegalArgumentException("Unknown rule type: " + type);
         }
@@ -376,7 +405,11 @@ public final class RuleSerialization {
         // 3) stable signature ordering
         Constructor<?>[] constructors = ruleType.getDeclaredConstructors();
         List<Constructor<?>> orderedConstructors = new ArrayList<>(constructors.length);
-        Collections.addAll(orderedConstructors, constructors);
+        for (Constructor<?> constructor : constructors) {
+            if (DescriptorTrust.mayInvoke(constructor)) {
+                orderedConstructors.add(constructor);
+            }
+        }
         orderedConstructors.sort((left, right) -> {
             int countComparison = Integer.compare(right.getParameterCount(), left.getParameterCount());
             if (countComparison != 0) {

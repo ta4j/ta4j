@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis.elliott.swing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
@@ -82,6 +83,26 @@ class ProminenceSwingDetectorTest {
     }
 
     @Test
+    void giveUpAfterBoundedAttemptsWhenHistoryChangesDuringEveryEvaluation() {
+        RevisionlessSeries series = new RevisionlessSeries(series(10, 20, 10, 20, 10, 20, 10).getBarData());
+        ProminenceSwingConfig config = new ProminenceSwingConfig(3, 1, 0, 1, 0.0);
+        ProminenceSwingDetector detector = new ProminenceSwingDetector(config);
+        Bar interior = series.getBar(2);
+        series.mutateOnEveryUnlockedRead(4,
+                () -> interior.addPrice(series.numFactory().numOf(50 + series.mutationCount)));
+
+        assertThatThrownBy(() -> detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("swing detection attempts");
+        assertThat(series.mutationCount).isEqualTo(SwingHistorySnapshot.MAX_DETECTION_ATTEMPTS);
+
+        series.mutateOnUnlockedRead(-1, null);
+        SwingDetectorResult recovered = detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR);
+        assertThat(recovered).isEqualTo(
+                new ProminenceSwingDetector(config).detect(series, series.getEndIndex(), ElliottDegree.MINOR));
+    }
+
+    @Test
     void revalidatesRetainedValuesAfterUnlockedEvaluation() {
         RevisionlessSeries series = new RevisionlessSeries(series(10, 20, 10, 20, 10, 20, 10).getBarData());
         ProminenceSwingConfig config = new ProminenceSwingConfig(3, 1, 0, 1, 0.0);
@@ -155,18 +176,45 @@ class ProminenceSwingDetectorTest {
         private int triggerIndex = -1;
         private Runnable mutation;
         private boolean mutationTriggered;
+        private boolean persistentMutation;
+        private int mutationCount;
+        private boolean armed = true;
 
         private void mutateOnUnlockedRead(final int index, final Runnable action) {
             triggerIndex = index;
             mutation = action;
+            persistentMutation = false;
+        }
+
+        private void armDetectorScope() {
+            // Only the detector's own observation scopes re-arm a persistent
+            // mutation, so each detection attempt sees exactly one change while
+            // the indicator graph's internal reads stay stable.
+            if (StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+                    .walk(frames -> frames.skip(2).findFirst())
+                    .map(frame -> frame.getDeclaringClass() == ProminenceSwingDetector.class)
+                    .orElse(false)) {
+                armed = true;
+            }
+        }
+
+        private void mutateOnEveryUnlockedRead(final int index, final Runnable action) {
+            mutateOnUnlockedRead(index, action);
+            persistentMutation = true;
         }
 
         @Override
         public Bar getBar(final int index) {
-            if (index == triggerIndex && mutation != null && readScopeDepth == 0) {
+            if (index == triggerIndex && mutation != null && armed && readScopeDepth == 0) {
                 Runnable action = mutation;
-                mutation = null;
+                if (persistentMutation) {
+                    // Re-armed by the next read scope: one mutation per attempt.
+                    armed = false;
+                } else {
+                    mutation = null;
+                }
                 mutationTriggered = true;
+                mutationCount++;
                 action.run();
             }
             return super.getBar(index);
@@ -174,6 +222,7 @@ class ProminenceSwingDetectorTest {
 
         @Override
         public void withReadLock(final Runnable action) {
+            armDetectorScope();
             readScopeDepth++;
             try {
                 action.run();
@@ -184,6 +233,7 @@ class ProminenceSwingDetectorTest {
 
         @Override
         public <T> T withReadLock(final Supplier<T> action) {
+            armDetectorScope();
             readScopeDepth++;
             try {
                 return action.get();

@@ -66,6 +66,14 @@ import org.ta4j.core.num.Num;
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /**
+     * Attempts an optimistic recomputation makes before it gives up on a series
+     * whose head or history keeps changing underneath it.
+     *
+     * @since 0.28.1
+     */
+    protected static final int MAX_SERIES_CHANGE_RETRIES = 1_000;
+
+    /**
      * Maximum time (in milliseconds) to wait for a concurrent last-bar computation
      * to complete before computing independently. This prevents indefinite hangs if
      * the owning thread dies or encounters an unexpected issue.
@@ -512,6 +520,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return the synchronized series snapshot
      * @since 0.24.1
      */
+    /**
+     * Bounds an optimistic retry loop that recomputes a value when the series head
+     * or history changes during the computation. Concurrent pruning that never
+     * pauses would otherwise keep the reader spinning forever.
+     *
+     * @param attempt zero-based number of the attempt about to start
+     * @throws IllegalStateException once {@link #MAX_SERIES_CHANGE_RETRIES}
+     *                               attempts have been made
+     * @since 0.28.1
+     */
+    protected final void requireSeriesChangeRetry(int attempt) {
+        if (attempt >= MAX_SERIES_CHANGE_RETRIES) {
+            throw new IllegalStateException(getClass().getSimpleName() + " gave up after " + MAX_SERIES_CHANGE_RETRIES
+                    + " attempts because its bar series kept changing during evaluation");
+        }
+    }
+
     protected final BarSeriesChangeSnapshot synchronizeCacheWithSeries(BarSeries series) {
         boolean reconciliationRequired = false;
         while (true) {
