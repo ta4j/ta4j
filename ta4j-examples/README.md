@@ -32,6 +32,7 @@ Use these quick checks before moving to the next track:
 - `ta4jexamples.backtesting.TradingRecordParityBacktest`: logs execution-model comparison and parity check success
 - `ta4jexamples.backtesting.TradeFillRecordingExample`: logs streamed-vs-grouped fill handling and lot-matching outcomes
 - `ta4jexamples.backtesting.OrderBookBacktest`: logs causal L2 entry signals, an unavailable gap observation, and a closed position filled at subsequent bar opens
+- `ta4jexamples.rules.OrderBookEvaluatedExample`: logs an immutable liquidity decision, both ordinary/rich composition orders, and a next-open round trip
 - `ta4jexamples.portfolio.StaticPortfolioBacktest`: logs buy-and-hold versus monthly-rebalanced summaries, each rebalance's turnover and cost, and a criteria-computed net return that matches the result's total return
 - `ta4jexamples.portfolio.PortfolioCorrelationAnalysis`: prints price, simple-return, and log-return matrices plus complete-linkage clusters for anonymous sample universes
 - `ta4jexamples.portfolio.DiversifiedPortfolioAnalysis`: writes adjusted-data correlation charts, allocation comparisons, HTML, CSV tables, and an optional external-AI response
@@ -57,6 +58,7 @@ If chart windows do not appear, you are likely in a headless environment; switch
 - `ta4jexamples.backtesting.TradingRecordParityBacktest`
 - `ta4jexamples.backtesting.TradeFillRecordingExample`
 - [`ta4jexamples.backtesting.OrderBookBacktest`](src/main/java/ta4jexamples/backtesting/OrderBookBacktest.java): frozen L2 history, spread/imbalance thresholds, readiness, and a price filter
+- [`ta4jexamples.rules.OrderBookEvaluatedExample`](src/main/java/ta4jexamples/rules/OrderBookEvaluatedExample.java): capture one L2 observation for inspection and boolean coercion through `AbstractEvaluatedRule`
 - `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest`
 - `ta4jexamples.research.RelationshipObjectiveSearchExample`
 - `ta4jexamples.backtesting.BacktestPerformanceTuningHarness`
@@ -72,6 +74,17 @@ is unsupported because a bar series alone cannot supply the book dataset.
 
 `OrderBookBacktest` uses zero-cost next-open bar fills, not captured best quotes.
 It does not simulate book walking, queue position, partial fills, or latency.
+
+The evaluated-rule variant captures the book, spread, imbalance, readiness and
+inclusive thresholds in one immutable result. Inspect `evaluate(index, record)`
+and pass that result to `toBoolean(result)` without rereading the source. A later
+`isSatisfied` call is a new evaluation, not a cache of the inspected decision.
+Missing, stale, gap, crossed and insufficient-depth observations project to false;
+locked quotes and balanced depth remain valid at zero thresholds. These are
+liquidity measurements, not calibrated confidence probabilities. Both operand
+orders compose with legacy rules and can be passed directly to `BaseStrategy`.
+The example uses the same bar-fill limitations and external-history serialization
+boundary as the ordinary variant.
 
 Run a fixed throughput matrix and write `matrix_performance.json`:
 
