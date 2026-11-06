@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- **Validated tick, volume and amount bar thresholds**: `TickBarBuilder`, `VolumeBarBuilder`, `AmountBarBuilder` and their factories reject non-positive thresholds and null number factories with `IllegalArgumentException`/`NullPointerException`, and deserialized factories reject non-positive thresholds or a missing carry-over policy with `InvalidObjectException`.
 - **`NaN` stays a singleton after deserialization**: deserialized `NaN` values resolve to the shared `NaN.NaN` instance, so identity checks keep working, and streams that omit its class data are rejected with `InvalidObjectException`.
 
 
@@ -9,6 +10,7 @@
 
 - **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases, including low-precision decimal totals, reconstruct from the existing calculation when reuse is unsafe.
 - **Cross-series indicator indices (CF-726)**: same-index compositions require available, corresponding absolute indices for reads and cache invalidation; no offset or time mapping is inferred. Removed-bar clamping can introduce look-ahead. `DistanceFromMAIndicator` warns once when a read fails beyond a nonempty cross-series source's end, without changing the exception or claiming the series are misaligned.
+
 
 
 ## 0.28.0 (2026-11-02)
