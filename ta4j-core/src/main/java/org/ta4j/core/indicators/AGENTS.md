@@ -29,6 +29,10 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 - Keep logical source indicators serializable; mark derived/cached helper fields (`EMA` stacks, internal arithmetic helpers) as `transient` when they are reconstruction artifacts.
 - Thread-safety and `transient` are orthogonal: only reconstruction-only runtime helpers should be `transient`.
 - When composing indicators, avoid keeping fields that are only constructor-local intermediates and are not reused outside construction.
+- Cross-series dependencies invalidate caches using their absolute indices directly.
+  Same-index reads require corresponding observations at the same absolute index;
+  neither equal ranges nor different retained windows establish correspondence.
+  Do not infer offsets from retained heads or map invalidation without mapping reads.
 - Avoid look-ahead bias: result at index `i` may never depend on data after `i`. Inputs read at
   calculation time must come from `getBeginIndex()` through `i`; indicators with unbounded
   historical dependencies (`hasRecursiveDependencies()`) may additionally carry state they

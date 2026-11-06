@@ -24,3 +24,7 @@
 **Vulnerability:** `DecimalNum` and `DecimalNumFactory` implement `Serializable` (via `Num` and `NumFactory`) without defining `readObject`. Serialized payloads with null `delegate`, null `mathContext`, or null pre-cached constants could instantiate uninitialized numeric instances, leading to unexpected `NullPointerException` during arithmetic calculations or indicators evaluation.
 **Learning:** Core value types and numeric factories must enforce non-nullness of delegates, math contexts, and pre-cached constants during deserialization to maintain the immutable value contract across Java serialization streams.
 **Prevention:** Always implement `readObject` with explicit non-null checks throwing `InvalidObjectException` on `Serializable` numeric types and factories.
+## 2026-11-02 - Singleton Deserialization Invariant Resolution in NaN
+**Vulnerability:** Standard Java deserialization without `readResolve()` creates duplicate instances on the heap for singleton objects like `NaN.NaN`, breaking reference equality (`== NaN.NaN`), inflating heap usage, and violating domain singleton invariants.
+**Learning:** `Serializable` singleton instances in Java must implement `readResolve()` returning the canonical singleton instance (and `readObjectNoData()` to guard against stream evolution edge cases) to prevent duplicate or improperly initialized instances during deserialization.
+**Prevention:** Always implement `readResolve()` returning the canonical instance for any singleton `Serializable` types.
