@@ -9,8 +9,11 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.ta4j.core.BarSeries;
@@ -18,6 +21,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseOrderBook;
 import org.ta4j.core.OrderBook;
 import org.ta4j.core.OrderBookLevel;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NumFactory;
@@ -25,6 +29,37 @@ import org.ta4j.core.num.NumFactory;
 class OrderBookImbalanceIndicatorTest {
     static Stream<NumFactory> factories() {
         return Stream.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance());
+    }
+
+    @Test
+    void respectsSourceWarmupWithoutReadingUnavailableHistory() {
+        BarSeries series = new BaseBarSeriesBuilder().build();
+        NumFactory factory = series.numFactory();
+        BaseOrderBook book = new BaseOrderBook(factory,
+                new OrderBook.Metadata("venue", "instrument", "contracts", null, Instant.EPOCH, null,
+                        OrderBook.State.SYNCHRONIZED, true, true),
+                List.of(new OrderBookLevel(factory.numOf(99), factory.numOf(4))),
+                List.of(new OrderBookLevel(factory.numOf(101), factory.two())));
+        AtomicInteger reads = new AtomicInteger();
+        AbstractIndicator<Optional<OrderBook>> source = new AbstractIndicator<>(series) {
+            @Override
+            public Optional<OrderBook> getValue(int index) {
+                assertEquals(2, index);
+                reads.incrementAndGet();
+                return Optional.of(book);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 2;
+            }
+        };
+        OrderBookImbalanceIndicator metric = new OrderBookImbalanceIndicator(source, 1);
+        assertEquals(2, metric.getCountOfUnstableBars());
+        assertTrue(metric.getValue(1).isNaN());
+        assertEquals(0, reads.get());
+        assertNumEquals(factory.one().dividedBy(factory.three()), metric.getValue(2));
+        assertEquals(1, reads.get());
     }
 
     @ParameterizedTest

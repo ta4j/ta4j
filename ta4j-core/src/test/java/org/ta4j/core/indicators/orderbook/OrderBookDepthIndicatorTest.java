@@ -9,6 +9,8 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseOrderBook;
 import org.ta4j.core.OrderBook;
 import org.ta4j.core.OrderBookLevel;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NumFactory;
@@ -36,6 +39,37 @@ class OrderBookDepthIndicatorTest {
         assertThrows(IllegalArgumentException.class, () -> new OrderBookDepthIndicator(source, OrderBook.Side.ASK, -1));
         assertThrows(NullPointerException.class, () -> new OrderBookDepthIndicator(source, null, 1));
         assertThrows(NullPointerException.class, () -> new OrderBookDepthIndicator(null, OrderBook.Side.BID, 1));
+    }
+
+    @Test
+    void respectsSourceWarmupWithoutReadingUnavailableHistory() {
+        BarSeries series = new BaseBarSeriesBuilder().build();
+        NumFactory factory = series.numFactory();
+        BaseOrderBook book = new BaseOrderBook(factory,
+                new OrderBook.Metadata("venue", "instrument", "contracts", null, Instant.EPOCH, null,
+                        OrderBook.State.SYNCHRONIZED, true, true),
+                List.of(new OrderBookLevel(factory.numOf(99), factory.numOf(4))),
+                List.of(new OrderBookLevel(factory.numOf(101), factory.two())));
+        AtomicInteger reads = new AtomicInteger();
+        AbstractIndicator<Optional<OrderBook>> source = new AbstractIndicator<>(series) {
+            @Override
+            public Optional<OrderBook> getValue(int index) {
+                assertEquals(2, index);
+                reads.incrementAndGet();
+                return Optional.of(book);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 2;
+            }
+        };
+        OrderBookDepthIndicator metric = new OrderBookDepthIndicator(source, OrderBook.Side.BID, 1);
+        assertEquals(2, metric.getCountOfUnstableBars());
+        assertTrue(metric.getValue(1).isNaN());
+        assertEquals(0, reads.get());
+        assertNumEquals(4, metric.getValue(2));
+        assertEquals(1, reads.get());
     }
 
     @ParameterizedTest
