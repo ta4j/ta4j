@@ -9,11 +9,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseOrderBook;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.OrderBook;
 import org.ta4j.core.OrderBookLevel;
 import org.ta4j.core.indicators.orderbook.OrderBookIndicator.BarTime;
@@ -99,6 +103,28 @@ class OrderBookIndicatorTest {
         assertEquals(START.plusSeconds(1), indicator.getValue(1).orElseThrow().getMetadata().availableTime());
         series.clear();
         assertThrows(IndexOutOfBoundsException.class, () -> indicator.getValue(1));
+    }
+
+    @Test
+    void retentionCannotSubstituteALaterDecisionBoundaryDuringLookup() {
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        AtomicReference<Runnable> eviction = new AtomicReference<>();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(series(1), lock, index -> {
+            // A feed may evict between separate reads, but not inside a read lease.
+            if (lock.getReadHoldCount() == 0 && eviction.get() != null) {
+                eviction.getAndSet(null).run();
+            }
+        });
+        BaseOrderBook first = book(1, OrderBook.State.SYNCHRONIZED);
+        BaseOrderBook future = book(2, OrderBook.State.SYNCHRONIZED);
+        OrderBookIndicator indicator = new OrderBookIndicator(series, List.of(first, future), Duration.ZERO,
+                BarTime.END);
+        eviction.set(() -> series.addBar(series(2).getBar(0)));
+
+        assertSame(first, indicator.getValue(0).orElseThrow());
+        eviction.getAndSet(null).run();
+        assertThrows(IndexOutOfBoundsException.class, () -> indicator.getValue(0));
+        assertSame(future, indicator.getValue(1).orElseThrow());
     }
 
     @Test

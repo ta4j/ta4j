@@ -119,7 +119,9 @@ public final class OrderBookIndicator extends AbstractIndicator<Optional<OrderBo
     }
 
     /**
-     * Returns a fresh as-of observation, or empty before history/after expiry.
+     * Returns a fresh as-of observation, or empty before history/after expiry. The
+     * retained range and decision boundary are captured in one series read scope,
+     * so concurrent eviction cannot substitute a later bar's timestamp.
      *
      * @throws IndexOutOfBoundsException outside the currently retained bar range
      * @since 0.28.1
@@ -127,11 +129,13 @@ public final class OrderBookIndicator extends AbstractIndicator<Optional<OrderBo
     @Override
     public Optional<OrderBook> getValue(int index) {
         BarSeries series = getBarSeries();
-        if (series.isEmpty() || index < series.getBeginIndex() || index > series.getEndIndex()) {
-            throw new IndexOutOfBoundsException("bar index outside retained range: " + index);
-        }
-        Bar bar = series.getBar(index);
-        Instant cutoff = barTime == BarTime.BEGIN ? bar.getBeginTime() : bar.getEndTime();
+        Instant cutoff = series.withReadLock(() -> {
+            if (series.isEmpty() || index < series.getBeginIndex() || index > series.getEndIndex()) {
+                throw new IndexOutOfBoundsException("bar index outside retained range: " + index);
+            }
+            Bar bar = series.getBar(index);
+            return barTime == BarTime.BEGIN ? bar.getBeginTime() : bar.getEndTime();
+        });
         int low = 0;
         int high = observations.size();
         while (low < high) {

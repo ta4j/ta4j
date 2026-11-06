@@ -2,7 +2,7 @@
 
 ### Added
 
-- **Causal L2 strategy signals**: `OrderBookIndicator` joins frozen order-book histories to explicit bar-open or bar-close decisions with inclusive freshness limits and stable arrival-order ties. Spread, midpoint, depth and imbalance indicators compose with existing threshold rules; `OrderBookReadyRule` guards unavailable or incomplete books. The offline `OrderBookBacktest` demonstrates ordinary strategies with next-open bar fills, not simulated L2 execution. External-history configuration serialization fails explicitly rather than silently dropping its dataset.
+- **Causal L2 strategy signals**: `OrderBookIndicator` joins frozen order-book histories to explicit bar-open or bar-close decisions with inclusive freshness limits and stable arrival-order ties. Retained bounds and the decision timestamp are captured atomically on concurrent series. Spread, midpoint, depth and imbalance indicators compose with existing threshold rules; `OrderBookReadyRule` guards unavailable or incomplete books. The offline `OrderBookBacktest` demonstrates ordinary strategies with next-open bar fills, not simulated L2 execution. External-history configuration serialization fails explicitly rather than silently dropping its dataset.
 
 ### Fixed
 
