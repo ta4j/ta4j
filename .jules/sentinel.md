@@ -19,3 +19,7 @@
 **Vulnerability:** Standard Java deserialization (`readObject`) bypasses constructors, allowing serialized payloads with trade indices below -1 or null required fields (type, price, amount, cost, netPrice, fills) to instantiate invalid `BaseTrade` domain objects. Scalar trades may have zero or negative amounts, and index -1 represents deferred assignment.
 **Learning:** `BaseTrade` implements `Serializable` but lacked `readObject` validation. Validating fields in `readObject` and throwing `InvalidObjectException` prevents corrupted streams from instantiating invalid trades.
 **Prevention:** Any `Serializable` domain model in ta4j must implement `readObject` to validate all constructor invariants upon deserialization.
+## 2026-11-02 - Missing `readObjectNoData` in Serializable Subclasses
+**Vulnerability:** In Java deserialization, if an incoming serialized stream hierarchy omits class-specific data for a subclass (e.g. subclassing across versions or malicious stream crafting), `readObject()` is bypassed and `readObjectNoData()` is invoked instead. Without `readObjectNoData()`, `ConcurrentBarSeries` left transient locks uninitialized.
+**Learning:** Serializable classes extending other serializable classes that rely on `readObject()` to initialize transient invariants must implement `readObjectNoData()` to reject streams missing expected class data.
+**Prevention:** Implement `@Serial private void readObjectNoData() throws InvalidObjectException` on serializable subclasses to reject streams lacking class data.
