@@ -2,6 +2,7 @@
 
 ### Added
 
+- **Rules that explain their decisions**: implement `EvaluatedRule<R>` to return a typed result from `evaluate(index, tradingRecord)` (a score, a threshold, whether data was available) and derive the boolean with `toBoolean(result)`, so strategies keep using `isSatisfied` while dashboards, logs and tests read the same result that drove the signal. Extend `AbstractEvaluatedRule<R>` to get trace logging of each decision for free. `EvaluatedRuleExample` shows a confidence gate that treats a `NaN` score as unavailable rather than zero and a trade-budget rule that snapshots exposure at evaluation time.
 - **Causal L2 strategy signals**: `OrderBookIndicator` joins frozen order-book histories to explicit bar-open or bar-close decisions with inclusive freshness limits and stable arrival-order ties. Spread, midpoint, depth and imbalance indicators compose with existing threshold rules; `OrderBookReadyRule` guards unavailable or incomplete books. The offline `OrderBookBacktest` demonstrates ordinary strategies with next-open bar fills, not simulated L2 execution. External-history configuration serialization fails explicitly rather than silently dropping its dataset.
 
 ### Fixed
