@@ -24,3 +24,7 @@
 **Vulnerability:** `TickBarBuilderFactory`, `VolumeBarBuilderFactory`, and `AmountBarBuilderFactory` did not validate constructor parameters or deserialized object states, allowing zero/negative thresholds or null policies to cause arithmetic division-by-zero errors or invalid bar calculations when ingesting trade data.
 **Learning:** `BarBuilderFactory` implementations are `Serializable` components used by `BarSeries`. Because deserialization restores primitive fields directly without constructor checks, factory thresholds must be validated in `readObject()` throwing `InvalidObjectException`.
 **Prevention:** Every `BarBuilderFactory` and `BarBuilder` class with threshold limits or policy configurations must validate positive values (`threshold > 0`) and non-null enum references in constructors and `readObject()` methods.
+## 2026-11-02 - Singleton Deserialization Invariant Resolution in NaN
+**Vulnerability:** Standard Java deserialization without `readResolve()` creates duplicate instances on the heap for singleton objects like `NaN.NaN`, breaking reference equality (`== NaN.NaN`), inflating heap usage, and violating domain singleton invariants.
+**Learning:** `Serializable` singleton instances in Java must implement `readResolve()` returning the canonical singleton instance (and `readObjectNoData()` to guard against stream evolution edge cases) to prevent duplicate or improperly initialized instances during deserialization.
+**Prevention:** Always implement `readResolve()` returning the canonical instance for any singleton `Serializable` types.
