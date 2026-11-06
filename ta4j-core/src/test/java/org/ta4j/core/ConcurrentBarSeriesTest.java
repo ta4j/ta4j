@@ -15,8 +15,13 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectOutputStream;
 import java.io.ObjectInputStream;
+import java.io.ObjectStreamClass;
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -2163,6 +2168,45 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         // the trace-logging branch that dereferenced a null transient logger
         // before readObject reinitialized it.
         assertEquals(restored.getBar(3).getEndTime(), restored.getBar(1).getEndTime());
+    }
+
+    @Test
+    public void deserializationRejectsMissingClassData() {
+        InvalidObjectException failure = assertThrows(InvalidObjectException.class, () -> {
+            final byte[] payload;
+            try (ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                    ObjectOutputStream out = new ObjectOutputStream(bytes)) {
+                out.writeObject(new LegacyConcurrentBarSeriesSubclass());
+                payload = bytes.toByteArray();
+            }
+            try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(payload)) {
+                @Override
+                protected ObjectStreamClass readClassDescriptor() throws IOException, ClassNotFoundException {
+                    ObjectStreamClass descriptor = super.readClassDescriptor();
+                    if (descriptor.getName().equals(LegacyConcurrentBarSeriesSubclass.class.getName())) {
+                        return ObjectStreamClass.lookup(ConcurrentBarSeriesSubclass.class);
+                    }
+                    return descriptor;
+                }
+            }) {
+                in.readObject();
+            }
+        });
+        assertEquals("ConcurrentBarSeries class data is required", failure.getMessage());
+    }
+
+    private static final class LegacyConcurrentBarSeriesSubclass implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 1L;
+    }
+
+    private static final class ConcurrentBarSeriesSubclass extends ConcurrentBarSeries {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        private ConcurrentBarSeriesSubclass() {
+            super("test", Collections.emptyList());
+        }
     }
 
     // ==================== getFirstBar() and getLastBar() Tests
