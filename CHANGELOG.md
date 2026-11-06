@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- **Safer saved decimal numbers**: Java deserialization of `DecimalNum` and `DecimalNumFactory` rejects missing values, math contexts, cached constants or class data with `InvalidObjectException`. `DecimalNumFactory` pins its existing serial version UID, so previously saved factories still load.
 - **Validated tick, volume and amount bar thresholds**: `TickBarBuilder`, `VolumeBarBuilder`, `AmountBarBuilder` and their factories reject non-positive thresholds and null number factories with `IllegalArgumentException`/`NullPointerException`, and deserialized factories reject non-positive thresholds or a missing carry-over policy with `InvalidObjectException`.
 - **`NaN` stays a singleton after deserialization**: deserialized `NaN` values resolve to the shared `NaN.NaN` instance, so identity checks keep working, and streams that omit its class data are rejected with `InvalidObjectException`.
 
