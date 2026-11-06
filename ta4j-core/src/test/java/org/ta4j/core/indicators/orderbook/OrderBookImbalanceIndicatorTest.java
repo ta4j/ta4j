@@ -1,0 +1,62 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.core.indicators.orderbook;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Stream;
+
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseOrderBook;
+import org.ta4j.core.OrderBook;
+import org.ta4j.core.OrderBookLevel;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NumFactory;
+
+class OrderBookImbalanceIndicatorTest {
+    static Stream<NumFactory> factories() {
+        return Stream.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance());
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
+    void propagatesCausalAbsenceAndDomainAvailability(NumFactory factory) {
+        Instant time = Instant.parse("2026-01-01T00:00:00Z");
+        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(factory).build();
+        for (int i = 0; i < 4; i++) {
+            series.barBuilder()
+                    .timePeriod(Duration.ofSeconds(1))
+                    .endTime(time.plusSeconds(i))
+                    .openPrice(100)
+                    .highPrice(100)
+                    .lowPrice(100)
+                    .closePrice(100)
+                    .volume(1)
+                    .add();
+        }
+        List<OrderBookLevel> bids = List.of(new OrderBookLevel(factory.numOf(99), factory.numOf(4)));
+        List<OrderBookLevel> asks = List.of(new OrderBookLevel(factory.numOf(101), factory.numOf(2)));
+        BaseOrderBook healthy = new BaseOrderBook(factory, new OrderBook.Metadata("venue", "instrument", "contracts",
+                null, time.plusSeconds(1), null, OrderBook.State.SYNCHRONIZED, true, true), bids, asks);
+        BaseOrderBook unavailable = new BaseOrderBook(factory, new OrderBook.Metadata("venue", "instrument",
+                "contracts", null, time.plusSeconds(2), null, OrderBook.State.UNSYNCHRONIZED, false, false), bids,
+                asks);
+        OrderBookIndicator source = new OrderBookIndicator(series, List.of(healthy, unavailable), Duration.ZERO,
+                OrderBookIndicator.BarTime.END);
+        OrderBookImbalanceIndicator metric = new OrderBookImbalanceIndicator(source, 1);
+        assertTrue(metric.getValue(0).isNaN());
+        assertNumEquals(factory.one().dividedBy(factory.three()), metric.getValue(1));
+        assertTrue(metric.getValue(2).isNaN());
+        assertTrue(metric.getValue(3).isNaN());
+        assertNumEquals(factory.one().dividedBy(factory.three()), metric.getValue(1));
+    }
+}
