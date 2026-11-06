@@ -43,6 +43,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.orderbook.OrderBookIndicator;
 import org.ta4j.core.named.NamedAssetKind;
 import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
@@ -242,6 +243,10 @@ public final class IndicatorSerialization {
 
     private static ComponentDescriptor describe(Indicator<?> indicator,
             IdentityHashMap<Indicator<?>, ComponentDescriptor> visited) {
+        if (indicator instanceof OrderBookIndicator) {
+            throw new IndicatorSerializationException(
+                    "OrderBookIndicator requires an explicitly bound external history; configuration serialization is unsupported");
+        }
         ComponentDescriptor cached = visited.get(indicator);
         if (cached != null) {
             return cached;
@@ -307,6 +312,10 @@ public final class IndicatorSerialization {
         }
         if (type == null) {
             throw new IndicatorSerializationException("Unknown indicator type: " + descriptor.getType());
+        }
+        if (type == OrderBookIndicator.class) {
+            throw new IndicatorSerializationException(
+                    "OrderBookIndicator requires an explicitly bound external history; configuration reconstruction is unsupported");
         }
         List<Indicator<?>> components = new ArrayList<>();
         for (ComponentDescriptor componentDescriptor : descriptor.getComponents()) {
