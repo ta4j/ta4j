@@ -45,8 +45,8 @@ import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
  * 100: a synthetic <em>heuristic score</em>, not a calibrated probability.
  * {@link FlatWithTradeBudgetRule} shows a non-confidence result that captures
  * trading-record observations. The explicit joining overload combines these
- * different result types into {@link EntryContext}. Both operands are evaluated,
- * unlike ordinary short-circuiting {@code and(Rule)}.
+ * different result types into {@link EntryContext}. Both operands are
+ * evaluated, unlike ordinary short-circuiting {@code and(Rule)}.
  */
 public class EvaluatedRuleExample {
 

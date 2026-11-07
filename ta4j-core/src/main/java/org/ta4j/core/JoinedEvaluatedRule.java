@@ -30,9 +30,11 @@ final class JoinedEvaluatedRule<L, R, T> extends AbstractEvaluatedRule<Evaluated
      */
     @Override
     public JoinedResult<T> evaluate(int index, TradingRecord tradingRecord) {
-        L leftResult = Objects.requireNonNull(left.evaluate(index, tradingRecord), "evaluate(...) must not return null");
+        L leftResult = Objects.requireNonNull(left.evaluate(index, tradingRecord),
+                "evaluate(...) must not return null");
         boolean leftSatisfied = left.toBoolean(leftResult);
-        R rightResult = Objects.requireNonNull(right.evaluate(index, tradingRecord), "evaluate(...) must not return null");
+        R rightResult = Objects.requireNonNull(right.evaluate(index, tradingRecord),
+                "evaluate(...) must not return null");
         boolean rightSatisfied = right.toBoolean(rightResult);
         return new JoinedResult<>(joiner.apply(leftResult, rightResult),
                 conjunction ? leftSatisfied && rightSatisfied : leftSatisfied || rightSatisfied);

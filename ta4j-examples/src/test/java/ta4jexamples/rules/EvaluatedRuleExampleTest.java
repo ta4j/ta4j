@@ -141,8 +141,8 @@ class EvaluatedRuleExampleTest {
     void typedEntryDrivesStrategyAndHonorsTheCapturedTradeBudget() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
         NumFactory factory = series.numFactory();
-        Indicator<Num> score = new FixedIndicator<>(series, factory.numOf(0.2), factory.numOf(0.6),
-                factory.numOf(0.2), factory.numOf(0.6), factory.numOf(0.2));
+        Indicator<Num> score = new FixedIndicator<>(series, factory.numOf(0.2), factory.numOf(0.6), factory.numOf(0.2),
+                factory.numOf(0.6), factory.numOf(0.2));
         ConfidenceGateRule confidence = new ConfidenceGateRule(score, 0.5, ScoreKind.HEURISTIC_SCORE);
         FlatWithTradeBudgetRule budget = new FlatWithTradeBudgetRule(1);
         EvaluatedRule<JoinedResult<EntryContext>> entry = confidence.and(budget, EntryContext::new);

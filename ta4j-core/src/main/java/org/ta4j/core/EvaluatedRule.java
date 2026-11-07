@@ -14,9 +14,9 @@ import java.util.function.BiFunction;
  * An evaluated rule is still an ordinary {@link Rule}: it can be passed
  * directly to {@link BaseStrategy}, composed with {@link #and(Rule)},
  * {@link #or(Rule)}, {@link #xor(Rule)} or {@link #negation()}, traced, named,
- * serialized and copied when its configuration supports reconstruction. Callback
- * joins described below do not support serialization or independent copying. The
- * inherited {@link #isSatisfied(int, TradingRecord)} bridge calls
+ * serialized and copied when its configuration supports reconstruction.
+ * Callback joins described below do not support serialization or independent
+ * copying. The inherited {@link #isSatisfied(int, TradingRecord)} bridge calls
  * {@link #evaluate(int, TradingRecord)} exactly once and
  * {@link #toBoolean(Object)} exactly once, so the boolean decision is always
  * the projection of one rich snapshot.
@@ -116,17 +116,18 @@ public interface EvaluatedRule<R> extends Rule {
      * <p>
      * The default implementation traces only the composite decision when called
      * through the boolean bridge, not individual child decisions. Direct rich
-     * evaluation emits no boolean trace. Callback-backed joins cannot be serialized;
-     * best-effort rule copying returns the same instance, not an independent copy.
-     * Overrides must preserve coherent snapshots and AND decisions.
+     * evaluation emits no boolean trace. Callback-backed joins cannot be
+     * serialized; best-effort rule copying returns the same instance, not an
+     * independent copy. Overrides must preserve coherent snapshots and AND
+     * decisions.
      *
      * @param <S>    the other operand's snapshot type
      * @param <T>    the joined payload type
      * @param other  the right operand
      * @param joiner combines the left and right snapshots into a non-null payload
      * @return an evaluated rule containing the payload and captured AND decision
-     * @throws NullPointerException if {@code other} or {@code joiner} is null, or an
-     *                              evaluation or joiner returns null
+     * @throws NullPointerException if {@code other} or {@code joiner} is null, or
+     *                              an evaluation or joiner returns null
      * @since 0.28.1
      */
     default <S, T> EvaluatedRule<JoinedResult<T>> and(EvaluatedRule<S> other,
@@ -151,8 +152,8 @@ public interface EvaluatedRule<R> extends Rule {
      * @param other  the right operand
      * @param joiner combines the left and right snapshots into a non-null payload
      * @return an evaluated rule containing the payload and captured OR decision
-     * @throws NullPointerException if {@code other} or {@code joiner} is null, or an
-     *                              evaluation or joiner returns null
+     * @throws NullPointerException if {@code other} or {@code joiner} is null, or
+     *                              an evaluation or joiner returns null
      * @since 0.28.1
      */
     default <S, T> EvaluatedRule<JoinedResult<T>> or(EvaluatedRule<S> other,
@@ -167,8 +168,8 @@ public interface EvaluatedRule<R> extends Rule {
      *
      * <p>
      * The caller owns deep immutability of {@code value}; this carrier cannot copy
-     * an arbitrary payload. The captured decision never depends on later changes
-     * to a trading record or on how the caller aggregates the payload.
+     * an arbitrary payload. The captured decision never depends on later changes to
+     * a trading record or on how the caller aggregates the payload.
      *
      * @param <T>       the immutable payload type
      * @param value     the non-null joined payload

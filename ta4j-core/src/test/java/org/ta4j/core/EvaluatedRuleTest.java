@@ -349,8 +349,8 @@ public class EvaluatedRuleTest {
                     throw failure;
                 });
                 AtomicInteger joins = new AtomicInteger();
-                EvaluatedRule<JoinedResult<Integer>> joined = (failOnLeft ? bad : good)
-                        .or(failOnLeft ? good : bad, (l, r) -> joins.incrementAndGet());
+                EvaluatedRule<JoinedResult<Integer>> joined = (failOnLeft ? bad : good).or(failOnLeft ? good : bad,
+                        (l, r) -> joins.incrementAndGet());
                 assertSame(failure, assertThrows(IllegalStateException.class, () -> joined.evaluate(0)));
                 assertEquals(failOnLeft ? 0 : 1, good.evaluations.get());
                 assertEquals(0, joins.get());
