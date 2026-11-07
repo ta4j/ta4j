@@ -13,7 +13,9 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -63,6 +65,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> volumeIndicator;
 
     private final transient RawEaseOfMovementIndicator rawEaseOfMovementIndicator;
+    private final transient RunningTotalIndicator total;
 
     /**
      * Constructor using canonical settings (14-period SMA, volume divisor
@@ -152,6 +155,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
         this.lowPriceIndicator = config.lowPriceIndicator();
         this.volumeIndicator = config.volumeIndicator();
         this.rawEaseOfMovementIndicator = config.rawEaseOfMovementIndicator();
+        this.total = new RunningTotalIndicator(rawEaseOfMovementIndicator, barCount);
     }
 
     private static Config validatedConfig(final BarSeries series, final int barCount, final Number volumeDivisor) {
@@ -186,6 +190,11 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
         }
 
         final int windowStartIndex = index - barCount + 1;
+        if (barCount > 1 && windowStartIndex >= getBarSeries().getBeginIndex()
+                && (!(getBarSeries().numFactory().zero() instanceof DecimalNum decimal)
+                        || decimal.getMathContext().getPrecision() >= 16)) {
+            return total.getValue(index).dividedBy(getBarSeries().numFactory().numOf(barCount));
+        }
         Num sum = getBarSeries().numFactory().zero();
         for (int i = windowStartIndex; i <= index; i++) {
             final Num rawValue = rawEaseOfMovementIndicator.getValue(i);

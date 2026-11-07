@@ -17,6 +17,8 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> highPriceIndicator;
     private final Indicator<Num> lowPriceIndicator;
     private final int barCount;
+    private final transient HighestValueIndicator highestHigh;
+    private final transient LowestValueIndicator lowestLow;
 
     /**
      * Constructor with:
@@ -50,15 +52,14 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;
         this.lowPriceIndicator = lowPriceIndicator;
+        this.highestHigh = new HighestValueIndicator(highPriceIndicator, barCount);
+        this.lowestLow = new LowestValueIndicator(lowPriceIndicator, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        HighestValueIndicator highestHigh = new HighestValueIndicator(highPriceIndicator, barCount);
-        LowestValueIndicator lowestMin = new LowestValueIndicator(lowPriceIndicator, barCount);
-
         Num highestHighPrice = highestHigh.getValue(index);
-        Num lowestLowPrice = lowestMin.getValue(index);
+        Num lowestLowPrice = lowestLow.getValue(index);
 
         return indicator.getValue(index)
                 .minus(lowestLowPrice)
