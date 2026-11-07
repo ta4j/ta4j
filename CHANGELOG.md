@@ -2,6 +2,7 @@
 
 ### Added
 
+- **Rules that explain their decisions**: implement `EvaluatedRule<R>` to return an immutable typed observation from `evaluate(index, tradingRecord)` and derive its boolean with `toBoolean(result)`. Extend `AbstractEvaluatedRule<R>` for normal decision tracing. Use `and(other, joiner)` or `or(other, joiner)` to combine same-type or different-type observations into `JoinedResult<T>` with a caller-defined payload and captured logical decision. These typed joins evaluate both operands; ordinary one-argument AND/OR still short-circuit. `EvaluatedRuleExample` uses a joined confidence/exposure entry in a strategy and shows fresh rich-result inspection. Callback-backed joins do not support serialization.
 - **Causal L2 strategy signals**: `OrderBookIndicator` joins frozen order-book histories to explicit bar-open or bar-close decisions with inclusive freshness limits and stable arrival-order ties. Retained bounds and the decision timestamp are captured atomically on concurrent series. Spread, midpoint, depth and imbalance indicators compose with existing threshold rules; `OrderBookReadyRule` guards unavailable or incomplete books. The offline `OrderBookBacktest` demonstrates ordinary strategies with next-open bar fills, not simulated L2 execution. External-history configuration serialization fails explicitly rather than silently dropping its dataset.
 
 ### Fixed
@@ -14,7 +15,6 @@
 
 - **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases, including low-precision decimal totals, reconstruct from the existing calculation when reuse is unsafe.
 - **Cross-series indicator indices (CF-726)**: same-index compositions require available, corresponding absolute indices for reads and cache invalidation; no offset or time mapping is inferred. Removed-bar clamping can introduce look-ahead. `DistanceFromMAIndicator` warns once when a read fails beyond a nonempty cross-series source's end, without changing the exception or claiming the series are misaligned.
-
 
 
 ## 0.28.0 (2026-11-02)
