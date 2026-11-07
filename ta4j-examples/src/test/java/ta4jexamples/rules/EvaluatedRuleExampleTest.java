@@ -11,8 +11,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.EvaluatedRule;
+import org.ta4j.core.EvaluatedRule.JoinedResult;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
@@ -22,9 +28,11 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.rules.UnderIndicatorRule;
 
 import ta4jexamples.rules.EvaluatedRuleExample.ConfidenceEvaluation;
 import ta4jexamples.rules.EvaluatedRuleExample.ConfidenceGateRule;
+import ta4jexamples.rules.EvaluatedRuleExample.EntryContext;
 import ta4jexamples.rules.EvaluatedRuleExample.ExposureEvaluation;
 import ta4jexamples.rules.EvaluatedRuleExample.FlatWithTradeBudgetRule;
 import ta4jexamples.rules.EvaluatedRuleExample.ScoreKind;
@@ -104,6 +112,51 @@ class EvaluatedRuleExampleTest {
         assertEquals(1, exhausted.closedPositions());
         assertFalse(rule.toBoolean(exhausted));
         assertTrue(rule.isSatisfied(2, null));
+    }
+
+    @Test
+    void heterogeneousJoinsKeepCapturedDecisionWhileFreshEvaluationSeesAnOpenPosition() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2).build();
+        Num scoreValue = series.numFactory().numOf(0.6);
+        ConfidenceGateRule confidence = new ConfidenceGateRule(new FixedIndicator<>(series, scoreValue, scoreValue),
+                0.5, ScoreKind.HEURISTIC_SCORE);
+        FlatWithTradeBudgetRule budget = new FlatWithTradeBudgetRule(1);
+        EvaluatedRule<JoinedResult<EntryContext>> and = confidence.and(budget, EntryContext::new);
+        EvaluatedRule<JoinedResult<EntryContext>> or = confidence.or(budget, EntryContext::new);
+        BaseTradingRecord record = new BaseTradingRecord();
+        JoinedResult<EntryContext> before = and.evaluate(0, record);
+
+        record.enter(0, series.getBar(0).getClosePrice(), series.numFactory().one());
+
+        assertTrue(and.toBoolean(before));
+        assertEquals(scoreValue, before.value().confidence().score());
+        assertTrue(before.value().exposure().flat());
+        JoinedResult<EntryContext> after = and.evaluate(1, record);
+        assertFalse(after.value().exposure().flat());
+        assertFalse(and.toBoolean(after));
+        assertTrue(or.isSatisfied(1, record));
+    }
+
+    @Test
+    void typedEntryDrivesStrategyAndHonorsTheCapturedTradeBudget() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        NumFactory factory = series.numFactory();
+        Indicator<Num> score = new FixedIndicator<>(series, factory.numOf(0.2), factory.numOf(0.6),
+                factory.numOf(0.2), factory.numOf(0.6), factory.numOf(0.2));
+        ConfidenceGateRule confidence = new ConfidenceGateRule(score, 0.5, ScoreKind.HEURISTIC_SCORE);
+        FlatWithTradeBudgetRule budget = new FlatWithTradeBudgetRule(1);
+        EvaluatedRule<JoinedResult<EntryContext>> entry = confidence.and(budget, EntryContext::new);
+
+        TradingRecord record = new BarSeriesManager(series, new TradeOnCurrentCloseModel())
+                .run(new BaseStrategy(entry, new UnderIndicatorRule(score, 0.5)));
+
+        assertEquals(1, record.getPositionCount());
+        assertEquals(1, record.getPositions().get(0).getEntry().getIndex());
+        assertEquals(2, record.getPositions().get(0).getExit().getIndex());
+        JoinedResult<EntryContext> exhausted = entry.evaluate(3, record);
+        assertTrue(confidence.toBoolean(exhausted.value().confidence()));
+        assertEquals(1, exhausted.value().exposure().closedPositions());
+        assertFalse(entry.toBoolean(exhausted));
     }
 
     @Test

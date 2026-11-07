@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.EvaluatedRule;
+import org.ta4j.core.EvaluatedRule.JoinedResult;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
@@ -43,7 +44,9 @@ import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
  * {@link ConfidenceGateRule} gates on a score. The score used here is RSI /
  * 100: a synthetic <em>heuristic score</em>, not a calibrated probability.
  * {@link FlatWithTradeBudgetRule} shows a non-confidence result that captures
- * trading-record observations.
+ * trading-record observations. The explicit joining overload combines these
+ * different result types into {@link EntryContext}. Both operands are evaluated,
+ * unlike ordinary short-circuiting {@code and(Rule)}.
  */
 public class EvaluatedRuleExample {
 
@@ -147,6 +150,16 @@ public class EvaluatedRuleExample {
     }
 
     /**
+     * Caller-defined payload joining two different evaluation types.
+     *
+     * @param confidence the captured score observations
+     * @param exposure   the captured trading-record observations
+     * @since 0.28.1
+     */
+    public record EntryContext(ConfidenceEvaluation confidence, ExposureEvaluation exposure) {
+    }
+
+    /**
      * Satisfied while flat and fewer than {@code maxPositions} positions have been
      * closed. The snapshot copies record observations, so projecting an old
      * snapshot never rereads the live record.
@@ -189,24 +202,27 @@ public class EvaluatedRuleExample {
         FlatWithTradeBudgetRule tradeBudget = new FlatWithTradeBudgetRule(5);
         tradeBudget.setName("Flat with trade budget");
 
-        // Evaluated rules are ordinary rules: compose and backtest them directly.
-        Rule entryRule = confidenceGate.and(tradeBudget);
+        // The joiner defines the payload, not the logical AND decision.
+        EvaluatedRule<JoinedResult<EntryContext>> entryRule = confidenceGate.and(tradeBudget, EntryContext::new);
+        entryRule.setName("Confidence with trade budget");
         Rule exitRule = new UnderIndicatorRule(heuristicScore, 0.4);
         Strategy strategy = new BaseStrategy("Evaluated confidence gate", entryRule, exitRule);
         TradingRecord tradingRecord = new BarSeriesManager(series).run(strategy);
         LOG.info("Backtest closed {} positions (budget {})", tradingRecord.getPositionCount(), 5);
 
-        // Rich path: evaluate once, inspect the snapshot, then project that exact
-        // snapshot.
+        // This is a new evaluation after the backtest, not a historical trade event.
+        // Inspect both observations and project the exact captured decision.
         int endIndex = series.getEndIndex();
-        ConfidenceEvaluation confidence = confidenceGate.evaluate(endIndex);
+        JoinedResult<EntryContext> entry = entryRule.evaluate(endIndex, tradingRecord);
+        ConfidenceEvaluation confidence = entry.value().confidence();
         LOG.info("{} at {}: available={}, score={}, threshold={}, kind={}, satisfied={}", confidenceGate.getName(),
                 endIndex, confidence.isAvailable(), confidence.score(), confidence.threshold(), confidence.kind(),
                 confidenceGate.toBoolean(confidence));
 
-        ExposureEvaluation exposure = tradeBudget.evaluate(endIndex, tradingRecord);
+        ExposureEvaluation exposure = entry.value().exposure();
         LOG.info("{} at {}: flat={}, closedPositions={}/{}, satisfied={}", tradeBudget.getName(), endIndex,
                 exposure.flat(), exposure.closedPositions(), exposure.maxPositions(), tradeBudget.toBoolean(exposure));
+        LOG.info("{} at {}: satisfied={}", entryRule.getName(), endIndex, entryRule.toBoolean(entry));
 
         ConfidenceEvaluation warmUp = confidenceGate.evaluate(series.getBeginIndex());
         LOG.info("Warm-up bar {}: available={}, satisfied={}", warmUp.index(), warmUp.isAvailable(),

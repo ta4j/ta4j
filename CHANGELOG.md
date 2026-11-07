@@ -2,7 +2,7 @@
 
 ### Added
 
-- **Rules that explain their decisions**: implement `EvaluatedRule<R>` to return a typed result from `evaluate(index, tradingRecord)` (a score, a threshold, whether data was available) and derive the boolean with `toBoolean(result)`, so strategies keep using `isSatisfied` while dashboards, logs and tests read the same result that drove the signal. Extend `AbstractEvaluatedRule<R>` to get trace logging of each decision for free. `EvaluatedRuleExample` shows a confidence gate that treats a `NaN` score as unavailable rather than zero and a trade-budget rule that snapshots exposure at evaluation time.
+- **Rules that explain their decisions**: implement `EvaluatedRule<R>` to return an immutable typed observation from `evaluate(index, tradingRecord)` and derive its boolean with `toBoolean(result)`. Extend `AbstractEvaluatedRule<R>` for normal decision tracing. Use `and(other, joiner)` or `or(other, joiner)` to combine same-type or different-type observations into `JoinedResult<T>` with a caller-defined payload and captured logical decision. These typed joins evaluate both operands; ordinary one-argument AND/OR still short-circuit. `EvaluatedRuleExample` uses a joined confidence/exposure entry in a strategy and shows fresh rich-result inspection. Callback-backed joins do not support serialization.
 
 ## 0.28.0 (2026-11-02)
 
