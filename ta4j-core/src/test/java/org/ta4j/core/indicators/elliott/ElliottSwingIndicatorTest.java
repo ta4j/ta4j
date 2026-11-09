@@ -13,6 +13,9 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.math.MathContext;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -33,6 +37,120 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
 
 class ElliottSwingIndicatorTest {
+
+    @Test
+    void preservesCompleteSnapshotsAcrossStorageBoundariesAndOutOfOrderReads() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        for (int index = 0; index < 1029; index++) {
+            double price = index % 2 == 0 ? 10 : 20;
+            series.barBuilder().openPrice(price).highPrice(price).lowPrice(price).closePrice(price).volume(0).add();
+        }
+        ElliottSwingIndicator indicator = new ElliottSwingIndicator(series, 1, 1, 0, ElliottDegree.MINOR);
+        List<List<ElliottSwing>> snapshots = new ArrayList<>();
+        List<List<ElliottSwing>> expectedSnapshots = new ArrayList<>();
+        for (int index : new int[] { 34, 35, 1026, 1027, 12, 33, 1028 }) {
+            List<ElliottSwing> expected = new ArrayList<>();
+            for (int pivot = 1; pivot < index - 1; pivot++) {
+                expected.add(new ElliottSwing(pivot, pivot + 1, series.getBar(pivot).getClosePrice(),
+                        series.getBar(pivot + 1).getClosePrice(), ElliottDegree.MINOR));
+            }
+            List<ElliottSwing> snapshot = indicator.getValue(index);
+            assertThat(snapshot).containsExactlyElementsOf(expected);
+            snapshots.add(snapshot);
+            expectedSnapshots.add(List.copyOf(expected));
+        }
+        for (int index = 0; index < snapshots.size(); index++) {
+            assertThat(snapshots.get(index)).containsExactlyElementsOf(expectedSnapshots.get(index));
+        }
+        List<ElliottSwing> snapshot = snapshots.get(0);
+        assertThrows(UnsupportedOperationException.class, () -> snapshot.add(snapshot.get(0)));
+        assertThrows(UnsupportedOperationException.class, () -> snapshot.set(0, snapshot.get(0)));
+        assertThrows(UnsupportedOperationException.class, () -> snapshot.remove(0));
+    }
+
+    @Test
+    void sharesUnchangedSwingsWithoutChangingReplacedPivotSnapshots() {
+        BarSeries series = new MockBarSeriesBuilder().withData(2, 10, 4, 12, 8, 14, 3).build();
+        ClosePriceIndicator price = new ClosePriceIndicator(series);
+        ElliottSwingIndicator indicator = new ElliottSwingIndicator(
+                new FixedRecentSwingIndicator(series, price, List.of(1, 3, 5)),
+                new FixedRecentSwingIndicator(series, price, List.of(0, 2, 6)), ElliottDegree.MINOR);
+
+        List<ElliottSwing> original = indicator.getValue(3);
+        List<ElliottSwing> replacement = indicator.getValue(5);
+        List<ElliottSwing> extended = indicator.getValue(6);
+
+        assertThat(original).hasSize(3);
+        assertThat(replacement).hasSize(3);
+        assertThat(replacement.get(0)).isSameAs(original.get(0));
+        assertThat(replacement.get(1)).isSameAs(original.get(1));
+        assertThat(original.get(2).toIndex()).isEqualTo(3);
+        assertThat(replacement.get(2).toIndex()).isEqualTo(5);
+        assertThat(extended).hasSize(4);
+        assertThat(extended.subList(0, 3)).containsExactlyElementsOf(replacement);
+        assertThat(original.get(2).toPrice()).isEqualByComparingTo(series.numFactory().numOf(12));
+    }
+
+    @Test
+    void correctionsAndTerminalUpdatesLeavePublishedSnapshotsUnchanged() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            for (double price : new double[] { 10, 12, 9, 13, 8, 14, 7, 15, 6, 16, 5 }) {
+                series.barBuilder().openPrice(price).highPrice(price).lowPrice(price).closePrice(price).volume(0).add();
+            }
+            ElliottSwingIndicator indicator = new ElliottSwingIndicator(series, 1, 1, 0, ElliottDegree.MINOR);
+            List<ElliottSwing> original = indicator.getValue(8);
+            List<ElliottSwing> expectedOriginal = List.copyOf(original);
+            series.getBar(3).addPrice(factory.numOf(30));
+            List<ElliottSwing> corrected = indicator.getValue(8);
+            assertThat(corrected)
+                    .isEqualTo(new ElliottSwingIndicator(series, 1, 1, 0, ElliottDegree.MINOR).getValue(8));
+            assertThat(corrected).isNotEqualTo(original);
+            assertThat(original).containsExactlyElementsOf(expectedOriginal);
+
+            List<ElliottSwing> terminal = indicator.getValue(series.getEndIndex());
+            List<ElliottSwing> expectedTerminal = List.copyOf(terminal);
+            series.getLastBar().addPrice(factory.numOf(40));
+            assertThat(indicator.getValue(series.getEndIndex())).isEqualTo(
+                    new ElliottSwingIndicator(series, 1, 1, 0, ElliottDegree.MINOR).getValue(series.getEndIndex()));
+            series.barBuilder().openPrice(4).highPrice(4).lowPrice(4).closePrice(4).volume(0).add();
+            assertThat(indicator.getValue(series.getEndIndex())).isEqualTo(
+                    new ElliottSwingIndicator(series, 1, 1, 0, ElliottDegree.MINOR).getValue(series.getEndIndex()));
+            assertThat(terminal).containsExactlyElementsOf(expectedTerminal);
+            assertThat(original).containsExactlyElementsOf(expectedOriginal);
+        }
+    }
+
+    @Test
+    void equalPriceCorrectionsPreserveArithmeticContexts() {
+        MathContext initialContext = new MathContext(3, RoundingMode.HALF_UP);
+        for (MathContext correctedContext : List.of(new MathContext(6, RoundingMode.HALF_UP),
+                new MathContext(3, RoundingMode.DOWN))) {
+            for (int correctedIndex : new int[] { 0, 1 }) {
+                BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(3))
+                        .withData(0.001, 1000)
+                        .build();
+                ClosePriceIndicator price = new ClosePriceIndicator(series);
+                ElliottSwingIndicator indicator = new ElliottSwingIndicator(
+                        new FixedRecentSwingIndicator(series, price, List.of(1)),
+                        new FixedRecentSwingIndicator(series, price, List.of(0)), ElliottDegree.MINOR);
+                ElliottSwing original = indicator.getValue(1).get(0);
+                String correctedPrice = correctedIndex == 0 ? "0.001" : "1000";
+                series.getBar(correctedIndex).addPrice(DecimalNum.valueOf(correctedPrice, initialContext));
+                assertThat(indicator.getValue(1).get(0)).isSameAs(original);
+
+                series.getBar(correctedIndex).addPrice(DecimalNum.valueOf(correctedPrice, correctedContext));
+                ElliottSwing corrected = indicator.getValue(1).get(0);
+                Num correctedEndpoint = correctedIndex == 0 ? corrected.fromPrice() : corrected.toPrice();
+                assertThat(((DecimalNum) correctedEndpoint).getMathContext()).isEqualTo(correctedContext);
+                String expectedAmplitude = correctedContext.getPrecision() == 6 ? "999.999"
+                        : correctedIndex == 1 ? "999" : "1000";
+                assertThat(corrected.amplitude())
+                        .isEqualByComparingTo(DecimalNum.valueOf(expectedAmplitude, new MathContext(6)));
+                assertThat(original.amplitude()).isEqualByComparingTo(series.numFactory().numOf(1000));
+            }
+        }
+    }
 
     @Test
     void retainedSwingListsAndCachedConsumersRebuildAfterPruning() {
