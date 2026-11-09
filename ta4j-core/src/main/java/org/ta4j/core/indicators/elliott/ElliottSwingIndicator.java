@@ -24,6 +24,7 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -306,8 +307,8 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
             final ElliottSwing swing = previous.get(shared);
             final Pivot from = pivots.get(shared);
             final Pivot to = pivots.get(shared + 1);
-            if (swing.fromIndex() != from.index || swing.toIndex() != to.index || !swing.fromPrice().equals(from.price)
-                    || !swing.toPrice().equals(to.price)) {
+            if (swing.fromIndex() != from.index || swing.toIndex() != to.index
+                    || !samePrice(swing.fromPrice(), from.price) || !samePrice(swing.toPrice(), to.price)) {
                 break;
             }
             shared++;
@@ -320,6 +321,15 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
         }
         previousSwings = swings;
         return swings;
+    }
+
+    /**
+     * Numeric equality alone does not include a decimal price's arithmetic context.
+     */
+    private static boolean samePrice(final Num previous, final Num current) {
+        return previous == current || previous.equals(current)
+                && (!(previous instanceof DecimalNum previousDecimal) || current instanceof DecimalNum currentDecimal
+                        && previousDecimal.getMathContext().equals(currentDecimal.getMathContext()));
     }
 
     /**

@@ -13,6 +13,8 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +29,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -115,6 +118,37 @@ class ElliottSwingIndicatorTest {
                     new ElliottSwingIndicator(series, 1, 1, 0, ElliottDegree.MINOR).getValue(series.getEndIndex()));
             assertThat(terminal).containsExactlyElementsOf(expectedTerminal);
             assertThat(original).containsExactlyElementsOf(expectedOriginal);
+        }
+    }
+
+    @Test
+    void equalPriceCorrectionsPreserveArithmeticContexts() {
+        MathContext initialContext = new MathContext(3, RoundingMode.HALF_UP);
+        for (MathContext correctedContext : List.of(new MathContext(6, RoundingMode.HALF_UP),
+                new MathContext(3, RoundingMode.DOWN))) {
+            for (int correctedIndex : new int[] { 0, 1 }) {
+                BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(3))
+                        .withData(0.001, 1000)
+                        .build();
+                ClosePriceIndicator price = new ClosePriceIndicator(series);
+                ElliottSwingIndicator indicator = new ElliottSwingIndicator(
+                        new FixedRecentSwingIndicator(series, price, List.of(1)),
+                        new FixedRecentSwingIndicator(series, price, List.of(0)), ElliottDegree.MINOR);
+                ElliottSwing original = indicator.getValue(1).get(0);
+                String correctedPrice = correctedIndex == 0 ? "0.001" : "1000";
+                series.getBar(correctedIndex).addPrice(DecimalNum.valueOf(correctedPrice, initialContext));
+                assertThat(indicator.getValue(1).get(0)).isSameAs(original);
+
+                series.getBar(correctedIndex).addPrice(DecimalNum.valueOf(correctedPrice, correctedContext));
+                ElliottSwing corrected = indicator.getValue(1).get(0);
+                Num correctedEndpoint = correctedIndex == 0 ? corrected.fromPrice() : corrected.toPrice();
+                assertThat(((DecimalNum) correctedEndpoint).getMathContext()).isEqualTo(correctedContext);
+                String expectedAmplitude = correctedContext.getPrecision() == 6 ? "999.999"
+                        : correctedIndex == 1 ? "999" : "1000";
+                assertThat(corrected.amplitude())
+                        .isEqualByComparingTo(DecimalNum.valueOf(expectedAmplitude, new MathContext(6)));
+                assertThat(original.amplitude()).isEqualByComparingTo(series.numFactory().numOf(1000));
+            }
         }
     }
 

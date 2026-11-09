@@ -6,7 +6,7 @@
 
 ### Fixed
 
-- **Lower Elliott analysis memory use**: `ElliottSwingIndicator` shares unchanged swings and backing storage across complete immutable historical snapshots instead of retaining a separate full-history array at every bar. `ElliottPhaseIndicator` evaluates requested phases directly without recursively prefilling earlier phases. Historical reads, pivot replacements, retained-bar corrections and moving-series reanchoring keep their existing results.
+- **Lower Elliott analysis memory use**: `ElliottSwingIndicator` shares unchanged swings and backing storage across complete immutable historical snapshots instead of retaining a separate full-history array at every bar. `ElliottPhaseIndicator` evaluates requested phases directly without recursively prefilling earlier phases. Historical reads, pivot replacements, retained-bar corrections (including decimal arithmetic contexts) and moving-series reanchoring keep their existing results.
 - **Validated tick, volume and amount bar thresholds**: `TickBarBuilder`, `VolumeBarBuilder`, `AmountBarBuilder` and their factories reject non-positive thresholds and null number factories with `IllegalArgumentException`/`NullPointerException`, and deserialized factories reject non-positive thresholds or a missing carry-over policy with `InvalidObjectException`.
 - **`NaN` stays a singleton after deserialization**: deserialized `NaN` values resolve to the shared `NaN.NaN` instance, so identity checks keep working, and streams that omit its class data are rejected with `InvalidObjectException`.
 
