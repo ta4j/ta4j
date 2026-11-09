@@ -13,6 +13,7 @@
 
 ### Changed
 
+- **Elliott phase cache type**: `ElliottPhaseIndicator` now extends `CachedIndicator<ElliottPhase>` instead of `RecursiveCachedIndicator<ElliottPhase>`. Callers declaring the old supertype must use `CachedIndicator<ElliottPhase>` or `Indicator<ElliottPhase>`; constructors and calculated results are unchanged.
 - **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases, including low-precision decimal totals, reconstruct from the existing calculation when reuse is unsafe.
 - **Cross-series indicator indices (CF-726)**: same-index compositions require available, corresponding absolute indices for reads and cache invalidation; no offset or time mapping is inferred. Removed-bar clamping can introduce look-ahead. `DistanceFromMAIndicator` warns once when a read fails beyond a nonempty cross-series source's end, without changing the exception or claiming the series are misaligned.
 
