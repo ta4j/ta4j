@@ -852,6 +852,7 @@ jobs:
       - name: Stage automatic release candidate without changing master
         if: needs.plan.outputs.dry_run != 'true' && needs.plan.outputs.automatic == 'true'
         env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           BASE_SHA: ${{ steps.base.outputs.sha }}
           RELEASE_SHA: ${{ steps.release_commit.outputs.release_commit }}
           SNAPSHOT_SHA: ${{ steps.snapshot_commit.outputs.sha }}

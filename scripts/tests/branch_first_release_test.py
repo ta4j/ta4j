@@ -273,6 +273,26 @@ class ReleaseLifecycleTest(unittest.TestCase):
             self.assertEqual('--force-with-lease' in arguments, automatic == 'false')
             self.assertIn('--dry-run', arguments)
 
+    def test_staging_uses_only_environment_supplied_by_its_workflow_step(self):
+        import re
+        workflow = (ROOT / '.github/workflows/prepare-release.yml').read_text()
+        step = workflow.split('      - name: Stage automatic release candidate without changing master\n', 1)[1].split('\n      - name:', 1)[0]
+        declared = dict(re.findall(r'^          ([A-Z_]+): (.+)$', step, re.MULTILINE))
+        values = {'${{ github.event.repository.default_branch }}': 'master',
+                  '${{ steps.base.outputs.sha }}': self.base,
+                  '${{ steps.release_commit.outputs.release_commit }}': self.release,
+                  '${{ steps.snapshot_commit.outputs.sha }}': self.snapshot,
+                  '${{ steps.versions.outputs.release }}': '1.2.3',
+                  '${{ steps.versions.outputs.next }}': '1.2.4-SNAPSHOT',
+                  'release/${{ steps.versions.outputs.release }}': 'release/1.2.3'}
+        # GitHub supplies GITHUB_* globally; release identity/default branch are step-scoped.
+        names = ('DEFAULT_BRANCH', 'BASE_SHA', 'RELEASE_SHA', 'SNAPSHOT_SHA', 'RELEASE_VERSION', 'NEXT_VERSION', 'CANDIDATE_BRANCH')
+        env = {key: value for key, value in self.env.items() if key not in names}
+        env.update({name: values[value] for name, value in declared.items()})
+        self.helper('stage', env=env)
+        self.assertEqual(self.ref('refs/heads/release/1.2.3'), self.snapshot)
+        self.assertEqual(self.ref('refs/heads/master'), self.base)
+
     def test_workflow_separates_unprivileged_verification_and_serializes_publication(self):
         prepare = (ROOT / '.github/workflows/prepare-release.yml').read_text()
         publish = (ROOT / '.github/workflows/publish-release.yml').read_text()
