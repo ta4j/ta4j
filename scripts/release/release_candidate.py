@@ -197,6 +197,7 @@ def freeze_command(command):
         freeze_assert()
     elif command == 'freeze-abort':
         # Only a proven pre-promotion failure may unfreeze automatically.
+        require(os.environ.get('PROMOTION_RESULT') == 'skipped', 'Promotion attempted or unknown; retain freeze')
         require(remote.get(default) == os.environ['BASE_SHA'], 'Promotion outcome changed/uncertain; retain freeze')
         deletes = {}
         prep = FREEZE_PREFIX + 'prepare-' + os.environ['GITHUB_RUN_ID']

@@ -21,6 +21,8 @@ class ScopeTests(unittest.TestCase):
                  (['.github/workflows/test.yml'], (False, True)),
                  (['README.md', 'docs/guide.md'], (False, False)),
                  (['pom.xml'], (True, False)), (['mvnw', '.mvn/wrapper/maven-wrapper.properties'], (False, True)),
+                 (['ta4j-core/src/main/resources/help.md'], (True, False)),
+                 (['ta4j-core/src/test/resources/expected.rst'], (True, False)),
                  (['pom.xml', 'scripts/x.sh'], (True, True))]
         for paths, expected in cases:
             with self.subTest(paths=paths):

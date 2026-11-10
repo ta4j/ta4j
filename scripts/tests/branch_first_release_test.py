@@ -69,7 +69,8 @@ class ReleaseLifecycleTest(unittest.TestCase):
         self.env.update(BASE_SHA=self.base, RELEASE_SHA=self.release, SNAPSHOT_SHA=self.snapshot,
                         RELEASE_VERSION='1.2.3', NEXT_VERSION='1.2.4-SNAPSHOT', CANDIDATE_BRANCH='release/1.2.3',
                         GITHUB_REPOSITORY='fixture/ta4j', GITHUB_WORKFLOW_REF='fixture/ta4j/.github/workflows/prepare-release.yml@refs/heads/master',
-                        GITHUB_WORKFLOW_SHA=self.base, GITHUB_RUN_ID='123', GITHUB_RUN_ATTEMPT='1', DEFAULT_BRANCH='master')
+                        GITHUB_WORKFLOW_SHA=self.base, GITHUB_RUN_ID='123', GITHUB_RUN_ATTEMPT='1', DEFAULT_BRANCH='master',
+                        PROMOTION_RESULT='skipped')
         self.helper('freeze-prepare')
 
     def ref(self, name):
@@ -344,6 +345,40 @@ class ReleaseLifecycleTest(unittest.TestCase):
         self.assertNotEqual(self.helper('freeze-finish', env=env, ok=False).returncode, 0)
         self.assertEqual(self.ref(env['FREEZE_REF']), self.snapshot)
         self.assertNotEqual(self.helper('publication-status', env=env, ok=False).returncode, 0)
+
+    def test_failed_cancelled_or_unknown_promotion_retains_freeze_even_while_master_is_b(self):
+        self.helper('stage')
+        for result in ('failure', 'cancelled', 'success', ''):
+            env = dict(self.env, PROMOTION_RESULT=result)
+            self.assertNotEqual(self.helper('freeze-abort', env=env, ok=False).returncode, 0)
+            self.assertEqual(self.ref('refs/heads/release-freeze/1.2.3'), self.snapshot)
+            self.assertEqual(self.ref('refs/heads/master'), self.base)
+        workflow = (ROOT / '.github/workflows/prepare-release.yml').read_text()
+        abort = workflow.split('  abort_freeze:\n', 1)[1]
+        self.assertIn("needs.promote.result == 'skipped'", abort)
+        self.assertNotIn("needs.promote.result != 'success'", abort)
+
+    def test_deferred_failed_promotion_push_cannot_outlive_its_freeze(self):
+        self.stage_and_verify()
+        real_git = self.run_command('which', 'git').stdout.strip()
+        wrapper = Path(self.temp.name) / 'deferred-tools'
+        wrapper.mkdir()
+        deferred = Path(self.temp.name) / 'deferred-push.json'
+        (wrapper / 'git').write_text(
+            '#!/usr/bin/env python3\nimport json, os, sys\nfrom pathlib import Path\n'
+            'if sys.argv[1] == "push":\n'
+            '    Path(os.environ["DEFERRED_PUSH"]).write_text(json.dumps(sys.argv[1:]))\n'
+            '    sys.exit(1)\n'
+            'os.execv(os.environ["REAL_GIT"], [os.environ["REAL_GIT"], *sys.argv[1:]])\n')
+        (wrapper / 'git').chmod(0o755)
+        env = dict(self.env, PATH=f"{wrapper}:{self.env['PATH']}", REAL_GIT=real_git, DEFERRED_PUSH=str(deferred))
+        self.assertNotEqual(self.helper('promote', env=env, ok=False).returncode, 0)
+        self.assertEqual(self.ref('refs/heads/master'), self.base)
+        self.assertNotEqual(self.helper('freeze-abort', env=dict(self.env, PROMOTION_RESULT='failure'), ok=False).returncode, 0)
+        # Model a server finishing the original authorized atomic push after the runner failed.
+        self.run_command(real_git, *json.loads(deferred.read_text()))
+        self.assertEqual(self.ref('refs/heads/master'), self.snapshot)
+        self.assertEqual(self.ref('refs/heads/release-freeze/1.2.3'), self.snapshot)
 
     def test_completed_publication_releases_freeze_only_after_exact_r_tag(self):
         self.stage_and_verify(); self.helper('promote')

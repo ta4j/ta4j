@@ -51,7 +51,7 @@ The required CI aggregate also checks the live freeze and its original tested he
 | Already-green PRs when release starts | Block current head **and test-merge** statuses, rediscover targets, then confirm B and the owned freeze before preparation. |
 | New, reopened, fork or changed PR during release | Trusted metadata reconciliation plus a live guard in the required aggregate. Fork code/artifacts never run with status-write credentials. |
 | Master or candidate moves, or freeze marker mutates | Exact refs/receipts and promotion CAS fail closed; frozen master is checked again before upload and tag publication. |
-| Verification fails before any promotion | Delete only the owned freeze with an exact lease, only while master still equals B and no publication was attempted. Candidate/pending evidence remains for diagnosis. |
+| Verification fails and promotion is skipped | Delete only the owned freeze with an exact lease, only while master still equals B and no publication was attempted. Failed/cancelled promotion always retains the freeze, even if a read still sees B. Candidate/pending evidence remains for diagnosis. |
 | Cancellation or uncertain promotion result | Retain the durable freeze. It never expires automatically; inspect master and publication journals before recovery. |
 | Promotion succeeds but publication fails or upload is ambiguous | Keep the freeze and resume the same R; no second version bump, blind Maven redeploy or rollback. |
 | Maven succeeds, but tag push fails | Completion checkpoint allows the same R to skip Maven and finish the tag. Release the freeze only after the checkpoint and exact R tag are verified. |

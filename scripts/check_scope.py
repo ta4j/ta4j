@@ -15,8 +15,9 @@ def classify(paths):
         script = path.startswith(('scripts/', '.github/', '.githooks/', '.mvn/wrapper/')) or path in ('mvnw', 'mvnw.cmd')
         workflow_guide = path in ('AGENTS.md', 'PULL_REQUESTS.md')
         scripts |= script or workflow_guide
+        compiled_resource = re.search(r'(^|/)src/(main|test)/resources/', path) is not None
         documentation = PurePosixPath(path).suffix.lower() in ('.md', '.rst') or path.startswith('docs/')
-        maven |= not (script or documentation)
+        maven |= compiled_resource or not (script or documentation)
     return {'maven': maven, 'scripts': scripts}
 
 

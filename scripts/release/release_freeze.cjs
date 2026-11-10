@@ -112,9 +112,12 @@ async function synchronize({ github, context, core, withNotices = false }) {
   // All callers use the same short concurrency group, including acquire/release jobs.
   for (let attempt = 0; attempt < 3; attempt++) {
     const before = await snapshot(github, context);
+    const targets = new Map();
     for (const pr of before.prs) {
-      for (const sha of shas(pr)) await setStatus(github, context, sha, blocked(before, pr));
+      // Multiple PRs can share a SHA. Any blocked PR must win over an exemption.
+      for (const sha of shas(pr)) targets.set(sha, targets.get(sha) || blocked(before, pr));
     }
+    for (const [sha, frozen] of targets) await setStatus(github, context, sha, frozen);
     const after = await snapshot(github, context);
     if (key(before) !== key(after)) continue;
     if (withNotices) await notices(github, context, after, core);

@@ -65,6 +65,18 @@ test('new heads and test-merge SHAs are rediscovered before acquisition barrier 
   assert.equal(f.state.statuses.get('newmerge')[0].state, 'failure');
 });
 
+test('a blocked PR wins when an exempt release PR shares a head or test-merge SHA', async () => {
+  for (const reverse of [false, true]) {
+    const f = fixture();
+    const shared = { head: { ref: 'release/1.2.3', sha: 'shared-head' }, merge_commit_sha: 'shared-merge' };
+    f.state.prs = [f.pr(1, shared), f.pr(2, { ...shared, user: { login: 'TheCookieLab' }, labels: [{ name: 'release' }] })];
+    if (reverse) f.state.prs.reverse();
+    await f.sync();
+    assert.equal(f.state.writes.length, 2);
+    assert(f.state.writes.every(item => item.state === 'failure'));
+  }
+});
+
 test('releasing one freeze never opens the barrier while another remains', async () => {
   const f = fixture(); f.state.prs.push(f.pr(1)); f.state.locks.push('refs/heads/release-freeze/1.2.3', 'refs/heads/release-freeze/1.2.4');
   await f.sync(); f.state.locks.shift(); await f.sync();

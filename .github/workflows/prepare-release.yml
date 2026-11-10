@@ -1307,7 +1307,7 @@ jobs:
   abort_freeze:
     name: Release only a proven pre-promotion freeze
     needs: [plan, freeze, prepare, verify_release, verify_snapshot, promote]
-    if: always() && needs.plan.outputs.automatic == 'true' && needs.plan.outputs.dry_run == 'false' && needs.promote.result != 'success'
+    if: always() && needs.plan.outputs.automatic == 'true' && needs.plan.outputs.dry_run == 'false' && needs.promote.result == 'skipped'
     runs-on: ubuntu-latest
     concurrency:
       group: release-freeze-status-${{ github.repository }}
@@ -1321,6 +1321,7 @@ jobs:
       BASE_SHA: ${{ needs.plan.outputs.base }}
       SNAPSHOT_SHA: ${{ needs.prepare.outputs.snapshot }}
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      PROMOTION_RESULT: ${{ needs.promote.result }}
       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       RELEASE_FREEZE_AUTHORS: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
     steps:
