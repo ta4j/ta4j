@@ -46,6 +46,8 @@ The existing Release Merge Freeze workflow is now a trusted, metadata-only `pull
 
 The required CI aggregate also checks the live freeze and its original tested head/base/merge. This catches new or reopened PRs and heads that change during verification. After unfreezing, the controller may retry **only the failed aggregate job**, at most once per exact workflow run, when all its selected test lanes already succeeded. It does not rerun successful Maven or script jobs or reuse old test evidence as proof for a changed base. A later base change needs fresh CI.
 
+The short freeze concurrency group uses GitHub's `queue: max` so new reconciliation runs do not replace pending acquisition or cleanup jobs. GitHub still rejects arrivals beyond 100 pending jobs/runs; a cancelled or failed critical job leaves its durable freeze for manual reconciliation. The pinned actionlint predates this queue key, so only that unsupported-key diagnostic is ignored and an isolated fixture checks all five queue declarations, values and cancellation policy.
+
 | Edge case | Guard and recovery |
 |---|---|
 | Already-green PRs when release starts | Block current head **and test-merge** statuses, rediscover targets, then confirm B and the owned freeze before preparation. |

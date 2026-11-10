@@ -12,6 +12,7 @@ on:
 concurrency:
   group: release-freeze-status-${{ github.repository }}
   cancel-in-progress: false
+  queue: max
 
 env:
   RELEASE_FREEZE_AUTHORS: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}

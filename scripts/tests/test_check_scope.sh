@@ -28,6 +28,13 @@ class ScopeTests(unittest.TestCase):
             with self.subTest(paths=paths):
                 self.assertEqual(scope.classify(paths), dict(zip(('maven', 'scripts'), expected)))
 
+    def test_missing_zero_or_malformed_shas_select_both_lanes(self):
+        for args in ([], ['--base', '0' * 40, '--head', 'a' * 40], ['--base', 'abc', '--head', 'def']):
+            with self.subTest(args=args):
+                result = subprocess.check_output(['python3', str(root / 'scripts/check_scope.py'), *args], text=True)
+                self.assertIn('"maven": true', result)
+                self.assertIn('"scripts": true', result)
+
     def test_deleted_or_renamed_java_still_requires_maven(self):
         with tempfile.TemporaryDirectory(prefix='ta4j-scope-') as temp:
             def git(*args):

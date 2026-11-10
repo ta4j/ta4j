@@ -98,6 +98,7 @@ jobs:
     concurrency:
       group: release-freeze-status-${{ github.repository }}
       cancel-in-progress: false
+      queue: max
     permissions:
       contents: write
       statuses: write
@@ -1313,6 +1314,7 @@ jobs:
     concurrency:
       group: release-freeze-status-${{ github.repository }}
       cancel-in-progress: false
+      queue: max
     permissions:
       contents: write
       statuses: write

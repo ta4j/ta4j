@@ -3,7 +3,7 @@ const { test } = require('node:test');
 const { synchronize, assertMergeAllowed } = require('../release/release_freeze.cjs');
 
 function fixture() {
-  const state = { locks: [], prs: [], statuses: new Map(), writes: [], comments: [], runs: [], jobs: [], retries: [], mutation: null };
+  const state = { locks: [], prs: [], statuses: new Map(), writes: [], comments: [], runs: [], jobs: [], retries: [], reads: [], mutation: null };
   const endpoints = Object.fromEntries(['refs', 'prs', 'statuses', 'comments', 'runs', 'jobs'].map(name => [name, Object.assign(() => {}, { endpoint: name })]));
   const github = {
     rest: {
@@ -24,6 +24,7 @@ function fixture() {
     },
     paginate: async (endpoint, args) => {
       const name = endpoint.endpoint;
+      state.reads.push(name);
       if (name === 'refs') return state.locks.map(ref => ({ ref }));
       if (name === 'prs') return structuredClone(state.prs);
       if (name === 'statuses') return state.statuses.get(args.ref) || [];
@@ -92,6 +93,12 @@ test('unchanged state does not flood commit statuses and inactive state never in
   const f = fixture(); f.state.prs.push(f.pr(1)); await f.sync(); assert.equal(f.state.writes.length, 0);
   f.state.locks.push('refs/heads/release-freeze/prepare-123'); await f.sync(); await f.sync();
   assert.equal(f.state.writes.length, 2);
+});
+
+test('unfrozen PRs reuse status discovery and never scan workflow runs without an overlay', async () => {
+  const f = fixture(); f.state.prs.push(f.pr(1)); await f.sync();
+  assert.equal(f.state.reads.filter(name => name === 'statuses').length, 2);
+  assert.equal(f.state.reads.filter(name => name === 'runs').length, 0);
 });
 
 test('critical API errors fail closed instead of best-effort releasing the barrier', async () => {
