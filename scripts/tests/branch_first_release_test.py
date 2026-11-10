@@ -33,8 +33,11 @@ class ReleaseLifecycleTest(unittest.TestCase):
             path = self.repo / module / 'pom.xml'
             path.parent.mkdir(exist_ok=True)
             artifact = 'ta4j-parent' if module == '.' else module
-            path.write_text(f'<project xmlns="http://maven.apache.org/POM/4.0.0"><groupId>org.ta4j</groupId>'
-                            f'<artifactId>{artifact}</artifactId><version>{version}</version></project>')
+            coordinates = (f'<groupId>org.ta4j</groupId><artifactId>{artifact}</artifactId><version>{version}</version>'
+                           if module == '.' else
+                           f'<parent><groupId>org.ta4j</groupId><artifactId>ta4j-parent</artifactId>'
+                           f'<version>{version}</version></parent><artifactId>{artifact}</artifactId>')
+            path.write_text(f'<project xmlns="http://maven.apache.org/POM/4.0.0">{coordinates}</project>')
 
     def commit(self, message):
         self.git('add', '.')

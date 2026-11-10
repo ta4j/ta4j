@@ -53,7 +53,7 @@ def refs():
 
 def pom_version(sha, path='pom.xml'):
     root = ET.fromstring(git('show', f'{sha}:{path}'))
-    return root.findtext('{*}version')
+    return root.findtext('{*}version') or root.findtext('{*}parent/{*}version')
 
 
 def candidate(data):
@@ -91,7 +91,8 @@ def manifest(version, path):
         pom = Path(module) / 'pom.xml'
         root = ET.parse(pom).getroot()
         artifact = root.findtext('m:artifactId', namespaces=ns)
-        require(root.findtext('m:version', namespaces=ns) == version, f'POM version mismatch: {pom}')
+        effective_version = root.findtext('m:version', namespaces=ns) or root.findtext('m:parent/m:version', namespaces=ns)
+        require(effective_version == version, f'POM version mismatch: {pom}')
         group = root.findtext('m:groupId', namespaces=ns) or root.findtext('m:parent/m:groupId', namespaces=ns)
         require(group == 'org.ta4j', f'POM group mismatch: {pom}')
         entries.append({'path': str(pom), 'sha256': digest(pom), 'groupId': group,

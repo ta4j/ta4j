@@ -62,8 +62,9 @@ test_issue_permissions_declared() {
   permissions="$(awk '
     { sub(/\r$/, "") }
     /^[[:space:]]*#/ { next }
-    /^permissions:/ { in_permissions = 1; next }
-    in_permissions && /^[^[:space:]]/ { exit }
+    /^  prepare:/ { in_prepare = 1; next }
+    in_prepare && /^    permissions:/ { in_permissions = 1; next }
+    in_permissions && /^    [^[:space:]]/ { exit }
     in_permissions && $1 == "issues:" {
       sub(/^[[:space:]]*issues:[[:space:]]*/, "")
       print
