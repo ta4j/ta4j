@@ -192,6 +192,29 @@ class ReleaseLifecycleTest(unittest.TestCase):
         self.assertNotEqual(self.helper('publication-start', ok=False).returncode, 0)
         self.assertIsNone(self.ref('refs/tags/1.2.3'))
 
+    def test_concurrent_create_at_same_sha_does_not_grant_publication_or_staging(self):
+        self.git('push', '-q', 'origin', f'{self.snapshot}:refs/heads/fixture-objects')
+        real_git = self.run_command('which', 'git').stdout.strip()
+        wrapper = Path(self.temp.name) / 'race-tools'
+        wrapper.mkdir()
+        (wrapper / 'git').write_text('#!/bin/sh\nif [ "$1" = push ]; then\n'
+                                    '  "$REAL_GIT" --git-dir "$FIXTURE_REMOTE" update-ref "$RACE_REF" "$RACE_SHA"\n'
+                                    'fi\nexec "$REAL_GIT" "$@"\n')
+        (wrapper / 'git').chmod(0o755)
+        env = dict(self.env, PATH=f"{wrapper}:{self.env['PATH']}", REAL_GIT=real_git,
+                   FIXTURE_REMOTE=str(self.remote), RACE_REF='refs/heads/release-publishing/1.2.3',
+                   RACE_SHA=self.release)
+        result = self.helper('publication-start', env=env, ok=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('not newly created', result.stderr)
+        self.assertEqual(self.ref('refs/heads/release-publishing/1.2.3'), self.release)
+        # Same-shape audit: an existing candidate at S must not count as our creation.
+        env.update(RACE_REF='refs/heads/release/1.2.3', RACE_SHA=self.snapshot)
+        result = self.helper('stage', env=env, ok=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('not newly created', result.stderr)
+        self.assertEqual(self.ref('refs/heads/master'), self.base)
+
     def test_conflicting_publication_checkpoint_fails(self):
         self.git('push', '-q', 'origin', f'{self.snapshot}:refs/heads/release-publishing/1.2.3')
         self.assertNotEqual(self.helper('publication-status', ok=False).returncode, 0)

@@ -48,7 +48,20 @@ def identity():
 
 
 def refs():
-    return {ref: sha for sha, ref in (line.split() for line in git('ls-remote', 'origin').splitlines())}
+    return {ref: sha for sha, ref in (line.split() for line in git('ls-remote', '--heads', '--tags', 'origin').splitlines())}
+
+
+def create_refs(*refspecs):
+    """A successful no-op push is not a create-only claim, even with a lease."""
+    targets = {refspec.split(':', 1)[1] for refspec in refspecs}
+    report = git('push', '--atomic', '--porcelain',
+                 *[f'--force-with-lease={ref}:' for ref in sorted(targets)], 'origin', *refspecs)
+    created = set()
+    for line in report.splitlines():
+        fields = line.split('\t')
+        if len(fields) >= 2 and fields[0] == '*' and ':' in fields[1]:
+            created.add(fields[1].split(':', 1)[1])
+    require(targets <= created, 'Ref claim was not newly created; refusing to continue after a concurrent/no-op push')
 
 
 def pom_version(sha, path='pom.xml'):
@@ -145,10 +158,10 @@ def main():
             output('skip_deploy', 'true' if remote.get(completed) else 'false')
         elif args.command == 'publication-start':
             require(not remote.get(started) and not remote.get(completed), 'Publication already attempted; refusing redeploy')
-            git('push', f'--force-with-lease={started}:', 'origin', f'{release}:{started}')
+            create_refs(f'{release}:{started}')
         else:
             require(remote.get(started) == release and not remote.get(completed), 'Missing/duplicate publication attempt')
-            git('push', f'--force-with-lease={completed}:', 'origin', f'{release}:{completed}')
+            create_refs(f'{release}:{completed}')
     else:
         data = identity()
         candidate(data)
@@ -158,8 +171,7 @@ def main():
             clean()
             pending_guard()
             require(git('rev-parse', 'HEAD') == data['SNAPSHOT_SHA'], 'Preparation must end at S')
-            git('push', '--atomic', f'--force-with-lease={branch}:', f'--force-with-lease={pending}:',
-                'origin', f"{data['SNAPSHOT_SHA']}:{branch}", f"{data['SNAPSHOT_SHA']}:{pending}")
+            create_refs(f"{data['SNAPSHOT_SHA']}:{branch}", f"{data['SNAPSHOT_SHA']}:{pending}")
         elif args.command == 'receipt':
             require(args.kind, '--kind required')
             expected = data['RELEASE_SHA' if args.kind == 'release' else 'SNAPSHOT_SHA']
