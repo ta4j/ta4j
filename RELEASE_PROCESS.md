@@ -38,6 +38,31 @@ Validation path (dry run):
 
 ---
 
+## Release freeze and concurrency
+
+Automatic preparation acquires `release-freeze/prepare-<run-id>` at B and synchronously blocks every currently open PR's head and test-merge SHA before preparing any candidate. Staging atomically replaces that marker with `release-freeze/<version>` at S. This automatic freeze blocks **all** PRs, including trusted release PRs, throughout exact-R/S validation, promotion and publication. A competing open trusted release PR stops automatic preparation. Manual publication also acquires a durable marker bound to R and the frozen master SHA; resuming that same R adopts its existing marker.
+
+The existing Release Merge Freeze workflow is now a trusted, metadata-only `pull_request_target`/`workflow_run` controller. It checks out default-branch code only. It refreshes PR metadata, paginates discovery, and sets a **commit status** named `Build and Verify` on both head and test-merge SHAs. This status is distinct from the actual CI **CheckRun** with the same required name: GitHub requires both to pass. Clearing a freeze cannot turn a failed Maven/script check into success. No branch-protection/ruleset change is required. All acquire/reconcile/release jobs share a short concurrency group; long validation retains the separate lifecycle lock.
+
+The required CI aggregate also checks the live freeze and its original tested head/base/merge. This catches new or reopened PRs and heads that change during verification. After unfreezing, the controller may retry **only the failed aggregate job**, at most once per exact workflow run, when all its selected test lanes already succeeded. It does not rerun successful Maven or script jobs or reuse old test evidence as proof for a changed base. A later base change needs fresh CI.
+
+| Edge case | Guard and recovery |
+|---|---|
+| Already-green PRs when release starts | Block current head **and test-merge** statuses, rediscover targets, then confirm B and the owned freeze before preparation. |
+| New, reopened, fork or changed PR during release | Trusted metadata reconciliation plus a live guard in the required aggregate. Fork code/artifacts never run with status-write credentials. |
+| Master or candidate moves, or freeze marker mutates | Exact refs/receipts and promotion CAS fail closed; frozen master is checked again before upload and tag publication. |
+| Verification fails before any promotion | Delete only the owned freeze with an exact lease, only while master still equals B and no publication was attempted. Candidate/pending evidence remains for diagnosis. |
+| Cancellation or uncertain promotion result | Retain the durable freeze. It never expires automatically; inspect master and publication journals before recovery. |
+| Promotion succeeds but publication fails or upload is ambiguous | Keep the freeze and resume the same R; no second version bump, blind Maven redeploy or rollback. |
+| Maven succeeds, but tag push fails | Completion checkpoint allows the same R to skip Maven and finish the tag. Release the freeze only after the checkpoint and exact R tag are verified. |
+| One of several freezes is removed | Reconcile the remaining freezes before allowing merges; consuming one marker cannot clear another. |
+| API failure, changing discovery or rate limit | Stop acquisition/validation, retain uncertain state and reconcile; notices alone are best-effort. |
+| Notification/snapshot handoff fails after verified Maven/tag completion | Actual release completion can release the freeze; post-release reporting can be retried separately. |
+
+This is a merge barrier, not a distributed transaction over GitHub and Maven. Asynchronous reconciliation has a narrow in-flight/reopen window, and the existing owner bypass can deliberately override checks. Those permissions are unchanged. The synchronous barrier, exact-SHA guards and CAS protect the release against ordinary races; an unexpected master change stops publication for reconciliation. Only changing repository rules/bypass could provide a stronger administrative lock, which this implementation does not do.
+
+---
+
 ## 2. Release Modes
 
 | Mode | How it starts | Git changes | Tag/deploy | Typical use |
@@ -241,7 +266,7 @@ Remediation playbook:
 ### 8.5 Automatic candidate failure or branch drift
 
 - A verification failure leaves master, tags and Maven release publication untouched. The candidate and `release-pending/<version>` remain for diagnosis. Receipt digests are exported by successful jobs; immutable Actions artifacts retain the logs, manifests and receipts for 30 days.
-- If B or the candidate changes, receipts are invalid. Promotion fails closed; there is no automatic history replacement or rollback. The branch-only path does not rely on the PR merge freeze. A normal master merge is allowed to win, and the release must then be prepared and fully validated again.
+- If B or the candidate changes, receipts are invalid. Promotion fails closed; there is no automatic history replacement or rollback. The durable automatic freeze supplements the existing trusted release-PR freeze. A normal master merge is allowed to win, and the release must then be prepared and fully validated again.
 - Before promotion, do not rerun prepare over an existing candidate: the durable pending guard intentionally blocks another version preparation, and a new run/attempt invalidates old receipts. Inspect the validation reports and confirm no promotion/publication occurred. To abandon that candidate, a maintainer removes only its exact candidate and pending refs using explicit expected-S leases, then starts a fresh prepare with fresh B/R/S and complete validation. Fix any source failure on master through the ordinary PR process first. Do not delete publication journal refs as part of candidate cleanup.
 - After promotion, resume the failed publication of the **same R** (rerun the failed publication job or manually dispatch `publish-release.yml` with that version/R). Do not rerun prepare to manufacture a second version bump. Never roll master back.
 
@@ -285,7 +310,7 @@ If a grouped section fails, inspect the matching artifact before rerunning. Avoi
 
 Snapshot consumers must configure `https://central.sonatype.com/repository/maven-snapshots/` with snapshots enabled. Normal release search and Portal snapshot browsing are not consumability checks; browsing can be unavailable while Maven publishing and resolution continue to work. A manually started `snapshot.yml` run defaults to `dryRun=true` and intentionally skips both deployment and external consumption verification unless `dryRun=false` is selected.
 
-### 8.8 Scheduler full AI transport failure
+### 8.9 Scheduler full AI transport failure
 
 If a manual `release-scheduler.yml` dry-run with `aiMode=full` fails before an HTTP response, do not rerun the same full request blindly. First inspect:
 - `release-ai-request-metadata.json` for prompt profile, full dossier size, prompt dossier size, request byte size, and configured transport budget.

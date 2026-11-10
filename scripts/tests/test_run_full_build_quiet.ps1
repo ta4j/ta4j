@@ -87,5 +87,10 @@ function global:Stop-Process {
     param($Id, [switch]$Force, $ErrorAction)
     $global:FixtureProcess.Stopped = $true
 }
-& "$FixtureRoot/scripts/run-full-build-quiet.ps1"
+if ($Scenario -in @('wsl', 'fallback', 'no-program-files', 'preflight-failure')) {
+    & "$FixtureRoot/scripts/run-full-build-quiet.ps1" --preflight-only
+} else {
+    & "$FixtureRoot/scripts/run-full-build-quiet.ps1"
+    if (@(Get-Content "$FixtureRoot/calls.txt").Count -gt 0) { throw 'Maven-only gate invoked script preflight' }
+}
 exit $LASTEXITCODE

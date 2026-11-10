@@ -47,6 +47,8 @@ permissions:
   actions: write
   contents: write
   discussions: write
+  statuses: write
+  pull-requests: read
 
 jobs:
   recovery_approval:
@@ -61,12 +63,77 @@ jobs:
           echo "Recovery mode was explicitly requested for publish-release.yml."
           echo "Environment approval gates manual publishing of a release commit that may not be reachable from the default branch."
 
-  publish:
-    name: Publish Release to Maven Central
-    runs-on: ubuntu-latest
+  freeze:
+    name: Acquire or recover publication freeze
     needs: recovery_approval
     if: |
       always() &&
+      ((inputs.lifecycleHeld == true && inputs.dryRun == false) ||
+       (github.event_name == 'workflow_dispatch' && inputs.dryRun == false) ||
+       (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release'))) &&
+      (needs.recovery_approval.result == 'success' || needs.recovery_approval.result == 'skipped')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-freeze-status-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      statuses: write
+      pull-requests: read
+    outputs:
+      ref: ${{ steps.freeze.outputs.freeze_ref }}
+      sha: ${{ steps.freeze.outputs.freeze_sha }}
+      master: ${{ steps.freeze.outputs.frozen_master }}
+      release: ${{ steps.freeze.outputs.release_sha }}
+      version: ${{ steps.freeze.outputs.release_version }}
+    env:
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      RELEASE_VERSION: ${{ inputs.releaseVersion }}
+      RELEASE_SHA: ${{ inputs.releaseCommit }}
+      AUTOMATIC: ${{ inputs.lifecycleHeld }}
+      RELEASE_FREEZE_AUTHORS: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+      - name: Bind publication freeze to exact R and starting master
+        id: freeze
+        run: python3 scripts/release/release_candidate.py freeze-publish
+      - name: Reconcile all PR heads and test-merge commits
+        env:
+          EXPECTED_FREEZE_REF: ${{ steps.freeze.outputs.freeze_ref }}
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const freeze = require('./scripts/release/release_freeze.cjs');
+            const state = await freeze.synchronize({ github, context, core });
+            if (!state.locks.includes(process.env.EXPECTED_FREEZE_REF)) throw new Error('Publication freeze is not visible through the API');
+      - name: Require stable publication freeze after reconciliation
+        env:
+          FREEZE_REF: ${{ steps.freeze.outputs.freeze_ref }}
+          FREEZE_SHA: ${{ steps.freeze.outputs.freeze_sha }}
+          FROZEN_MASTER: ${{ steps.freeze.outputs.frozen_master }}
+        run: python3 scripts/release/release_candidate.py freeze-assert
+
+  publish:
+    name: Publish Release to Maven Central
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: candidate
+    needs: [recovery_approval, freeze]
+    outputs:
+      release_complete: ${{ steps.tag_verified.outputs.complete }}
+    env:
+      FREEZE_REF: ${{ needs.freeze.outputs.ref }}
+      FREEZE_SHA: ${{ needs.freeze.outputs.sha }}
+      FROZEN_MASTER: ${{ needs.freeze.outputs.master }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    if: |
+      always() && (needs.freeze.result == 'success' || needs.freeze.result == 'skipped') &&
       (
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.merged == true &&
@@ -81,6 +148,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          path: candidate
           fetch-depth: 0
           persist-credentials: true
           token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
@@ -89,7 +157,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.workflow_sha }}
-          path: .release-controller
+          path: controller
           persist-credentials: false
 
       - name: Normalize dry run input
@@ -209,6 +277,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
+            process.chdir(`${process.env.GITHUB_WORKSPACE}/candidate`);
             const { execSync } = require("child_process");
 
             const eventName = context.eventName;
@@ -487,7 +556,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
           RELEASE_SHA: ${{ steps.meta.outputs.release_commit }}
-        run: python3 .release-controller/scripts/release/release_candidate.py publication-status
+        run: python3 ../controller/scripts/release/release_candidate.py publication-status
 
       - name: Check if tag already exists
         id: check_tag
@@ -574,7 +643,7 @@ jobs:
           ./mvnw -B -q -pl ta4j-examples -am -DskipTests install
           ./mvnw -B -q -pl ta4j-examples exec:java \
             -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
-            "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${RELEASE_VERSION} --include-overdue --fail-on-due --output-json ${RUNNER_TEMP}/publish-deprecations.json --output-md ${RUNNER_TEMP}/publish-deprecations.md"
+            "-Dexec.args=--repo-root ${GITHUB_WORKSPACE}/candidate --pom-file pom.xml --target-removal-version ${RELEASE_VERSION} --include-overdue --fail-on-due --output-json ${RUNNER_TEMP}/publish-deprecations.json --output-md ${RUNNER_TEMP}/publish-deprecations.md"
 
       - name: Build and validate release artifact manifest
         id: artifacts
@@ -589,7 +658,7 @@ jobs:
             --output artifact-manifest.txt \
             --github-output "$GITHUB_OUTPUT" \
             --strict
-          python3 .release-controller/scripts/release/release_candidate.py manifest --output production-manifest.json
+          python3 ../controller/scripts/release/release_candidate.py manifest --output production-manifest.json
           echo "::endgroup::"
 
       - name: Validate Javadoc warning baseline (pre-deploy)
@@ -852,7 +921,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
           RELEASE_SHA: ${{ steps.meta.outputs.release_commit }}
-        run: python3 .release-controller/scripts/release/release_candidate.py publication-start
+        run: python3 ../controller/scripts/release/release_candidate.py publication-start
 
       - name: Deploy Release to Maven Central
         if: steps.dry_run.outputs.dryRun != 'true' && steps.publication.outputs.skip_deploy != 'true'
@@ -870,7 +939,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
           RELEASE_SHA: ${{ steps.meta.outputs.release_commit }}
-        run: python3 .release-controller/scripts/release/release_candidate.py publication-complete
+        run: python3 ../controller/scripts/release/release_candidate.py publication-complete
 
       - name: Validate Javadoc warning baseline
         id: javadoc_warnings
@@ -889,6 +958,10 @@ jobs:
           echo "::endgroup::"
           echo "audit:post_deploy_javadoc_audit_status=$status"
 
+      - name: Require unchanged master before tag publication
+        if: steps.dry_run.outputs.dryRun != 'true'
+        run: python3 ../controller/scripts/release/release_candidate.py freeze-assert
+
       - name: Push release tag
         if: steps.dry_run.outputs.dryRun != 'true'
         env:
@@ -898,6 +971,7 @@ jobs:
           git push origin "refs/tags/${RELEASE_VERSION}"
 
       - name: Verify pushed tag reachability
+        id: tag_verified
         if: steps.dry_run.outputs.dryRun != 'true'
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
@@ -928,6 +1002,7 @@ jobs:
             echo "Tag ${RELEASE_VERSION} commit ${tag_commit} is not reachable from origin/${DEFAULT_BRANCH}." >&2
             exit 1
           fi
+          echo "complete=true" >> "$GITHUB_OUTPUT"
 
       - name: Dispatch snapshot publication
         id: snapshot_dispatch
@@ -940,6 +1015,7 @@ jobs:
         with:
           github-token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
           script: |
+            process.chdir(`${process.env.GITHUB_WORKSPACE}/candidate`);
             const releaseVersion = process.env.RELEASE_VERSION;
             const releaseCommit = process.env.RELEASE_COMMIT;
             const ref = process.env.DEFAULT_BRANCH;
@@ -1040,14 +1116,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: publish-release-audit-${{ github.run_id }}
+          include-hidden-files: true
           path: |
-            release-audit.json
-            artifact-manifest.txt
-            production-manifest.json
-            release-artifact-build.log
-            release-deploy.log
-            javadoc-warnings.txt
-            .agents/logs/full-build-*.log
+            candidate/release-audit.json
+            candidate/artifact-manifest.txt
+            candidate/production-manifest.json
+            candidate/release-artifact-build.log
+            candidate/release-deploy.log
+            candidate/javadoc-warnings.txt
+            candidate/.agents/logs/full-build-*.log
           if-no-files-found: ignore
           retention-days: 14
 
@@ -1151,6 +1228,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
+            process.chdir(`${process.env.GITHUB_WORKSPACE}/candidate`);
             const fs = require("fs");
             const body = fs.readFileSync("notification-body.txt", "utf8");
             const owner = context.repo.owner;
@@ -1186,3 +1264,40 @@ jobs:
               }
             `;
             await github.graphql(mutation, { discussionId, body });
+
+  unfreeze:
+    name: Release freeze only after exact Maven and tag completion
+    needs: [freeze, publish]
+    if: always() && needs.freeze.result == 'success' && needs.publish.outputs.release_complete == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-freeze-status-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      statuses: write
+      pull-requests: read
+      actions: write
+    env:
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      FREEZE_REF: ${{ needs.freeze.outputs.ref }}
+      FREEZE_SHA: ${{ needs.freeze.outputs.sha }}
+      FROZEN_MASTER: ${{ needs.freeze.outputs.master }}
+      RELEASE_SHA: ${{ needs.freeze.outputs.release }}
+      RELEASE_VERSION: ${{ needs.freeze.outputs.version }}
+      RELEASE_FREEZE_AUTHORS: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+      - name: Verify journal and tag before consuming the owned freeze
+        run: python3 scripts/release/release_candidate.py freeze-finish
+      - name: Reconcile other freezes and retry only a previously frozen aggregate
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const freeze = require('./scripts/release/release_freeze.cjs');
+            await freeze.synchronize({ github, context, core });

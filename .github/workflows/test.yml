@@ -2,49 +2,120 @@ name: Run Verify
 
 permissions:
   contents: read
+  pull-requests: read
 
 on:
   workflow_dispatch:
   pull_request:
-    branches:
-      - master
+    branches: [master]
   push:
-    branches:
-      - master
+    branches: [master]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Build and Verify
+  scope:
+    name: Select verification scope
     runs-on: ubuntu-latest
-
+    outputs:
+      maven: ${{ steps.scope.outputs.maven }}
+      scripts: ${{ steps.scope.outputs.scripts }}
+      base: ${{ steps.scope.outputs.base }}
+      head: ${{ steps.scope.outputs.head }}
+      merge: ${{ steps.scope.outputs.merge }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Cache Maven packages
-        uses: actions/cache@v5
+      - uses: actions/checkout@v6
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          fetch-depth: 0
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 scripts/check_scope.py --base "$BASE_SHA" --head "$HEAD_SHA"
+          echo "base=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "head=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "merge=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Java
-        uses: actions/setup-java@v5
+  maven:
+    name: Maven verification
+    needs: scope
+    if: needs.scope.outputs.maven == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 25
           cache: maven
+      - name: Run the canonical Maven gate without modifying the checkout
+        run: xvfb-run scripts/run-full-build-quiet.sh --validate-only
 
-      - name: Set up Go for the pinned actionlint fallback
-        uses: actions/setup-go@v6
+  scripts:
+    name: Script and action verification
+    needs: scope
+    if: needs.scope.outputs.scripts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
           cache: false
+      - name: Run only actionlint and isolated script fixtures
+        run: bash scripts/run-script-checks.sh
 
-      - name: Run the canonical quality gate without modifying the checkout
-        run: xvfb-run scripts/run-full-build-quiet.sh --validate-only
+  test:
+    name: Build and Verify
+    needs: [scope, maven, scripts]
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_FREEZE_AUTHORS: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+      TESTED_BASE: ${{ needs.scope.outputs.base }}
+      TESTED_HEAD: ${{ needs.scope.outputs.head }}
+      TESTED_MERGE: ${{ needs.scope.outputs.merge }}
+    steps:
+      - name: Require every selected verification lane
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          MAVEN_SELECTED: ${{ needs.scope.outputs.maven }}
+          MAVEN_RESULT: ${{ needs.maven.result }}
+          SCRIPTS_SELECTED: ${{ needs.scope.outputs.scripts }}
+          SCRIPTS_RESULT: ${{ needs.scripts.result }}
+        run: |
+          set -euo pipefail
+          test "$SCOPE_RESULT" = success
+          case "$MAVEN_SELECTED:$SCRIPTS_SELECTED" in true:true|true:false|false:true|false:false) ;; *) exit 1 ;; esac
+          if [ "$MAVEN_SELECTED" = true ]; then test "$MAVEN_RESULT" = success; fi
+          if [ "$SCRIPTS_SELECTED" = true ]; then test "$SCRIPTS_RESULT" = success; fi
+      - uses: actions/checkout@v6
+        with:
+          # Read the freeze guard from trusted base code, not the proposed PR tree.
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Reject merges while the release freeze is active
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('./scripts/release/release_freeze.cjs')) {
+              const freeze = require('./scripts/release/release_freeze.cjs');
+              await freeze.assertMergeAllowed({ github, context });
+            } else {
+              // Bootstrap this PR before the trusted controller first lands on master.
+              const refs = await github.paginate(github.rest.git.listMatchingRefs, { ...context.repo, ref: 'heads/release-freeze/' });
+              const prs = await github.paginate(github.rest.pulls.list, { ...context.repo, state: 'open', base: context.payload.repository.default_branch });
+              const authors = new Set(process.env.RELEASE_FREEZE_AUTHORS.split(',').map(x => x.trim().toLowerCase()));
+              const releases = prs.filter(pr => pr.head.ref.startsWith('release/') && authors.has(pr.user.login.toLowerCase()) && pr.labels.some(x => x.name === 'release'));
+              if (refs.length || releases.length) throw new Error('Release freeze is active; bootstrap gate cannot pass');
+              const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: context.payload.pull_request.number });
+              if (pr.head.sha !== process.env.TESTED_HEAD || pr.base.sha !== process.env.TESTED_BASE || pr.merge_commit_sha !== process.env.TESTED_MERGE) {
+                throw new Error('Tested PR head/base/merge changed');
+              }
+            }

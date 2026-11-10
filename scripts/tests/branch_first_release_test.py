@@ -70,6 +70,7 @@ class ReleaseLifecycleTest(unittest.TestCase):
                         RELEASE_VERSION='1.2.3', NEXT_VERSION='1.2.4-SNAPSHOT', CANDIDATE_BRANCH='release/1.2.3',
                         GITHUB_REPOSITORY='fixture/ta4j', GITHUB_WORKFLOW_REF='fixture/ta4j/.github/workflows/prepare-release.yml@refs/heads/master',
                         GITHUB_WORKFLOW_SHA=self.base, GITHUB_RUN_ID='123', GITHUB_RUN_ATTEMPT='1', DEFAULT_BRANCH='master')
+        self.helper('freeze-prepare')
 
     def ref(self, name):
         result = self.run_command('git', '--git-dir', str(self.remote), 'rev-parse', '--verify', name, ok=False)
@@ -291,6 +292,102 @@ class ReleaseLifecycleTest(unittest.TestCase):
         self.assertLess(publish.index('Verify release candidate tree is clean'), publish.index('GPG_PRIVATE_KEY:'))
         self.assertLess(publish.index('Record publication attempt before any Maven upload'), publish.index('      - name: Deploy Release to Maven Central'))
         self.assertLess(publish.index('Record successful Maven publication before pushing tag'), publish.index('      - name: Push release tag'))
+
+    def publication_freeze_env(self, automatic='true'):
+        result = self.helper('freeze-publish', env=dict(self.env, AUTOMATIC=automatic))
+        values = dict(line.removeprefix('audit:').split('=', 1) for line in result.stdout.splitlines() if line.startswith('audit:'))
+        return dict(self.env, FREEZE_REF=values['freeze_ref'], FREEZE_SHA=values['freeze_sha'],
+                    FROZEN_MASTER=values['frozen_master'])
+
+    def test_freeze_transfers_atomically_from_preparation_to_verified_candidate(self):
+        self.assertEqual(self.ref('refs/heads/release-freeze/prepare-123'), self.base)
+        self.helper('stage')
+        self.assertIsNone(self.ref('refs/heads/release-freeze/prepare-123'))
+        self.assertEqual(self.ref('refs/heads/release-freeze/1.2.3'), self.snapshot)
+        self.assertEqual(self.ref('refs/heads/master'), self.base)
+
+    def test_manual_recovery_freeze_fetches_an_unreachable_explicit_release(self):
+        self.helper('freeze-abort')
+        self.git('push', '-q', 'origin', f'{self.release}:refs/heads/temporary-recovery')
+        self.git('push', '-q', 'origin', ':refs/heads/temporary-recovery')
+        self.git('--git-dir', str(self.remote), 'config', 'uploadpack.allowAnySHA1InWant', 'true')
+        isolated = Path(self.temp.name) / 'recovery'
+        self.run_command('git', 'clone', '-q', '--no-local', str(self.remote), str(isolated))
+        self.repo = isolated
+        self.assertNotEqual(self.run_command('git', 'cat-file', '-e', self.release, ok=False).returncode, 0)
+        env = self.publication_freeze_env(automatic='false')
+        self.assertEqual(env['FROZEN_MASTER'], self.base)
+        self.assertEqual(self.git('rev-parse', self.release), self.release)
+
+    def test_missing_or_mutated_freeze_prevents_staging_and_promotion(self):
+        self.git('--git-dir', str(self.remote), 'update-ref', '-d', 'refs/heads/release-freeze/prepare-123')
+        self.assertNotEqual(self.helper('stage', ok=False).returncode, 0)
+        self.helper('freeze-prepare')
+        self.stage_and_verify()
+        self.git('--git-dir', str(self.remote), 'update-ref', 'refs/heads/release-freeze/1.2.3', self.release)
+        self.assertNotEqual(self.helper('promote', ok=False).returncode, 0)
+        self.assertEqual(self.ref('refs/heads/master'), self.base)
+
+    def test_pre_promotion_validation_failure_releases_only_its_owned_freeze(self):
+        self.helper('stage')
+        self.helper('freeze-abort')
+        self.assertIsNone(self.ref('refs/heads/release-freeze/1.2.3'))
+        self.assertEqual(self.ref('refs/heads/release-pending/1.2.3'), self.snapshot)
+        self.assertEqual(self.ref('refs/heads/master'), self.base)
+        self.assertIsNone(self.ref('refs/tags/1.2.3'))
+
+    def test_unknown_promotion_and_partial_publication_retain_freeze(self):
+        self.stage_and_verify(); self.helper('promote')
+        self.assertNotEqual(self.helper('freeze-abort', ok=False).returncode, 0)
+        env = self.publication_freeze_env()
+        self.helper('publication-start', env=env)
+        self.assertNotEqual(self.helper('freeze-finish', env=env, ok=False).returncode, 0)
+        self.assertEqual(self.ref(env['FREEZE_REF']), self.snapshot)
+        self.assertNotEqual(self.helper('publication-status', env=env, ok=False).returncode, 0)
+
+    def test_completed_publication_releases_freeze_only_after_exact_r_tag(self):
+        self.stage_and_verify(); self.helper('promote')
+        env = self.publication_freeze_env()
+        self.helper('publication-start', env=env); self.helper('publication-complete', env=env)
+        self.assertNotEqual(self.helper('freeze-finish', env=env, ok=False).returncode, 0)
+        self.git('tag', '-a', '1.2.3', '-m', 'release', self.release)
+        self.git('push', '-q', 'origin', 'refs/tags/1.2.3')
+        self.helper('freeze-finish', env=env)
+        self.assertIsNone(self.ref(env['FREEZE_REF']))
+        self.assertEqual(self.ref('refs/tags/1.2.3^{}'), self.release)
+
+    def test_manual_publication_acquires_and_recovers_a_durable_freeze(self):
+        self.helper('freeze-abort')
+        self.git('push', '-q', 'origin', f'{self.snapshot}:refs/heads/master')
+        env = self.publication_freeze_env(automatic='false')
+        marker = self.ref(env['FREEZE_REF'])
+        self.assertNotEqual(marker, self.release)
+        self.assertNotEqual(marker, self.snapshot)
+        self.assertEqual(env['FROZEN_MASTER'], self.snapshot)
+        resumed = self.publication_freeze_env(automatic='false')
+        self.assertEqual(resumed['FREEZE_SHA'], marker)
+        self.helper('freeze-assert', env=resumed)
+        changed = dict(self.env, RELEASE_SHA=self.snapshot, AUTOMATIC='false')
+        self.assertNotEqual(self.helper('freeze-publish', env=changed, ok=False).returncode, 0)
+
+    def test_master_bypass_during_publication_fails_before_first_upload(self):
+        self.stage_and_verify(); self.helper('promote')
+        env = self.publication_freeze_env()
+        self.git('checkout', '-q', '--detach', self.snapshot)
+        (self.repo / 'late-change').write_text('bypass')
+        advanced = self.commit('late bypass')
+        self.git('push', '-q', 'origin', f'{advanced}:refs/heads/master')
+        self.assertNotEqual(self.helper('publication-start', env=env, ok=False).returncode, 0)
+        self.assertIsNone(self.ref('refs/heads/release-publishing/1.2.3'))
+        self.assertEqual(self.ref(env['FREEZE_REF']), self.snapshot)
+
+    def test_cleanup_never_releases_a_different_run_or_competing_release(self):
+        self.git('push', '-q', 'origin', f'{self.base}:refs/heads/release-freeze/prepare-999')
+        self.helper('freeze-abort')
+        self.assertIsNone(self.ref('refs/heads/release-freeze/prepare-123'))
+        self.assertEqual(self.ref('refs/heads/release-freeze/prepare-999'), self.base)
+        self.assertNotEqual(self.helper('freeze-prepare', ok=False).returncode, 0)
+        self.assertNotEqual(self.helper('freeze-publish', ok=False).returncode, 0)
 
     def ancestry_script(self):
         workflow = (ROOT / '.github/workflows/publish-release.yml').read_text()

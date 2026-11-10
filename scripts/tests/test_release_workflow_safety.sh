@@ -315,7 +315,7 @@ test_mutating_steps_remain_dry_run_gated() {
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: always() && needs.analyze.result != 'skipped' && needs.analyze.outputs.dryRun != 'true' && needs.analyze.outputs.scheduler_due != 'false'" \
     "release scheduler discussion mutation should skip dry-run, skipped, and off-cadence scheduled runs"
 
-  expect_file_contains "$WORKFLOWS/prepare-release.yml" "if: steps.dry_run.outputs.dryRun != 'true'" \
+  expect_file_contains "$WORKFLOWS/prepare-release.yml" "if: needs.plan.outputs.dry_run != 'true'" \
     "prepare-release mutations should be dry-run gated"
   expect_file_contains "$WORKFLOWS/prepare-release.yml" "Create or update removal-ready deprecation issues" \
     "prepare-release should still have managed issue sync"

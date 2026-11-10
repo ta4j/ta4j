@@ -242,17 +242,17 @@ test_deprecation_scans_run_during_dry_runs() {
   gate_section="$(workflow_section "Gate release-ready deprecations" "Upload release-ready deprecation gate report")"
   scan_section="$(workflow_section "Scan removal-ready deprecations" "Create or update removal-ready deprecation issues")"
   issue_section="$(workflow_section "Create or update removal-ready deprecation issues" "Upload removal-ready deprecation report")"
-  if grep -Fq "if: steps.dry_run.outputs.dryRun != 'true'" <<<"$gate_section"; then
+  if grep -Fq "if: needs.plan.outputs.dry_run != 'true'" <<<"$gate_section"; then
     fail "release deprecation gate should run during dry-run"
   fi
-  if grep -Fq "if: steps.dry_run.outputs.dryRun != 'true'" <<<"$scan_section"; then
+  if grep -Fq "if: needs.plan.outputs.dry_run != 'true'" <<<"$scan_section"; then
     fail "next-snapshot deprecation scan should run during dry-run"
   fi
   expect_file_contains "$WORKFLOW" "scan_status=\$scan_status" \
     "release gate should expose scan status for delayed dry-run failure"
-  expect_file_contains "$WORKFLOW" "if: steps.dry_run.outputs.dryRun == 'true' && steps.deprecation_release_gate.outputs.scan_status != '0'" \
+  expect_file_contains "$WORKFLOW" "if: needs.plan.outputs.dry_run == 'true' && steps.deprecation_release_gate.outputs.scan_status != '0'" \
     "dry-run should fail after report uploads when release-ready deprecations are found"
-  if ! grep -Fq "if: steps.dry_run.outputs.dryRun != 'true'" <<<"$issue_section"; then
+  if ! grep -Fq "if: needs.plan.outputs.dry_run != 'true'" <<<"$issue_section"; then
     fail "deprecation issue sync should skip dry-run mutations"
   fi
 
