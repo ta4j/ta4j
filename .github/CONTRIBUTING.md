@@ -126,7 +126,7 @@ Enhancements, new features and fixes should be pushed to a [fork](https://help.g
 This development process is similar to [github flow](https://docs.github.com/en/get-started/quickstart/github-flow).
 
 * **Only the content of the master branch is going to become a release.**
-* **There is no release branch nor a mandatory develop branch**
+* **Development uses master; temporary release candidate branches validate releases before promotion. There is no mandatory develop branch.**
 
 ### Release Process
 

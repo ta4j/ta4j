@@ -293,9 +293,9 @@ test_downstream_dispatches_explicitly_pass_dry_run() {
     "release scheduler dispatch should pass dryRun to prepare-release"
 
   local prepare_dispatch
-  prepare_dispatch="$(workflow_section "$WORKFLOWS/prepare-release.yml" 'workflow_id: "publish-release.yml"' "dryRun")"
+  prepare_dispatch="$(workflow_section "$WORKFLOWS/prepare-release.yml" '  publish_automatic:' '    secrets: inherit')"
   expect_section_contains "$prepare_dispatch" "dryRun" \
-    "prepare-release dispatch should pass dryRun to publish-release"
+    "prepare-release reusable call should explicitly pass dryRun to publish-release"
 
   local publish_dispatch
   publish_dispatch="$(workflow_section "$WORKFLOWS/publish-release.yml" 'Dispatch snapshot publication' 'core.endGroup()')"

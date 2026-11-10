@@ -1,7 +1,8 @@
 name: Prepare Release
 
 concurrency:
-  group: prepare-release-${{ github.repository }}
+  group: release-lifecycle-${{ github.repository }}
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
@@ -19,13 +20,24 @@ on:
         type: boolean
 
 permissions:
-  actions: write
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
   prepare:
+    permissions:
+      actions: write
+      contents: write
+      issues: write
+      pull-requests: write
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    outputs:
+      automatic: ${{ steps.direct_push.outputs.enabled }}
+      dry_run: ${{ steps.dry_run.outputs.dryRun }}
+      base: ${{ steps.base.outputs.sha }}
+      release: ${{ steps.release_commit.outputs.release_commit }}
+      snapshot: ${{ steps.snapshot_commit.outputs.sha }}
+      version: ${{ steps.versions.outputs.release }}
+      next: ${{ steps.versions.outputs.next }}
     name: Prepare Release
     runs-on: ubuntu-latest
 
@@ -220,9 +232,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: true
           token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
+
+      - name: Capture immutable starting master
+        id: base
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          AUTOMATIC: ${{ steps.direct_push.outputs.enabled }}
+        run: |
+          set -euo pipefail
+          git fetch origin "refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
+          base=$(git rev-parse HEAD)
+          test "$base" = "$(git rev-parse "origin/${DEFAULT_BRANCH}")"
+          test "$base" = "$GITHUB_WORKFLOW_SHA"
+          if [ "$AUTOMATIC" = true ]; then
+            python3 scripts/release/release_candidate.py pending
+          fi
+          echo "sha=$base" >> "$GITHUB_OUTPUT"
 
       - name: Validate documentation integrity
         run: |
@@ -384,26 +413,11 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Git push dry-run capability probe"
-          if [ "${DIRECT_PUSH}" = "true" ]; then
-            if [ -z "${TARGET_BRANCH:-}" ]; then
-              echo "Default branch was not set; refusing to probe push capability."
-              exit 1
-            fi
-            refspec="HEAD:refs/heads/${TARGET_BRANCH}"
-            mode="default-branch"
-          else
-            refspec="HEAD:refs/heads/${RELEASE_BRANCH}"
-            mode="release-branch"
-          fi
-
+          refspec="HEAD:refs/heads/${RELEASE_BRANCH}"
+          mode="release-branch"
           echo "audit:push_probe_mode=${mode} refspec=${refspec} use_repo_token=${USE_REPO_TOKEN:-false} dryRun=${DRY_RUN:-false}"
-
           set +e
-          if [ "${DIRECT_PUSH}" = "true" ]; then
-            output=$(git push --dry-run origin "${refspec}" 2>&1)
-          else
-            output=$(git push --dry-run --force-with-lease origin "${refspec}" 2>&1)
-          fi
+          output=$(git push --dry-run origin "${refspec}" 2>&1)
           status=$?
           set -e
 
@@ -534,6 +548,11 @@ jobs:
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           git commit -am "Start ${{ steps.versions.outputs.next }}"
+
+      - name: Capture immutable next snapshot
+        id: snapshot_commit
+        if: steps.dry_run.outputs.dryRun != 'true'
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Scan removal-ready deprecations
         id: deprecation_scan
@@ -757,53 +776,16 @@ jobs:
       # -----------------------
       # Push or PR
       # -----------------------
-      - name: Push release commits directly to default branch
+      - name: Stage automatic release candidate without changing master
         if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled == 'true'
         env:
-          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          set -euo pipefail
-          branch="${TARGET_BRANCH:-}"
-          if [ -z "$branch" ]; then
-            echo "Default branch was not set; refusing to push."
-            exit 1
-          fi
-          git fetch origin "${branch}"
-          if ! git merge-base --is-ancestor "origin/${branch}" HEAD; then
-            echo "Default branch '${branch}' advanced after preparation; refusing to push."
-            exit 1
-          fi
-          echo "Pushing release commits directly to ${branch}."
-          git push origin "HEAD:${branch}"
-
-      - name: Dispatch publish-release workflow (direct push)
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled == 'true'
-        uses: actions/github-script@v9
-        env:
+          BASE_SHA: ${{ steps.base.outputs.sha }}
+          RELEASE_SHA: ${{ steps.release_commit.outputs.release_commit }}
+          SNAPSHOT_SHA: ${{ steps.snapshot_commit.outputs.sha }}
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
-          RELEASE_COMMIT: ${{ steps.release_commit.outputs.release_commit }}
-          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
-        with:
-          github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
-          script: |
-            const releaseVersion = process.env.RELEASE_VERSION;
-            const releaseCommit = process.env.RELEASE_COMMIT;
-            const dryRun = process.env.DRY_RUN || "false";
-            if (!releaseVersion || !releaseCommit) {
-              throw new Error("Missing release version or release commit for publish dispatch.");
-            }
-            const ref = "${{ github.event.repository.default_branch }}";
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "publish-release.yml",
-              ref,
-              inputs: {
-                releaseVersion,
-                releaseCommit,
-                dryRun
-              }
-            });
+          NEXT_VERSION: ${{ steps.versions.outputs.next }}
+          CANDIDATE_BRANCH: release/${{ steps.versions.outputs.release }}
+        run: python3 scripts/release/release_candidate.py stage
 
       - name: Create release branch
         if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
@@ -1106,3 +1088,151 @@ jobs:
             release/${{ steps.versions.outputs.release }}.md
           if-no-files-found: ignore
           retention-days: 14
+
+  verify_release:
+    name: Verify exact release R
+    needs: prepare
+    if: needs.prepare.outputs.automatic == 'true' && needs.prepare.outputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      receipt: ${{ steps.verify.outputs.receipt_sha256 }}
+    env:
+      BASE_SHA: ${{ needs.prepare.outputs.base }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.release }}
+      SNAPSHOT_SHA: ${{ needs.prepare.outputs.snapshot }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      NEXT_VERSION: ${{ needs.prepare.outputs.next }}
+      CANDIDATE_BRANCH: release/${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.base }}
+          path: controller
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.release }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+      - name: Validate release and issue bound receipt
+        id: verify
+        working-directory: candidate
+        run: bash ../controller/scripts/release/verify_candidate.sh release "$RUNNER_TEMP/release"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: release-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 30
+
+  verify_snapshot:
+    name: Verify exact next snapshot S
+    needs: prepare
+    if: needs.prepare.outputs.automatic == 'true' && needs.prepare.outputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      receipt: ${{ steps.verify.outputs.receipt_sha256 }}
+    env:
+      BASE_SHA: ${{ needs.prepare.outputs.base }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.release }}
+      SNAPSHOT_SHA: ${{ needs.prepare.outputs.snapshot }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      NEXT_VERSION: ${{ needs.prepare.outputs.next }}
+      CANDIDATE_BRANCH: release/${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.base }}
+          path: controller
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.snapshot }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+      - name: Validate snapshot and issue bound receipt
+        id: verify
+        working-directory: candidate
+        run: bash ../controller/scripts/release/verify_candidate.sh snapshot "$RUNNER_TEMP/snapshot"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: snapshot-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/snapshot/
+          if-no-files-found: error
+          retention-days: 30
+
+  promote:
+    name: Promote verified candidate atomically
+    needs: [prepare, verify_release, verify_snapshot]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    env:
+      BASE_SHA: ${{ needs.prepare.outputs.base }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.release }}
+      SNAPSHOT_SHA: ${{ needs.prepare.outputs.snapshot }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      NEXT_VERSION: ${{ needs.prepare.outputs.next }}
+      CANDIDATE_BRANCH: release/${{ needs.prepare.outputs.version }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      RELEASE_RECEIPT_SHA256: ${{ needs.verify_release.outputs.receipt }}
+      SNAPSHOT_RECEIPT_SHA256: ${{ needs.verify_snapshot.outputs.receipt }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.base }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release
+      - uses: actions/download-artifact@v8
+        with:
+          name: snapshot-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: snapshot
+      - name: Recheck receipts, candidate and master; compare-and-swap promotion
+        run: |
+          set -euo pipefail
+          git fetch origin "refs/heads/${CANDIDATE_BRANCH}"
+          python3 scripts/release/release_candidate.py promote
+
+  publish_automatic:
+    permissions:
+      actions: write
+      contents: write
+      discussions: write
+    name: Publish promoted release
+    needs: [prepare, promote]
+    uses: ./.github/workflows/publish-release.yml
+    with:
+      releaseVersion: ${{ needs.prepare.outputs.version }}
+      releaseCommit: ${{ needs.prepare.outputs.release }}
+      dryRun: false
+      lifecycleHeld: true
+    secrets: inherit

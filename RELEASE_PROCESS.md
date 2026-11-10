@@ -20,9 +20,13 @@ Preferred path (PR mode):
 5. GitHub release (`github-release.yml`) runs on tag push.
 6. Release health (`release-health.yml`) audits drift, retrieves the current snapshot's exact timestamped POM/JAR once publication is authoritative, and posts summary.
 
-Emergency path (direct push mode):
-1. `prepare-release.yml` pushes both commits directly to `master` when `RELEASE_DIRECT_PUSH=true`.
-2. It then dispatches `publish-release.yml`.
+Opt-in automatic path (`RELEASE_DIRECT_PUSH=true`, `1`, or `yes`, case-insensitive):
+1. Capture immutable starting master **B**; prepare release **R** and next snapshot **S** on `release/<version>` without changing master.
+2. Separate read-only jobs run the canonical non-mutating full gate at exact R and S. At R, also enforce release-ready deprecations, production artifact inventory/Maven metadata and hashes, and the Javadoc warning baseline. Both check tracked-tree/index cleanliness.
+3. Consume receipts bound to B/R/S, versions, repository, workflow SHA/ref and run/attempt. Recheck the candidate still equals S and master still equals B. An atomic push fast-forwards master to S and deletes the consumed candidate branch, with explicit expected-S and expected-B leases. No history is replaced.
+4. Call the existing publisher at R while retaining the lifecycle lock through publication. The publisher requires R on master, revalidates, deploys, and tags **R**, never S. `recoveryMode` does not authorize an automatic candidate.
+
+The switch remains **off by default**; merging this implementation does not enable it. Activating it requires a separate maintainer decision. The existing Monday 09:00 UTC wake-up and fortnightly guard anchored June 29, 2026 are unchanged. Existing branch protection, merge approvals, bypass membership and auto-merge settings are unchanged. If the existing actor cannot promote, the workflow fails closed.
 
 Validation path (dry run):
 1. Manually run any mutating release workflow and keep its default `dryRun=true`.
@@ -39,7 +43,7 @@ Validation path (dry run):
 | Mode | How it starts | Git changes | Tag/deploy | Typical use |
 |---|---|---|---|---|
 | PR mode (default) | scheduler or manual prepare | release branch + merged PR | yes | normal production releases |
-| Direct push | manual prepare + `RELEASE_DIRECT_PUSH=true` | commits land directly on `master` | yes | emergency/unblocked maintenance |
+| Automatic branch-first | scheduler/manual prepare + opt-in `RELEASE_DIRECT_PUSH` | validate R/S on branch, then atomic fast-forward to S | after promotion, at R | unattended releases after separate activation |
 | Dry run | manual mutating release workflow, default `dryRun=true` | none | no | inspection-first preflight validation |
 
 ---
@@ -86,7 +90,7 @@ Secrets and variables:
 - The scanner JSON is the stable handoff contract for future automation: it includes `schemaVersion`, `automationNamespace`, grouped issue `planKind`, and per-symbol `trackingKey` fields so a later AI-driven planner can split work into one issue per deprecated item while remaining restart-safe by searching managed markers before mutation.
 - The workflow auto-labels the PR with `release`, assigns it to `RELEASE_OWNER` (default: `TheCookieLab`), and requests review from eligible `RELEASE_REVIEWERS` / `RELEASE_REVIEW_TEAMS` targets. If no reviewer list is configured, `RELEASE_OWNER` remains the default reviewer candidate only when that user did not author the PR. The PR author is always filtered from user reviewer requests because GitHub rejects self-review requests.
 - A self-authored release PR with no eligible fallback reviewer/team leaves a warning in the logs, summary, and audit artifact instead of failing the review request. Normal branch protection still requires one approving review, so configure a non-author reviewer/team to merge without an admin or bypass path.
-- In PR mode, the successful handoff is the release branch push plus release PR creation. In direct-push mode, the successful handoff is `prepare-release.yml` dispatching `publish-release.yml` with `dryRun=false`.
+- In PR mode, the handoff is the release branch push plus release PR creation. Automatic mode keeps preparation, verification, promotion and the reusable publisher in one lifecycle concurrency group; standalone publishing uses the same group. A durable pending candidate prevents a new version bump while an earlier automatic release is unfinished.
 - Opening a release PR automatically triggers freeze notices on other open PRs.
 
 2. Review generated release PR
@@ -135,7 +139,7 @@ Expected behavior:
 - prepare dry-runs run deprecation scans and upload report artifacts, but skip managed GitHub cleanup issue sync. If the release-ready gate finds due or overdue removals, the dry-run fails after the reports are available.
 - publish dry-runs run the same metadata, ancestry, release-candidate, and artifact manifest checks without deploying. If the release tag already exists, the dry-run records a warning and continues so historical release validation remains possible.
 - GitHub Release dry-runs build and validate the exact release artifact manifest from the selected tag while using workflow support files from the workflow commit.
-- release-candidate checks use the repository default `integration,slow` test-tag exclusions and log that policy in the workflow output.
+- Release-candidate checks use the canonical `--validate-only` gate and its non-demo test-tag policy, including integration and slow tests. Formatter/license repairs are rejected, not applied.
 - workflows upload audit artifacts such as release dossiers, decisions, manifests, logs, and tag-resolution files so failures can be diagnosed from the exact phase that produced them.
 - `release-scheduler.yml` full AI dry-runs compact oversized dossiers before calling OpenAI, record the prompt profile, provider, endpoint, reasoning effort, and byte budget in `release-ai-request-metadata.json`, and capture `response-headers.txt`, `curl-metrics.log`, and `release-ai-transport-diagnostics.json` when a provider transport or response-validation failure occurs.
 - `release-scheduler.yml` uses a weekly Monday cron plus an internal 14-day cadence guard anchored at `2026-06-29`. Only due scheduled runs continue into OpenAI key checks, model preflight, dossier/request generation, and the single inference call; off-cadence scheduled runs record `scheduler_due=false`, recommend no release, and skip scheduler discussion posts.
@@ -148,8 +152,8 @@ Expected behavior:
 | Workflow | Trigger(s) | Primary responsibility | Critical guardrails |
 |---|---|---|---|
 | `release-scheduler.yml` | schedule, manual | decide whether/how to release | manual runs default dry-run; schedule normalizes to production only on the `2026-06-29`-anchored biweekly cadence; binary-impact gate, one-call model inference, semver safety, tag collision checks |
-| `prepare-release.yml` | manual (or scheduler dispatch) | generate release artifacts and release PR/direct-push commits | manual runs default dry-run; scheduler passes `dryRun`; docs-integrity checks, version validation, metadata validation, dry-run push capability probes |
-| `publish-release.yml` | merged release PR close, manual | release-candidate verification + tag + Maven Central deploy + release summary; manual recovery also dispatches snapshot | manual runs default dry-run; merged release PRs normalize to production and rely on the existing master-push snapshot run; merge discipline + ancestry checks, artifact manifest checks, post-push tag integrity/reachability checks |
+| `prepare-release.yml` | manual (or scheduler dispatch) | prepare PR or verify/promote/publish an automatic branch candidate | manual runs default dry-run; scheduler passes `dryRun`; docs-integrity checks, version validation, metadata validation, dry-run push capability probes |
+| `publish-release.yml` | merged release PR close, manual, reusable call after promotion | release-candidate verification + tag + Maven Central deploy + release summary; manual recovery also dispatches snapshot | manual runs default dry-run; merged release PRs normalize to production and rely on the existing master-push snapshot run; merge discipline + ancestry checks, artifact manifest checks, post-push tag integrity/reachability checks |
 | `release-health.yml` | push to `master`, publish workflow completion, snapshot workflow completion, schedule, manual | detect drift in release state | manual runs default dry-run; non-manual triggers normalize to production; fails on tag reachability drift, snapshot version drift, missing exact snapshot POM/JAR once publication is authoritative, missing notes, stale release PRs |
 | `github-release.yml` | semver-like tag push, manual | GitHub release publication | manual runs default dry-run; tag pushes normalize to production; semver tag validation, exact artifact manifest using current workflow support files |
 | `snapshot.yml` | push to `master`, manual/recovery dispatch | publish and externally consume snapshots | manual runs default dry-run; master pushes normalize to production; publications queue rather than cancel; a non-dry-run succeeds only after exact isolated Maven resolution and checksum verification |
@@ -234,17 +238,32 @@ Remediation playbook:
 
 - Ensure `release/<version>.md` exists in the release commit.
 
-### 8.5 Branch advanced during prepare/push
+### 8.5 Automatic candidate failure or branch drift
 
-- `master` moved while workflow was preparing/pushing.
-- Re-run prepare once branch is stable.
+- A verification failure leaves master, tags and Maven release publication untouched. The candidate and `release-pending/<version>` remain for diagnosis. Receipt digests are exported by successful jobs; immutable Actions artifacts retain the logs, manifests and receipts for 30 days.
+- If B or the candidate changes, receipts are invalid. Promotion fails closed; there is no automatic history replacement or rollback. The branch-only path does not rely on the PR merge freeze. A normal master merge is allowed to win, and the release must then be prepared and fully validated again.
+- Before promotion, rerun **all jobs** only if B and the candidate remain exact. A new run/attempt requires fresh R and S receipts. If abandoning a candidate, inspect Central/tag/master state first, then a maintainer can remove only its candidate and pending refs using explicit expected-S leases. A new preparation captures fresh B and creates new R/S.
+- After promotion, resume the failed publication of the **same R** (rerun the failed publication job or manually dispatch `publish-release.yml` with that version/R). Do not rerun prepare to manufacture a second version bump. Never roll master back.
 
-### 8.6 Dry-run warnings
+### 8.6 Publication checkpoints and partial success
+
+Before the first Maven upload, the publisher creates `release-publishing/<version>` pointing at R. Only a successful Maven `deploy` (configured to wait until published) creates `release-published/<version>`, also at R, before the tag is pushed.
+
+- No checkpoint: publication may start after all validation gates pass.
+- Both checkpoints at R: skip Maven deploy and finish/verify the tag and downstream handoff. This covers a successful deploy followed by a tag-push failure. An existing matching tag is accepted only with this completed checkpoint; a mismatched tag fails.
+- Start checkpoint without completion: deployment may be partial or complete. Stop for operator reconciliation; never blindly redeploy. Inspect the Central deployment and published coordinates, including the run's manifest and deploy log. After confirming full publication, a maintainer can record the completion ref at the same R and resume. If Central definitively accepted no upload, a maintainer can remove the start ref with an explicit expected-R lease and retry the same R. Do not remove it based only on a missing/eventually-consistent Central search result.
+- Conflicting checkpoint SHAs: fail closed and investigate.
+
+The checkpoint refs are an operational journal, not evidence that deployed bytes equal candidate bytes. The publisher rebuilds from exact R; it repeats the canonical build, release-ready deprecation gate, tracked-tree cleanliness, strict production artifact/Maven metadata inventory and Javadoc baseline before credentials are installed. The deployment then rebuilds again. Hash manifests provide audit evidence, **not byte-for-byte promotion of the preverified JARs**. Signing and external Maven publishing are not atomic with Git refs; a failure between upload and recording completion remains deliberately ambiguous.
+
+The durable `release-pending/<version>` at S blocks later automatic preparations until a completed publication checkpoint and tag identify R. Keep these journal refs until the release has been reconciled. Do not infer release success from master containing S alone.
+
+### 8.7 Dry-run warnings
 
 - Missing deploy secrets in dry-run are expected warnings.
 - Fix before production run.
 
-### 8.7 Finding the failure point
+### 8.8 Finding the failure point
 
 Release workflows use grouped log sections and upload audit artifacts on every run.
 
