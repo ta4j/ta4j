@@ -417,7 +417,12 @@ jobs:
           mode="release-branch"
           echo "audit:push_probe_mode=${mode} refspec=${refspec} use_repo_token=${USE_REPO_TOKEN:-false} dryRun=${DRY_RUN:-false}"
           set +e
-          output=$(git push --dry-run origin "${refspec}" 2>&1)
+          if [ "${DIRECT_PUSH}" = "true" ]; then
+            output=$(git push --dry-run origin "${refspec}" 2>&1)
+          else
+            # Preserve repeat preparation/update of an existing manual release PR.
+            output=$(git push --dry-run --force-with-lease origin "${refspec}" 2>&1)
+          fi
           status=$?
           set -e
 

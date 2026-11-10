@@ -253,6 +253,24 @@ class ReleaseLifecycleTest(unittest.TestCase):
         self.assertIsNone(self.ref('refs/tags/1.2.3'))
         self.assertIsNone(self.ref('refs/heads/release-publishing/1.2.3'))
 
+    def test_manual_push_probe_preserves_release_pr_updates(self):
+        workflow = (ROOT / '.github/workflows/prepare-release.yml').read_text()
+        step = workflow.split('      - name: Preflight git push capability\n', 1)[1].split('\n      - name:', 1)[0]
+        script = textwrap.dedent(step.split('        run: |\n', 1)[1])
+        tools = Path(self.temp.name) / 'probe-tools'
+        tools.mkdir()
+        (tools / 'git').write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$FAKE_GIT_ARGS"\n')
+        (tools / 'git').chmod(0o755)
+        args_file = Path(self.temp.name) / 'probe-args'
+        for automatic in ('true', 'false'):
+            env = dict(self.env, PATH=f"{tools}:{self.env['PATH']}", FAKE_GIT_ARGS=str(args_file),
+                       DIRECT_PUSH=automatic, RELEASE_BRANCH='release/1.2.3')
+            self.run_command('bash', '-c', script, env=env)
+            arguments = args_file.read_text().splitlines()
+            self.assertEqual(arguments[-1], 'HEAD:refs/heads/release/1.2.3')
+            self.assertEqual('--force-with-lease' in arguments, automatic == 'false')
+            self.assertIn('--dry-run', arguments)
+
     def test_workflow_separates_unprivileged_verification_and_serializes_publication(self):
         prepare = (ROOT / '.github/workflows/prepare-release.yml').read_text()
         publish = (ROOT / '.github/workflows/publish-release.yml').read_text()
