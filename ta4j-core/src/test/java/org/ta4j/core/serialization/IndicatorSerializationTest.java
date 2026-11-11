@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.serialization;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +21,8 @@ import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.macd.MACDVIndicator;
+import org.ta4j.core.indicators.orderbook.OrderBookIndicator;
+import org.ta4j.core.indicators.orderbook.OrderBookSpreadIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -29,6 +32,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class IndicatorSerializationTest {
+    @Test
+    void rejectsExternalOrderBookHistoryInsteadOfDroppingItsDataset() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1).build();
+        OrderBookIndicator books = new OrderBookIndicator(series, List.of(), Duration.ZERO,
+                OrderBookIndicator.BarTime.END);
+        assertThrows(IndicatorSerializationException.class, books::toDescriptor);
+        assertThrows(IndicatorSerializationException.class, books::toJson);
+        assertThrows(IndicatorSerializationException.class, books::toExpression);
+        assertThrows(IndicatorSerializationException.class, new OrderBookSpreadIndicator(books)::toDescriptor);
+        ComponentDescriptor unbound = ComponentDescriptor.builder().withType("OrderBookIndicator").build();
+        assertThrows(IndicatorSerializationException.class,
+                () -> IndicatorSerialization.fromDescriptor(series, unbound));
+    }
+
     @Test
     public void fromDescriptorWrapsMissingConstructorDependency() throws Exception {
         try (MissingDependencyFixture fixture = new MissingDependencyFixture()) {
