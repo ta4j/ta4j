@@ -14,6 +14,9 @@ paths:
   .github/workflows/**/*.yml:
     ignore:
       - 'shellcheck reported issue in this script: SC[0-9]+:(info|warning|style):'
+      # GitHub supports queue:max; 1.7.12 predates it. The queue contract fixture
+      # validates its value, placement and cancellation policy independently.
+      - '^unexpected key "queue" for "concurrency" section\.'
   .github/workflows/**/*.yaml:
     ignore:
       - 'shellcheck reported issue in this script: SC[0-9]+:(info|warning|style):'

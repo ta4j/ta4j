@@ -137,7 +137,7 @@ test_ci_reuses_canonical_local_gates() {
   [[ ! -e "$ROOT/.github/workflows/validate.yml" ]] || fail "standalone formatting workflow should be consolidated into the canonical gate"
   [[ ! -e "$ROOT/.github/workflows/check.yml" ]] || fail "standalone license workflow should be consolidated into the canonical gate"
   [[ ! -e "$ROOT/.github/workflows/actionlint.yml" ]] || fail "standalone actionlint workflow should be consolidated into the canonical gate"
-  expect_file_contains "$QUIET_BUILD" "actionlint@v1.7.12" "canonical gate should pin its actionlint fallback"
+  expect_file_contains "$ROOT/scripts/run-script-checks.sh" "actionlint@v1.7.12" "standalone script gate should pin its actionlint fallback"
   expect_file_contains "$QUIET_BUILD" "GOALS=(clean license:format spotless:apply verify)" "local default should repair source before verify"
   expect_file_contains "$QUIET_BUILD" "GOALS=(clean license:check spotless:check verify)" "validate-only mode should preserve hosted non-mutating goals"
   expect_file_contains "$QUIET_BUILD" "-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless" "local default should include hosted non-demo tests"
@@ -161,7 +161,8 @@ test_maven_wrapper_is_committed_and_pinned() {
 test_docs_point_to_real_maven_commands() {
   echo "Running test_docs_point_to_real_maven_commands"
 
-  expect_file_contains "$ROOT/README.md" "Use \`scripts/run-full-build-quiet.sh\` on macOS/Linux/Git Bash/WSL or \`scripts/run-full-build-quiet.ps1\` on Windows PowerShell; it uses native Maven and WSL preflight when available, with Git Bash as the fallback." "README should document the native Windows gate"
+  expect_file_contains "$ROOT/README.md" "for Maven-only verification" "README should document the Maven-only gate"
+  expect_file_contains "$ROOT/README.md" "scripts/run-script-checks.sh" "README should document standalone script checks"
   expect_file_contains "$ROOT/README.md" "./mvnw -B clean license:check spotless:check verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless" "README should document the optional non-mutating Maven-only validation"
   expect_file_contains "$ROOT/README.md" "scripts/run-full-build-quiet.sh" "README should document the quiet Bash verify wrapper"
   expect_file_contains "$ROOT/README.md" "scripts/run-full-build-quiet.ps1" "README should document the quiet PowerShell verify wrapper"
@@ -170,7 +171,7 @@ test_docs_point_to_real_maven_commands() {
   expect_file_contains "$ROOT/README.md" "./mvnw -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report" "README should document a focused JaCoCo report-only loop"
   expect_file_contains "$ROOT/README.md" "- [Build commands: Maven](#build-commands-maven)" "README table of contents should link to the renamed build section"
   expect_file_contains "$ROOT/README.md" "./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest" "README should demonstrate overriding exec:java with a non-default example"
-  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "**Run one of these before opening or updating a PR:** \`scripts/run-full-build-quiet.sh\` on macOS/Linux/Git Bash/WSL, \`scripts/run-full-build-quiet.ps1\` on Windows PowerShell (native Maven with WSL preflight when available), or \`./mvnw -B clean license:format spotless:apply verify\`" "contributing guide should document both supported local gates"
+  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "**Match verification to the change" "contributing should route by changed surface"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "./mvnw -B clean license:format spotless:apply verify" "contributing guide should support the direct mutating Maven gate"
   expect_file_contains "$PR_TEMPLATE" "or \`./mvnw -B clean license:format spotless:apply verify\`" "pull request checklist should accept the direct mutating Maven gate"
   expect_file_contains "$ROOT/scripts/run-full-build-quiet.ps1" "WSL is preferred" "PowerShell usage should disclose the preferred preflight runtime"
