@@ -4,8 +4,10 @@
 
 - **Causal L2 strategy signals**: `OrderBookIndicator` joins frozen order-book histories to explicit bar-open or bar-close decisions with inclusive freshness limits and stable arrival-order ties. Retained bounds and the decision timestamp are captured atomically on concurrent series. Spread, midpoint, depth and imbalance indicators compose with existing threshold rules; `OrderBookReadyRule` guards unavailable or incomplete books. The offline `OrderBookBacktest` demonstrates ordinary strategies with next-open bar fills, not simulated L2 execution. External-history configuration serialization fails explicitly rather than silently dropping its dataset.
 
+
 ### Fixed
 
+- **Safer saved decimal numbers**: Java deserialization of `DecimalNum` and `DecimalNumFactory` rejects missing values, math contexts, cached constants or class data with `InvalidObjectException`. `DecimalNumFactory` pins its existing serial version UID, so previously saved factories still load.
 - **Branch-first automatic release preparation**: the existing opt-in direct-release switch now validates exact release and next-snapshot commits before an atomic master promotion. Bound validation receipts, shared lifecycle serialization and publication checkpoints reject stale candidates and blind Maven redeploys; tags continue to identify the release commit. The switch remains off until separately activated, and the scheduler cadence is unchanged. Preserve the CF-756 / PR #1721 protection against publishing PR-only release trees after squash or rebase merges.
 - **Release merge barrier and scoped verification**: automatic releases retain the existing merge freeze through validation, promotion and publication, blocking both PR head and test-merge statuses without changing protection settings. Script/action fixtures now have a standalone gate and run only for relevant changes; ordinary Maven builds no longer execute them. The required CI aggregate checks every selected lane and the live freeze. Publication controllers use a sibling checkout so historical recovery builds scan only their candidate source.
 
