@@ -92,6 +92,19 @@ public class FractalLowIndicatorTest extends AbstractIndicatorTest<Indicator<Boo
     }
 
     @Test
+    public void shouldRecoverAfterNaNLeavesWindowAndReevaluateFormingBar() {
+        final var bars = createSeriesFromLows(9, 8, 5, 8, 9, 8, 7, 1, 7, 8);
+        final var indicator = new FractalLowIndicator(withNaNAtIndex(new LowPriceIndicator(bars), 1), 2, 2);
+        assertThat(indicator.getValue(4)).isFalse();
+        for (int i = 5; i < 9; i++) {
+            indicator.getValue(i);
+        }
+        assertThat(indicator.getValue(9)).isTrue();
+        bars.addPrice(0);
+        assertThat(indicator.getValue(9)).isFalse();
+    }
+
+    @Test
     public void shouldRejectInvalidWindowLengths() {
         series = createSeriesFromLows(13, 11, 12, 10, 11);
         final var lowPrice = new LowPriceIndicator(series);

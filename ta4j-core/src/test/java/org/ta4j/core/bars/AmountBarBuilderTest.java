@@ -1000,4 +1000,11 @@ class AmountBarBuilderTest {
         assertNumEquals(4, secondSeries.getBar(0).getAmount());
     }
 
+    @Test
+    void constructorRejectsNonPositiveAmountThreshold() {
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new AmountBarBuilder(DecimalNumFactory.getInstance(), 0, true));
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new AmountBarBuilder(DecimalNumFactory.getInstance(), -1, true));
+    }
 }

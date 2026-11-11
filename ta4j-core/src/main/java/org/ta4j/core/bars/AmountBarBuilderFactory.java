@@ -3,15 +3,22 @@
  */
 package org.ta4j.core.bars;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of amount threshold is a documented constructor contract; subclassing remains supported.")
 public class AmountBarBuilderFactory implements BarBuilderFactory {
 
     private static final long serialVersionUID = 1L;
@@ -25,10 +32,12 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume) {
         this(amountThreshold, setAmountByVolume, false, RemainderCarryOverPolicy.NONE);
@@ -37,13 +46,15 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set
      * @param realtimeBars      {@code true} to build {@link BaseRealtimeBar}
      *                          instances
      *
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
      * @since 0.22.2
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume,
@@ -54,12 +65,14 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set
      * @param carryOverPolicy   policy for handling side/liquidity remainder splits
      *
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
      * @since 0.22.2
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume,
@@ -70,7 +83,8 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param amountThreshold   the threshold at which a new bar should be created
+     * @param amountThreshold   the threshold at which a new bar should be created;
+     *                          must be positive
      * @param setAmountByVolume if {@code true} the {@code amount} is set by
      *                          {@code volume * closePrice}, otherwise
      *                          {@code amount} must be explicitly set
@@ -78,14 +92,29 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
      *                          instances
      * @param carryOverPolicy   policy for handling side/liquidity remainder splits
      *
+     * @throws IllegalArgumentException if {@code amountThreshold} is not positive
      * @since 0.22.2
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume,
             final boolean realtimeBars, final RemainderCarryOverPolicy carryOverPolicy) {
+        if (amountThreshold <= 0) {
+            throw new IllegalArgumentException("amountThreshold must be positive");
+        }
         this.amountThreshold = amountThreshold;
         this.setAmountByVolume = setAmountByVolume;
         this.realtimeBars = realtimeBars;
         this.carryOverPolicy = carryOverPolicy == null ? RemainderCarryOverPolicy.NONE : carryOverPolicy;
+    }
+
+    @Serial
+    private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (amountThreshold <= 0) {
+            throw new InvalidObjectException("amountThreshold must be positive");
+        }
+        if (carryOverPolicy == null) {
+            throw new InvalidObjectException("carryOverPolicy must not be null");
+        }
     }
 
     @Override

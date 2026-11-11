@@ -341,4 +341,10 @@ public class VolumeBarBuilderTest {
         assertNumEquals(11, firstSeries.getBar(0).getClosePrice());
         assertNumEquals(21, secondSeries.getBar(0).getClosePrice());
     }
+
+    @Test
+    public void constructorRejectsNonPositiveVolumeThreshold() {
+        assertThrows(IllegalArgumentException.class, () -> new VolumeBarBuilder(DecimalNumFactory.getInstance(), 0));
+        assertThrows(IllegalArgumentException.class, () -> new VolumeBarBuilder(DecimalNumFactory.getInstance(), -1));
+    }
 }
