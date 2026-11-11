@@ -28,3 +28,8 @@
 **Vulnerability:** Standard Java deserialization without `readResolve()` creates duplicate instances on the heap for singleton objects like `NaN.NaN`, breaking reference equality (`== NaN.NaN`), inflating heap usage, and violating domain singleton invariants.
 **Learning:** `Serializable` singleton instances in Java must implement `readResolve()` returning the canonical singleton instance (and `readObjectNoData()` to guard against stream evolution edge cases) to prevent duplicate or improperly initialized instances during deserialization.
 **Prevention:** Always implement `readResolve()` returning the canonical instance for any singleton `Serializable` types.
+
+## 2026-11-08 - Duration Invariant Validation in TimeBarBuilderFactory
+**Vulnerability:** `TimeBarBuilderFactory` did not validate its optional `timePeriod` Duration parameter in constructors or during Java deserialization, allowing negative or zero durations to cause arithmetic division-by-zero or illegal state exceptions when ingesting trade data.
+**Learning:** Serializable factories accepting `Duration` can be instantiated or deserialized with invalid non-positive durations because `defaultReadObject()` bypasses constructor checks. Validating `!timePeriod.isNegative() && !timePeriod.isZero()` in `readObject()` throwing `InvalidObjectException` enforces domain constraints across serialization boundaries.
+**Prevention:** Any `BarBuilderFactory` configuring a `Duration` must validate that non-null values are strictly positive in both constructors and `readObject()`.
