@@ -103,7 +103,12 @@ abstract class ShockPathKernelProvider implements Provider {
      */
     @Override
     public final Assessment assess(KernelRequest request) {
-        RequestValidation validation = validateRequest(request);
+        // Request validation precedes native loading; one input snapshot serves
+        // both the shape and the approximate-accuracy checks.
+        RequestValidation validation = validateShape(request);
+        if (validation.supported()) {
+            validation = validateInputs(request, validation, request.inputs());
+        }
         if (!validation.supported()) {
             return unsupported(validation.code(), validation.detail());
         }
@@ -133,7 +138,11 @@ abstract class ShockPathKernelProvider implements Provider {
      */
     @Override
     public final KernelResult execute(KernelRequest request) {
-        RequestValidation validation = validateRequest(request);
+        RequestValidation validation = validateShape(request);
+        List<double[]> inputs = validation.supported() ? request.inputs() : List.of();
+        if (validation.supported()) {
+            validation = validateInputs(request, validation, inputs);
+        }
         if (!validation.supported()) {
             throw new NativeProviderException(backendName(), validation.detail());
         }
@@ -147,7 +156,6 @@ abstract class ShockPathKernelProvider implements Provider {
             throw new NativeProviderException(backendName(), perDecisionDetail(dimensions, ceiling));
         }
         SampleKernel kernel = ensureKernel();
-        List<double[]> inputs = request.inputs();
         double[] raw = new double[request.expectedOutputLength()];
         int offset = 0;
         while (offset < dimensions.decisions()) {
@@ -172,7 +180,7 @@ abstract class ShockPathKernelProvider implements Provider {
         return new KernelResult(raw, true, System.nanoTime() - started);
     }
 
-    private RequestValidation validateRequest(KernelRequest request) {
+    private RequestValidation validateShape(KernelRequest request) {
         Objects.requireNonNull(request, "request must not be null");
         if (request.operation() != Operation.MONTE_CARLO_SHOCK_PATHS_V1) {
             return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
@@ -216,19 +224,31 @@ abstract class ShockPathKernelProvider implements Provider {
             return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED, providerId + " returns "
                     + dimensions.iterations() + " outputs per index, not " + request.outputsPerIndex());
         }
-        String shapeProblem = inputShapeProblem(request.inputs(), dimensions);
+        return RequestValidation.supported(nativeShockModel, volatilityMode, decay, dimensions);
+    }
+
+    /**
+     * Validates one snapshot of the request's input buffers: their shapes and, for
+     * approximate requests, the certified error bound.
+     */
+    private RequestValidation validateInputs(KernelRequest request, RequestValidation validation,
+            List<double[]> inputs) {
+        Dimensions dimensions = validation.dimensions();
+        boolean exact = request.determinism() == Determinism.BITWISE_IDENTICAL;
+        int shockModel = (int) request.params()[PARAM_SHOCK_MODEL];
+        String shapeProblem = inputShapeProblem(inputs, dimensions);
         if (shapeProblem != null) {
             return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED, providerId + " " + shapeProblem);
         }
         if (!exact) {
-            String reason = ShockPathErrorBound.uncertifiableReason(precision, shockModel, volatilityMode,
-                    dimensions.horizon(), request.inputs());
+            String reason = ShockPathErrorBound.uncertifiableReason(precision, shockModel, validation.volatilityMode(),
+                    dimensions.horizon(), inputs);
             if (reason != null) {
                 return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
                         providerId + " cannot certify an approximate tolerance: " + reason + "; scalar path");
             }
             double bound = ShockPathErrorBound.maxRelativePriceError(precision, shockModel, dimensions.horizon(),
-                    request.inputs());
+                    inputs);
             if (!(bound <= request.tolerance())) {
                 return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
                         providerId + " cannot certify approximate tolerance " + request.tolerance()
@@ -237,7 +257,7 @@ abstract class ShockPathKernelProvider implements Provider {
                                 + AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY + " or run the scalar path");
             }
         }
-        return RequestValidation.supported(nativeShockModel, volatilityMode, decay, dimensions);
+        return validation;
     }
 
     private static int nativeShockModel(int shockModel) {
