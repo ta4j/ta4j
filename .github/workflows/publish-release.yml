@@ -1,9 +1,25 @@
 name: Publish Release to Maven Central
 
 concurrency:
-  group: publish-release-${{ github.repository }}
+  # The caller holds the lifecycle lock through this reusable workflow.
+  group: ${{ inputs.lifecycleHeld && format('release-publication-{0}', github.run_id) || format('release-lifecycle-{0}', github.repository) }}
+  cancel-in-progress: false
 
 on:
+  workflow_call:
+    inputs:
+      releaseVersion:
+        required: true
+        type: string
+      releaseCommit:
+        required: true
+        type: string
+      dryRun:
+        default: true
+        type: boolean
+      lifecycleHeld:
+        default: false
+        type: boolean
   pull_request:
     types: [closed]
   workflow_dispatch:
@@ -31,6 +47,8 @@ permissions:
   actions: write
   contents: write
   discussions: write
+  statuses: write
+  pull-requests: read
 
 jobs:
   recovery_approval:
@@ -45,12 +63,78 @@ jobs:
           echo "Recovery mode was explicitly requested for publish-release.yml."
           echo "Environment approval gates manual publishing of a release commit that may not be reachable from the default branch."
 
-  publish:
-    name: Publish Release to Maven Central
-    runs-on: ubuntu-latest
+  freeze:
+    name: Acquire or recover publication freeze
     needs: recovery_approval
     if: |
       always() &&
+      ((inputs.lifecycleHeld == true && inputs.dryRun == false) ||
+       (github.event_name == 'workflow_dispatch' && inputs.dryRun == false) ||
+       (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release'))) &&
+      (needs.recovery_approval.result == 'success' || needs.recovery_approval.result == 'skipped')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-freeze-status-${{ github.repository }}
+      cancel-in-progress: false
+      queue: max
+    permissions:
+      contents: write
+      statuses: write
+      pull-requests: read
+    outputs:
+      ref: ${{ steps.freeze.outputs.freeze_ref }}
+      sha: ${{ steps.freeze.outputs.freeze_sha }}
+      master: ${{ steps.freeze.outputs.frozen_master }}
+      release: ${{ steps.freeze.outputs.release_sha }}
+      version: ${{ steps.freeze.outputs.release_version }}
+    env:
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      RELEASE_VERSION: ${{ inputs.releaseVersion }}
+      RELEASE_SHA: ${{ inputs.releaseCommit }}
+      AUTOMATIC: ${{ inputs.lifecycleHeld }}
+      RELEASE_FREEZE_AUTHORS: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+      - name: Bind publication freeze to exact R and starting master
+        id: freeze
+        run: python3 scripts/release/release_candidate.py freeze-publish
+      - name: Reconcile all PR heads and test-merge commits
+        env:
+          EXPECTED_FREEZE_REF: ${{ steps.freeze.outputs.freeze_ref }}
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const freeze = require('./scripts/release/release_freeze.cjs');
+            const state = await freeze.synchronize({ github, context, core });
+            if (!state.locks.includes(process.env.EXPECTED_FREEZE_REF)) throw new Error('Publication freeze is not visible through the API');
+      - name: Require stable publication freeze after reconciliation
+        env:
+          FREEZE_REF: ${{ steps.freeze.outputs.freeze_ref }}
+          FREEZE_SHA: ${{ steps.freeze.outputs.freeze_sha }}
+          FROZEN_MASTER: ${{ steps.freeze.outputs.frozen_master }}
+        run: python3 scripts/release/release_candidate.py freeze-assert
+
+  publish:
+    name: Publish Release to Maven Central
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: candidate
+    needs: [recovery_approval, freeze]
+    outputs:
+      release_complete: ${{ steps.tag_verified.outputs.complete }}
+    env:
+      FREEZE_REF: ${{ needs.freeze.outputs.ref }}
+      FREEZE_SHA: ${{ needs.freeze.outputs.sha }}
+      FROZEN_MASTER: ${{ needs.freeze.outputs.master }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    if: |
+      always() && (needs.freeze.result == 'success' || needs.freeze.result == 'skipped') &&
       (
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.merged == true &&
@@ -65,18 +149,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          path: candidate
           fetch-depth: 0
           persist-credentials: true
           token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
 
+      - name: Checkout publication controller
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: controller
+          persist-credentials: false
+
       - name: Normalize dry run input
         id: dry_run
+        env:
+          CALLED_AUTOMATIC: ${{ inputs.lifecycleHeld }}
+          CALLED_DRY_RUN: ${{ inputs.dryRun }}
         run: |
           echo "::group::Normalize publish-release inputs"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             dry_run=false
           else
             raw="${{ github.event.inputs.dryRun }}"
+            if [ "$CALLED_AUTOMATIC" = true ]; then raw="$CALLED_DRY_RUN"; fi
             if [ -z "$raw" ]; then
               raw=true
             fi
@@ -174,10 +270,15 @@ jobs:
 
       - name: Extract release metadata
         id: meta
+        env:
+          CALLED_AUTOMATIC: ${{ inputs.lifecycleHeld }}
+          CALLED_VERSION: ${{ inputs.releaseVersion }}
+          CALLED_COMMIT: ${{ inputs.releaseCommit }}
         uses: actions/github-script@v9
         with:
           github-token: ${{ github.token }}
           script: |
+            process.chdir(`${process.env.GITHUB_WORKSPACE}/candidate`);
             const { execSync } = require("child_process");
 
             const eventName = context.eventName;
@@ -247,7 +348,11 @@ jobs:
               }
             };
 
-            if (eventName === "workflow_dispatch") {
+            if (process.env.CALLED_AUTOMATIC === "true") {
+              releaseVersion = process.env.CALLED_VERSION;
+              releaseCommit = normalizeSha(process.env.CALLED_COMMIT);
+              if (!releaseCommit) throw new Error("Missing promoted release R");
+            } else if (eventName === "workflow_dispatch") {
               const dispatchInputs = context.payload.inputs || {};
               const readDispatchInput = (key) => {
                 const candidateKeys = [key, key.toLowerCase()];
@@ -329,8 +434,8 @@ jobs:
               releaseCommitInPr = "true";
             }
 
-            if (!releaseVersion) {
-              throw new Error("Missing releaseVersion in metadata.");
+            if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(releaseVersion)) {
+              throw new Error("releaseVersion must be major.minor.patch.");
             }
 
             fetchDefaultBranch();
@@ -351,6 +456,7 @@ jobs:
               core.info(`Fetched release commit ${releaseCommit} by SHA.`);
             }
 
+            releaseCommit = execSync(`git rev-parse ${releaseCommit}^{commit}`, { encoding: "utf8" }).trim();
             core.setOutput("release_version", releaseVersion);
             core.setOutput("release_commit", releaseCommit);
             core.setOutput("next_version", nextVersion);
@@ -367,6 +473,7 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           EVENT_NAME: ${{ github.event_name }}
           RECOVERY_MODE: ${{ github.event.inputs.recoveryMode }}
+          AUTOMATIC: ${{ inputs.lifecycleHeld }}
         run: |
           set -euo pipefail
           echo "::group::Verify release commit ancestry"
@@ -417,11 +524,24 @@ jobs:
                 exit 1
               fi
             else
-              echo "Merge commit ${MERGE_COMMIT} has ${parents:-0} parent(s); accepting release commit from PR metadata."
+              # Preserve CF-756 / PR #1721: PR metadata alone never proves landing.
+              release_tree=$(git rev-parse "${RELEASE_COMMIT}^{tree}")
+              landed_commit=""
+              for candidate in $(git rev-list --max-count=500 "${MERGE_COMMIT}"); do
+                if [ "$(git rev-parse "${candidate}^{tree}")" = "${release_tree}" ]; then
+                  landed_commit="${candidate}"
+                  break
+                fi
+              done
+              if [ -z "${landed_commit}" ]; then
+                echo "::error::Release commit ${RELEASE_COMMIT} tree does not match any commit that merge ${MERGE_COMMIT} put on origin/${DEFAULT_BRANCH}."
+                exit 1
+              fi
+              echo "Release tree landed as ${landed_commit}."
             fi
           elif ! git merge-base --is-ancestor "${RELEASE_COMMIT}" "origin/${DEFAULT_BRANCH}"; then
             recovery_mode=$(printf '%s' "${RECOVERY_MODE:-false}" | tr '[:upper:]' '[:lower:]')
-            if [ "$recovery_mode" != "true" ]; then
+            if [ "$recovery_mode" != "true" ] || [ "$AUTOMATIC" = "true" ]; then
               echo "::error::Release commit ${RELEASE_COMMIT} is not on origin/${DEFAULT_BRANCH}."
               echo "::error::Re-run workflow_dispatch with recoveryMode=true to require release-recovery environment approval."
               exit 1
@@ -431,6 +551,13 @@ jobs:
             echo "Release commit ${RELEASE_COMMIT} is on origin/${DEFAULT_BRANCH}."
           fi
           echo "::endgroup::"
+
+      - name: Check durable publication checkpoints
+        id: publication
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          RELEASE_SHA: ${{ steps.meta.outputs.release_commit }}
+        run: python3 ../controller/scripts/release/release_candidate.py publication-status
 
       - name: Check if tag already exists
         id: check_tag
@@ -452,7 +579,7 @@ jobs:
           echo "existing_tag=$found" >> $GITHUB_OUTPUT
 
       - name: Fail if tag exists
-        if: steps.check_tag.outputs.exists == 'true' && steps.dry_run.outputs.dryRun != 'true'
+        if: steps.check_tag.outputs.exists == 'true' && steps.dry_run.outputs.dryRun != 'true' && steps.publication.outputs.skip_deploy != 'true'
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
           EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
@@ -470,6 +597,96 @@ jobs:
           tag="${EXISTING_TAG:-$RELEASE_VERSION}"
           echo "::warning::Tag '$tag' already exists (checked '$RELEASE_VERSION' and 'v$RELEASE_VERSION'); dry-run validation will continue without tag mutation."
           echo "audit:existing_tag_dry_run=${tag}"
+
+      - name: Set up JDK 25 for credential-free validation
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - name: Check out release commit
+        env:
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+        run: |
+          echo "::group::Check out release commit"
+          git checkout --detach "${RELEASE_COMMIT}"
+          echo "::endgroup::"
+
+      - name: Validate release commit version
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          echo "::group::Validate release commit version"
+          current_version="$(./mvnw -q -DforceStdout help:evaluate -Dexpression=project.version | tr -d '\r')"
+          if [ "${current_version}" != "${RELEASE_VERSION}" ]; then
+            echo "Release commit version mismatch: expected ${RELEASE_VERSION}, got ${current_version}." >&2
+            exit 1
+          fi
+          echo "audit:release_commit_version=${current_version}"
+          echo "::endgroup::"
+
+      - name: Release candidate full verification
+        env:
+          QUIET_BUILD_TIMEOUT_SECONDS: 1800
+        run: |
+          set -euo pipefail
+          echo "::group::Release candidate full build gate"
+          xvfb-run scripts/run-full-build-quiet.sh --validate-only
+          echo "::endgroup::"
+
+      - name: Gate release-ready deprecations at exact release R
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          ./mvnw -B -q -pl ta4j-examples -am -DskipTests install
+          ./mvnw -B -q -pl ta4j-examples exec:java \
+            -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
+            "-Dexec.args=--repo-root ${GITHUB_WORKSPACE}/candidate --pom-file pom.xml --target-removal-version ${RELEASE_VERSION} --include-overdue --fail-on-due --output-json ${RUNNER_TEMP}/publish-deprecations.json --output-md ${RUNNER_TEMP}/publish-deprecations.md"
+
+      - name: Build and validate release artifact manifest
+        id: artifacts
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          echo "::group::Build release artifacts for manifest validation"
+          ./mvnw -B -DskipTests -Dgpg.skip=true -Pproduction-release package 2>&1 | tee release-artifact-build.log
+          bash scripts/release/release_helpers.sh artifact-manifest \
+            --version "${RELEASE_VERSION}" \
+            --output artifact-manifest.txt \
+            --github-output "$GITHUB_OUTPUT" \
+            --strict
+          python3 ../controller/scripts/release/release_candidate.py manifest --output production-manifest.json
+          echo "::endgroup::"
+
+      - name: Validate Javadoc warning baseline (pre-deploy)
+        id: javadoc_warnings_predeploy
+        run: |
+          set -euo pipefail
+          echo "::group::Validate Javadoc warnings before tag/deploy"
+          bash scripts/release/release_helpers.sh javadoc-warnings \
+            --baseline scripts/release/javadoc-warning-baseline.txt \
+            --output javadoc-warnings-predeploy.txt \
+            --github-output "$GITHUB_OUTPUT" \
+            --fail-on-new \
+            release-artifact-build.log
+          echo "::endgroup::"
+
+      - name: Verify release candidate tree is clean
+        run: |
+          set -euo pipefail
+          echo "::group::Verify release candidate worktree cleanliness"
+          if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+            echo "::error::Release validation changed tracked files/index. Fix the source before publishing."
+            git diff --stat
+            git diff --cached --stat
+            exit 1
+          fi
+          echo "audit:release_candidate_tree_clean=true"
+          echo "::endgroup::"
 
       # -----------------------
       # Secrets and Environment
@@ -690,81 +907,8 @@ jobs:
           gpgconf --launch gpg-agent 2>/dev/null || true
           echo "gpg.conf and gpg-agent.conf created"
 
-      - name: Check out release commit
-        env:
-          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
-        run: |
-          echo "::group::Check out release commit"
-          git checkout --detach "${RELEASE_COMMIT}"
-          echo "::endgroup::"
-
-      - name: Validate release commit version
-        env:
-          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
-        run: |
-          set -euo pipefail
-          echo "::group::Validate release commit version"
-          current_version="$(./mvnw -q -DforceStdout help:evaluate -Dexpression=project.version | tr -d '\r')"
-          if [ "${current_version}" != "${RELEASE_VERSION}" ]; then
-            echo "Release commit version mismatch: expected ${RELEASE_VERSION}, got ${current_version}." >&2
-            exit 1
-          fi
-          echo "audit:release_commit_version=${current_version}"
-          echo "::endgroup::"
-
-      - name: Release candidate full verification
-        env:
-          QUIET_BUILD_TIMEOUT_SECONDS: 1800
-          RELEASE_TEST_TAG_EXCLUSIONS: integration,slow
-        run: |
-          set -euo pipefail
-          echo "::group::Release candidate full build gate"
-          echo "audit:release_test_tag_exclusions=${RELEASE_TEST_TAG_EXCLUSIONS}"
-          scripts/run-full-build-quiet.sh
-          echo "::endgroup::"
-
-      - name: Verify release candidate tree is clean
-        run: |
-          set -euo pipefail
-          echo "::group::Verify release candidate worktree cleanliness"
-          if ! git diff --exit-code -- . ':!target' >/tmp/release-candidate.diff; then
-            echo "::error::Release candidate verification changed tracked files. Fix formatter/license drift before publishing."
-            cat /tmp/release-candidate.diff
-            exit 1
-          fi
-          echo "audit:release_candidate_tree_clean=true"
-          echo "::endgroup::"
-
-      - name: Build and validate release artifact manifest
-        id: artifacts
-        env:
-          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
-        run: |
-          set -euo pipefail
-          echo "::group::Build release artifacts for manifest validation"
-          ./mvnw -B -DskipTests -Dgpg.skip=true -Pproduction-release package 2>&1 | tee release-artifact-build.log
-          bash scripts/release/release_helpers.sh artifact-manifest \
-            --version "${RELEASE_VERSION}" \
-            --output artifact-manifest.txt \
-            --github-output "$GITHUB_OUTPUT" \
-            --strict
-          echo "::endgroup::"
-
-      - name: Validate Javadoc warning baseline (pre-deploy)
-        id: javadoc_warnings_predeploy
-        run: |
-          set -euo pipefail
-          echo "::group::Validate Javadoc warnings before tag/deploy"
-          bash scripts/release/release_helpers.sh javadoc-warnings \
-            --baseline scripts/release/javadoc-warning-baseline.txt \
-            --output javadoc-warnings-predeploy.txt \
-            --github-output "$GITHUB_OUTPUT" \
-            --fail-on-new \
-            release-artifact-build.log
-          echo "::endgroup::"
-
       - name: Create release tag
-        if: steps.dry_run.outputs.dryRun != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists != 'true'
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
           RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
@@ -773,8 +917,15 @@ jobs:
           git config user.email "${{ github.actor }}@users.noreply.github.com"
           git tag -a "${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}" "${RELEASE_COMMIT}"
 
+      - name: Record publication attempt before any Maven upload
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.publication.outputs.skip_deploy != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          RELEASE_SHA: ${{ steps.meta.outputs.release_commit }}
+        run: python3 ../controller/scripts/release/release_candidate.py publication-start
+
       - name: Deploy Release to Maven Central
-        if: steps.dry_run.outputs.dryRun != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.publication.outputs.skip_deploy != 'true'
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -783,6 +934,13 @@ jobs:
           echo "::group::Deploy release to Maven Central"
           ./mvnw -B -Pproduction-release deploy 2>&1 | tee release-deploy.log
           echo "::endgroup::"
+
+      - name: Record successful Maven publication before pushing tag
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.publication.outputs.skip_deploy != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          RELEASE_SHA: ${{ steps.meta.outputs.release_commit }}
+        run: python3 ../controller/scripts/release/release_candidate.py publication-complete
 
       - name: Validate Javadoc warning baseline
         id: javadoc_warnings
@@ -801,6 +959,10 @@ jobs:
           echo "::endgroup::"
           echo "audit:post_deploy_javadoc_audit_status=$status"
 
+      - name: Require unchanged master before tag publication
+        if: steps.dry_run.outputs.dryRun != 'true'
+        run: python3 ../controller/scripts/release/release_candidate.py freeze-assert
+
       - name: Push release tag
         if: steps.dry_run.outputs.dryRun != 'true'
         env:
@@ -810,6 +972,7 @@ jobs:
           git push origin "refs/tags/${RELEASE_VERSION}"
 
       - name: Verify pushed tag reachability
+        id: tag_verified
         if: steps.dry_run.outputs.dryRun != 'true'
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
@@ -840,6 +1003,7 @@ jobs:
             echo "Tag ${RELEASE_VERSION} commit ${tag_commit} is not reachable from origin/${DEFAULT_BRANCH}." >&2
             exit 1
           fi
+          echo "complete=true" >> "$GITHUB_OUTPUT"
 
       - name: Dispatch snapshot publication
         id: snapshot_dispatch
@@ -852,6 +1016,7 @@ jobs:
         with:
           github-token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
           script: |
+            process.chdir(`${process.env.GITHUB_WORKSPACE}/candidate`);
             const releaseVersion = process.env.RELEASE_VERSION;
             const releaseCommit = process.env.RELEASE_COMMIT;
             const ref = process.env.DEFAULT_BRANCH;
@@ -952,13 +1117,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: publish-release-audit-${{ github.run_id }}
+          include-hidden-files: true
           path: |
-            release-audit.json
-            artifact-manifest.txt
-            release-artifact-build.log
-            release-deploy.log
-            javadoc-warnings.txt
-            .agents/logs/full-build-*.log
+            candidate/release-audit.json
+            candidate/artifact-manifest.txt
+            candidate/production-manifest.json
+            candidate/release-artifact-build.log
+            candidate/release-deploy.log
+            candidate/javadoc-warnings.txt
+            candidate/.agents/logs/full-build-*.log
           if-no-files-found: ignore
           retention-days: 14
 
@@ -1062,6 +1229,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
+            process.chdir(`${process.env.GITHUB_WORKSPACE}/candidate`);
             const fs = require("fs");
             const body = fs.readFileSync("notification-body.txt", "utf8");
             const owner = context.repo.owner;
@@ -1097,3 +1265,41 @@ jobs:
               }
             `;
             await github.graphql(mutation, { discussionId, body });
+
+  unfreeze:
+    name: Release freeze only after exact Maven and tag completion
+    needs: [freeze, publish]
+    if: always() && needs.freeze.result == 'success' && needs.publish.outputs.release_complete == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-freeze-status-${{ github.repository }}
+      cancel-in-progress: false
+      queue: max
+    permissions:
+      contents: write
+      statuses: write
+      pull-requests: read
+      actions: write
+    env:
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      FREEZE_REF: ${{ needs.freeze.outputs.ref }}
+      FREEZE_SHA: ${{ needs.freeze.outputs.sha }}
+      FROZEN_MASTER: ${{ needs.freeze.outputs.master }}
+      RELEASE_SHA: ${{ needs.freeze.outputs.release }}
+      RELEASE_VERSION: ${{ needs.freeze.outputs.version }}
+      RELEASE_FREEZE_AUTHORS: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+      - name: Verify journal and tag before consuming the owned freeze
+        run: python3 scripts/release/release_candidate.py freeze-finish
+      - name: Reconcile other freezes and retry only a previously frozen aggregate
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const freeze = require('./scripts/release/release_freeze.cjs');
+            await freeze.synchronize({ github, context, core });

@@ -55,6 +55,7 @@ create_test_repo() {
   TMP="$(mktemp -d "${TMPDIR:-/tmp}/quiet-build-test.XXXXXX")"
   mkdir -p "$TMP/scripts" "$TMP/bin"
   cp "$SCRIPT" "$TMP/scripts/run-full-build-quiet.sh"
+  cp "$ROOT/scripts/run-script-checks.sh" "$TMP/scripts/run-script-checks.sh"
   cp "$SCRIPT_PS" "$TMP/scripts/run-full-build-quiet.ps1"
   chmod +x "$TMP/scripts/run-full-build-quiet.sh"
   pushd "$TMP" >/dev/null || exit 1
@@ -212,7 +213,7 @@ EOF
   local output
   output="$(run_quiet_build scripts/run-full-build-quiet.sh --preflight-only)"
 
-  expect_contains "$output" "Build: preflight-only success" "preflight-only mode should report a compact final status"
+  expect_contains "$output" "Script/action checks: success" "preflight-only mode should report a compact final status"
   expect_not_contains "$output" "fixture" "preflight-only mode should not replay successful fixture chatter"
   [[ -f "$FAKE_ACTIONLINT_MARKER" ]] || fail "preflight-only mode should run actionlint"
   [[ -f "$FAKE_FIXTURE_MARKER" ]] || fail "preflight-only mode should run script fixtures"
@@ -220,6 +221,26 @@ EOF
 
   finish_test_repo
   pass "test_preflight_only_runs_repository_checks_without_maven"
+}
+
+test_maven_entrypoints_never_run_script_checks() {
+  create_test_repo
+  write_fake_maven
+  mkdir -p "$TMP/.github/workflows" "$TMP/scripts/tests"
+  printf '#!/usr/bin/env bash\nexit 99\n' > "$TMP/bin/actionlint"
+  chmod +x "$TMP/bin/actionlint"
+  printf '#!/usr/bin/env bash\nexit 98\n' > "$TMP/scripts/tests/test_must_not_run.sh"
+  local mode output
+  for mode in default validate focused; do
+    case "$mode" in
+      default) output="$(run_quiet_build scripts/run-full-build-quiet.sh)" ;;
+      validate) output="$(run_quiet_build scripts/run-full-build-quiet.sh --validate-only)" ;;
+      focused) output="$(run_quiet_build scripts/run-full-build-quiet.sh --goals test)" ;;
+    esac
+    expect_contains "$output" 'Build: success' "$mode Maven must not require successful actionlint or script fixtures"
+  done
+  finish_test_repo
+  pass "test_maven_entrypoints_never_run_script_checks"
 }
 
 test_default_gate_repairs_unformatted_source() {
@@ -535,6 +556,7 @@ test_powershell_entrypoint_classifier_parity() {
 test_default_invocation_uses_local_repair_gate
 test_default_invocation_works_with_system_bash_without_extra_args
 test_preflight_only_runs_repository_checks_without_maven
+test_maven_entrypoints_never_run_script_checks
 test_default_gate_repairs_unformatted_source
 test_validate_only_rejects_unformatted_source_without_repairing_it
 test_goals_override_and_maven_args_passthrough
