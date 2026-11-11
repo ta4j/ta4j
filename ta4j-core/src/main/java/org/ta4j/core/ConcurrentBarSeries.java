@@ -8,8 +8,10 @@ import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
 
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.IOException;
+import java.io.Serial;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.Lock;
@@ -126,11 +128,17 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         this.writeLock = rwLock.writeLock();
     }
 
+    @Serial
     private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
         initLocks(new ReentrantReadWriteLock());
         attachRetainedBarMutationTracking();
         tradeBarBuilder = null;
+    }
+
+    @Serial
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("ConcurrentBarSeries class data is required");
     }
 
     private static List<Bar> cut(final List<Bar> bars, final int startIndex, final int endIndex) {

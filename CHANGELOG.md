@@ -1,18 +1,29 @@
 ## Unreleased
 
+### Added
+
+- **Causal L2 strategy signals**: `OrderBookIndicator` joins frozen order-book histories to explicit bar-open or bar-close decisions with inclusive freshness limits and stable arrival-order ties. Retained bounds and the decision timestamp are captured atomically on concurrent series. Spread, midpoint, depth and imbalance indicators compose with existing threshold rules; `OrderBookReadyRule` guards unavailable or incomplete books. The offline `OrderBookBacktest` demonstrates ordinary strategies with next-open bar fills, not simulated L2 execution. External-history configuration serialization fails explicitly rather than silently dropping its dataset.
+
+
 ### Fixed
 
 - **Safer saved decimal numbers**: Java deserialization of `DecimalNum` and `DecimalNumFactory` rejects missing values, math contexts, cached constants or class data with `InvalidObjectException`. `DecimalNumFactory` pins its existing serial version UID, so previously saved factories still load.
+- **Lower Elliott analysis memory use**: `ElliottSwingIndicator` shares unchanged swings and backing storage across complete immutable historical snapshots instead of retaining a separate full-history array at every bar. `ElliottPhaseIndicator` evaluates requested phases directly without recursively prefilling earlier phases. Historical reads, pivot replacements, retained-bar corrections (including decimal arithmetic contexts) and moving-series reanchoring keep their existing results.
 - **Validated tick, volume and amount bar thresholds**: `TickBarBuilder`, `VolumeBarBuilder`, `AmountBarBuilder` and their factories reject non-positive thresholds and null number factories with `IllegalArgumentException`/`NullPointerException`, and deserialized factories reject non-positive thresholds or a missing carry-over policy with `InvalidObjectException`.
 - **`NaN` stays a singleton after deserialization**: deserialized `NaN` values resolve to the shared `NaN.NaN` instance, so identity checks keep working, and streams that omit its class data are rejected with `InvalidObjectException`.
 
 
 ### Changed
 
+- **Elliott phase cache type**: `ElliottPhaseIndicator` now extends `CachedIndicator<ElliottPhase>` instead of `RecursiveCachedIndicator<ElliottPhase>`. Callers declaring the old supertype must use `CachedIndicator<ElliottPhase>` or `Indicator<ElliottPhase>`; constructors and calculated results are unchanged.
 - **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases, including low-precision decimal totals, reconstruct from the existing calculation when reuse is unsafe.
 - **Cross-series indicator indices (CF-726)**: same-index compositions require available, corresponding absolute indices for reads and cache invalidation; no offset or time mapping is inferred. Removed-bar clamping can introduce look-ahead. `DistanceFromMAIndicator` warns once when a read fails beyond a nonempty cross-series source's end, without changing the exception or claiming the series are misaligned.
 
 
+
+### Fixed
+
+- **Safer saved concurrent bar series**: Java deserialization of `ConcurrentBarSeries` rejects streams that omit its class data with `InvalidObjectException` instead of restoring a series without initialized locks.
 
 ## 0.28.0 (2026-11-02)
 
