@@ -8,8 +8,9 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
 2. **Opinionated implementations belong outside the core.** ta4j aims to be widely applicable. Highly subjective “feature bundles” (e.g., metric dashboards, bespoke reporting formats, hard-coded broker behaviors) are better published as separate modules or example projects. Keep contributions focused on reusable primitives.
 3. **Additive code beats churn.** New indicators, rules, serialization helpers, and documentation are great. Mechanical refactors (“just moved files around”) or stylistic changes with no behavioral impact rarely get merged.
 4. **Tests tell the story.** Every change—bug fix or feature—needs focused tests demonstrating the behavior and guarding against regressions.
-- **Run one of these before opening or updating a PR:** `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL, `scripts/run-full-build-quiet.ps1` on Windows PowerShell (native Maven with WSL preflight when available), or `./mvnw -B clean license:format spotless:apply verify` for the direct Maven path.
-  The quiet scripts also run actionlint and repository script fixtures, include all non-demo tests, and provide bounded console output plus a complete log. The direct Maven command remains supported when those repository preflight checks and the expanded non-demo test scope are not needed; it follows the test-tag defaults in the POM. Both local paths repair license headers and formatting before verification; review those repairs before committing. Hosted CI uses the quiet entrypoint with `--validate-only`, so omitted repairs still fail before merge.
+- **Match verification to the change before opening or updating a PR.** For Java/POM/build-input changes, run `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL, `scripts/run-full-build-quiet.ps1` on Windows PowerShell, or `./mvnw -B clean license:format spotless:apply verify` for the direct Maven path. The quiet Maven wrappers include all non-demo tests, repair local license/formatting drift and provide a complete log. Hosted Maven CI uses `--validate-only` and rejects omitted repairs.
+- **For scripts or GitHub Actions changes**, run `scripts/run-script-checks.sh`; on Windows use `scripts/run-full-build-quiet.ps1 --preflight-only` (WSL preferred, Git Bash fallback). This separate gate runs pinned actionlint and isolated script fixtures. It never runs real Maven. Ordinary Maven builds and Java-only CI do not run this suite; script/action-only CI does not run Maven. Mixed changes require both gates.
+- `Build and Verify` remains the required always-running aggregate of the selected lanes and the live release-freeze guard. `scripts/check_scope.py` includes deletions and both sides of renames; an unknown or failed scope cannot silently pass.
 
 - **Use focused local quality loops when iterating:** `./mvnw -pl ta4j-core -am clean compile spotbugs:check` and `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`
   These are intentionally strict for the module you are changing; the SpotBugs loop compiles clean module output before scanning so you can tighten one tool at a time before rerunning the full verification command.
@@ -27,13 +28,13 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
    cd ta4j
    git checkout -b feature/your-topic
    ```
-4. **Implement + test.** Run either supported full build before pushing:
+4. **Implement + test.** For Java/POM/build-input changes run a supported Maven gate before pushing (script/action-only changes use the standalone gate above):
    ```bash
    scripts/run-full-build-quiet.sh
    # Or run Maven directly:
    ./mvnw -B clean license:format spotless:apply verify
    ```
-   On Windows PowerShell, use `scripts/run-full-build-quiet.ps1`; it runs Maven natively and uses WSL for the repository shell-fixture preflight when available, falling back to Git Bash. Or use `mvnw.cmd -B clean license:format spotless:apply verify` for the direct Maven path. Review and commit formatting and license-header repairs; CI invokes the Bash entrypoint with `--validate-only` and fails if they were omitted.
+   On Windows PowerShell, use `scripts/run-full-build-quiet.ps1` for native Maven. Run the separate script/action gate only when its paths change; its explicit `--preflight-only` adapter uses WSL when available, falling back to Git Bash. Or use `mvnw.cmd -B clean license:format spotless:apply verify` for the direct Maven path. Review and commit formatting and license-header repairs; CI invokes the Bash entrypoint with `--validate-only` and fails if they were omitted.
    Update `CHANGELOG.md` when you add, fix, or change behavior.
 5. **Open the PR** against `ta4j/master`. Draft PRs are encouraged for early feedback. Prefer [well-formed commit messages](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 
@@ -59,8 +60,6 @@ Then install `actionlint` (e.g., `brew install actionlint`). The hook will autom
 - Use primitives for indicator parameters (e.g., `int timeFrame`). Convert to `Num` inside using `series.numFactory()`.
 - Do not cache `Num` instances globally—always obtain them from the relevant factory.
 
-The data, charting, catalog, and executable-examples modules own their tests and coverage floors. At the ownership split, the former combined examples budget of 51% lines / 44% branches was redistributed as data 81% / 63%, charting 83% / 68%, catalog 80% / 74%, and examples 40% / 34%. Weighted by the moved source, those floors preserve at least 51.41% / 44.69% combined coverage; measured coverage is 52.45% / 45.59%. Raise each owner's floors as its coverage improves rather than comparing executable examples alone with the old combined budget.
-
 ## Indicator contributions
 
 Open an issue to discuss the new indicator first. Every indicator must ship with matching tests:
@@ -73,10 +72,10 @@ Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
 Run tagged suites manually from GitHub Actions, or locally with:
 
 - `xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless`
-- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags=requires-cuda,requires-metal,requires-opencl -Djava.awt.headless=false -Dta4j.chart.disableDisplay=false`
-- `xvfb-run ./mvnw -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags= -Djava.awt.headless=false -Dta4j.chart.disableDisplay=false -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
+- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags=requires-cuda,requires-metal,requires-opencl`
+- `xvfb-run ./mvnw -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags= -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
 
-These examples match the Linux GitHub Actions runners; the build defaults tests to headless with chart display disabled, so display-dependent suites override both. On macOS, use XQuartz or
+These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or
 run the Maven command without `xvfb-run` when your local display can satisfy
 UI-dependent tests. On Windows, use WSL2, a CI runner, or an equivalent X server.
 
@@ -128,7 +127,7 @@ Enhancements, new features and fixes should be pushed to a [fork](https://help.g
 This development process is similar to [github flow](https://docs.github.com/en/get-started/quickstart/github-flow).
 
 * **Only the content of the master branch is going to become a release.**
-* **There is no release branch nor a mandatory develop branch**
+* **Development uses master; temporary release candidate branches validate releases before promotion. There is no mandatory develop branch.**
 
 ### Release Process
 

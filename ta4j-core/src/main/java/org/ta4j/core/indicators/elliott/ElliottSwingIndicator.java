@@ -3,9 +3,12 @@
  */
 package org.ta4j.core.indicators.elliott;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.RandomAccess;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -21,6 +24,7 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,6 +37,11 @@ import org.ta4j.core.num.Num;
  * point indexes are merged into a single alternating pivot sequence, while
  * consecutive pivots of the same type are compressed by retaining the most
  * extreme pivot (higher highs, lower lows).
+ *
+ * <p>
+ * Each result is a complete immutable historical snapshot. Unchanged swings and
+ * their backing storage are shared between snapshots; reading later bars never
+ * changes an earlier result.
  *
  * <p>
  * For classic window-based swings use the fractal constructors (backed by
@@ -59,6 +68,7 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     private final RecentSwingIndicator swingHighIndicator;
     private final RecentSwingIndicator swingLowIndicator;
     private final ElliottDegree degree;
+    private transient SwingHistory previousSwings = SwingHistory.EMPTY;
 
     /**
      * Builds a new indicator with identical lookback/forward lengths using
@@ -277,24 +287,49 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     }
 
     @Override
-    protected List<ElliottSwing> calculate(final int index) {
+    protected synchronized List<ElliottSwing> calculate(final int index) {
         final BarSeries series = getBarSeries();
         if (series == null || index < series.getBeginIndex() || index > series.getEndIndex()) {
+            previousSwings = SwingHistory.EMPTY;
             return List.of();
         }
 
         final List<Pivot> pivots = pivots(index);
         if (pivots.size() < 2) {
+            previousSwings = SwingHistory.EMPTY;
             return List.of();
         }
 
-        final List<ElliottSwing> swings = new ArrayList<>(pivots.size() - 1);
-        for (int i = 1; i < pivots.size(); i++) {
-            final Pivot previous = pivots.get(i - 1);
-            final Pivot current = pivots.get(i);
-            swings.add(new ElliottSwing(previous.index, current.index, previous.price, current.price, degree));
+        final SwingHistory previous = previousSwings == null ? SwingHistory.EMPTY : previousSwings;
+        final int swingCount = pivots.size() - 1;
+        int shared = 0;
+        while (shared < Math.min(previous.size(), swingCount)) {
+            final ElliottSwing swing = previous.get(shared);
+            final Pivot from = pivots.get(shared);
+            final Pivot to = pivots.get(shared + 1);
+            if (swing.fromIndex() != from.index || swing.toIndex() != to.index
+                    || !samePrice(swing.fromPrice(), from.price) || !samePrice(swing.toPrice(), to.price)) {
+                break;
+            }
+            shared++;
         }
-        return List.copyOf(swings);
+        SwingHistory swings = previous.prefix(shared);
+        for (int i = shared; i < swingCount; i++) {
+            final Pivot from = pivots.get(i);
+            final Pivot to = pivots.get(i + 1);
+            swings = swings.append(new ElliottSwing(from.index, to.index, from.price, to.price, degree));
+        }
+        previousSwings = swings;
+        return swings;
+    }
+
+    /**
+     * Numeric equality alone does not include a decimal price's arithmetic context.
+     */
+    private static boolean samePrice(final Num previous, final Num current) {
+        return previous == current || previous.equals(current)
+                && (!(previous instanceof DecimalNum previousDecimal) || current instanceof DecimalNum currentDecimal
+                        && previousDecimal.getMathContext().equals(currentDecimal.getMathContext()));
     }
 
     /**
@@ -470,6 +505,92 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
         final BarSeries series = requireSeries(validatedSwingHighIndicator, validatedSwingLowIndicator);
         return new ValidatedSwingInputs(validatedSwingHighIndicator, validatedSwingLowIndicator, validatedDegree,
                 series);
+    }
+
+    /**
+     * Persistent radix tree: each changed swing copies only its path, not the
+     * complete history. Prefixes prune their discarded suffix so out-of-order reads
+     * and corrections do not retain obsolete future swings.
+     */
+    private static final class SwingHistory extends AbstractList<ElliottSwing> implements RandomAccess {
+
+        private static final int BITS = 5;
+        private static final int WIDTH = 1 << BITS;
+        private static final int MASK = WIDTH - 1;
+        private static final SwingHistory EMPTY = new SwingHistory(0, 0, new Object[WIDTH]);
+
+        private final int size;
+        private final int shift;
+        private final Object[] root;
+
+        private SwingHistory(final int size, final int shift, final Object[] root) {
+            this.size = size;
+            this.shift = shift;
+            this.root = root;
+        }
+
+        @Override
+        public ElliottSwing get(final int index) {
+            Objects.checkIndex(index, size);
+            Object[] node = root;
+            for (int level = shift; level > 0; level -= BITS) {
+                node = (Object[]) node[(index >>> level) & MASK];
+            }
+            return (ElliottSwing) node[index & MASK];
+        }
+
+        @Override
+        public int size() {
+            return size;
+        }
+
+        private SwingHistory append(final ElliottSwing swing) {
+            if (size == 1L << (shift + BITS)) {
+                final Object[] expanded = new Object[WIDTH];
+                expanded[0] = root;
+                expanded[1] = updated(null, shift, size, swing);
+                return new SwingHistory(size + 1, shift + BITS, expanded);
+            }
+            return new SwingHistory(size + 1, shift, updated(root, shift, size, swing));
+        }
+
+        private SwingHistory prefix(final int length) {
+            if (length == size) {
+                return this;
+            }
+            if (length == 0) {
+                return EMPTY;
+            }
+            Object[] prefixRoot = root;
+            int prefixShift = shift;
+            while (prefixShift > 0 && length <= 1L << prefixShift) {
+                prefixRoot = (Object[]) prefixRoot[0];
+                prefixShift -= BITS;
+            }
+            return new SwingHistory(length, prefixShift, pruned(prefixRoot, prefixShift, length - 1));
+        }
+
+        private static Object[] updated(final Object[] node, final int level, final int index,
+                final ElliottSwing swing) {
+            final Object[] copy = node == null ? new Object[WIDTH] : node.clone();
+            final int slot = (index >>> level) & MASK;
+            copy[slot] = level == 0 ? swing : updated((Object[]) copy[slot], level - BITS, index, swing);
+            return copy;
+        }
+
+        private static Object[] pruned(final Object[] node, final int level, final int lastIndex) {
+            final long capacity = 1L << (level + BITS);
+            if ((lastIndex + 1L) % capacity == 0) {
+                return node;
+            }
+            final Object[] copy = node.clone();
+            final int slot = (lastIndex >>> level) & MASK;
+            Arrays.fill(copy, slot + 1, WIDTH, null);
+            if (level > 0) {
+                copy[slot] = pruned((Object[]) copy[slot], level - BITS, lastIndex);
+            }
+            return copy;
+        }
     }
 
     private enum PivotType {

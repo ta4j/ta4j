@@ -9,7 +9,9 @@ import java.time.Instant;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -117,6 +119,33 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         assertNumEquals(3.6, covar.getValue(8));
         // Window [4..9]: sum of products = 13.5 over 6 observations
         assertNumEquals(2.25, covar.getValue(9));
+    }
+
+    @Test
+    public void historicalReplacementAndExpirationUpdateCovariance() {
+        BaseBarSeries series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int value = 1; value <= 6; value++) {
+            series.barBuilder().openPrice(value).highPrice(value).lowPrice(value).closePrice(value).volume(value).add();
+        }
+        CovarianceIndicator covariance = new CovarianceIndicator(new ClosePriceIndicator(series),
+                new VolumeIndicator(series, 1), 3);
+        for (int index = 0; index <= 3; index++) {
+            covariance.getValue(index);
+        }
+        Bar old = series.getBar(1);
+        series.replaceBar(1,
+                series.barBuilder()
+                        .timePeriod(old.getTimePeriod())
+                        .endTime(old.getEndTime())
+                        .openPrice(20)
+                        .highPrice(20)
+                        .lowPrice(20)
+                        .closePrice(20)
+                        .volume(old.getVolume())
+                        .build());
+
+        assertNumEquals(-16.0 / 3, covariance.getValue(3));
+        assertNumEquals(2.0 / 3, covariance.getValue(4));
     }
 
     @Test

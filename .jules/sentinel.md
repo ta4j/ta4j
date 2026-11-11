@@ -19,3 +19,21 @@
 **Vulnerability:** Standard Java deserialization (`readObject`) bypasses constructors, allowing serialized payloads with trade indices below -1 or null required fields (type, price, amount, cost, netPrice, fills) to instantiate invalid `BaseTrade` domain objects. Scalar trades may have zero or negative amounts, and index -1 represents deferred assignment.
 **Learning:** `BaseTrade` implements `Serializable` but lacked `readObject` validation. Validating fields in `readObject` and throwing `InvalidObjectException` prevents corrupted streams from instantiating invalid trades.
 **Prevention:** Any `Serializable` domain model in ta4j must implement `readObject` to validate all constructor invariants upon deserialization.
+## 2026-11-02 - Missing `readObjectNoData` in Serializable Subclasses
+**Vulnerability:** In Java deserialization, if an incoming serialized stream hierarchy omits class-specific data for a subclass (e.g. subclassing across versions or malicious stream crafting), `readObject()` is bypassed and `readObjectNoData()` is invoked instead. Without `readObjectNoData()`, `ConcurrentBarSeries` left transient locks uninitialized.
+**Learning:** Serializable classes extending other serializable classes that rely on `readObject()` to initialize transient invariants must implement `readObjectNoData()` to reject streams missing expected class data.
+**Prevention:** Implement `@Serial private void readObjectNoData() throws InvalidObjectException` on serializable subclasses to reject streams lacking class data.
+
+## 2026-10-29 - Invariant Validation in BarBuilderFactories and BarBuilders
+**Vulnerability:** `TickBarBuilderFactory`, `VolumeBarBuilderFactory`, and `AmountBarBuilderFactory` did not validate constructor parameters or deserialized object states, allowing zero/negative thresholds or null policies to cause arithmetic division-by-zero errors or invalid bar calculations when ingesting trade data.
+**Learning:** `BarBuilderFactory` implementations are `Serializable` components used by `BarSeries`. Because deserialization restores primitive fields directly without constructor checks, factory thresholds must be validated in `readObject()` throwing `InvalidObjectException`.
+**Prevention:** Every `BarBuilderFactory` and `BarBuilder` class with threshold limits or policy configurations must validate positive values (`threshold > 0`) and non-null enum references in constructors and `readObject()` methods.
+## 2026-11-02 - Singleton Deserialization Invariant Resolution in NaN
+**Vulnerability:** Standard Java deserialization without `readResolve()` creates duplicate instances on the heap for singleton objects like `NaN.NaN`, breaking reference equality (`== NaN.NaN`), inflating heap usage, and violating domain singleton invariants.
+**Learning:** `Serializable` singleton instances in Java must implement `readResolve()` returning the canonical singleton instance (and `readObjectNoData()` to guard against stream evolution edge cases) to prevent duplicate or improperly initialized instances during deserialization.
+**Prevention:** Always implement `readResolve()` returning the canonical instance for any singleton `Serializable` types.
+
+## 2026-11-08 - Duration Invariant Validation in TimeBarBuilderFactory
+**Vulnerability:** `TimeBarBuilderFactory` did not validate its optional `timePeriod` Duration parameter in constructors or during Java deserialization, allowing negative or zero durations to cause arithmetic division-by-zero or illegal state exceptions when ingesting trade data.
+**Learning:** Serializable factories accepting `Duration` can be instantiated or deserialized with invalid non-positive durations because `defaultReadObject()` bypasses constructor checks. Validating `!timePeriod.isNegative() && !timePeriod.isZero()` in `readObject()` throwing `InvalidObjectException` enforces domain constraints across serialization boundaries.
+**Prevention:** Any `BarBuilderFactory` configuring a `Duration` must validate that non-null values are strictly positive in both constructors and `readObject()`.

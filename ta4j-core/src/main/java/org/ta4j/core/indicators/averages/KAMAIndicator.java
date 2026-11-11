@@ -4,7 +4,10 @@
 package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -17,6 +20,7 @@ import org.ta4j.core.num.Num;
 public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> price;
+    private final transient RunningTotalIndicator volatilityTotal;
     private final int barCountEffectiveRatio;
     private final Num fastest;
     private final Num slowest;
@@ -34,6 +38,18 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
     public KAMAIndicator(Indicator<Num> price, int barCountEffectiveRatio, int barCountFast, int barCountSlow) {
         super(price);
         this.price = price;
+        this.volatilityTotal = new RunningTotalIndicator(new CachedIndicator<Num>(price) {
+            @Override
+            protected Num calculate(int index) {
+                return index == 0 ? getBarSeries().numFactory().zero()
+                        : price.getValue(index).minus(price.getValue(index - 1)).abs();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return price.getCountOfUnstableBars() + 1;
+            }
+        }, barCountEffectiveRatio);
         this.barCountEffectiveRatio = barCountEffectiveRatio;
         final var numFactory = getBarSeries().numFactory();
         final var two = numFactory.two();
@@ -71,9 +87,16 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
          */
         int startChangeIndex = Math.max(0, index - barCountEffectiveRatio);
         Num change = currentPrice.minus(price.getValue(startChangeIndex)).abs();
-        Num volatility = getBarSeries().numFactory().zero();
-        for (int i = startChangeIndex; i < index; i++) {
-            volatility = volatility.plus(price.getValue(i + 1).minus(price.getValue(i)).abs());
+        Num volatility;
+        if (barCountEffectiveRatio > 1 && startChangeIndex >= getBarSeries().getBeginIndex()
+                && (!(getBarSeries().numFactory().zero() instanceof DecimalNum decimal)
+                        || decimal.getMathContext().getPrecision() >= 16)) {
+            volatility = volatilityTotal.getValue(index);
+        } else {
+            volatility = getBarSeries().numFactory().zero();
+            for (int i = startChangeIndex; i < index; i++) {
+                volatility = volatility.plus(price.getValue(i + 1).minus(price.getValue(i)).abs());
+            }
         }
         Num er = change.dividedBy(volatility);
         /*

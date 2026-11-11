@@ -4,19 +4,14 @@ This file contains only repository-wide requirements.
 If your framework already injected this file into context, do not spend extra tool calls reopening it repeatedly.
 
 ## 1) Completion gate (MUST)
-Run the platform-native full verification script once when you have a candidate final patch:
+Select verification by the changed surface; CI uses `scripts/check_scope.py` for the same routing.
 
-- Windows: `scripts/run-full-build-quiet.ps1`
-- macOS/Linux/Git Bash/WSL: `scripts/run-full-build-quiet.sh`
-You may skip this only when all changed files are exclusively within `.github/workflows/`, `CHANGELOG.md`, or documentation-only files (for example `*.md`, `docs/`).
+- Java, Maven POM/build inputs and compiled resources: run `scripts/run-full-build-quiet.sh` (Windows: `scripts/run-full-build-quiet.ps1`). These wrappers run only the Maven gate.
+- Scripts, GitHub Actions, wrapper scripts and workflow instructions: run `scripts/run-script-checks.sh` (Windows adapter: `scripts/run-full-build-quiet.ps1 --preflight-only`). This standalone suite runs actionlint and isolated script fixtures, with expensive tools mocked.
+- Mixed changes require both lanes. Documentation-only changes may omit tests unless they change executable workflow instructions or script contracts.
+- Do not run Maven solely because a script/action file changed. Do not run script/action fixtures as part of an ordinary Maven build or a Java-only CI change.
 
-Required outcome:
-
-- Build is GREEN (`Failures: 0`, `Errors: 0`)
-- Final report includes aggregated `Tests run / Failures / Errors / Skipped`
-- Final report includes the log path emitted by the script (under `.agents/logs/`)
-
-Do not rerun the full build after every edit. Use targeted tests while iterating, then run the full gate on the candidate final patch.
+Required outcome: every selected lane is green. Report its result and emitted log path under `.agents/logs/`; when Maven ran, also report aggregated `Tests run / Failures / Errors / Skipped` with zero failures/errors. Run focused tests during iteration and each selected final gate once on the candidate patch.
 
 ## 2) Fast feedback loop (SHOULD)
 During implementation and debugging, prefer targeted test commands for speed (for example `mvn -pl ta4j-core test -Dtest=...`).

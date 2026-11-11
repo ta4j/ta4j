@@ -2,17 +2,9 @@
 
 ### Added
 
-- **Reusable data, charting, and named catalogs (`CF-336`)**: `ta4j-data`, `ta4j-charting`, and `ta4j-catalog` publish the existing loaders, chart workflows, calendar strategies, and named rules without depending on executable examples. Use them from Java applications, examples, or the independently owned [ta4j-cli](https://github.com/ta4j/ta4j-cli) project; existing Java package names and classpath dataset names are preserved.
-- **Rebuild rules from short labels (`CF-336`)**: Register a `NamedRule` subclass once and recreate it from a compact label such as `RsiThresholdRule_BELOW_14_30`. Subclasses call `super(TheirClass.class, parameters...)`; conflicting simple names fail fast rather than resolving by classpath order.
-- **Optional GPU providers in `ta4j-acceleration` (`CF-336`)**: Keep native acceleration in the ta4j reactor, with thin source-built platform-classifier JARs for Metal on Apple silicon, CUDA on Windows/Linux x86-64, and OpenCL on Linux x86-64/aarch64. Java applications can build and locally install a matching classifier with its Maven profile or supply a trusted native-library path; release and snapshot workflows publish the ordinary provider artifact, not platform classifiers. No workload/device rows are qualified yet, so `-Dta4j.acceleration.enabled=auto` currently keeps every forecast scalar, even with an approximate tolerance. Direct provider-SPI kernel runs bypass automatic selection/fallback and do not establish automatic offload or a speedup. The standalone CLI is neither bundled nor required.
-
-### Changed
-
-- **Module-owned coverage budgets (`CF-336`)**: Data, charting, catalog, and executable examples now verify their own coverage floors, redistributing the former combined examples budget without reducing its weighted line or branch minimum.
-
-### Breaking
-
-- **Reusable example components have focused artifacts (`CF-336`)**: Direct consumers of `ta4jexamples.datasources`, `ta4jexamples.charting`, the named calendar strategies, or the two named rule implementations must replace their `ta4j-examples` dependency with `ta4j-data`, `ta4j-charting`, or `ta4j-catalog` at the same ta4j version. The examples module consumes those same implementations. Market data files now live under `ta4j-data/src/main/resources`; their classpath names are unchanged. The CLI is built and released separately from the ta4j reactor.
+- **Rebuild rules from short labels (`CF-336`)**: Register a `NamedRule` subclass once and recreate it from a compact label such as `RsiThresholdRule_BELOW_14_30`. Subclasses call `super(TheirClass.class, parameters...)`; conflicting simple names fail fast rather than resolving by classpath order. `ta4j-examples` ships `RsiThresholdRule` and `ClosePriceCrossedMovingAverageRule` as reference implementations.
+- **Optional GPU providers in `ta4j-acceleration` (`CF-336`)**: Optional reactor module versioned with `ta4j-core`, with thin source-built platform-classifier JARs for Metal on Apple silicon, CUDA on Windows/Linux x86-64, and OpenCL on Linux x86-64/aarch64. Java applications can build and locally install a matching classifier with its Maven profile or supply a trusted native-library path; release and snapshot workflows publish the ordinary provider artifact, not platform classifiers. No workload/device rows are qualified yet, so `-Dta4j.acceleration.enabled=auto` currently keeps every forecast scalar, even with an approximate tolerance. Direct provider-SPI kernel runs bypass automatic selection/fallback and do not establish automatic offload or a speedup. Applications, including the standalone CLI, opt in by adding the dependency.
+- **Causal L2 strategy signals**: `OrderBookIndicator` joins frozen order-book histories to explicit bar-open or bar-close decisions with inclusive freshness limits and stable arrival-order ties. Retained bounds and the decision timestamp are captured atomically on concurrent series. Spread, midpoint, depth and imbalance indicators compose with existing threshold rules; `OrderBookReadyRule` guards unavailable or incomplete books. The offline `OrderBookBacktest` demonstrates ordinary strategies with next-open bar fills, not simulated L2 execution. External-history configuration serialization fails explicitly rather than silently dropping its dataset.
 
 ### Fixed
 
@@ -20,6 +12,25 @@
 - **Explicit CSV loading policies**: `CsvFileBarSeriesDataSource` retains permissive malformed-row handling by default and offers an explicit strict-loading overload for applications that must reject partial input.
 - **Locale-independent walk-forward calibration metrics**: `WalkForwardTuner` now updates case-insensitive Brier, log-loss and calibration-error metric names consistently across system locales, including Turkish. Its calibration-metric benchmark exercises the same production path.
 - **Native-provider validation and qualification handoffs (`CF-336`)**: Native requests reject fractional, nonfinite, out-of-range, or output-vector-overflowing dimensions before native initialization. Metal rejects variances that underflow or overflow FP32 and compiles kernels with safe, precise math. Configured CUDA/OpenCL hardware validation fails on initialization or self-test errors instead of skipping. Release manifests include ordinary provider artifacts without promising hosted classifiers. OpenCL validation handles large device inventories and architecture-matched containers; CUDA preflight fails on native tool errors.
+- **Branch-first automatic release preparation**: the existing opt-in direct-release switch now validates exact release and next-snapshot commits before an atomic master promotion. Bound validation receipts, shared lifecycle serialization and publication checkpoints reject stale candidates and blind Maven redeploys; tags continue to identify the release commit. The switch remains off until separately activated, and the scheduler cadence is unchanged. Preserve the CF-756 / PR #1721 protection against publishing PR-only release trees after squash or rebase merges.
+- **Release merge barrier and scoped verification**: automatic releases retain the existing merge freeze through validation, promotion and publication, blocking both PR head and test-merge statuses without changing protection settings. Script/action fixtures now have a standalone gate and run only for relevant changes; ordinary Maven builds no longer execute them. The required CI aggregate checks every selected lane and the live freeze. Publication controllers use a sibling checkout so historical recovery builds scan only their candidate source.
+
+- **Lower Elliott analysis memory use**: `ElliottSwingIndicator` shares unchanged swings and backing storage across complete immutable historical snapshots instead of retaining a separate full-history array at every bar. `ElliottPhaseIndicator` evaluates requested phases directly without recursively prefilling earlier phases. Historical reads, pivot replacements, retained-bar corrections (including decimal arithmetic contexts) and moving-series reanchoring keep their existing results.
+- **Validated tick, volume and amount bar thresholds**: `TickBarBuilder`, `VolumeBarBuilder`, `AmountBarBuilder` and their factories reject non-positive thresholds and null number factories with `IllegalArgumentException`/`NullPointerException`, and deserialized factories reject non-positive thresholds or a missing carry-over policy with `InvalidObjectException`.
+- **`NaN` stays a singleton after deserialization**: deserialized `NaN` values resolve to the shared `NaN.NaN` instance, so identity checks keep working, and streams that omit its class data are rejected with `InvalidObjectException`.
+
+
+### Changed
+
+- **Elliott phase cache type**: `ElliottPhaseIndicator` now extends `CachedIndicator<ElliottPhase>` instead of `RecursiveCachedIndicator<ElliottPhase>`. Callers declaring the old supertype must use `CachedIndicator<ElliottPhase>` or `Indicator<ElliottPhase>`; constructors and calculated results are unchanged.
+- **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases, including low-precision decimal totals, reconstruct from the existing calculation when reuse is unsafe.
+- **Cross-series indicator indices (CF-726)**: same-index compositions require available, corresponding absolute indices for reads and cache invalidation; no offset or time mapping is inferred. Removed-bar clamping can introduce look-ahead. `DistanceFromMAIndicator` warns once when a read fails beyond a nonempty cross-series source's end, without changing the exception or claiming the series are misaligned.
+
+
+
+### Fixed
+
+- **Safer saved concurrent bar series**: Java deserialization of `ConcurrentBarSeries` rejects streams that omit its class data with `InvalidObjectException` instead of restoring a series without initialized locks.
 
 ## 0.28.0 (2026-11-02)
 
