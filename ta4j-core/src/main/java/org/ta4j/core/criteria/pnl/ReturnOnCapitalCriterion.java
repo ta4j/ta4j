@@ -26,7 +26,9 @@ import org.ta4j.core.num.Num;
  * notional, so changing position size changes the return on capital.
  * <p>
  * Losses are not clamped: leveraged losses can exceed the supplied capital.
- * Logarithmic output follows {@link ReturnRepresentation#LOG}'s domain.
+ * Logarithmic output follows {@link ReturnRepresentation#LOG}'s domain. Capital
+ * is converted with the series' numeric context; calculation rejects a capital
+ * value that this context cannot represent as positive and finite.
  *
  * @since 0.28.1
  */
@@ -80,26 +82,37 @@ public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion im
 
     /**
      * {@inheritDoc}
+     * 
+     * @throws IllegalArgumentException if the series' numeric context converts
+     *                                  capital to zero or a non-finite value
      *
      * @since 0.28.1
      */
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return represent(NET_PROFIT_LOSS.calculate(series, position));
+        return represent(series, NET_PROFIT_LOSS.calculate(series, position));
     }
 
     /**
      * {@inheritDoc}
+     * 
+     * @throws IllegalArgumentException if the series' numeric context converts
+     *                                  capital to zero or a non-finite value
      *
      * @since 0.28.1
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return represent(NET_PROFIT_LOSS.calculate(series, tradingRecord));
+        return represent(series, NET_PROFIT_LOSS.calculate(series, tradingRecord));
     }
 
-    private Num represent(Num netProfit) {
-        Num rate = netProfit.dividedBy(netProfit.getNumFactory().numOf(capital));
+    private Num represent(BarSeries series, Num netProfit) {
+        Num denominator = series.numFactory().numOf(capital);
+        if (!Num.isFinite(denominator) || !denominator.isPositive()) {
+            throw new IllegalArgumentException(
+                    "Capital must remain positive and finite in the series' numeric context");
+        }
+        Num rate = netProfit.dividedBy(denominator);
         return representation.toRepresentationFromRateOfReturn(rate);
     }
 

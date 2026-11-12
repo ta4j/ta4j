@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -125,6 +127,51 @@ class ReturnOnCapitalCriterionTest {
         ReturnOnCapitalCriterion precise = new ReturnOnCapitalCriterion(new BigDecimal("100.0000000000000001"),
                 ReturnRepresentation.DECIMAL);
         assertTrue(precise.calculate(series, record).isLessThan(factory.one()));
+    }
+
+    @Test
+    void rejectsCapitalOutsideTheActiveDoubleRange() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1, 2).build();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, factory.one(), factory.one());
+        record.exit(1, factory.two(), factory.one());
+        for (String capital : new String[] { "1E-400", "1E400" }) {
+            ReturnOnCapitalCriterion criterion = new ReturnOnCapitalCriterion(new BigDecimal(capital),
+                    ReturnRepresentation.DECIMAL);
+            assertThrows(IllegalArgumentException.class, () -> criterion.calculate(series, record));
+            assertThrows(IllegalArgumentException.class,
+                    () -> criterion.calculate(series, record.getPositions().getFirst()));
+        }
+    }
+
+    @Test
+    void preservesFiniteDecimalCapitalOutsideTheDoubleRange() {
+        NumFactory factory = DecimalNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1, 2).build();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, factory.one(), factory.one());
+        record.exit(1, factory.two(), factory.one());
+        for (String capital : new String[] { "1E-400", "1E400" }) {
+            BigDecimal value = new BigDecimal(capital);
+            ReturnOnCapitalCriterion criterion = new ReturnOnCapitalCriterion(value, ReturnRepresentation.DECIMAL);
+            Num expected = factory.numOf(BigDecimal.ONE.divide(value));
+            assertTrue(criterion.calculate(series, record).isEqual(expected));
+            assertTrue(criterion.calculate(series, record.getPositions().getFirst()).isEqual(expected));
+        }
+    }
+
+    @Test
+    void convertsCapitalWithTheSeriesRoundingMode() {
+        NumFactory factory = DecimalNumFactory.getInstance(new MathContext(2, RoundingMode.DOWN));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1, 2).build();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, factory.one(), factory.one());
+        record.exit(1, factory.two(), factory.one());
+        ReturnOnCapitalCriterion criterion = new ReturnOnCapitalCriterion(new BigDecimal("1.05"),
+                ReturnRepresentation.DECIMAL);
+        assertNumEquals(1, criterion.calculate(series, record));
+        assertNumEquals(1, criterion.calculate(series, record.getPositions().getFirst()));
     }
 
     @Test
