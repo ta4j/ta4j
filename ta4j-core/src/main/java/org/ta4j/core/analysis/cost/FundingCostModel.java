@@ -36,6 +36,20 @@ import org.ta4j.core.num.Num;
  * correction fails explicitly instead of returning settlements from mixed
  * histories.
  *
+ * <p>
+ * The window assumes fills at bar close; use
+ * {@link org.ta4j.core.backtest.TradeOnCurrentCloseModel}. The default
+ * {@code BarSeriesManager} execution model fills at the next bar's open and
+ * does not satisfy this convention. This model does not infer intrabar
+ * execution phases; next-open callers must adapt settlement alignment
+ * explicitly.
+ *
+ * <p>
+ * Equality compares indicator instances, not their values or scheduling
+ * parameters. Separately constructed fixed-rate models are therefore not equal.
+ *
+ * @see org.ta4j.core.backtest.TradeOnCurrentCloseModel
+ *
  * @since 0.28.1
  */
 public final class FundingCostModel implements CostModel {

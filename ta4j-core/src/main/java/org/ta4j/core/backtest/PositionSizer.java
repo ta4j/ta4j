@@ -14,6 +14,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -74,10 +75,18 @@ public interface PositionSizer {
      * Floors this sizer's amount to a multiple of the supplied quantity step.
      *
      * <p>
-     * An amount smaller than one step becomes zero. Apply this decorator after
-     * {@link #leveraged(Number)} to round the final order quantity. Quantization
-     * uses decimal values before converting the result with the context's number
-     * factory, preserving amounts already aligned to the step.
+     * An amount smaller than one step becomes zero, except for the narrow
+     * {@link DoubleNum} boundary tolerance described below. Apply this decorator
+     * after every amount-changing decorator, such as {@link #leveraged(Number)}, to
+     * round the final order quantity. Later decorators may change the amount and
+     * break its alignment to the step.
+     *
+     * <p>
+     * Quantization uses decimal values before converting the result with the
+     * context's number factory. A {@code DoubleNum} amount is treated as aligned to
+     * the next boundary if it is at most two representable double values and at
+     * most one billionth of a step below that boundary. This corrects tiny
+     * floating-point drift; other values are floored.
      *
      * @param quantityStep positive, finite quantity increment
      * @return a quantity-step-rounded version of this sizer
@@ -88,6 +97,7 @@ public interface PositionSizer {
     default PositionSizer roundedDownTo(Number quantityStep) {
         Number fixedStep = snapshotNumber(quantityStep, "quantityStep");
         BigDecimal step = fixedStep instanceof BigDecimal decimal ? decimal : new BigDecimal(fixedStep.toString());
+        BigDecimal maxDoubleBoundaryGap = step.movePointLeft(9);
         return context -> {
             Num rawAmount = amount(context);
             if (!Num.isFinite(rawAmount) || !rawAmount.isPositive()) {
@@ -96,7 +106,20 @@ public interface PositionSizer {
             // Num division can round across a lot boundary before floor is applied.
             BigDecimal quantity = rawAmount.bigDecimalValue();
             BigDecimal remainder = quantity.remainder(step);
-            return remainder.signum() == 0 ? rawAmount : context.numOf(quantity.subtract(remainder));
+            if (remainder.signum() == 0) {
+                return rawAmount;
+            }
+            BigDecimal rounded = quantity.subtract(remainder);
+            if (rawAmount instanceof DoubleNum && step.subtract(remainder).compareTo(maxDoubleBoundaryGap) <= 0) {
+                BigDecimal nextBoundary = rounded.add(step);
+                // Num has no ulp operation, so compare adjacent double values directly.
+                double value = rawAmount.doubleValue();
+                double boundary = nextBoundary.doubleValue();
+                if (Double.isFinite(boundary) && boundary > value && boundary <= Math.nextUp(Math.nextUp(value))) {
+                    return context.numOf(nextBoundary);
+                }
+            }
+            return context.numOf(rounded);
         };
     }
 

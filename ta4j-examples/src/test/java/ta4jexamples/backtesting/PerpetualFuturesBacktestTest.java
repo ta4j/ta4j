@@ -34,17 +34,18 @@ class PerpetualFuturesBacktestTest {
         double expectedProfit = amount * (115 - 100) - fees - funding;
         Num profit = new NetProfitLossCriterion().calculate(series, funded);
         assertEquals(expectedProfit, profit.doubleValue(), 1e-8);
+        assertEquals(4459.3692, profit.doubleValue(), 1e-8);
         assertEquals(funding, position.getHoldingCost().doubleValue(), 1e-8);
         assertEquals(funding, unfunded.getPositions().getFirst().getProfit().minus(profit).doubleValue(), 1e-8);
         assertTrue(profit.isGreaterThan(unlevered.getPositions().getFirst().getProfit()));
-        assertEquals(expectedProfit / 10_000 * 100,
+        assertEquals(44.593692,
                 new ReturnOnCapitalCriterion(10_000, ReturnRepresentation.PERCENTAGE).calculate(series, funded)
                         .doubleValue(),
                 1e-8);
         // Drawdown follows the interim fall from 104 to 98, including its funding.
         Num drawdown = new MaximumAbsoluteDrawdownCriterion().calculate(series, funded);
         assertTrue(Num.isFinite(drawdown));
-        assertEquals(amount * (6 + 98 * 0.0001), drawdown.doubleValue(), 1e-8);
+        assertEquals(1802.03853, drawdown.doubleValue(), 1e-8);
     }
 
     @Test

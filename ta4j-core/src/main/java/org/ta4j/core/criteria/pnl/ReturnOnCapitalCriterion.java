@@ -23,9 +23,18 @@ import org.ta4j.core.num.Num;
  * capital amount, including transaction and holding costs and ignoring open
  * positions. Position results are added before division, not compounded. Unlike
  * {@link NetReturnCriterion}, the denominator is capital rather than entry
- * notional, so changing position size changes the return on capital.
+ * notional, so changing position size changes the return on capital. To include
+ * an open leg and its accrued holding costs, use context-aware calculation with
+ * {@link org.ta4j.core.analysis.AnalysisContext} and
+ * {@link org.ta4j.core.analysis.OpenPositionHandling#MARK_TO_MARKET}.
  * <p>
- * Losses are not clamped: leveraged losses can exceed the supplied capital.
+ * Losses are not clamped: leveraged losses can exceed the supplied capital. For
+ * example,
+ * {@code new ReturnOnCapitalCriterion(1_000, ReturnRepresentation.PERCENTAGE)}
+ * reports {@code -200} for a loss of {@code 2_000}. The equivalent
+ * {@link ReturnRepresentation#DECIMAL} result is {@code -2}; with
+ * {@link ReturnRepresentation#MULTIPLICATIVE}, it is {@code -1}
+ * ({@code 1 + -2}), not a statement that exactly all capital was lost.
  * Logarithmic output follows {@link ReturnRepresentation#LOG}'s domain. Capital
  * is converted with the series' numeric context; calculation rejects a capital
  * value that this context cannot represent as positive and finite.

@@ -660,7 +660,7 @@ public class BarSeriesManager {
                     if (strategy.shouldOperate(i, tradingRecord)) {
                         Num amount = amountResolver.amount(i, runSeries);
                         if (skipZeroEntries && tradingRecord.isClosed() && amount.isZero()) {
-                            log.trace("Skipping entry at index {} because the position sizer returned zero", i);
+                            log.debug("Skipping entry at index {} because the position sizer returned zero", i);
                         } else {
                             tradeExecutionModel.execute(i, tradingRecord, runSeries, amount);
                         }
