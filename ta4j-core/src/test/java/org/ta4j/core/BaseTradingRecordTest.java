@@ -132,6 +132,55 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void copyingMixedPositionListsDoesNotMatchExitsAgainstOtherSourcesOpenLots() {
+        for (TradeType type : TradeType.values()) {
+            BaseTradingRecord openSource = new BaseTradingRecord(type);
+            BaseTradingRecord closedSource = new BaseTradingRecord(type);
+            openSource.operate(new BaseTrade(0, type, numFactory.hundred(), numFactory.one(), new ZeroCostModel()));
+            openSource.recordHoldingCost(2, numFactory.two());
+            closedSource
+                    .operate(new BaseTrade(1, type, numFactory.numOf(120), numFactory.numOf(3), new ZeroCostModel()));
+            closedSource.recordHoldingCost(2, numFactory.numOf(6));
+            closedSource.operate(new BaseTrade(3, type.complementType(),
+                    numFactory.numOf(type == TradeType.BUY ? 130 : 110), numFactory.numOf(3), new ZeroCostModel()));
+            Position open = openSource.getOpenPositions().getFirst();
+            Position closed = closedSource.getPositions().getFirst();
+            for (List<Position> positions : List.of(List.of(open, closed), List.of(closed, open))) {
+                BaseTradingRecord copy = new BaseTradingRecord(positions);
+                assertEquals(numFactory.numOf(120), copy.getPositions().getFirst().getEntry().getPricePerAsset());
+                assertEquals(numFactory.numOf(3), copy.getPositions().getFirst().getEntry().getAmount());
+                assertEquals(numFactory.numOf(6), copy.getPositions().getFirst().getHoldingCost());
+                assertEquals(numFactory.numOf(24), copy.getPositions().getFirst().getProfit());
+                assertEquals(numFactory.hundred(), copy.getCurrentPosition().getEntry().getPricePerAsset());
+                assertEquals(numFactory.one(), copy.getCurrentPosition().getEntry().getAmount());
+                assertEquals(numFactory.two(), copy.getCurrentPosition().getHoldingCost());
+                copy.operate(new BaseTrade(4, type.complementType(), numFactory.numOf(type == TradeType.BUY ? 110 : 90),
+                        numFactory.one(), new ZeroCostModel()));
+                assertEquals(numFactory.numOf(8), copy.getPositions().get(1).getProfit());
+            }
+        }
+    }
+
+    @Test
+    void incompatibleSettlementNumbersAreRejectedWithoutChangingLotShares() {
+        for (NumFactory nums : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            NumFactory other = nums instanceof DoubleNumFactory ? DecimalNumFactory.getInstance()
+                    : DoubleNumFactory.getInstance();
+            BaseTradingRecord record = new BaseTradingRecord();
+            record.operate(Trade.buyAt(0, nums.hundred(), nums.one()));
+            record.operate(Trade.buyAt(1, nums.hundred(), nums.numOf(3)));
+            record.recordHoldingCost(2, nums.numOf(8));
+            assertThrows(IllegalArgumentException.class, () -> record.recordHoldingCost(3, other.one()));
+            assertEquals(nums.two(), record.getOpenPositions().get(0).getHoldingCost());
+            assertEquals(nums.numOf(6), record.getOpenPositions().get(1).getHoldingCost());
+            record.recordHoldingCost(3, nums.numOf(-4));
+            record.operate(Trade.sellAt(4, nums.numOf(110), nums.numOf(4)));
+            assertEquals(nums.numOf(36),
+                    record.getPositions().stream().map(Position::getProfit).reduce(nums.zero(), Num::plus));
+        }
+    }
+
+    @Test
     void recordedHoldingCostsAreProportionalIndexedAndSnapshotSafe() {
         for (NumFactory nums : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
             for (int sign : new int[] { 1, -1 }) {

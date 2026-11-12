@@ -209,7 +209,9 @@ public class BaseTradingRecord implements TradingRecord {
      *
      * <p>
      * Preserves recorded holding-cost allocations while using zero modeled costs.
-     * Recorded costs remain attached to their original lots.
+     * Recorded costs remain attached to their original lots. Closed positions are
+     * imported before open lots so their exits cannot close another source
+     * position.
      *
      * @param positions positions to record (must not be empty)
      * @since 0.22.2
@@ -248,7 +250,14 @@ public class BaseTradingRecord implements TradingRecord {
         }
         BaseTradingRecord initialized = new BaseTradingRecord(entryOf(positions.getFirst()).getType());
         for (Position position : positions) {
-            initialized.recordProjectedPosition(position, Integer.MAX_VALUE);
+            if (position.getExit() != null) {
+                initialized.recordProjectedPosition(position, Integer.MAX_VALUE);
+            }
+        }
+        for (Position position : positions) {
+            if (position.getExit() == null) {
+                initialized.recordProjectedPosition(position, Integer.MAX_VALUE);
+            }
         }
         return initialized.toRecordConfig();
     }
@@ -1271,6 +1280,9 @@ public class BaseTradingRecord implements TradingRecord {
             }
             Num totalAmount = cost.getNumFactory().zero();
             for (PositionLot lot : openLots) {
+                if (!lot.amount().getNumFactory().produces(cost)) {
+                    throw new IllegalArgumentException("cost must use the open lot's numeric type");
+                }
                 if (index < lot.entryIndex()) {
                     throw new IllegalArgumentException("Settlement index precedes an open lot's entry");
                 }
