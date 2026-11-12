@@ -3,6 +3,7 @@
 ### Added
 
 - **Rebuild rules from short labels (`CF-336`)**: Register a `NamedRule` subclass once and recreate it from a compact label such as `RsiThresholdRule_BELOW_14_30`. Subclasses call `super(TheirClass.class, parameters...)`; conflicting simple names fail fast rather than resolving by classpath order. `ta4j-examples` ships `RsiThresholdRule` and `ClosePriceCrossedMovingAverageRule` as reference implementations.
+- **Acceleration accuracy is fixed per indicator (`CF-336`)**: A `KernelIndicator` captures `ta4j.acceleration.approximateTolerance` when it is created and exposes it as `approximateTolerance()`. Its provider batches always use that contract, so cached values never mix approximate and exact results after the property changes.
 - **Causal L2 strategy signals**: `OrderBookIndicator` joins frozen order-book histories to explicit bar-open or bar-close decisions with inclusive freshness limits and stable arrival-order ties. Retained bounds and the decision timestamp are captured atomically on concurrent series. Spread, midpoint, depth and imbalance indicators compose with existing threshold rules; `OrderBookReadyRule` guards unavailable or incomplete books. The offline `OrderBookBacktest` demonstrates ordinary strategies with next-open bar fills, not simulated L2 execution. External-history configuration serialization fails explicitly rather than silently dropping its dataset.
 
 ### Fixed

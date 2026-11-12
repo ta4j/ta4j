@@ -902,6 +902,32 @@ class AccelerationRuntimeTest {
     }
 
     @Test
+    void indicatorsKeepTheAccuracyContractTheyWereCreatedWith() {
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = longSeries();
+        KernelProvider kernel = new KernelProvider();
+        useProvidersForTests(List.of(kernel));
+        System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, "0.001");
+        MonteCarloPriceForecastIndicator approximate = longForecast(series);
+        System.clearProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY);
+        MonteCarloPriceForecastIndicator exact = longForecast(series);
+        System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, "0.01");
+
+        // Cached values of each instance must come from batches under one contract,
+        // whatever the property says when they are read.
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            approximate.getValue(252);
+            exact.getValue(252);
+        }
+
+        assertEquals(2, kernel.requests.size());
+        assertEquals(Determinism.APPROXIMATE, kernel.requests.get(0).determinism());
+        assertEquals(0.001d, kernel.requests.get(0).tolerance(), 0d);
+        assertEquals(Determinism.BITWISE_IDENTICAL, kernel.requests.get(1).determinism());
+        assertTrue(Double.isNaN(kernel.requests.get(1).tolerance()));
+    }
+
+    @Test
     void warmUpReadsStayScalarWithoutDisablingLaterAcceleration() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
         BarSeries series = longSeries();

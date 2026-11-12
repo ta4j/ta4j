@@ -1111,7 +1111,7 @@ public final class AccelerationRuntime {
                 columns[buffer] = Arrays.copyOf(columns[buffer], rows);
             }
             double[] rowWindow = windowLength > 0 ? Arrays.copyOf(window, prefixLength + rows) : null;
-            return new Plan(request(kernel, index, rows, columns, rowWindow, approximateTolerance()), null);
+            return new Plan(request(kernel, index, rows, columns, rowWindow, indicator.approximateTolerance()), null);
         }
 
         private static int grownCapacity(int rows, int maxRows) {

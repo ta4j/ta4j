@@ -106,7 +106,7 @@ public class CsvBarSeriesDataSourceTest {
     public void testLoadSeriesFromLocalCsvPath() throws Exception {
         String csvFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(csvFile);
-        assumeTrue(resourceStream != null, "File " + csvFile + " does not exist");
+        assertNotNull(resourceStream, "Bundled fixture " + csvFile + " must be on the test classpath");
 
         Path tempFile = Files.createTempFile("ta4j-local-series-", ".csv");
         try {
