@@ -335,7 +335,9 @@ class ElliottReplayInspectorTest {
         final java.util.Map<String, String> before = snapshot(run);
 
         // "link/../exports" is temp/exports lexically but run/exports on disk
-        for (final Path out : List.of(link, link.resolve("..").resolve("exports"))) {
+        final List<Path> outputs = dotDotFollowsLinks() ? List.of(link, link.resolve("..").resolve("exports"))
+                : List.of(link);
+        for (final Path out : outputs) {
             final Result result = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
                     out.toString());
 
@@ -343,7 +345,9 @@ class ElliottReplayInspectorTest {
             assertTrue(result.err().contains("replayed run directory"), result.err());
             assertEquals(before, snapshot(run));
         }
-        assertFalse(Files.exists(temp.resolve("exports")));
+        if (dotDotFollowsLinks()) {
+            assertFalse(Files.exists(temp.resolve("exports")));
+        }
     }
 
     @Test
@@ -355,6 +359,10 @@ class ElliottReplayInspectorTest {
 
         final Result direct = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
                 link.toString());
+        assertEquals(0, direct.status(), direct.err());
+        assertTrue(Files.isRegularFile(sub.resolve("frame-36.json")), sub.toString());
+        Assumptions.assumeTrue(dotDotFollowsLinks(),
+                "Windows collapses 'link\\..' lexically, so '..' never goes through the link target there");
         final Result sibling = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
                 link.resolve("..").resolve("exports").toString());
 
@@ -387,6 +395,14 @@ class ElliottReplayInspectorTest {
         final BufferedImage image = ImageIO.read(destination.toFile());
         assertEquals(ReplayFrameRenderer.EXPORT_WIDTH, image.getWidth());
         assertEquals(ReplayFrameRenderer.EXPORT_HEIGHT, image.getHeight());
+    }
+
+    /**
+     * POSIX resolves {@code ..} after following a symbolic link; Windows path
+     * parsing collapses {@code link\..} lexically before the file system sees it.
+     */
+    private static boolean dotDotFollowsLinks() {
+        return !System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows");
     }
 
     private static Path symbolicLink(final Path link, final Path target) throws IOException {
