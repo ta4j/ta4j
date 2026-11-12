@@ -45,8 +45,11 @@ import org.ta4j.core.num.Num;
  * explicitly.
  *
  * <p>
- * Equality compares indicator instances, not their values or scheduling
- * parameters. Separately constructed fixed-rate models are therefore not equal.
+ * {@link #equals(CostModel)} compares indicator instances, not their values or
+ * scheduling parameters. Separately constructed fixed-rate models therefore
+ * differ through that overload. {@link Object#equals(Object)} and
+ * {@link Object#hashCode()} retain object identity, including in hash-based
+ * collections such as {@link java.util.HashSet}.
  *
  * @see org.ta4j.core.backtest.TradeOnCurrentCloseModel
  *
