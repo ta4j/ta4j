@@ -105,6 +105,35 @@ class PositionSizerTest {
     }
 
     @Test
+    void decimalRoundingRejectsUnrepresentableLotsAtLowPrecision() {
+        NumFactory factory = DecimalNumFactory.getInstance(2);
+        PositionSizer.Context context = context(factory);
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PositionSizer.fixed(10).roundedDownTo(new BigDecimal("0.06")).amount(context));
+        assertEquals("Rounded amount cannot be represented by the decimal number factory", exception.getMessage());
+        assertThrows(IllegalArgumentException.class,
+                () -> PositionSizer.fixed(10).roundedDownTo(new BigDecimal("0.07")).amount(context));
+        assertEquals(factory.numOf("9.9"), PositionSizer.fixed(10).roundedDownTo(new BigDecimal("0.3")).amount(context));
+    }
+
+    @Test
+    void decimalRoundingRejectsUnrepresentableLotsAtDefaultPrecision() {
+        NumFactory factory = DecimalNumFactory.getInstance();
+        PositionSizer.Context context = context(factory);
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(new BigDecimal("10000000000000000"))
+                .roundedDownTo(new BigDecimal("0.06"))
+                .amount(context));
+    }
+
+    @Test
+    void decimalFactoryDoesNotPromoteDoubleBoundaryAboveRequestedAmount() {
+        NumFactory factory = DecimalNumFactory.getInstance();
+        Num amount = DoubleNumFactory.getInstance().numOf(Math.nextDown(0.7));
+        assertThrows(IllegalArgumentException.class,
+                () -> PositionSizer.fixed(amount).roundedDownTo(0.1).amount(context(factory)));
+    }
+
+    @Test
     void decoratorsPreserveHighPrecisionParameters() {
         NumFactory factory = DecimalNumFactory.getInstance(32);
         PositionSizer.Context context = context(factory);
