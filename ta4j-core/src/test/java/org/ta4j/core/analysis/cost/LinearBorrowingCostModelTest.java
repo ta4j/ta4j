@@ -90,6 +90,32 @@ public class LinearBorrowingCostModelTest {
     }
 
     @Test
+    public void batchCostsRespectClosedPositionObservationIndex() {
+        Position position = new Position(Trade.sellAt(2, DoubleNum.valueOf(100), DoubleNum.valueOf(2)),
+                Trade.buyAt(5, DoubleNum.valueOf(110), DoubleNum.valueOf(2)), new ZeroCostModel(), borrowingModel);
+
+        Num[] costs = borrowingModel.calculate(position, 1, 7);
+        assertNumEquals(0, costs[0]);
+        assertNumEquals(0, costs[1]);
+        assertNumEquals(2, costs[2]);
+        assertNumEquals(4, costs[3]);
+        assertNumEquals(6, costs[4]);
+        assertNumEquals(6, costs[5]);
+        assertNumEquals(6, costs[6]);
+    }
+
+    @Test
+    public void batchCostsRejectInvalidRangesAndNullPosition() {
+        Position position = new Position(Trade.sellAt(2, DoubleNum.valueOf(100), DoubleNum.valueOf(2)),
+                new ZeroCostModel(), borrowingModel);
+
+        assertThrows(NullPointerException.class, () -> borrowingModel.calculate(null, 0, 1));
+        assertThrows(IllegalArgumentException.class, () -> borrowingModel.calculate(position, -1, 1));
+        assertThrows(IllegalArgumentException.class, () -> borrowingModel.calculate(position, 3, 2));
+        assertThrows(IllegalArgumentException.class, () -> borrowingModel.calculate(position, 0, Integer.MAX_VALUE));
+    }
+
+    @Test
     public void testEquality() {
         LinearBorrowingCostModel model = new LinearBorrowingCostModel(0.1);
         CostModel modelSameClass = new LinearBorrowingCostModel(0.2);

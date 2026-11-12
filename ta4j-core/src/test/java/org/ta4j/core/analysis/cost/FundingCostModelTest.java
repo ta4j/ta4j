@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -14,6 +15,7 @@ import java.util.ConcurrentModificationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ConcurrentBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
@@ -79,6 +82,115 @@ class FundingCostModelTest {
         assertThrows(IllegalArgumentException.class, () -> model.calculate(open));
         series.setMaximumBarCount(2);
         assertNumEquals(0.52, model.calculate(longPosition));
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
+    void cumulativeRangesMatchScalarCostsForLongShortAndOpenPositions(NumFactory factory) {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory)
+                .withData(100, 110, 120, 130, 140, 150)
+                .build();
+        Indicator<Num> rates = new FixedNumIndicator(series, 0, 0.001, 0, 0.002, -0.001, 0.01);
+        Indicator<Num> marks = new ClosePriceIndicator(series);
+        FundingCostModel model = new FundingCostModel(rates, marks);
+        double[] expected = { 0, 0, 0, 0.52, 0.24, 0.24, 0.24, 0.24 };
+        for (boolean shortSide : new boolean[] { false, true }) {
+            Position closed = position(factory, model, 1, 4, shortSide);
+            Num[] costs = model.calculate(closed, 0, 7);
+            assertEquals(expected.length, costs.length);
+            for (int index = 0; index < costs.length; index++) {
+                assertNumEquals(shortSide ? -expected[index] : expected[index], costs[index]);
+            }
+            Position open = new Position(closed.getEntry(), new ZeroCostModel(), model);
+            Num[] openCosts = model.calculate(open, 3, 7);
+            double[] openExpected = { 0.52, 0.24, 3.24, 3.24, 3.24 };
+            for (int offset = 0; offset < openCosts.length; offset++) {
+                assertNumEquals(shortSide ? -openExpected[offset] : openExpected[offset], openCosts[offset]);
+            }
+        }
+
+        AtomicInteger rateReads = new AtomicInteger();
+        AtomicInteger markReads = new AtomicInteger();
+        FundingCostModel counted = new FundingCostModel(countedIndicator(rates, rateReads, 3),
+                countedIndicator(marks, markReads, 2));
+        Num[] later = counted.calculate(position(factory, counted, 1, 4, false), 4, 6);
+        assertNumEquals(0.24, later[0]);
+        assertNumEquals(0.24, later[1]);
+        assertNumEquals(0.24, later[2]);
+        assertEquals(3, rateReads.get());
+        assertEquals(2, markReads.get());
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
+    void cumulativeRangesRespectBothIndicatorsRetainedBounds(NumFactory factory) {
+        BarSeries rates = new MockBarSeriesBuilder().withNumFactory(factory)
+                .withData(100, 110, 120, 130, 140, 150)
+                .build();
+        BarSeries marks = new MockBarSeriesBuilder().withNumFactory(factory)
+                .withData(100, 110, 120, 130, 140, 150)
+                .build();
+        rates.setMaximumBarCount(4);
+        marks.setMaximumBarCount(3);
+        AtomicInteger rateReads = new AtomicInteger();
+        AtomicInteger markReads = new AtomicInteger();
+        FundingCostModel model = new FundingCostModel(
+                countedIndicator(new FixedNumIndicator(rates, 0, 0.001, 0, 0.002, -0.001, 0.01), rateReads, 3),
+                countedIndicator(new ClosePriceIndicator(marks), markReads, 3));
+        Num[] costs = model.calculate(position(factory, model, 0, 5, false), 0, 7);
+        double[] expected = { 0, 0, 0, 0.52, 0.24, 3.24, 3.24, 3.24 };
+        for (int index = 0; index < costs.length; index++) {
+            assertNumEquals(expected[index], costs[index]);
+        }
+        assertEquals(3, rateReads.get());
+        assertEquals(3, markReads.get());
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
+    void cumulativeRangesSkipMissingAndZeroRatesButPropagateMissingMarks(NumFactory factory) {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory)
+                .withData(100, 110, 120, 130, 140, 150)
+                .build();
+        Indicator<Num> rates = new FixedIndicator<>(series, factory.zero(), NaN.NaN, factory.zero(),
+                factory.numOf(-0.001), factory.numOf(0.001), factory.zero());
+        AtomicInteger markReads = new AtomicInteger();
+        Indicator<Num> marks = countedIndicator(new FixedIndicator<>(series, factory.numOf(100), NaN.NaN, NaN.NaN,
+                factory.numOf(130), NaN.NaN, factory.numOf(150)), markReads, 2);
+        FundingCostModel model = new FundingCostModel(rates, marks);
+        Num[] costs = model.calculate(position(factory, model, 0, 5, false), 0, 5);
+        assertNumEquals(0, costs[0]);
+        assertNumEquals(0, costs[1]);
+        assertNumEquals(0, costs[2]);
+        assertNumEquals(-0.26, costs[3]);
+        assertTrue(costs[4].isNaN());
+        assertTrue(costs[5].isNaN());
+        assertEquals(2, markReads.get());
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
+    void validatesCumulativeRangesAndHandlesEmptyPositions(NumFactory factory) {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(100, 110).build();
+        FundingCostModel model = new FundingCostModel(new FixedNumIndicator(series, 0, 0.001));
+        Position empty = new Position(Trade.TradeType.BUY, new ZeroCostModel(), model);
+        Num[] emptyCosts = model.calculate(empty, 0, 2);
+        assertEquals(3, emptyCosts.length);
+        for (Num cost : emptyCosts) {
+            assertNumEquals(0, cost);
+        }
+        Position position = position(factory, model, 0, 1, false);
+        assertThrows(NullPointerException.class, () -> model.calculate(null, 0, 1));
+        assertThrows(IllegalArgumentException.class, () -> model.calculate(position, -1, 0));
+        assertThrows(IllegalArgumentException.class, () -> model.calculate(position, 2, 1));
+        assertThrows(IllegalArgumentException.class, () -> model.calculate(position, 0, Integer.MAX_VALUE));
+        Position atMaximumIndex = new Position(Trade.buyAt(Integer.MAX_VALUE, factory.hundred(), factory.two()),
+                new ZeroCostModel(), model);
+        assertNumEquals(0, model.calculate(atMaximumIndex, Integer.MAX_VALUE, Integer.MAX_VALUE)[0]);
+        NumFactory other = factory.produces(DoubleNumFactory.getInstance().one()) ? DecimalNumFactory.getInstance()
+                : DoubleNumFactory.getInstance();
+        Position laterEntry = new Position(Trade.buyAt(1, other.hundred(), other.two()), new ZeroCostModel(), model);
+        assertNumEquals(other.zero(), model.calculate(laterEntry, 0, 0)[0]);
     }
 
     @ParameterizedTest
@@ -173,6 +285,33 @@ class FundingCostModelTest {
 
     @ParameterizedTest
     @MethodSource("factories")
+    void cumulativePnlReadsEachFundingBarOnceWhileProducingEachMark(NumFactory factory) {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory)
+                .withData(100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100)
+                .build();
+        AtomicInteger rateReads = new AtomicInteger();
+        AtomicInteger markReads = new AtomicInteger();
+        Indicator<Num> rates = new FixedNumIndicator(series, 0, 0, 0.01, 0, 0.01, 0, 0.01, 0, 0.01, 0, 0.01, 0, 0.01, 0,
+                0.01, 0);
+        FundingCostModel funding = new FundingCostModel(countedIndicator(rates, rateReads, 13),
+                countedIndicator(new ClosePriceIndicator(series), markReads, 7));
+        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, new ZeroCostModel(), funding);
+        record.enter(1, factory.hundred(), factory.two());
+        record.exit(14, factory.hundred(), factory.two());
+        rateReads.set(0);
+        markReads.set(0);
+
+        CumulativePnL curve = new CumulativePnL(series, record, 15);
+        for (int index = 0; index <= 15; index++) {
+            int settlements = Math.min(index, 14) / 2;
+            assertNumEquals(-2 * settlements, curve.getValue(index));
+        }
+        assertEquals(13, rateReads.get());
+        assertEquals(7, markReads.get());
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
     void rejectsEvictionOfEitherInputWithoutLockingIndicatorEvaluation(NumFactory factory) {
         for (boolean separateMarks : new boolean[] { false, true }) {
             BarSeries rates = concurrentSeries(factory);
@@ -203,6 +342,70 @@ class FundingCostModelTest {
         FundingCostModel append = new FundingCostModel(mutatingRate(appended, new AtomicBoolean(true),
                 () -> addBar(appended, Instant.EPOCH.plusSeconds(4), Duration.ofSeconds(1))));
         assertNumEquals(0.4, position(factory, append, 0, 2, false).getHoldingCost(2));
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
+    void cumulativeRangesRejectEvictionAndCorrectionWithoutHoldingSeriesLocks(NumFactory factory) {
+        for (boolean sharedSeries : new boolean[] { false, true }) {
+            for (boolean mutateRates : new boolean[] { false, true }) {
+                for (boolean eviction : new boolean[] { false, true }) {
+                    BarSeries rates = concurrentSeries(factory);
+                    BarSeries marks = sharedSeries ? rates : concurrentSeries(factory);
+                    BarSeries changed = mutateRates ? rates : marks;
+                    if (eviction) {
+                        changed.setMaximumBarCount(3);
+                    }
+                    Indicator<Num> rate = mutatingRate(rates, new AtomicBoolean(true), () -> {
+                        if (eviction) {
+                            addBar(changed, Instant.EPOCH.plusSeconds(4), Duration.ofSeconds(1));
+                        } else {
+                            changed.addPrice(200);
+                        }
+                    });
+                    FundingCostModel model = new FundingCostModel(rate, new ClosePriceIndicator(marks));
+                    Position position = position(factory, model, 0, 2, false);
+                    assertThrows(ConcurrentModificationException.class, () -> model.calculate(position, 0, 2));
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
+    void cumulativeRangesReflectLaterCorrectionsAndAllowAppendWithoutEviction(NumFactory factory) {
+        BarSeries corrected = concurrentSeries(factory);
+        FundingCostModel model = new FundingCostModel(new FixedNumIndicator(corrected, 0, 0.001, 0.001));
+        Position position = position(factory, model, 0, 2, false);
+        Num[] before = model.calculate(position, 1, 2);
+        assertNumEquals(0.2, before[0]);
+        assertNumEquals(0.4, before[1]);
+        corrected.addPrice(200);
+        Num[] after = model.calculate(position, 1, 2);
+        assertNumEquals(0.2, after[0]);
+        assertNumEquals(0.6, after[1]);
+
+        BarSeries appended = concurrentSeries(factory);
+        FundingCostModel append = new FundingCostModel(mutatingRate(appended, new AtomicBoolean(true),
+                () -> addBar(appended, Instant.EPOCH.plusSeconds(4), Duration.ofSeconds(1))));
+        Num[] appendCosts = append.calculate(position(factory, append, 0, 2, false), 1, 2);
+        assertNumEquals(0.2, appendCosts[0]);
+        assertNumEquals(0.4, appendCosts[1]);
+    }
+
+    private static Indicator<Num> countedIndicator(Indicator<Num> delegate, AtomicInteger reads, int budget) {
+        return new AbstractIndicator<>(delegate.getBarSeries()) {
+            @Override
+            public Num getValue(int index) {
+                assertTrue(reads.incrementAndGet() <= budget, "Indicator read budget exceeded");
+                return delegate.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return delegate.getCountOfUnstableBars();
+            }
+        };
     }
 
     private static BarSeries concurrentSeries(NumFactory factory) {

@@ -316,33 +316,23 @@ final class AnalysisPositionSupport {
     }
 
     /**
-     * Prices each mark outside the series read lock. A general holding-cost model
-     * may inspect the whole holding interval on each call, making a curve quadratic
-     * in its number of held bars; its API does not expose incremental settlements
-     * from which to compute these values in one pass.
+     * Prices each mark outside the series read lock. The indexed-cost API lets
+     * settlement models supply all cumulative marks in one pass while preserving
+     * the generic fallback for existing models.
      */
     private static PricedPosition priceHoldingCosts(PerformanceIndicator curve, Position position, int endIndex,
             Window window, BarWindowSnapshot costBars) {
-        Num finalCost = holdingCostThrough(position, endIndex);
         if (curve.getEquityCurveMode() != EquityCurveMode.MARK_TO_MARKET || endIndex < window.beginIndex()
                 || position.getHoldingCostModel().getClass() == ZeroCostModel.class) {
-            return new PricedPosition(finalCost, 0, null, costBars);
+            return new PricedPosition(holdingCostThrough(position, endIndex), 0, null, costBars);
         }
         int entryIndex = position.getEntry().getIndex();
         long first = entryIndex < window.beginIndex() ? window.beginIndex() : (long) entryIndex + 1;
         if (first > endIndex) {
-            return new PricedPosition(finalCost, 0, null, costBars);
+            return new PricedPosition(holdingCostThrough(position, endIndex), 0, null, costBars);
         }
-        long size = (long) endIndex - first + 1;
-        if (size >= Integer.MAX_VALUE) {
-            throw new IllegalArgumentException("Holding-cost window is too large to materialize");
-        }
-        Num[] costs = new Num[(int) size];
-        for (int offset = 0; offset < costs.length - 1; offset++) {
-            costs[offset] = holdingCostThrough(position, (int) (first + offset));
-        }
-        costs[costs.length - 1] = finalCost;
-        return new PricedPosition(finalCost, (int) first, costs, costBars);
+        Num[] costs = position.getHoldingCostModel().calculate(position, (int) first, endIndex);
+        return new PricedPosition(costs[costs.length - 1], (int) first, costs, costBars);
     }
 
     /**

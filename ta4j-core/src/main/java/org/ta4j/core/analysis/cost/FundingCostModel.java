@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.Objects;
 
@@ -158,9 +159,9 @@ public final class FundingCostModel implements CostModel {
             end = Math.min(end, position.getExit().getIndex());
         }
         for (long index = start; index <= end; index++) {
-            Num rate = fundingRate.getValue((int) index);
-            if (!rate.isNaN() && !rate.isZero()) {
-                total = total.plus(rate.multipliedBy(markPrice.getValue((int) index)));
+            Num settlement = settlement((int) index);
+            if (settlement != null) {
+                total = total.plus(settlement);
             }
         }
         if (start <= end) {
@@ -169,6 +170,102 @@ public final class FundingCostModel implements CostModel {
                 markWindow.validate(marks);
             }
         }
+        return signedCost(total, entry);
+    }
+
+    /**
+     * Calculates cumulative funding at every index in the inclusive range, with
+     * offset zero corresponding to {@code firstIndex}. Each value sums the
+     * settlements after entry through that index, scaled by entry amount and signed
+     * by side. Costs before entry are zero. A closed position is treated as open
+     * before its exit and as closed at and after its exit; the exit bar is included
+     * and later settlements are excluded. An empty position repeats its indexed
+     * result at {@code firstIndex}.
+     *
+     * <p>
+     * Only indices retained by both input series contribute. Settlements before the
+     * requested range are included when retained, and each retained rate and
+     * applicable mark is read at most once. Rates that are zero or NaN do not read
+     * a mark; a NaN mark for a nonzero rate propagates. There is no persistent
+     * cache.
+     *
+     * @param position   the position to evaluate
+     * @param firstIndex the first observation index, inclusive
+     * @param finalIndex the last observation index, inclusive
+     * @return cumulative funding costs ordered by observation index
+     * @throws NullPointerException            if {@code position} is null
+     * @throws IllegalArgumentException        if {@code firstIndex} is negative,
+     *                                         {@code finalIndex} precedes it, or
+     *                                         the inclusive range length exceeds
+     *                                         {@link Integer#MAX_VALUE}
+     * @throws ConcurrentModificationException if retained input history changes
+     *                                         during indicator evaluation
+     * @since 0.28.1
+     */
+    @Override
+    public Num[] calculate(Position position, int firstIndex, int finalIndex) {
+        Objects.requireNonNull(position, "position");
+        long length = (long) finalIndex - firstIndex + 1;
+        if (firstIndex < 0 || finalIndex < firstIndex || length > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Invalid index range");
+        }
+        Num[] costs = new Num[(int) length];
+        Trade entry = position.getEntry();
+        if (entry == null) {
+            Arrays.fill(costs, calculate(position, firstIndex));
+            return costs;
+        }
+        Num zero = entry.getPricePerAsset().getNumFactory().zero();
+        if (finalIndex < entry.getIndex()) {
+            Arrays.fill(costs, zero);
+            return costs;
+        }
+
+        BarSeries rates = fundingRate.getBarSeries();
+        BarSeries marks = markPrice.getBarSeries();
+        InputWindow rateWindow = InputWindow.capture(rates);
+        InputWindow markWindow = marks == rates ? rateWindow : InputWindow.capture(marks);
+        long start = Math.max((long) entry.getIndex() + 1, Math.max(rateWindow.beginIndex(), markWindow.beginIndex()));
+        int end = Math.min(finalIndex, Math.min(rateWindow.endIndex(), markWindow.endIndex()));
+        if (position.isClosed()) {
+            end = Math.min(end, position.getExit().getIndex());
+        }
+
+        Num total = rates.numFactory().zero();
+        for (long index = start; index < firstIndex && index <= end; index++) {
+            Num settlement = settlement((int) index);
+            if (settlement != null) {
+                total = total.plus(settlement);
+            }
+        }
+        Num cost = signedCost(total, entry);
+        for (int offset = 0; offset < costs.length; offset++) {
+            int index = firstIndex + offset;
+            if (index >= start && index <= end) {
+                Num settlement = settlement(index);
+                if (settlement != null) {
+                    total = total.plus(settlement);
+                    cost = signedCost(total, entry);
+                }
+            }
+            costs[offset] = index < entry.getIndex() ? zero : cost;
+        }
+        if (start <= end) {
+            rateWindow.validate(rates);
+            if (marks != rates) {
+                markWindow.validate(marks);
+            }
+        }
+        return costs;
+    }
+
+    /** Returns null when there is no settlement and the mark need not be read. */
+    private Num settlement(int index) {
+        Num rate = fundingRate.getValue(index);
+        return rate.isNaN() || rate.isZero() ? null : rate.multipliedBy(markPrice.getValue(index));
+    }
+
+    private static Num signedCost(Num total, Trade entry) {
         Num cost = total.multipliedBy(entry.getAmount());
         return entry.isBuy() ? cost : cost.negate();
     }

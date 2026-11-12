@@ -205,7 +205,7 @@ public final class CumulativePnL implements PerformanceIndicator {
         Num amount = entry.getAmount();
         Num zero = amount.getNumFactory().zero();
         if (endIndex < seriesBegin) {
-            if (!captured.carriesBeforeWindow(position)) {
+            if (exit == null || !captured.carriesBeforeWindow(position)) {
                 return;
             }
             Num costs = entry.getCost().plus(exit.getCost()).plus(priced.holdingCost());
