@@ -370,12 +370,12 @@ class BaseTradingRecordTest {
                 record.operate(fill(ExecutionSide.BUY, nums.hundred(), nums.three()));
                 record.recordHoldingCost(5, nums.numOf(6 * sign));
                 record.operate(fill(ExecutionSide.SELL, nums.numOf(110), nums.one()));
-                assertEquals(0, record.getTrades().get(0).getIndex());
-                assertEquals(6, record.getTrades().get(1).getIndex());
+                assertEquals(0, record.getPositions().getFirst().getEntry().getIndex());
+                assertEquals(6, record.getPositions().getFirst().getExit().getIndex());
                 assertEquals(nums.numOf(2 * sign), record.getPositions().getFirst().getHoldingCost());
                 assertEquals(nums.numOf(4 * sign), record.getCurrentPosition().getHoldingCost());
                 record.operate(fill(ExecutionSide.SELL, nums.numOf(110), nums.two()));
-                assertEquals(7, record.getTrades().get(2).getIndex());
+                assertEquals(7, record.getPositions().get(1).getExit().getIndex());
                 assertEquals(nums.numOf(4 * sign), record.getPositions().get(1).getHoldingCost());
                 assertEquals(nums.numOf(30 - 6 * sign),
                         record.getPositions().stream().map(Position::getProfit).reduce(nums.zero(), Num::plus));
