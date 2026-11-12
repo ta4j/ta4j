@@ -335,7 +335,9 @@ class ElliottReplayInspectorTest {
         final java.util.Map<String, String> before = snapshot(run);
 
         // "link/../exports" is temp/exports lexically but run/exports on disk
-        for (final Path out : List.of(link, link.resolve("..").resolve("exports"))) {
+        final List<Path> outputs = dotDotFollowsLinks() ? List.of(link, link.resolve("..").resolve("exports"))
+                : List.of(link);
+        for (final Path out : outputs) {
             final Result result = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
                     out.toString());
 
@@ -343,7 +345,9 @@ class ElliottReplayInspectorTest {
             assertTrue(result.err().contains("replayed run directory"), result.err());
             assertEquals(before, snapshot(run));
         }
-        assertFalse(Files.exists(temp.resolve("exports")));
+        if (dotDotFollowsLinks()) {
+            assertFalse(Files.exists(temp.resolve("exports")));
+        }
     }
 
     @Test
@@ -360,13 +364,16 @@ class ElliottReplayInspectorTest {
 
         assertEquals(0, direct.status(), direct.err());
         assertEquals(0, sibling.status(), sibling.err());
-        final Path exports = elsewhere.resolve("exports");
+        // POSIX applies ".." after following the link, so it leaves the link target;
+        // Windows collapses "link\\.." lexically, so it stays in the link's directory.
+        final Path exports = dotDotFollowsLinks() ? elsewhere.resolve("exports") : temp.resolve("exports");
         for (final Path directory : List.of(sub, exports)) {
             assertTrue(Files.isRegularFile(directory.resolve("frame-36.json")), directory.toString());
             assertTrue(Files.isRegularFile(directory.resolve("frame-36.txt")), directory.toString());
             assertNotNull(ImageIO.read(directory.resolve("frame-36.jpg").toFile()), directory.toString());
         }
-        assertFalse(Files.exists(temp.resolve("exports")), "'..' leaves the link target, not the link's directory");
+        final Path unexpected = dotDotFollowsLinks() ? temp.resolve("exports") : elsewhere.resolve("exports");
+        assertFalse(Files.exists(unexpected), "'..' must resolve the way this platform's file system does");
         assertTrue(sibling.out().contains(exports.toRealPath().resolve("frame-36.json").toString()), sibling.out());
     }
 
@@ -387,6 +394,14 @@ class ElliottReplayInspectorTest {
         final BufferedImage image = ImageIO.read(destination.toFile());
         assertEquals(ReplayFrameRenderer.EXPORT_WIDTH, image.getWidth());
         assertEquals(ReplayFrameRenderer.EXPORT_HEIGHT, image.getHeight());
+    }
+
+    /**
+     * POSIX resolves {@code ..} after following a symbolic link; Windows path
+     * parsing collapses {@code link\..} lexically before the file system sees it.
+     */
+    private static boolean dotDotFollowsLinks() {
+        return !System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows");
     }
 
     private static Path symbolicLink(final Path link, final Path target) throws IOException {

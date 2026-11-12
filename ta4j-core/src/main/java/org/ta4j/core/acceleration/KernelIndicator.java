@@ -42,6 +42,9 @@ import org.ta4j.core.indicators.CachedIndicator;
 public abstract class KernelIndicator<T> extends CachedIndicator<T> {
 
     private final Kernel kernel;
+    // Runtime execution policy, not an indicator parameter: transient keeps it out
+    // of descriptor serialization, and a deserialized instance captures it anew.
+    private transient Double approximateTolerance = AccelerationRuntime.approximateTolerance();
 
     /**
      * Creates a kernel indicator reading bars of {@code series} directly.
@@ -76,6 +79,28 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      */
     public final Kernel kernel() {
         return kernel;
+    }
+
+    /**
+     * Returns the accuracy contract captured when this indicator was created: the
+     * finite positive approximate tolerance, or {@code NaN} for exact,
+     * bitwise-identical results.
+     * <p>
+     * Provider batches for this indicator always use this contract, so values
+     * cached by the indicator never mix tolerances. Changing
+     * {@value AccelerationRuntime#APPROXIMATE_TOLERANCE_PROPERTY} later affects
+     * only indicators created afterwards.
+     *
+     * @return captured approximate tolerance, or {@code NaN} for exact execution
+     * @since 0.28.1
+     */
+    public final double approximateTolerance() {
+        Double captured = approximateTolerance;
+        if (captured == null) {
+            captured = AccelerationRuntime.approximateTolerance();
+            approximateTolerance = captured;
+        }
+        return captured;
     }
 
     /**
@@ -146,7 +171,7 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
         for (int buffer = 0; buffer < rowInputs.length; buffer++) {
             rows[buffer] = new double[] { rowInputs[buffer] };
         }
-        KernelRequest request = AccelerationRuntime.request(kernel, index, 1, rows, window);
+        KernelRequest request = AccelerationRuntime.request(kernel, index, 1, rows, window, Double.NaN);
         double[] outputs = new double[kernel.outputsPerRow()];
         kernel.run(request, 0, outputs);
         return decode(index, outputs);
