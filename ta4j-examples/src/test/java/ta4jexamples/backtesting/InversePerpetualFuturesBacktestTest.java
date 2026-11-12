@@ -59,6 +59,7 @@ class InversePerpetualFuturesBacktestTest {
         Num profit = criterion.calculate(reciprocal, funded);
         assertEquals(funding, position.getHoldingCost().doubleValue(), 1e-12);
         assertEquals(expectedProfit, profit.doubleValue(), 1e-12);
+        assertEquals(0.2982091541666667, profit.doubleValue(), 1e-12);
         assertEquals(funding, criterion.calculate(reciprocal, unfunded).minus(profit).doubleValue(), 1e-12);
         assertEquals(2 * funding, criterion.calculate(reciprocal, credited).minus(profit).doubleValue(), 1e-12);
         assertTrue(profit.isGreaterThan(criterion.calculate(reciprocal, unlevered)));

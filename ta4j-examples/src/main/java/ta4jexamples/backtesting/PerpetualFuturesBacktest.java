@@ -73,6 +73,8 @@ public final class PerpetualFuturesBacktest {
     static TradingRecord run(BarSeries series, double leverage, double fundingRate) {
         ClosePriceIndicator price = new ClosePriceIndicator(series);
         double liquidationLossPercentage = 100 * (1 / leverage - MAINTENANCE_MARGIN_RATE);
+        // Close-only approximation: intrabar wicks through the level are missed,
+        // and a triggered exit still fills at that bar's close.
         Rule liquidationStop = new StopLossRule(price, liquidationLossPercentage);
         Strategy strategy = new BaseStrategy(new FixedRule(series.getBeginIndex()),
                 new FixedRule(series.getEndIndex()).or(liquidationStop));
