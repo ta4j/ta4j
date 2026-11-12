@@ -463,6 +463,7 @@ public class BaseTradingRecord implements TradingRecord {
                     }
                     // Imported settlements already belong to this lot; do not reallocate them.
                     lot.holdingCosts = addHoldingCost(lot.holdingCosts, cost.index(), cost.cost());
+                    nextTradeIndex = Math.max(nextTradeIndex, cost.index() + 1);
                     modificationCount++;
                 }
             }

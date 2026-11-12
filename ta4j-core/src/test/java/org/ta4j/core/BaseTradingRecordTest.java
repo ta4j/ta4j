@@ -132,6 +132,35 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void copiedOpenPositionsAdvanceAutomaticFillIndicesPastImportedSettlements() {
+        for (NumFactory nums : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            for (TradeType type : TradeType.values()) {
+                for (int sign : new int[] { 1, -1 }) {
+                    BaseTradingRecord source = new BaseTradingRecord(type);
+                    source.operate(new BaseTrade(0, type, nums.hundred(), nums.three(), new ZeroCostModel()));
+                    source.recordHoldingCost(5, nums.numOf(6 * sign));
+                    ExecutionSide exitSide = type == TradeType.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
+                    Num exitPrice = nums.numOf(type == TradeType.BUY ? 110 : 90);
+                    for (BaseTradingRecord record : List.of(source,
+                            new BaseTradingRecord(source.getOpenPositions().getFirst()),
+                            new BaseTradingRecord(source.getOpenPositions()))) {
+                        record.operate(fill(exitSide, exitPrice, nums.one()));
+                        assertEquals(6, record.getLastTrade().getIndex());
+                        assertEquals(nums.numOf(2 * sign), record.getPositions().getFirst().getHoldingCost());
+                        assertEquals(nums.numOf(10 - 2 * sign), record.getPositions().getFirst().getProfit());
+                        assertEquals(nums.numOf(4 * sign), record.getCurrentPosition().getHoldingCost());
+                        record.operate(fill(exitSide, exitPrice, nums.two()));
+                        assertEquals(7, record.getLastTrade().getIndex());
+                        assertTrue(record.isClosed());
+                        assertEquals(nums.numOf(4 * sign), record.getPositions().get(1).getHoldingCost());
+                        assertEquals(nums.numOf(20 - 4 * sign), record.getPositions().get(1).getProfit());
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     void copyingMixedPositionListsDoesNotMatchExitsAgainstOtherSourcesOpenLots() {
         for (TradeType type : TradeType.values()) {
             BaseTradingRecord openSource = new BaseTradingRecord(type);
