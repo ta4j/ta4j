@@ -375,7 +375,7 @@ public class Returns implements PerformanceIndicator {
         }
         boolean[] seeded = new boolean[1];
         AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors,
-                staged -> seeded[0] = calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+                staged -> seeded[0] = calculatePosition(position, finalIndex, window, staged, priced));
         // Reached only once the staged factors were verified and published.
         firstRetainedSlotSeeded |= seeded[0];
         rawValues.clear();
@@ -389,7 +389,7 @@ public class Returns implements PerformanceIndicator {
      * @return whether a return was written into the first retained slot
      */
     private boolean calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
-            OffsetNumBuffer factors, Num holdingCost) {
+            OffsetNumBuffer factors, AnalysisPositionSupport.PricedPosition priced) {
         Trade entry = position.getEntry();
         if (entry == null) {
             return false;
@@ -411,7 +411,7 @@ public class Returns implements PerformanceIndicator {
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
             boolean[] seeded = new boolean[1];
             AnalysisPositionSupport.ExitMark exit = AnalysisPositionSupport.markToMarket(this, barSeries, position,
-                    holdingCost, endIndex, seriesBegin, endIndex - 1,
+                    priced, endIndex, seriesBegin, endIndex - 1,
                     (index, netPrice, previousPrice) -> seeded[0] |= combineReturnAtIndex(index,
                             strategyReturn(calculateReturn(netPrice, previousPrice), isLongTrade), captured, factors));
             return combineReturnAtIndex(endIndex,
@@ -421,7 +421,7 @@ public class Returns implements PerformanceIndicator {
 
         Trade exit = position.getExit();
         if (exit != null && endIndex >= exit.getIndex()) {
-            Num netExit = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
+            Num netExit = addCost(exit.getNetPrice(), priced.holdingCostPerAsset(entry.getAmount()), isLongTrade);
             return combineReturnAtIndex(exit.getIndex(),
                     strategyReturn(calculateReturn(netExit, entry.getNetPrice()), isLongTrade), captured, factors);
         }
