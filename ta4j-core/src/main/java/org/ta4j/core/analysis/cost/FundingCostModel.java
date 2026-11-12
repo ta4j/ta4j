@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ConcurrentModificationException;
 import java.util.Objects;
 
 import org.ta4j.core.Bar;
@@ -28,7 +29,11 @@ import org.ta4j.core.num.Num;
  * {@code rate * mark * entryAmount}, with the sign reversed for shorts. Reads
  * are restricted to the indicators' retained series bounds. A NaN rate means no
  * settlement; a zero rate does not read the mark. No results are cached, so
- * historical corrections and moving series are reflected on the next call.
+ * historical corrections and moving series are reflected on the next call. The
+ * retained bounds and published history revision are checked after indicator
+ * evaluation, outside all series read scopes. A concurrent eviction or
+ * correction fails explicitly instead of returning settlements from mixed
+ * histories.
  *
  * @since 0.28.1
  */
@@ -126,7 +131,9 @@ public final class FundingCostModel implements CostModel {
      * Calculates funding through the supplied index, capped at the actual exit.
      * Empty positions and empty windows have zero cost.
      *
-     * @throws NullPointerException if the position is null
+     * @throws NullPointerException            if the position is null
+     * @throws ConcurrentModificationException if retained input history changes
+     *                                         during indicator evaluation
      * @since 0.28.1
      */
     @Override
@@ -139,8 +146,10 @@ public final class FundingCostModel implements CostModel {
         if (entry == null) {
             return total;
         }
-        long start = Math.max((long) entry.getIndex() + 1, Math.max(rates.getBeginIndex(), marks.getBeginIndex()));
-        int end = Math.min(finalIndex, Math.min(rates.getEndIndex(), marks.getEndIndex()));
+        InputWindow rateWindow = InputWindow.capture(rates);
+        InputWindow markWindow = marks == rates ? rateWindow : InputWindow.capture(marks);
+        long start = Math.max((long) entry.getIndex() + 1, Math.max(rateWindow.beginIndex(), markWindow.beginIndex()));
+        int end = Math.min(finalIndex, Math.min(rateWindow.endIndex(), markWindow.endIndex()));
         if (position.isClosed()) {
             end = Math.min(end, position.getExit().getIndex());
         }
@@ -148,6 +157,12 @@ public final class FundingCostModel implements CostModel {
             Num rate = fundingRate.getValue((int) index);
             if (!rate.isNaN() && !rate.isZero()) {
                 total = total.plus(rate.multipliedBy(markPrice.getValue((int) index)));
+            }
+        }
+        if (start <= end) {
+            rateWindow.validate(rates);
+            if (marks != rates) {
+                markWindow.validate(marks);
             }
         }
         Num cost = total.multipliedBy(entry.getAmount());
@@ -163,6 +178,23 @@ public final class FundingCostModel implements CostModel {
     public boolean equals(CostModel otherModel) {
         return otherModel instanceof FundingCostModel other && fundingRate == other.fundingRate
                 && markPrice == other.markPrice;
+    }
+
+    private record InputWindow(int beginIndex, int endIndex, long revision) {
+
+        private static InputWindow capture(BarSeries series) {
+            return series.withReadLock(() -> new InputWindow(series.getBeginIndex(), series.getEndIndex(),
+                    series.getBarHistoryRevision()));
+        }
+
+        private void validate(BarSeries series) {
+            series.withReadLock(() -> {
+                if (series.getBeginIndex() != beginIndex || series.getEndIndex() < endIndex
+                        || series.getBarHistoryRevision() != revision) {
+                    throw new ConcurrentModificationException("Funding input history changed during evaluation");
+                }
+            });
+        }
     }
 
     private static final class ScheduledRateIndicator extends AbstractIndicator<Num> {

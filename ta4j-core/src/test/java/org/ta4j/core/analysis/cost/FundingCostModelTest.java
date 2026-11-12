@@ -10,6 +10,10 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ConcurrentModificationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -18,6 +22,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -25,6 +30,8 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CumulativePnL;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -150,6 +157,65 @@ class FundingCostModelTest {
                 free.getPositions().getFirst().getProfit().minus(funded.getPositions().getFirst().getProfit()));
         assertNumEquals(0.74,
                 new CumulativePnL(series, free).getValue(4).minus(new CumulativePnL(series, funded).getValue(4)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
+    void rejectsEvictionOfEitherInputWithoutLockingIndicatorEvaluation(NumFactory factory) {
+        for (boolean separateMarks : new boolean[] { false, true }) {
+            BarSeries rates = concurrentSeries(factory);
+            BarSeries marks = separateMarks ? concurrentSeries(factory) : rates;
+            marks.setMaximumBarCount(3);
+            AtomicBoolean mutate = new AtomicBoolean(true);
+            Indicator<Num> rate = mutatingRate(rates, mutate, () -> {
+                addBar(marks, Instant.EPOCH.plusSeconds(4), Duration.ofSeconds(1));
+                addBar(marks, Instant.EPOCH.plusSeconds(5), Duration.ofSeconds(1));
+            });
+            FundingCostModel model = new FundingCostModel(rate, new ClosePriceIndicator(marks));
+            Position position = position(factory, model, 0, 2, false);
+
+            assertThrows(ConcurrentModificationException.class, () -> position.getHoldingCost(2));
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
+    void rejectsPublishedCorrectionButAllowsAppendWithoutEviction(NumFactory factory) {
+        BarSeries corrected = concurrentSeries(factory);
+        FundingCostModel correction = new FundingCostModel(
+                mutatingRate(corrected, new AtomicBoolean(true), () -> corrected.addPrice(200)));
+        assertThrows(ConcurrentModificationException.class,
+                () -> position(factory, correction, 0, 2, false).getHoldingCost(2));
+
+        BarSeries appended = concurrentSeries(factory);
+        FundingCostModel append = new FundingCostModel(mutatingRate(appended, new AtomicBoolean(true),
+                () -> addBar(appended, Instant.EPOCH.plusSeconds(4), Duration.ofSeconds(1))));
+        assertNumEquals(0.4, position(factory, append, 0, 2, false).getHoldingCost(2));
+    }
+
+    private static BarSeries concurrentSeries(NumFactory factory) {
+        BarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(factory).build();
+        for (int index = 1; index <= 3; index++) {
+            addBar(series, Instant.EPOCH.plusSeconds(index), Duration.ofSeconds(1));
+        }
+        return series;
+    }
+
+    private static Indicator<Num> mutatingRate(BarSeries series, AtomicBoolean mutate, Runnable mutation) {
+        return new AbstractIndicator<>(series) {
+            @Override
+            public Num getValue(int index) {
+                if (mutate.getAndSet(false)) {
+                    CompletableFuture.runAsync(mutation).orTimeout(5, TimeUnit.SECONDS).join();
+                }
+                return series.numFactory().numOf(0.001);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
     }
 
     private static Position position(NumFactory factory, CostModel model, int entry, int exit, boolean shortSide) {

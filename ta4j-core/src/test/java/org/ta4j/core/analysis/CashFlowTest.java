@@ -38,10 +38,12 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.FundingCostModel;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -524,7 +526,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     public void cashFlowFromPositionPreservesCostModels() {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
         var transactionCost = new FixedTransactionCostModel(1d);
-        var holdingCost = new FixedHoldingCostModel(4d);
+        var holdingCost = new LinearBorrowingCostModel(0.02d, LinearBorrowingCostModel.Applicability.LONG_ONLY);
         var amount = numFactory.one();
         var entry = Trade.buyAt(0, sampleBarSeries.getBar(0).getClosePrice(), amount, transactionCost);
         var exit = Trade.sellAt(2, sampleBarSeries.getBar(2).getClosePrice(), amount, transactionCost);
@@ -716,10 +718,35 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void shortMarksOnlySettledCostsPerAssetAndKeepsTransactionFees() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d, 100d)
+                .build();
+        CostModel funding = new FundingCostModel(new FixedNumIndicator(series, 0, 0, -0.02, 0, 0.05));
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.SELL, new FixedTransactionCostModel(2d), funding);
+        record.enter(0, numFactory.hundred(), numFactory.two());
+        record.exit(4, numFactory.hundred(), numFactory.two());
+
+        CashFlow cashFlow = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET);
+
+        // Entry net price is 99. The short pays 4 at index 2 and receives
+        // 10 at index 4, so its per-asset marks are 100, 102, 102 and
+        // 101 - 3 (the 101 exit price includes the fixed exit fee).
+        assertNumEquals(numFactory.numOf(2d - 100d / 99d), cashFlow.getValue(1), 1e-12);
+        assertNumEquals(numFactory.numOf(2d - 102d / 99d), cashFlow.getValue(2), 1e-12);
+        assertNumEquals(numFactory.numOf(2d - 102d / 99d), cashFlow.getValue(3), 1e-12);
+        assertNumEquals(numFactory.numOf(2d - 98d / 99d), cashFlow.getValue(4), 1e-12);
+
+        CashFlow incremental = new CashFlow(series, new BaseTradingRecord());
+        incremental.calculatePosition(record.getPositions().get(0), 4);
+        assertEquals(cashFlow.stream().toList(), incremental.stream().toList());
+    }
+
+    @Test
     public void markToMarketHoldingCostEndsAtRealizedEquity() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(2, series), new ZeroCostModel(),
-                new FixedHoldingCostModel(4d));
+                new LinearBorrowingCostModel(0.02d, LinearBorrowingCostModel.Applicability.LONG_ONLY));
 
         var markToMarket = new CashFlow(series, position, EquityCurveMode.MARK_TO_MARKET);
         var realized = new CashFlow(series, position, EquityCurveMode.REALIZED);
@@ -736,15 +763,15 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 .build();
         CostModel transactionCost = new ZeroCostModel();
         Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(12, series), transactionCost,
-                new FixedHoldingCostModel(12d));
+                new LinearBorrowingCostModel(0.01d, LinearBorrowingCostModel.Applicability.LONG_ONLY));
         CashFlow fullHistory = new CashFlow(series, position);
         series.setMaximumBarCount(3);
 
         CashFlow retained = new CashFlow(series, position);
 
-        // 12 of holding cost over 12 held bars is 1 per bar. The window [10, 12]
-        // values the position at close 100 net of the 10 accrued by then (90);
-        // later marks are net of 11 and 12, so only in-window carry moves equity.
+        // Borrowing accrues one unit per held bar. The window [10, 12] values
+        // the position at 90, and later marks are 89 and 88, so only in-window
+        // carry moves equity.
         assertNumEquals(1d, retained.getValue(10));
         assertNumEquals(numFactory.numOf(89d).dividedBy(numFactory.numOf(90d)), retained.getValue(11));
         assertNumEquals(numFactory.numOf(88d).dividedBy(numFactory.numOf(90d)), retained.getValue(12));
@@ -977,36 +1004,6 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(expectedAt1, cashFlow.getValue(1));
         assertNumEquals(expectedAt2, cashFlow.getValue(2));
-    }
-
-    private record FixedHoldingCostModel(double fee) implements CostModel {
-
-        @Override
-        public Num calculate(Position position, int finalIndex) {
-            return cost(position);
-        }
-
-        @Override
-        public Num calculate(Position position) {
-            return cost(position);
-        }
-
-        @Override
-        public Num calculate(Num price, Num amount) {
-            return price.getNumFactory().numOf(fee);
-        }
-
-        @Override
-        public boolean equals(CostModel otherModel) {
-            if (otherModel instanceof FixedHoldingCostModel(double fee1)) {
-                return fee1 == fee;
-            }
-            return false;
-        }
-
-        private Num cost(Position position) {
-            return position.getEntry().getPricePerAsset().getNumFactory().numOf(fee);
-        }
     }
 
     @Test
@@ -1407,10 +1404,13 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     @Test
     public void recapturesWhenAHighPriceChangesDuringHoldingCostEvaluation() {
-        List<Bar> bars = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100d, 110d, 120d)
-                .build()
-                .getBarData();
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 120d).build();
+        List<Bar> bars = new ArrayList<>();
+        for (Bar bar : source.getBarData()) {
+            Num price = bar.getClosePrice();
+            bars.add(new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), price, price, price, price,
+                    bar.getVolume(), bar.getAmount(), bar.getTrades()));
+        }
         Bar last = bars.get(2);
         Num[] lastHigh = { numFactory.numOf(125d) };
         Bar mutableLast = new BaseBar(last.getTimePeriod(), last.getBeginTime(), last.getEndTime(), last.getOpenPrice(),

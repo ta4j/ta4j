@@ -17,9 +17,10 @@ import org.ta4j.core.num.Num;
  * <p>
  * The cumulative PnL is calculated incrementally from the start of the
  * {@code BarSeries}, taking into account realized and unrealized gains/losses,
- * trading costs, and position direction (long or short). Each index in the
- * series represents the total PnL up to that bar. The calculation mode can be
- * configured to mark open positions to market or to only realize PnL at exits.
+ * trading costs, position size, and position direction (long or short). Each
+ * index in the series represents the total PnL up to that bar. The calculation
+ * mode can be configured to mark open positions to market or to only realize
+ * PnL at exits.
  * </p>
  *
  * @since 0.19
@@ -182,12 +183,12 @@ public final class CumulativePnL implements PerformanceIndicator {
                 finalIndex, window, true);
         if (priced != null) {
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
-                    staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+                    staged -> calculatePosition(position, finalIndex, window, staged, priced));
         }
     }
 
     private void calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
-            OffsetNumBuffer buffer, Num holdingCost) {
+            OffsetNumBuffer buffer, AnalysisPositionSupport.PricedPosition priced) {
         Trade entry = position.getEntry();
         if (entry == null) {
             return;
@@ -200,37 +201,53 @@ public final class CumulativePnL implements PerformanceIndicator {
         int endIndex = determineEndIndex(position, finalIndex, lastCapturedIndex);
         int seriesBegin = captured.beginIndex();
         boolean isLong = entry.isBuy();
-        Num netEntryPrice = entry.getNetPrice();
+        Trade exit = position.getExit();
+        Num amount = entry.getAmount();
+        Num zero = amount.getNumFactory().zero();
         if (endIndex < seriesBegin) {
             if (!captured.carriesBeforeWindow(position)) {
                 return;
             }
-            Trade exit = position.getExit();
-            Num netExit = addCost(exit.getNetPrice(), holdingCost, isLong);
-            Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
+            Num costs = entry.getCost().plus(exit.getCost()).plus(priced.holdingCost());
+            Num deltaExit = positionPnl(exit.getPricePerAsset(), exit.getAmount(), entry.getValue(), costs, isLong);
             buffer.addRange(seriesBegin, lastCapturedIndex, deltaExit);
             buffer.addBaseline(deltaExit);
             return;
         }
 
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
-            Num basis = AnalysisPositionSupport.valuationBasis(this, barSeries, position, holdingCost, endIndex,
-                    seriesBegin);
-            Num netExit = AnalysisPositionSupport.markToMarket(this, barSeries, position, holdingCost, endIndex,
-                    seriesBegin, endIndex - 1, (index, netPrice, previousPrice) -> buffer.add(index,
-                            isLong ? netPrice.minus(basis) : basis.minus(netPrice)))
-                    .netPrice();
-            Num deltaExit = isLong ? netExit.minus(basis) : basis.minus(netExit);
+            boolean entryInWindow = entryIndex >= seriesBegin;
+            Num basisPrice = entryInWindow ? entry.getPricePerAsset() : barSeries.getBar(seriesBegin).getClosePrice();
+            Num basisValue = basisPrice.multipliedBy(amount);
+            Num basisCost = entryInWindow ? zero : priced.holdingCostAt(seriesBegin);
+            Num entryCost = entryInWindow ? entry.getCost() : zero;
+            long firstMarkIndex = (long) Math.max(entryIndex, seriesBegin) + 1L;
+            for (long index = firstMarkIndex; index < endIndex; index++) {
+                Num price = barSeries.getBar((int) index).getClosePrice();
+                Num costs = entryCost.plus(priced.holdingCostAt((int) index).minus(basisCost));
+                buffer.add((int) index, positionPnl(price, amount, basisValue, costs, isLong));
+            }
+            boolean exited = exit != null && exit.getIndex() <= endIndex;
+            Num exitPrice = exited ? exit.getPricePerAsset() : barSeries.getBar(endIndex).getClosePrice();
+            Num exitAmount = exited ? exit.getAmount() : amount;
+            Num exitCost = exited ? exit.getCost() : zero;
+            Num costs = entryCost.plus(exitCost).plus(priced.holdingCost().minus(basisCost));
+            Num deltaExit = positionPnl(exitPrice, exitAmount, basisValue, costs, isLong);
             buffer.addRange(endIndex, captured.bufferEndIndex(), deltaExit);
             return;
         }
 
-        Trade exit = position.getExit();
         if (exit != null && endIndex >= exit.getIndex()) {
-            Num netExit = addCost(exit.getNetPrice(), holdingCost, isLong);
-            Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
+            Num costs = entry.getCost().plus(exit.getCost()).plus(priced.holdingCost());
+            Num deltaExit = positionPnl(exit.getPricePerAsset(), exit.getAmount(), entry.getValue(), costs, isLong);
             buffer.addRange(exit.getIndex(), captured.bufferEndIndex(), deltaExit);
         }
+    }
+
+    private static Num positionPnl(Num price, Num amount, Num basisValue, Num costs, boolean isLong) {
+        Num markValue = price.multipliedBy(amount);
+        Num priceChange = isLong ? markValue.minus(basisValue) : basisValue.minus(markValue);
+        return priceChange.minus(costs);
     }
 
     /**

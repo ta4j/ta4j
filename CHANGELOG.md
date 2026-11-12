@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- **Settlement-timed, size-aware equity**: `CumulativePnL` scales gains and losses by position amount, while `CashFlow` and `Returns` apply holding costs per asset. Mark-to-market curves charge each settlement only when accrued, preserving paid or received funding and retained-window valuation bases without spreading future costs into earlier bars.
+
 - **Branch-first automatic release preparation**: the existing opt-in direct-release switch now validates exact release and next-snapshot commits before an atomic master promotion. Bound validation receipts, shared lifecycle serialization and publication checkpoints reject stale candidates and blind Maven redeploys; tags continue to identify the release commit. The switch remains off until separately activated, and the scheduler cadence is unchanged. Preserve the CF-756 / PR #1721 protection against publishing PR-only release trees after squash or rebase merges.
 - **Release merge barrier and scoped verification**: automatic releases retain the existing merge freeze through validation, promotion and publication, blocking both PR head and test-merge statuses without changing protection settings. Script/action fixtures now have a standalone gate and run only for relevant changes; ordinary Maven builds no longer execute them. The required CI aggregate checks every selected lane and the live freeze. Publication controllers use a sibling checkout so historical recovery builds scan only their candidate source.
 
