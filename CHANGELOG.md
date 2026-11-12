@@ -2,6 +2,8 @@
 
 ### Added
 
+- **Offline perpetual-futures backtests**: `PerpetualFuturesBacktest` combines leveraged sizing, contract-step rounding, fees, funding and a maintenance-margin stop approximation. `InversePerpetualFuturesBacktest` prices inverse contracts through reciprocal bars, including coin-denominated fees and funding. Both runnable examples report net profit, return on committed capital and absolute drawdown without network access.
+
 - **Returns on committed capital**: `ReturnOnCapitalCriterion` measures signed net profit against supplied capital rather than entry notional. Compare spot and leveraged strategies after transaction and holding costs, with additive decimal, multiplicative, percentage or logarithmic output. Arithmetic returns preserve losses beyond the committed capital. Capital follows the series' precision and rounding mode, with explicit rejection when its numeric type converts it to zero or infinity.
 
 - **Composable position sizing**: Scale balance, Kelly or custom sizing for leveraged exposure with `PositionSizer#leveraged`, then floor quantities to venue lot sizes or whole shares with `roundedDownTo`. Decimal parameters retain their precision, and exact lot multiples are preserved without rounding sub-lot quantities up.
