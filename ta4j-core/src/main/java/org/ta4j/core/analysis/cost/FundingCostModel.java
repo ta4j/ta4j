@@ -58,7 +58,8 @@ public final class FundingCostModel implements CostModel {
      *
      * @param fundingRate settlement rates; NaN denotes no settlement
      * @param markPrice   mark prices at the same absolute indices
-     * @throws NullPointerException if either indicator or its series is null
+     * @throws NullPointerException     if either indicator or its series is null
+     * @throws IllegalArgumentException if the series use incompatible numeric types
      * @since 0.28.1
      */
     public FundingCostModel(Indicator<Num> fundingRate, Indicator<Num> markPrice) {
@@ -66,6 +67,9 @@ public final class FundingCostModel implements CostModel {
         this.markPrice = Objects.requireNonNull(markPrice, "markPrice");
         Objects.requireNonNull(fundingRate.getBarSeries(), "fundingRate series");
         Objects.requireNonNull(markPrice.getBarSeries(), "markPrice series");
+        if (!fundingRate.getBarSeries().numFactory().produces(markPrice.getBarSeries().numFactory().one())) {
+            throw new IllegalArgumentException("Funding rates and mark prices must use compatible numeric types");
+        }
     }
 
     /**

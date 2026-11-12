@@ -50,6 +50,18 @@ class FundingCostModelTest {
 
     @ParameterizedTest
     @MethodSource("factories")
+    void rejectsIncompatibleRateAndMarkNumericTypes(NumFactory factory) {
+        NumFactory otherFactory = factory.produces(DoubleNumFactory.getInstance().one())
+                ? DecimalNumFactory.getInstance()
+                : DoubleNumFactory.getInstance();
+        BarSeries rates = new MockBarSeriesBuilder().withNumFactory(factory).withData(100, 110).build();
+        BarSeries marks = new MockBarSeriesBuilder().withNumFactory(otherFactory).withData(100, 110).build();
+        assertThrows(IllegalArgumentException.class,
+                () -> new FundingCostModel(new FixedNumIndicator(rates, 0, 0.001), new ClosePriceIndicator(marks)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("factories")
     void chargesBothSidesAtSettlementMarksWithinTheHoldingWindow(NumFactory factory) {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(100, 110, 120, 130, 140).build();
         FundingCostModel model = new FundingCostModel(new FixedNumIndicator(series, 0, 0.001, 0, 0.002, 0));
