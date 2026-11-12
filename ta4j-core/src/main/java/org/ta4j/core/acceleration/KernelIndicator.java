@@ -42,6 +42,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 public abstract class KernelIndicator<T> extends CachedIndicator<T> {
 
     private final Kernel kernel;
+    private final double approximateTolerance = AccelerationRuntime.approximateTolerance();
 
     /**
      * Creates a kernel indicator reading bars of {@code series} directly.
@@ -76,6 +77,23 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      */
     public final Kernel kernel() {
         return kernel;
+    }
+
+    /**
+     * Returns the accuracy contract captured when this indicator was created: the
+     * finite positive approximate tolerance, or {@code NaN} for exact,
+     * bitwise-identical results.
+     * <p>
+     * Provider batches for this indicator always use this contract, so values
+     * cached by the indicator never mix tolerances. Changing
+     * {@value AccelerationRuntime#APPROXIMATE_TOLERANCE_PROPERTY} later affects
+     * only indicators created afterwards.
+     *
+     * @return captured approximate tolerance, or {@code NaN} for exact execution
+     * @since 0.28.1
+     */
+    public final double approximateTolerance() {
+        return approximateTolerance;
     }
 
     /**

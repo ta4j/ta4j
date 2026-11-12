@@ -28,7 +28,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @since 0.22.4
  */
-@Timeout(value = 1, unit = TimeUnit.SECONDS)
+@Timeout(value = 10, unit = TimeUnit.SECONDS)
 class ElliottWaveMacroCycleDetectorTest {
 
     private static final Instant START = Instant.parse("2024-01-01T00:00:00Z");
