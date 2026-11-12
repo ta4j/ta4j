@@ -14,6 +14,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -86,12 +87,15 @@ public interface PositionSizer {
      * context's number factory. A {@code DoubleNum} amount is treated as aligned to
      * the next boundary if it is at most two representable double values and at
      * most one billionth of a step below that boundary. This corrects tiny
-     * floating-point drift; other values are floored.
+     * floating-point drift; other values are floored. A decimal result must
+     * represent the rounded quantity exactly without exceeding the requested amount.
      *
      * @param quantityStep positive, finite quantity increment
      * @return a quantity-step-rounded version of this sizer
      * @throws NullPointerException     if the step is null
-     * @throws IllegalArgumentException if the step is not positive and finite
+     * @throws IllegalArgumentException if the step is not positive and finite, or
+     *                                  the rounded quantity cannot be represented
+     *                                  safely by the decimal number factory
      * @since 0.28.1
      */
     default PositionSizer roundedDownTo(Number quantityStep) {
@@ -116,10 +120,16 @@ public interface PositionSizer {
                 double value = rawAmount.doubleValue();
                 double boundary = nextBoundary.doubleValue();
                 if (Double.isFinite(boundary) && boundary > value && boundary <= Math.nextUp(Math.nextUp(value))) {
-                    return context.numOf(nextBoundary);
+                    rounded = nextBoundary;
                 }
             }
-            return context.numOf(rounded);
+            Num result = context.numOf(rounded);
+            if (result instanceof DecimalNum
+                    && (result.bigDecimalValue().compareTo(rounded) != 0
+                            || result.bigDecimalValue().compareTo(quantity) > 0)) {
+                throw new IllegalArgumentException("Rounded amount cannot be represented by the decimal number factory");
+            }
+            return result;
         };
     }
 
