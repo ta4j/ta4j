@@ -29,10 +29,12 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.FundingCostModel;
+import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -127,7 +129,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 .withData(100d, 100d, 100d, 100d)
                 .build();
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
-                new FixedTransactionCostModel(1.5d));
+                new LinearBorrowingCostModel(0.01d, LinearBorrowingCostModel.Applicability.LONG_ONLY));
         record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
         record.exit(3, series.getBar(3).getClosePrice(), numFactory.one());
 
@@ -151,7 +153,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         rolling.setMaximumBarCount(3);
         rolling.barBuilder().closePrice(100d).add();
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
-                new FixedTransactionCostModel(4d));
+                new LinearBorrowingCostModel(0.01d, LinearBorrowingCostModel.Applicability.LONG_ONLY));
         record.enter(0, rolling.getBar(0).getClosePrice(), numFactory.one());
         rolling.barBuilder().closePrice(100d).add();
         rolling.barBuilder().closePrice(100d).add();
@@ -161,11 +163,9 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         Returns returns = new Returns(rolling, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
 
-        // 4 of holding cost over four held bars is 1 per bar. The window [2, 4]
-        // values the position at 100 - 2, leaving index 2 as the placeholder; the
-        // marks at 3 and 4 are 97 and 96, so each return carries one more period
-        // of cumulative carry: 97/98 - 1, then 96/97 - 1 (a per-mark reset would
-        // leave the second return at zero).
+        // Borrowing accrues one unit per held bar. The window [2, 4] starts
+        // with value 98; the next marks are 97 and 96, so the returns reflect
+        // one additional unit of carry at each mark.
         assertEquals(2, rolling.getBeginIndex());
         assertTrue(returns.getValue(2).isNaN());
         assertNumEquals(numFactory.numOf(97d).dividedBy(numFactory.numOf(98d)).minus(numFactory.one()),
@@ -173,6 +173,33 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(numFactory.numOf(96d).dividedBy(numFactory.numOf(97d)).minus(numFactory.one()),
                 returns.getValue(4), 1e-12);
         assertTrue(returns.getValue(4).isNegative());
+    }
+
+    @Test
+    public void retainedBasisUsesOnlyCostsSettledByWindowStart() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d, 100d)
+                .build();
+        BarSeries rates = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d, 100d)
+                .build();
+        var funding = new FundingCostModel(new FixedNumIndicator(rates, 0, 0, 0.02, 0, -0.05));
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), funding);
+        record.enter(0, numFactory.hundred(), numFactory.two());
+        record.exit(4, numFactory.hundred(), numFactory.two());
+        series.setMaximumBarCount(3);
+
+        Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        // At retained index 2 the position has paid 4, so its per-asset
+        // basis is 98. There is no settlement at 3; at 4 it receives 10,
+        // leaving a net credit of 6 and a final per-asset mark of 103.
+        assertEquals(2, series.getBeginIndex());
+        assertTrue(returns.getValue(2).isNaN());
+        assertNumEquals(numFactory.zero(), returns.getValue(3), 1e-12);
+        assertNumEquals(numFactory.numOf(103).dividedBy(numFactory.numOf(98)).minus(numFactory.one()),
+                returns.getValue(4), 1e-12);
     }
 
     @Test

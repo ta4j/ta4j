@@ -26,9 +26,11 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.FundingCostModel;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -137,12 +139,164 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
+    public void closedPositionMarkedBeforeExitExcludesFutureSettlements() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d, 100d, 100d)
+                .build();
+        var funding = new FundingCostModel(new FixedNumIndicator(series, 0, 0, 0.02, 0, -0.05, 0.1));
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), funding);
+        record.enter(0, numFactory.hundred(), numFactory.one());
+        record.exit(4, numFactory.hundred(), numFactory.one());
+
+        CumulativePnL throughTwo = new CumulativePnL(series, record, 2);
+        CumulativePnL throughExit = new CumulativePnL(series, record);
+
+        assertNumEquals(0, throughTwo.getValue(1));
+        assertNumEquals(-2, throughTwo.getValue(2));
+        assertNumEquals(throughTwo.getValue(2), throughExit.getValue(2));
+        assertNumEquals(-2, throughExit.getValue(3));
+        assertNumEquals(3, throughExit.getValue(4));
+        assertNumEquals(3, throughExit.getValue(5));
+    }
+
+    @Test
+    public void holdingCostUsesModelAtEachIndexRatherThanSmearingFinalCost() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
+                new FixedTransactionCostModel(1.5d));
+        record.enter(0, numFactory.hundred(), numFactory.one());
+        record.exit(3, numFactory.hundred(), numFactory.one());
+
+        CumulativePnL marked = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET);
+        assertNumEquals(-1.5d, marked.getValue(1));
+        assertNumEquals(-1.5d, marked.getValue(2));
+        assertNumEquals(-3d, marked.getValue(3));
+    }
+
+    @Test
+    public void sizedLongAndShortIncludeAccruedFundingAndTransactionFees() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d, 140d, 150d)
+                .build();
+        var funding = new FundingCostModel(new FixedNumIndicator(series, 0, 0.001, 0, 0.002, 0, 0));
+
+        for (TradeType side : TradeType.values()) {
+            BaseTradingRecord record = new BaseTradingRecord(side, new FixedTransactionCostModel(1d), funding);
+            record.enter(0, numFactory.numOf(100d), numFactory.two());
+            record.exit(4, numFactory.numOf(140d), numFactory.two());
+
+            CumulativePnL marked = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET);
+            CumulativePnL realized = new CumulativePnL(series, record, EquityCurveMode.REALIZED);
+            boolean isLong = side == TradeType.BUY;
+            assertNumEquals(isLong ? 18.78d : -20.78d, marked.getValue(1));
+            assertNumEquals(isLong ? 38.78d : -40.78d, marked.getValue(2));
+            assertNumEquals(isLong ? 58.26d : -60.26d, marked.getValue(3));
+            assertNumEquals(isLong ? 77.26d : -81.26d, marked.getValue(4));
+            assertNumEquals(marked.getValue(4), marked.getValue(5));
+            assertNumEquals(numFactory.zero(), realized.getValue(3));
+            assertNumEquals(marked.getValue(4), realized.getValue(4));
+            assertNumEquals(record.getPositions().get(0).getProfit(), marked.getValue(4), 1e-12);
+        }
+    }
+
+    @Test
+    public void sizedPnlDeductsWholeTradeFeesWithoutPerUnitRounding() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 101d).build();
+        var fees = new FixedTransactionCostModel(1d);
+        Position position = new Position(Trade.buyAt(0, numFactory.numOf(100d), numFactory.three(), fees),
+                Trade.sellAt(1, numFactory.numOf(101d), numFactory.three(), fees));
+
+        CumulativePnL marked = new CumulativePnL(series, position, EquityCurveMode.MARK_TO_MARKET);
+        CumulativePnL realized = new CumulativePnL(series, position, EquityCurveMode.REALIZED);
+        assertEquals(numFactory.one(), position.getProfit());
+        assertEquals(position.getProfit(), marked.getValue(1));
+        assertEquals(position.getProfit(), realized.getValue(1));
+    }
+
+    @Test
+    public void realizedPnlUsesTheActualAmountsOfBothTrades() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 120d).build();
+        Position position = new Position(Trade.buyAt(0, numFactory.numOf(100d), numFactory.three()),
+                Trade.sellAt(2, numFactory.numOf(120d), numFactory.one()));
+
+        CumulativePnL marked = new CumulativePnL(series, new BaseTradingRecord(), EquityCurveMode.MARK_TO_MARKET);
+        CumulativePnL realized = new CumulativePnL(series, new BaseTradingRecord(), EquityCurveMode.REALIZED);
+        marked.calculatePosition(position, 2);
+        realized.calculatePosition(position, 2);
+        assertNumEquals(30, marked.getValue(1));
+        assertNumEquals(-180, position.getProfit());
+        assertNumEquals(position.getProfit(), marked.getValue(2));
+        assertNumEquals(position.getProfit(), realized.getValue(2));
+    }
+
+    @Test
+    public void sizedPnlUsesRetainedBasisAndCarriesPreWindowRealizedProfit() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d, 140d, 150d)
+                .build();
+        var borrowing = new LinearBorrowingCostModel(0.01d, LinearBorrowingCostModel.Applicability.LONG_ONLY);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new FixedTransactionCostModel(1d), borrowing);
+        record.enter(0, numFactory.numOf(100d), numFactory.two());
+        record.exit(4, numFactory.numOf(140d), numFactory.two());
+
+        CumulativePnL fullHistory = new CumulativePnL(series, record);
+        assertNumEquals(70, fullHistory.getValue(4));
+        series.setMaximumBarCount(4);
+        CumulativePnL retained = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET);
+        assertNumEquals(0, retained.getValue(2));
+        assertNumEquals(18, retained.getValue(3));
+        assertNumEquals(35, retained.getValue(4));
+        assertNumEquals(35, retained.getValue(5));
+
+        series.setMaximumBarCount(1);
+        CumulativePnL carried = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET);
+        assertNumEquals(70, carried.getBaselineValue());
+        assertNumEquals(70, carried.getValue(5));
+    }
+
+    @Test
+    public void stagedPartialExitsUseLotAmountsAndAllocatedFees() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, numFactory.numOf(100d), numFactory.three(), numFactory.numOf(3d),
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(2, Instant.EPOCH, numFactory.numOf(120d), numFactory.one(), numFactory.one(),
+                ExecutionSide.SELL, null, null));
+        record.operate(new BaseTrade(3, Instant.EPOCH, numFactory.numOf(130d), numFactory.two(), numFactory.two(),
+                ExecutionSide.SELL, null, null));
+
+        CumulativePnL marked = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET);
+        CumulativePnL realized = new CumulativePnL(series, record, EquityCurveMode.REALIZED);
+        assertNumEquals(27, marked.getValue(1));
+        assertNumEquals(56, marked.getValue(2));
+        assertNumEquals(74, marked.getValue(3));
+        assertNumEquals(0, realized.getValue(1));
+        assertNumEquals(18, realized.getValue(2));
+        assertNumEquals(74, realized.getValue(3));
+        assertNumEquals(record.getPositions().get(0).getProfit().plus(record.getPositions().get(1).getProfit()),
+                marked.getValue(3));
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            CumulativePnL incremental = new CumulativePnL(series, new BaseTradingRecord(), mode);
+            for (Position position : record.getPositions()) {
+                incremental.calculatePosition(position, series.getEndIndex());
+            }
+            assertSameValues(mode == EquityCurveMode.MARK_TO_MARKET ? marked : realized, incremental);
+        }
+    }
+
+    @Test
     public void retainedHeadNetsPreWindowHoldingPeriodsOutOfTheValuationBasis() {
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);
         rolling.barBuilder().closePrice(100d).add();
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
-                new FixedTransactionCostModel(4d));
+                new LinearBorrowingCostModel(4d / 300d, LinearBorrowingCostModel.Applicability.LONG_ONLY));
         record.enter(0, rolling.getBar(0).getClosePrice(), numFactory.one());
         rolling.barBuilder().closePrice(110d).add();
         rolling.barBuilder().closePrice(120d).add();
@@ -151,11 +305,9 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
         CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
 
-        // 4 of holding cost over three held bars accrues 4/3 per bar. The window
-        // [2, 3] values the position at 120 net of the two periods accrued by
-        // index 2 (120 - 8/3), so its first level is zero; the mark at 3 is
-        // 130 - 4, adding the 10 price move less one period of carry (4/3). A
-        // basis that ignored pre-window carry would charge all 4 at index 3.
+        // Borrowing accrues 4/3 per bar. The window [2, 3] values the position
+        // at 120 less the 8/3 accrued by index 2; its first level is zero and
+        // the next level adds the 10 price move less one period of carry.
         Num averageCost = numFactory.numOf(4d).dividedBy(numFactory.numOf(3));
         assertNumEquals(numFactory.zero(), pnl.getValue(2), 1e-12);
         Num expectedNext = numFactory.numOf(10d).minus(averageCost);
@@ -168,15 +320,14 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
                 .withData(100d, 100d, 100d, 100d)
                 .build();
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
-                new FixedTransactionCostModel(1.5d));
+                new LinearBorrowingCostModel(0.01d, LinearBorrowingCostModel.Applicability.LONG_ONLY));
         record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
         record.exit(3, series.getBar(3).getClosePrice(), numFactory.one());
 
         CumulativePnL markToMarket = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET);
         CumulativePnL realized = new CumulativePnL(series, record, EquityCurveMode.REALIZED);
 
-        // A 1.5 fee per trade makes 3.0 of holding cost over three bars; it
-        // accrues one unit per held bar instead of one average period per mark.
+        // Borrowing accrues one unit on the 100 entry value per held bar.
         assertNumEquals(-1, markToMarket.getValue(1));
         assertNumEquals(-2, markToMarket.getValue(2));
         assertNumEquals(-3, markToMarket.getValue(3));
@@ -189,7 +340,7 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         rolling.setMaximumBarCount(3);
         rolling.barBuilder().closePrice(100d).add();
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
-                new FixedTransactionCostModel(4d));
+                new LinearBorrowingCostModel(0.01d, LinearBorrowingCostModel.Applicability.LONG_ONLY));
         record.enter(0, rolling.getBar(0).getClosePrice(), numFactory.one());
         rolling.barBuilder().closePrice(100d).add();
         rolling.barBuilder().closePrice(100d).add();
@@ -198,9 +349,8 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
         CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
 
-        // 4 of holding cost over four held bars is 1 per bar. The window [2, 4]
-        // starts at 100 - 2; the marks at 3 and 4 are 97 and 96, so P&L keeps
-        // accumulating carry (-1, then -2) instead of resetting per mark.
+        // Borrowing accrues one unit per bar. In the window [2, 4], the marks
+        // therefore keep accumulating carry (-1, then -2) from the window basis.
         assertEquals(2, rolling.getBeginIndex());
         assertNumEquals(numFactory.zero(), pnl.getValue(2), 1e-12);
         assertNumEquals(numFactory.numOf(-1d), pnl.getValue(3), 1e-12);

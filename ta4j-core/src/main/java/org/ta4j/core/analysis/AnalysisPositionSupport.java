@@ -18,7 +18,6 @@ import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 final class AnalysisPositionSupport {
 
@@ -127,7 +126,7 @@ final class AnalysisPositionSupport {
 
     /**
      * Builds a curve over a captured window from bar data and precomputed holding
-     * costs.
+     * costs, without invoking a cost model in the curve builder's read scope.
      */
     @FunctionalInterface
     interface CurveBuilder<T> {
@@ -137,11 +136,11 @@ final class AnalysisPositionSupport {
          *
          * @param window       the captured window
          * @param positions    the positions to analyse
-         * @param holdingCosts each analysed position's holding cost through its end
-         *                     index, keyed by identity
+         * @param holdingCosts each analysed position's indexed holding costs, keyed by
+         *                     identity
          * @return the built curve
          */
-        T build(Window window, List<Position> positions, Map<Position, Num> holdingCosts);
+        T build(Window window, List<Position> positions, Map<Position, PricedPosition> holdingCosts);
     }
 
     /**
@@ -177,11 +176,11 @@ final class AnalysisPositionSupport {
             Window window = preWindowBegin < bounds.beginIndex()
                     ? bounds.withCostBars(series.withReadLock(() -> capturePreWindow(series, bounds, preWindowBegin)))
                     : bounds;
-            Map<Position, Num> holdingCosts = new IdentityHashMap<>();
+            Map<Position, PricedPosition> holdingCosts = new IdentityHashMap<>();
             for (Position position : positions) {
-                Num holdingCost = holdingCostInWindow(curve, position, window.finalIndex(), window, carryPrunedHistory);
-                if (holdingCost != null) {
-                    holdingCosts.put(position, holdingCost);
+                int endIndex = pricedEndIndex(curve, position, window.finalIndex(), window, carryPrunedHistory);
+                if (endIndex >= 0) {
+                    holdingCosts.put(position, priceHoldingCosts(curve, position, endIndex, window, null));
                 }
             }
             T built = series.withReadLock(() -> {
@@ -261,9 +260,26 @@ final class AnalysisPositionSupport {
     }
 
     /**
-     * A position's holding cost with the bars before the window it was read from.
+     * A position's total holding costs and the pre-window bars they were read from.
+     * Indexed costs are materialization-local, not a persistent cache.
      */
-    record PricedPosition(Num holdingCost, BarWindowSnapshot costBars) {
+    record PricedPosition(Num holdingCost, int firstIndex, Num[] indexedHoldingCosts, BarWindowSnapshot costBars) {
+
+        Num holdingCostAt(int index) {
+            return indexedHoldingCosts == null ? holdingCost : indexedHoldingCosts[index - firstIndex];
+        }
+
+        Num holdingCostPerAsset(Num amount) {
+            return perAsset(holdingCost, amount);
+        }
+
+        Num holdingCostPerAssetAt(int index, Num amount) {
+            return perAsset(holdingCostAt(index), amount);
+        }
+
+        private static Num perAsset(Num cost, Num amount) {
+            return amount.isZero() ? amount.getNumFactory().zero() : cost.dividedBy(amount);
+        }
 
         boolean isUnchangedIn(BarSeries series, Window window) {
             return window.isUnchangedIn(series) && (costBars == null || costBars.isUnchangedIn(series));
@@ -296,26 +312,27 @@ final class AnalysisPositionSupport {
         BarWindowSnapshot costBars = entryIndex < window.beginIndex() && readsBars(position.getHoldingCostModel())
                 ? series.withReadLock(() -> capturePreWindow(series, window, entryIndex))
                 : null;
-        return new PricedPosition(holdingCostThrough(position, endIndex), costBars);
+        return priceHoldingCosts(curve, position, endIndex, window, costBars);
     }
 
     /**
-     * Returns the holding cost a curve charges a position, or {@code null} when the
-     * position does not reach the captured window. Historical realized positions
-     * are priced only by curves that carry retained history.
-     *
-     * @param curve              the curve supplying the end-index convention
-     * @param position           the position
-     * @param finalIndex         index open positions are marked through
-     * @param window             the captured window
-     * @param carryPrunedHistory whether realized positions lost to pruning are
-     *                           carried into the curve
-     * @return the holding cost through the position's end in the window, or null
+     * Prices each mark outside the series read lock. The indexed-cost API lets
+     * settlement models supply all cumulative marks in one pass while preserving
+     * the generic fallback for existing models.
      */
-    static Num holdingCostInWindow(PerformanceIndicator curve, Position position, int finalIndex, Window window,
-            boolean carryPrunedHistory) {
-        int endIndex = pricedEndIndex(curve, position, finalIndex, window, carryPrunedHistory);
-        return endIndex < 0 ? null : holdingCostThrough(position, endIndex);
+    private static PricedPosition priceHoldingCosts(PerformanceIndicator curve, Position position, int endIndex,
+            Window window, BarWindowSnapshot costBars) {
+        if (curve.getEquityCurveMode() != EquityCurveMode.MARK_TO_MARKET || endIndex < window.beginIndex()
+                || position.getHoldingCostModel().getClass() == ZeroCostModel.class) {
+            return new PricedPosition(holdingCostThrough(position, endIndex), 0, null, costBars);
+        }
+        int entryIndex = position.getEntry().getIndex();
+        long first = entryIndex < window.beginIndex() ? window.beginIndex() : (long) entryIndex + 1;
+        if (first > endIndex) {
+            return new PricedPosition(holdingCostThrough(position, endIndex), 0, null, costBars);
+        }
+        Num[] costs = position.getHoldingCostModel().calculate(position, (int) first, endIndex);
+        return new PricedPosition(costs[costs.length - 1], (int) first, costs, costBars);
     }
 
     /**
@@ -393,27 +410,18 @@ final class AnalysisPositionSupport {
      * @param curve            the curve supplying cost conventions
      * @param series           the analysed series
      * @param position         the position, with an entry
-     * @param holdingCost      the position's holding cost through {@code endIndex}
-     * @param endIndex         the exit or final marked index
+     * @param priced           the position's precomputed total holding costs
      * @param windowStartIndex the window's first index
      * @return the valuation basis
      */
-    static Num valuationBasis(PerformanceIndicator curve, BarSeries series, Position position, Num holdingCost,
-            int endIndex, int windowStartIndex) {
+    static Num valuationBasis(PerformanceIndicator curve, BarSeries series, Position position, PricedPosition priced,
+            int windowStartIndex) {
         Trade entry = position.getEntry();
-        int entryIndex = entry.getIndex();
-        if (entryIndex >= windowStartIndex) {
+        if (entry.getIndex() >= windowStartIndex) {
             return entry.getNetPrice();
         }
-        NumFactory numFactory = series.numFactory();
-        Num accruedCost = costPerPeriod(holdingCost, entryIndex, endIndex, numFactory)
-                .multipliedBy(numFactory.numOf((long) windowStartIndex - entryIndex));
-        return curve.addCost(series.getBar(windowStartIndex).getClosePrice(), accruedCost, entry.isBuy());
-    }
-
-    private static Num costPerPeriod(Num holdingCost, int entryIndex, int endIndex, NumFactory numFactory) {
-        long heldPeriods = (long) endIndex - entryIndex;
-        return heldPeriods <= 0L ? numFactory.zero() : holdingCost.dividedBy(numFactory.numOf(heldPeriods));
+        return curve.addCost(series.getBar(windowStartIndex).getClosePrice(),
+                priced.holdingCostPerAssetAt(windowStartIndex, entry.getAmount()), entry.isBuy());
     }
 
     /**
@@ -429,30 +437,28 @@ final class AnalysisPositionSupport {
      * @param curve            the curve supplying cost conventions
      * @param series           the analysed series
      * @param position         the position, with an entry
-     * @param holdingCost      the position's holding cost through {@code endIndex}
+     * @param priced           the position's precomputed total holding costs
      * @param endIndex         the exit or final marked index
      * @param windowStartIndex the window's first index
      * @param lastMarkIndex    last index that may be marked before the exit
      * @param marks            receives each intermediate mark in index order
      * @return the exit mark
      */
-    static ExitMark markToMarket(PerformanceIndicator curve, BarSeries series, Position position, Num holdingCost,
+    static ExitMark markToMarket(PerformanceIndicator curve, BarSeries series, Position position, PricedPosition priced,
             int endIndex, int windowStartIndex, int lastMarkIndex, MarkConsumer marks) {
-        NumFactory numFactory = series.numFactory();
         Trade entry = position.getEntry();
         boolean isLong = entry.isBuy();
         int entryIndex = entry.getIndex();
-        Num costPerPeriod = costPerPeriod(holdingCost, entryIndex, endIndex, numFactory);
-        Num previousPrice = valuationBasis(curve, series, position, holdingCost, endIndex, windowStartIndex);
+        Num previousPrice = valuationBasis(curve, series, position, priced, windowStartIndex);
         long firstMarkIndex = (long) Math.max(entryIndex, windowStartIndex) + 1L;
         for (long index = firstMarkIndex; index < endIndex && index <= lastMarkIndex; index++) {
-            Num accruedCost = costPerPeriod.multipliedBy(numFactory.numOf(index - entryIndex));
-            Num netPrice = curve.addCost(series.getBar((int) index).getClosePrice(), accruedCost, isLong);
+            Num netPrice = curve.addCost(series.getBar((int) index).getClosePrice(),
+                    priced.holdingCostPerAssetAt((int) index, entry.getAmount()), isLong);
             marks.accept((int) index, netPrice, previousPrice);
             previousPrice = netPrice;
         }
-        Num accruedExitCost = costPerPeriod.multipliedBy(numFactory.numOf((long) endIndex - entryIndex));
-        Num netExitPrice = curve.addCost(curve.resolveExitPrice(position, endIndex, series), accruedExitCost, isLong);
+        Num netExitPrice = curve.addCost(curve.resolveExitPrice(position, endIndex, series),
+                priced.holdingCostPerAsset(entry.getAmount()), isLong);
         return new ExitMark(netExitPrice, previousPrice);
     }
 
