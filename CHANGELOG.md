@@ -2,6 +2,8 @@
 
 ### Added
 
+- **Actual holding-cost accounting**: `TradingRecord.recordHoldingCost` adds paid settlements and received credits to modeled costs, allocates them across open lots, and preserves their shares through partial closes, saved records and analysis windows. Indexed profit and equity exclude future settlements. `PerpetualFuturesFillRecordingExample` reconciles confirmed fill fees and funding; `PerpetualFuturesRecipes` covers custom fees, historical rates, entry guards, contract conversion and capital-relative risk.
+
 - **Offline perpetual-futures backtests**: `PerpetualFuturesBacktest` combines leveraged sizing, contract-step rounding, fees, funding and a maintenance-margin stop approximation. `InversePerpetualFuturesBacktest` prices inverse contracts through reciprocal bars, including coin-denominated fees and funding. Both runnable examples report net profit, return on committed capital and absolute drawdown without network access.
 
 - **Returns on committed capital**: `ReturnOnCapitalCriterion` measures signed net profit against supplied capital rather than entry notional. Compare spot and leveraged strategies after transaction and holding costs, with additive decimal, multiplicative, percentage or logarithmic output. Arithmetic returns preserve losses beyond the committed capital. Capital follows the series' precision and rounding mode, with explicit rejection when its numeric type converts it to zero or infinity.

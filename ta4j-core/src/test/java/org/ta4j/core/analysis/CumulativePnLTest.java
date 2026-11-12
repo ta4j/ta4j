@@ -1048,6 +1048,24 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
+    public void recordedSettlementsReachEquityOnlyAtTheirIndices() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.operate(Trade.buyAt(0, series, numFactory.two()));
+        record.recordHoldingCost(2, numFactory.numOf(6));
+        record.recordHoldingCost(3, numFactory.numOf(-2));
+        record.operate(Trade.sellAt(3, series, numFactory.two()));
+        CumulativePnL curve = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        assertNumEquals(0, curve.getValue(0));
+        assertNumEquals(20, curve.getValue(1));
+        assertNumEquals(34, curve.getValue(2));
+        assertNumEquals(56, curve.getValue(3));
+    }
+
+    @Test
     public void rejectsAnIncrementalPositionWhoseHoldingCostReadsABarThatChangedBeforeTheWindow() {
         PreWindowCostRace race = new PreWindowCostRace(numFactory);
         CumulativePnL curve = new CumulativePnL(race.series(), race.emptyRecord());
