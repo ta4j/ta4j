@@ -4,6 +4,8 @@
 package org.ta4j.core.backtest;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
@@ -73,7 +75,9 @@ public interface PositionSizer {
      *
      * <p>
      * An amount smaller than one step becomes zero. Apply this decorator after
-     * {@link #leveraged(Number)} to round the final order quantity.
+     * {@link #leveraged(Number)} to round the final order quantity. Quantization
+     * uses decimal values before converting the result with the context's number
+     * factory, preserving amounts already aligned to the step.
      *
      * @param quantityStep positive, finite quantity increment
      * @return a quantity-step-rounded version of this sizer
@@ -83,9 +87,16 @@ public interface PositionSizer {
      */
     default PositionSizer roundedDownTo(Number quantityStep) {
         Number fixedStep = snapshotNumber(quantityStep, "quantityStep");
+        BigDecimal step = fixedStep instanceof BigDecimal decimal ? decimal : new BigDecimal(fixedStep.toString());
         return context -> {
-            Num step = context.numOf(fixedStep);
-            return amount(context).dividedBy(step).floor().multipliedBy(step);
+            Num rawAmount = amount(context);
+            if (!Num.isFinite(rawAmount) || !rawAmount.isPositive()) {
+                return rawAmount;
+            }
+            // Num division can round across a lot boundary before floor is applied.
+            BigDecimal quantity = rawAmount.bigDecimalValue();
+            BigDecimal remainder = quantity.remainder(step);
+            return remainder.signum() == 0 ? rawAmount : context.numOf(quantity.subtract(remainder));
         };
     }
 
@@ -213,7 +224,7 @@ public interface PositionSizer {
 
     private static Number snapshotNumber(Number value, String name) {
         validatePositiveNumber(value, name);
-        return Double.valueOf(value.doubleValue());
+        return value instanceof BigDecimal || value instanceof BigInteger ? value : Double.valueOf(value.doubleValue());
     }
 
     private static void validateProbability(Number value, String name) {

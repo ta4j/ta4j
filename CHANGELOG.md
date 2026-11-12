@@ -2,7 +2,7 @@
 
 ### Added
 
-- **Composable position sizing**: Scale balance, Kelly or custom sizing for leveraged exposure with `PositionSizer#leveraged`, then floor quantities to venue lot sizes or whole shares with `roundedDownTo`.
+- **Composable position sizing**: Scale balance, Kelly or custom sizing for leveraged exposure with `PositionSizer#leveraged`, then floor quantities to venue lot sizes or whole shares with `roundedDownTo`. Decimal parameters retain their precision, and exact lot multiples are preserved without rounding sub-lot quantities up.
 
 - **Funding-aware position results**: `FundingCostModel` applies historical settlement rates and mark prices through the existing holding-cost API. Model long payments and short credits, use UTC-aligned fixed schedules across gaps or larger bars, and evaluate funded positions with the existing profit and equity curves. `CostModel.calculate(position, firstIndex, finalIndex)` supplies cumulative indexed costs with a default fallback; funding builds those marks in one uncached pass. Separate rate and mark series must use compatible numeric types.
 
