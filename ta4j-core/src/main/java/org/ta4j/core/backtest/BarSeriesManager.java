@@ -430,7 +430,7 @@ public class BarSeriesManager {
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
             int finishIndex) {
         Objects.requireNonNull(amount, "amount");
-        return run(strategy, tradingRecord, startIndex, finishIndex, (index, runSeries) -> amount);
+        return run(strategy, tradingRecord, startIndex, finishIndex, (index, runSeries) -> amount, false);
     }
 
     /**
@@ -620,7 +620,8 @@ public class BarSeriesManager {
         TradeType runTradeType = tradingRecord.getStartingType();
         return run(strategy, tradingRecord, startIndex, finishIndex,
                 (index, runSeries) -> amountForNextOperation(positionSizer, index, strategy, tradingRecord,
-                        runTradeType, runSeries));
+                        runTradeType, runSeries),
+                true);
     }
 
     /**
@@ -632,7 +633,7 @@ public class BarSeriesManager {
      * saw.
      */
     private TradingRecord run(Strategy strategy, TradingRecord tradingRecord, int startIndex, int finishIndex,
-            AmountResolver amountResolver) {
+            AmountResolver amountResolver, boolean skipZeroEntries) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradingRecord, "tradingRecord");
         Objects.requireNonNull(amountResolver, "amountResolver");
@@ -657,7 +658,12 @@ public class BarSeriesManager {
                     tradeExecutionModel.onBar(i, tradingRecord, runSeries);
                     // For each bar between both indexes...
                     if (strategy.shouldOperate(i, tradingRecord)) {
-                        tradeExecutionModel.execute(i, tradingRecord, runSeries, amountResolver.amount(i, runSeries));
+                        Num amount = amountResolver.amount(i, runSeries);
+                        if (skipZeroEntries && tradingRecord.isClosed() && amount.isZero()) {
+                            log.trace("Skipping entry at index {} because the position sizer returned zero", i);
+                        } else {
+                            tradeExecutionModel.execute(i, tradingRecord, runSeries, amount);
+                        }
                     }
                     if (i == runEndIndex) {
                         break;
@@ -678,6 +684,9 @@ public class BarSeriesManager {
     private Num amountForIndex(PositionSizer positionSizer, int index, Strategy strategy, TradingRecord tradingRecord,
             TradeType tradeType, BarSeries runSeries) {
         Num amount = positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType, runSeries));
+        if (amount != null && amount.isZero()) {
+            return amount;
+        }
         validateAmount(amount);
         return amount;
     }

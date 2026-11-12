@@ -37,10 +37,11 @@ public interface PositionSizer {
      * Returns the amount used to open a new position.
      *
      * <p>
-     * Implementations must return a positive, finite {@link Num} compatible with
-     * {@link Context#numFactory()}. Factory-created sizers validate their
-     * constructor inputs eagerly; custom implementations are responsible for
-     * honoring this contract when they are called.
+     * Implementations must return a non-negative, finite {@link Num} compatible
+     * with {@link Context#numFactory()}. Zero skips the entry without submitting an
+     * order; the run continues. Factory-created sizers validate their constructor
+     * inputs eagerly; custom implementations are responsible for honoring this
+     * contract when they are called.
      * </p>
      *
      * @param context entry sizing context
@@ -48,6 +49,45 @@ public interface PositionSizer {
      * @since 0.22.9
      */
     Num amount(Context context);
+
+    /**
+     * Multiplies this sizer's amount by the supplied leverage.
+     *
+     * <p>
+     * With {@link #balance(Number)}, the balance acts as margin. Transaction fees
+     * on the leveraged notional reduce profit; they are not reserved from margin.
+     *
+     * @param leverage positive, finite amount multiplier
+     * @return a leveraged version of this sizer
+     * @throws NullPointerException     if leverage is null
+     * @throws IllegalArgumentException if leverage is not positive and finite
+     * @since 0.28.1
+     */
+    default PositionSizer leveraged(Number leverage) {
+        Number fixedLeverage = snapshotNumber(leverage, "leverage");
+        return context -> amount(context).multipliedBy(context.numOf(fixedLeverage));
+    }
+
+    /**
+     * Floors this sizer's amount to a multiple of the supplied quantity step.
+     *
+     * <p>
+     * An amount smaller than one step becomes zero. Apply this decorator after
+     * {@link #leveraged(Number)} to round the final order quantity.
+     *
+     * @param quantityStep positive, finite quantity increment
+     * @return a quantity-step-rounded version of this sizer
+     * @throws NullPointerException     if the step is null
+     * @throws IllegalArgumentException if the step is not positive and finite
+     * @since 0.28.1
+     */
+    default PositionSizer roundedDownTo(Number quantityStep) {
+        Number fixedStep = snapshotNumber(quantityStep, "quantityStep");
+        return context -> {
+            Num step = context.numOf(fixedStep);
+            return amount(context).dividedBy(step).floor().multipliedBy(step);
+        };
+    }
 
     /**
      * Returns a position sizer that opens one unit.
