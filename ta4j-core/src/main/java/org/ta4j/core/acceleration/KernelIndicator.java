@@ -42,7 +42,9 @@ import org.ta4j.core.indicators.CachedIndicator;
 public abstract class KernelIndicator<T> extends CachedIndicator<T> {
 
     private final Kernel kernel;
-    private final double approximateTolerance = AccelerationRuntime.approximateTolerance();
+    // Runtime execution policy, not an indicator parameter: transient keeps it out
+    // of descriptor serialization, and a deserialized instance captures it anew.
+    private transient Double approximateTolerance = AccelerationRuntime.approximateTolerance();
 
     /**
      * Creates a kernel indicator reading bars of {@code series} directly.
@@ -93,7 +95,12 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      * @since 0.28.1
      */
     public final double approximateTolerance() {
-        return approximateTolerance;
+        Double captured = approximateTolerance;
+        if (captured == null) {
+            captured = AccelerationRuntime.approximateTolerance();
+            approximateTolerance = captured;
+        }
+        return captured;
     }
 
     /**

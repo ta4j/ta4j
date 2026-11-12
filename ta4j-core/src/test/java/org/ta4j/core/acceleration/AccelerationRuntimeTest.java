@@ -928,6 +928,18 @@ class AccelerationRuntimeTest {
     }
 
     @Test
+    void capturedAccuracyContractStaysOutOfIndicatorSerialization() {
+        BarSeries series = longSeries();
+        MonteCarloPriceForecastIndicator exact = longForecast(series);
+        System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, "0.001");
+        MonteCarloPriceForecastIndicator approximate = longForecast(series);
+
+        String exactJson = exact.toJson();
+        assertFalse(exactJson.contains("approximateTolerance"), exactJson);
+        assertEquals(exactJson, approximate.toJson());
+    }
+
+    @Test
     void warmUpReadsStayScalarWithoutDisablingLaterAcceleration() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
         BarSeries series = longSeries();

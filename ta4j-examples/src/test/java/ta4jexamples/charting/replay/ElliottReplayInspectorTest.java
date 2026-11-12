@@ -359,22 +359,21 @@ class ElliottReplayInspectorTest {
 
         final Result direct = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
                 link.toString());
-        assertEquals(0, direct.status(), direct.err());
-        assertTrue(Files.isRegularFile(sub.resolve("frame-36.json")), sub.toString());
-        Assumptions.assumeTrue(dotDotFollowsLinks(),
-                "Windows collapses 'link\\..' lexically, so '..' never goes through the link target there");
         final Result sibling = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
                 link.resolve("..").resolve("exports").toString());
 
         assertEquals(0, direct.status(), direct.err());
         assertEquals(0, sibling.status(), sibling.err());
-        final Path exports = elsewhere.resolve("exports");
+        // POSIX applies ".." after following the link, so it leaves the link target;
+        // Windows collapses "link\\.." lexically, so it stays in the link's directory.
+        final Path exports = dotDotFollowsLinks() ? elsewhere.resolve("exports") : temp.resolve("exports");
         for (final Path directory : List.of(sub, exports)) {
             assertTrue(Files.isRegularFile(directory.resolve("frame-36.json")), directory.toString());
             assertTrue(Files.isRegularFile(directory.resolve("frame-36.txt")), directory.toString());
             assertNotNull(ImageIO.read(directory.resolve("frame-36.jpg").toFile()), directory.toString());
         }
-        assertFalse(Files.exists(temp.resolve("exports")), "'..' leaves the link target, not the link's directory");
+        final Path unexpected = dotDotFollowsLinks() ? temp.resolve("exports") : elsewhere.resolve("exports");
+        assertFalse(Files.exists(unexpected), "'..' must resolve the way this platform's file system does");
         assertTrue(sibling.out().contains(exports.toRealPath().resolve("frame-36.json").toString()), sibling.out());
     }
 
