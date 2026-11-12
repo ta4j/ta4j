@@ -427,6 +427,8 @@ public class BaseTradingRecord implements TradingRecord {
      * @apiNote Recorded costs are added to the configured holding cost model's
      *          costs. When live settlements are authoritative, configure a
      *          {@link ZeroCostModel} to avoid double counting.
+     *          A nonzero settlement advances the automatic fill index past its
+     *          index, unless a later index has already been assigned.
      *
      * @since 0.28.1
      */
@@ -442,6 +444,7 @@ public class BaseTradingRecord implements TradingRecord {
                 return;
             }
             positionBook.recordHoldingCost(index, cost);
+            nextTradeIndex = Math.max(nextTradeIndex, index + 1);
             modificationCount++;
         } finally {
             lock.writeLock().unlock();
@@ -1354,7 +1357,10 @@ public class BaseTradingRecord implements TradingRecord {
                 totalAmount = totalAmount == null ? lot.amount() : totalAmount.plus(lot.amount());
                 totalCost = totalCost == null ? lotCost : totalCost.plus(lotCost);
                 totalFees = totalFees == null ? lot.fee() : totalFees.plus(lot.fee());
-                holdingCosts = mergeHoldingCosts(holdingCosts, lot.holdingCosts);
+                if (!lot.holdingCosts.isEmpty()) {
+                    holdingCosts = holdingCosts.isEmpty() ? lot.holdingCosts
+                            : mergeHoldingCosts(holdingCosts, lot.holdingCosts);
+                }
                 if (lot.entryTime() == null) {
                     hasUnknownEntryTime = true;
                 } else if (!hasUnknownEntryTime && (earliest == null || lot.entryTime().isBefore(earliest))) {
