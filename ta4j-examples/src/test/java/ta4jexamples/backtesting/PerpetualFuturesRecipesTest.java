@@ -17,7 +17,9 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.FixedNumIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 class PerpetualFuturesRecipesTest {
@@ -47,6 +49,12 @@ class PerpetualFuturesRecipesTest {
         assertTrue(strategy.shouldEnter(0));
         Indicator<Num> expensive = new FixedNumIndicator(series, 0.001, 0, 0, 0, 0);
         assertFalse(PerpetualFuturesRecipes.fundingAwareStrategy(series, expensive).shouldEnter(0));
+        Indicator<Num> absent = new FixedNumIndicator(series, 0, 0, 0, 0, 0);
+        assertFalse(PerpetualFuturesRecipes.fundingAwareStrategy(series, absent).shouldEnter(0));
+        Indicator<Num> unknown = new ConstantIndicator<>(series, NaN.NaN);
+        assertFalse(PerpetualFuturesRecipes.fundingAwareStrategy(series, unknown).shouldEnter(0));
+        Indicator<Num> credit = new FixedNumIndicator(series, -0.001, 0, 0, 0, 0);
+        assertTrue(PerpetualFuturesRecipes.fundingAwareStrategy(series, credit).shouldEnter(0));
         TradingRecord record = PerpetualFuturesRecipes.run(series, strategy, new ZeroCostModel(),
                 PerpetualFuturesRecipes.historicalFunding(series, rates), 2, 1, new BigDecimal("0.001"));
         Position position = record.getPositions().getFirst();

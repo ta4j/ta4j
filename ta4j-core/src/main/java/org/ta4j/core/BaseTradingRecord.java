@@ -207,6 +207,10 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
+     * <p>
+     * Preserves recorded holding-cost allocations while using zero modeled costs.
+     * Recorded costs remain attached to their original lots.
+     *
      * @param positions positions to record (must not be empty)
      * @since 0.22.2
      */
@@ -238,7 +242,15 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private static RecordConfig positionsConfig(List<Position> positions) {
-        return tradesConfig(new ZeroCostModel(), new ZeroCostModel(), positionsToTrades(positions));
+        Objects.requireNonNull(positions, "positions must not be null");
+        if (positions.isEmpty()) {
+            throw new IllegalArgumentException("At least one position is required");
+        }
+        BaseTradingRecord initialized = new BaseTradingRecord(entryOf(positions.getFirst()).getType());
+        for (Position position : positions) {
+            initialized.recordProjectedPosition(position, Integer.MAX_VALUE);
+        }
+        return initialized.toRecordConfig();
     }
 
     private static RecordConfig tradesConfig(Trade... trades) {
@@ -408,8 +420,8 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public void recordHoldingCost(int index, Num cost) {
         Objects.requireNonNull(cost, "cost");
-        if (cost.isNaN()) {
-            throw new IllegalArgumentException("cost must not be NaN");
+        if (!Num.isFinite(cost)) {
+            throw new IllegalArgumentException("cost must be finite");
         }
         lock.writeLock().lock();
         try {
@@ -424,17 +436,25 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     void recordProjectedPosition(Position position, int finalIndex) {
-        operate(position.getEntry());
-        if (position.getHoldingCostModel() instanceof RecordedHoldingCostModel recorded) {
-            for (IndexedHoldingCost cost : recorded.costs) {
-                if (cost.index() > finalIndex) {
-                    break;
+        lock.writeLock().lock();
+        try {
+            operate(entryOf(position));
+            if (position.getHoldingCostModel() instanceof RecordedHoldingCostModel recorded) {
+                PositionBook.PositionLot lot = positionBook.openLots.getLast();
+                for (IndexedHoldingCost cost : recorded.costs) {
+                    if (cost.index() > finalIndex) {
+                        break;
+                    }
+                    // Imported settlements already belong to this lot; do not reallocate them.
+                    lot.holdingCosts = addHoldingCost(lot.holdingCosts, cost.index(), cost.cost());
+                    modificationCount++;
                 }
-                recordHoldingCost(cost.index(), cost.cost());
             }
-        }
-        if (position.getExit() != null) {
-            operate(position.getExit());
+            if (position.getExit() != null) {
+                operate(position.getExit());
+            }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -530,6 +550,8 @@ public class BaseTradingRecord implements TradingRecord {
         TradeType tradeType = trade.getType();
         ExecutionSide tradeSide = sideOf(tradeType);
         ExecutionSide openSide = currentOpenSide();
+        boolean isExit = openSide != null && tradeSide != openSide;
+        int earliestExitIndex = Integer.MAX_VALUE;
         Position netOpenPosition = positionBook.netOpenPosition();
         int plannedNextIndex = nextTradeIndex;
         Num totalAmount = fills.getFirst().price().getNumFactory().zero();
@@ -539,12 +561,17 @@ public class BaseTradingRecord implements TradingRecord {
                     trade.getCorrelationId(), trade.getTime(), plannedNextIndex);
             plannedTradeFills.add(plannedTradeFill);
             plannedNextIndex = Math.max(plannedNextIndex, plannedTradeFill.index() + 1);
+            if (isExit) {
+                earliestExitIndex = Math.min(earliestExitIndex, plannedTradeFill.index());
+            }
             totalAmount = totalAmount.plus(plannedTradeFill.trade().getAmount());
         }
-        if (openSide != null && tradeSide != openSide && netOpenPosition != null
-                && totalAmount.isGreaterThan(netOpenPosition.getEntry().getAmount())) {
+        if (isExit && netOpenPosition != null && totalAmount.isGreaterThan(netOpenPosition.getEntry().getAmount())) {
             throw new IllegalArgumentException("Exit amount " + totalAmount + " exceeds open position amount "
                     + netOpenPosition.getEntry().getAmount());
+        }
+        if (isExit) {
+            positionBook.validateExitIndex(earliestExitIndex);
         }
         return List.copyOf(plannedTradeFills);
     }
@@ -642,6 +669,10 @@ public class BaseTradingRecord implements TradingRecord {
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(transactionCostModel, "transactionCostModel");
         Num normalizedAmount = normalizeSyntheticAmount(amount);
+        ExecutionSide openSide = currentOpenSide();
+        if (openSide != null && sideOf(type) != openSide) {
+            positionBook.validateExitIndex(index);
+        }
         applyTradeInternal(index, new BaseTrade(index, type, price, normalizedAmount, transactionCostModel), -1L);
     }
 
@@ -988,14 +1019,17 @@ public class BaseTradingRecord implements TradingRecord {
         return trades[0].getType();
     }
 
-    private static Stream<Trade> tradesOf(Position position) {
+    private static Trade entryOf(Position position) {
         Objects.requireNonNull(position, "position must not be null");
-
         Trade entry = position.getEntry();
         if (entry == null) {
             throw new IllegalArgumentException("Position entry must not be null");
         }
+        return entry;
+    }
 
+    private static Stream<Trade> tradesOf(Position position) {
+        Trade entry = entryOf(position);
         Trade exit = position.getExit();
         if (exit == null) {
             return Stream.of(entry);
@@ -1005,11 +1039,6 @@ public class BaseTradingRecord implements TradingRecord {
 
     private static Trade[] positionToTrades(Position position) {
         return tradesOf(position).toArray(Trade[]::new);
-    }
-
-    private static Trade[] positionsToTrades(List<Position> positions) {
-        Objects.requireNonNull(positions, "positions must not be null");
-        return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
     }
 
     private record RecordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
@@ -1226,6 +1255,14 @@ public class BaseTradingRecord implements TradingRecord {
 
         private boolean hasOpenLots() {
             return !openLots.isEmpty();
+        }
+
+        private void validateExitIndex(int index) {
+            for (PositionLot lot : openLots) {
+                if (!lot.holdingCosts.isEmpty() && index < lot.holdingCosts.getLast().index()) {
+                    throw new IllegalArgumentException("Exit index precedes a recorded holding cost");
+                }
+            }
         }
 
         private void recordHoldingCost(int index, Num cost) {

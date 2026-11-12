@@ -76,8 +76,12 @@ public final class PerpetualFuturesRecipes {
     }
 
     static Strategy fundingAwareStrategy(BarSeries series, Indicator<Num> rates) {
-        // Only enter on the chosen signal when the observed rate is below 0.1%.
-        Rule entry = new FixedRule(series.getBeginIndex()).and(new UnderIndicatorRule(rates, 0.001));
+        // Zero/NaN denotes no observed settlement in this sample, not free funding.
+        Rule observedRate = (index, record) -> {
+            Num rate = rates.getValue(index);
+            return !rate.isNaN() && !rate.isZero();
+        };
+        Rule entry = new FixedRule(series.getBeginIndex()).and(observedRate).and(new UnderIndicatorRule(rates, 0.001));
         return new BaseStrategy(entry, new FixedRule(series.getEndIndex()));
     }
 

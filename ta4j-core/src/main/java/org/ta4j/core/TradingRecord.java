@@ -230,13 +230,16 @@ public interface TradingRecord extends Serializable {
      * <p>
      * Recorded costs supplement, rather than replace,
      * {@link #getHoldingCostModel()}. Do not also model settlements already
-     * recorded here. Zero is a no-op.
+     * recorded here. Zero is a no-op. Record fills and settlements in event order:
+     * {@link BaseTradingRecord} rejects exits before a settlement already assigned
+     * to an open lot.
      *
      * @param index the settlement's series index
-     * @param cost  the signed cost in the position's profit currency
+     * @param cost  the signed finite cost in the position's profit currency
      * @throws NullPointerException          if {@code cost} is null
-     * @throws IllegalArgumentException      if {@code cost} is NaN or {@code index}
-     *                                       precedes any open lot's entry
+     * @throws IllegalArgumentException      if {@code cost} is not finite or
+     *                                       {@code index} precedes any open lot's
+     *                                       entry
      * @throws IllegalStateException         if no lot is open
      * @throws UnsupportedOperationException if this implementation does not support
      *                                       recorded holding costs
