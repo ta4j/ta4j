@@ -28,6 +28,8 @@
 
 ### Changed
 
+- **Position-specific holding costs in analysis**: `AnalysisCriterion` mark-to-market synthetic positions now use each position's own holding-cost model. Custom `TradingRecord` implementations with position-specific models can therefore see different outputs; plain records are unaffected.
+
 - **Depleted and sub-lot accounts keep backtesting**: A dynamic `PositionSizer` result of zero now skips the entry and continues instead of aborting the run. Fixed-amount overloads and exit sizing are unchanged.
 
 - **Elliott phase cache type**: `ElliottPhaseIndicator` now extends `CachedIndicator<ElliottPhase>` instead of `RecursiveCachedIndicator<ElliottPhase>`. Callers declaring the old supertype must use `CachedIndicator<ElliottPhase>` or `Indicator<ElliottPhase>`; constructors and calculated results are unchanged.

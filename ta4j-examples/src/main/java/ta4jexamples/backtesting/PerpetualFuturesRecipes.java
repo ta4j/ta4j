@@ -26,8 +26,10 @@ import org.ta4j.core.criteria.drawdown.MaximumAbsoluteDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.criteria.pnl.ReturnOnCapitalCriterion;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.FixedNumIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
@@ -54,20 +56,41 @@ public final class PerpetualFuturesRecipes {
      */
     public static void main(String[] args) {
         BarSeries series = PerpetualFuturesBacktest.createSeries(100, 110, 120, 130, 140);
-        Indicator<Num> rates = historicalRates(series);
-        Strategy strategy = fundingAwareStrategy(series, rates);
-        CostModel fees = new MinimumCommission(0.001, 0.25);
+        Indicator<Num> settlementRates = historicalRates(series);
+        Indicator<Num> rateSignal = latestObservedRates(series, settlementRates);
+        Strategy strategy = fundingAwareStrategy(series, rateSignal);
+        CostModel fees = new MinimumCommission(series.numFactory(), 0.001, 0.25);
         BigDecimal step = baseAmountIncrement("0.01", "0.1");
         double capital = 1_000;
         TradingRecord spot = run(series, strategy, fees, new ZeroCostModel(), 2, 1, step);
-        TradingRecord perpetual = run(series, strategy, fees, historicalFunding(series, rates), 2, 3, step);
+        TradingRecord perpetual = run(series, strategy, fees, historicalFunding(series, settlementRates), 2, 3, step);
         report("Spot", series, spot, capital);
         report("Perpetual", series, perpetual, capital);
     }
 
-    // Values must be aligned to the price bars; zero means no settlement.
+    // Values align to the price bars. NaN means no settlement; zero is a valid
+    // rate.
     static Indicator<Num> historicalRates(BarSeries series) {
-        return new FixedNumIndicator(series, 0.0005, 0.001, 0, -0.002, 0);
+        NumFactory nums = series.numFactory();
+        return new FixedIndicator<>(series, nums.numOf(0.0005), nums.numOf(0.001), NaN.NaN, nums.numOf(-0.002),
+                NaN.NaN);
+    }
+
+    // Build a separate signal for this offline history, carrying each observed
+    // settlement rate forward until the next one arrives.
+    static Indicator<Num> latestObservedRates(BarSeries series, Indicator<Num> settlementRates) {
+        FixedIndicator<Num> signal = new FixedIndicator<>(series);
+        Num latest = NaN.NaN;
+        for (int index = 0; index <= series.getEndIndex(); index++) {
+            if (index >= series.getBeginIndex()) {
+                Num observed = settlementRates.getValue(index);
+                if (Num.isFinite(observed)) {
+                    latest = observed;
+                }
+            }
+            signal.addValue(latest);
+        }
+        return signal;
     }
 
     static CostModel historicalFunding(BarSeries series, Indicator<Num> rates) {
@@ -75,13 +98,9 @@ public final class PerpetualFuturesRecipes {
         return new FundingCostModel(rates, marks);
     }
 
-    static Strategy fundingAwareStrategy(BarSeries series, Indicator<Num> rates) {
-        // Zero/NaN denotes no observed settlement in this sample, not free funding.
-        Rule observedRate = (index, record) -> {
-            Num rate = rates.getValue(index);
-            return !rate.isNaN() && !rate.isZero();
-        };
-        Rule entry = new FixedRule(series.getBeginIndex()).and(observedRate).and(new UnderIndicatorRule(rates, 0.001));
+    static Strategy fundingAwareStrategy(BarSeries series, Indicator<Num> rateSignal) {
+        Rule observedRate = (index, record) -> Num.isFinite(rateSignal.getValue(index));
+        Rule entry = observedRate.and(new UnderIndicatorRule(rateSignal, 0.001));
         return new BaseStrategy(entry, new FixedRule(series.getEndIndex()));
     }
 
@@ -112,17 +131,20 @@ public final class PerpetualFuturesRecipes {
         LOG.info("{}: fees={} quote, funding={} quote, net profit={} quote", label,
                 position.getEntry().getCost().plus(position.getExit().getCost()), position.getHoldingCost(),
                 new NetProfitLossCriterion().calculate(series, record));
+        Num drawdown = drawdownAsShareOfCapital(series, record, capital);
         LOG.info("{}: return on capital={}%, maximum drawdown/capital={} (fraction)", label,
                 new ReturnOnCapitalCriterion(capital, ReturnRepresentation.PERCENTAGE).calculate(series, record),
-                drawdownAsShareOfCapital(series, record, capital));
+                drawdown.isZero() ? "0" : drawdown);
     }
 
     /** Minimum commission per executed trade, not per position or bar. */
     static final class MinimumCommission implements CostModel {
+        private final NumFactory numFactory;
         private final double rate;
         private final double minimum;
 
-        MinimumCommission(double rate, double minimum) {
+        MinimumCommission(NumFactory numFactory, double rate, double minimum) {
+            this.numFactory = numFactory;
             this.rate = rate;
             this.minimum = minimum;
         }
@@ -146,7 +168,7 @@ public final class PerpetualFuturesRecipes {
         public Num calculate(Position position) {
             Trade entry = position.getEntry();
             if (entry == null) {
-                return null;
+                return numFactory.zero();
             }
             Num cost = entry.getCost();
             return position.getExit() == null ? cost : cost.plus(position.getExit().getCost());

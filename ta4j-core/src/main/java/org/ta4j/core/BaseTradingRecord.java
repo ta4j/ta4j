@@ -424,6 +424,10 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * {@inheritDoc}
      *
+     * @apiNote Recorded costs are added to the configured holding cost model's
+     *          costs. When live settlements are authoritative, configure a
+     *          {@link ZeroCostModel} to avoid double counting.
+     *
      * @since 0.28.1
      */
     @Override
@@ -1061,6 +1065,16 @@ public class BaseTradingRecord implements TradingRecord {
 
     private static List<IndexedHoldingCost> addHoldingCost(List<IndexedHoldingCost> costs, int index, Num cost) {
         List<IndexedHoldingCost> result = costs.isEmpty() ? new ArrayList<>() : costs;
+        int lastIndex = result.size() - 1;
+        if (lastIndex < 0 || result.get(lastIndex).index() < index) {
+            result.add(new IndexedHoldingCost(index, cost));
+            return result;
+        }
+        IndexedHoldingCost last = result.get(lastIndex);
+        if (last.index() == index) {
+            result.set(lastIndex, new IndexedHoldingCost(index, last.cost().plus(cost)));
+            return result;
+        }
         for (int i = 0; i < result.size(); i++) {
             IndexedHoldingCost existing = result.get(i);
             if (existing.index() == index) {

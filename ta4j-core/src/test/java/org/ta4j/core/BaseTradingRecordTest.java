@@ -285,6 +285,28 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void recordedHoldingCostsAccumulateInIndexOrder() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.operate(Trade.buyAt(0, numFactory.hundred(), numFactory.one()));
+        record.recordHoldingCost(3, numFactory.numOf(3));
+        record.recordHoldingCost(5, numFactory.numOf(5));
+        record.recordHoldingCost(5, numFactory.numOf(-1));
+        record.recordHoldingCost(1, numFactory.one());
+        record.recordHoldingCost(2, numFactory.two());
+        record.recordHoldingCost(3, numFactory.numOf(-1));
+        record.recordHoldingCost(4, numFactory.numOf(4));
+
+        Position position = record.getCurrentPosition();
+        assertEquals(numFactory.zero(), position.getHoldingCost(0));
+        assertEquals(numFactory.one(), position.getHoldingCost(1));
+        assertEquals(numFactory.numOf(3), position.getHoldingCost(2));
+        assertEquals(numFactory.numOf(5), position.getHoldingCost(3));
+        assertEquals(numFactory.numOf(9), position.getHoldingCost(4));
+        assertEquals(numFactory.numOf(13), position.getHoldingCost(5));
+        assertEquals(numFactory.numOf(13), position.getHoldingCost());
+    }
+
+    @Test
     void recordedHoldingCostsSupplementTheConfiguredModelAndSurviveRestoration() throws Exception {
         CostModel modeled = new FixedTransactionCostModel(2);
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), modeled);
