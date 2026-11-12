@@ -240,8 +240,9 @@ public interface TradingRecord extends Serializable {
      * @throws NullPointerException          if {@code cost} is null
      * @throws IllegalArgumentException      if {@code cost} is not finite, is
      *                                       incompatible with an open lot's numeric
-     *                                       type, or {@code index} precedes any
-     *                                       open lot's entry
+     *                                       type, an allocation or combined cost is
+     *                                       not finite, or {@code index} precedes
+     *                                       any open lot's entry
      * @throws IllegalStateException         if no lot is open
      * @throws UnsupportedOperationException if this implementation does not support
      *                                       recorded holding costs
