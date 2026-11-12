@@ -52,16 +52,56 @@ class PositionSizerTest {
         assertNumEquals(0, PositionSizer.fixed(0.0004).roundedDownTo(0.001).amount(context));
         assertNumEquals(100, PositionSizer.fixed(33.3337).leveraged(3).roundedDownTo(1).amount(context));
         assertNumEquals(2, PositionSizer.fixed(2).roundedDownTo(1).amount(context));
+        assertNumEquals(4, PositionSizer.fixed(2.6).roundedDownTo(1).leveraged(2).amount(context));
+        assertNumEquals(5, PositionSizer.fixed(2.6).leveraged(2).roundedDownTo(1).amount(context));
     }
 
     @ParameterizedTest
     @MethodSource("factories")
     void roundingPreservesExactLotsButFloorsQuantitiesBelowThem(NumFactory factory) {
         PositionSizer.Context context = context(factory);
-        assertNumEquals(0.3, PositionSizer.fixed(0.3).roundedDownTo(0.1).amount(context));
-        assertNumEquals(0.29, PositionSizer.fixed(0.29).roundedDownTo(0.01).amount(context));
-        assertNumEquals(0.2, PositionSizer.fixed(Math.nextDown(0.3)).roundedDownTo(0.1).amount(context));
-        assertNumEquals(0, PositionSizer.fixed(Math.nextDown(0.1)).roundedDownTo(0.1).amount(context));
+        assertNumEquals("0.3", PositionSizer.fixed(0.3).roundedDownTo(0.1).amount(context));
+        assertNumEquals("0.29", PositionSizer.fixed(0.29).roundedDownTo(0.01).amount(context));
+        assertNumEquals("0.2", PositionSizer.fixed(0.299).roundedDownTo(0.1).amount(context));
+        assertNumEquals(0, PositionSizer.fixed(0.099).roundedDownTo(0.1).amount(context));
+    }
+
+    @Test
+    void doubleRoundingCorrectsOnlyNearbyBoundaries() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        PositionSizer.Context context = context(factory);
+        Num drifted = factory.numOf(0.7).multipliedBy(factory.three()).dividedBy(factory.three());
+        assertEquals(factory.numOf(0.6999999999999998), drifted);
+        assertEquals(factory.numOf(0.7), PositionSizer.fixed(drifted).roundedDownTo(0.1).amount(context));
+        assertEquals(factory.numOf(0.7), PositionSizer.fixed(Math.nextUp(0.7)).roundedDownTo(0.1).amount(context));
+        double twoBelow = Math.nextDown(Math.nextDown(0.7));
+        assertEquals(factory.numOf(0.7), PositionSizer.fixed(twoBelow).roundedDownTo(0.1).amount(context));
+        assertEquals(factory.numOf(0.6),
+                PositionSizer.fixed(Math.nextDown(twoBelow)).roundedDownTo(0.1).amount(context));
+        assertEquals(factory.numOf(0.1), PositionSizer.fixed(Math.nextDown(0.1)).roundedDownTo(0.1).amount(context));
+    }
+
+    @Test
+    void doubleRoundingHandlesTinyAmountsWithoutPromotingSubstantialFractionsOfAStep() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        PositionSizer.Context context = context(factory);
+        double boundary = 7e-200;
+        assertEquals(factory.numOf(boundary),
+                PositionSizer.fixed(Math.nextDown(boundary)).roundedDownTo(1e-200).amount(context));
+        assertEquals(factory.zero(),
+                PositionSizer.fixed(Double.MIN_VALUE).roundedDownTo(2 * Double.MIN_VALUE).amount(context));
+        assertEquals(factory.numOf(2 * Double.MIN_VALUE),
+                PositionSizer.fixed(3 * Double.MIN_VALUE).roundedDownTo(2 * Double.MIN_VALUE).amount(context));
+    }
+
+    @Test
+    void decimalRoundingDoesNotApplyDoubleBoundaryTolerance() {
+        NumFactory factory = DecimalNumFactory.getInstance(32);
+        PositionSizer.Context context = context(factory);
+        assertEquals(factory.numOf("0.2"), PositionSizer.fixed(Math.nextDown(0.3)).roundedDownTo(0.1).amount(context));
+        assertEquals(factory.zero(), PositionSizer.fixed(Math.nextDown(0.1)).roundedDownTo(0.1).amount(context));
+        Num justBelow = factory.numOf("0.699999999999999999999999999999");
+        assertEquals(factory.numOf("0.6"), PositionSizer.fixed(justBelow).roundedDownTo(0.1).amount(context));
     }
 
     @Test
