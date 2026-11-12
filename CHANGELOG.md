@@ -2,6 +2,8 @@
 
 ### Added
 
+- **Composable position sizing**: Scale balance, Kelly or custom sizing for leveraged exposure with `PositionSizer#leveraged`, then floor quantities to venue lot sizes or whole shares with `roundedDownTo`. Decimal parameters retain their precision, tiny floating-point drift near a lot boundary no longer drops an intended lot, and unrepresentable decimal lot quantities are rejected rather than silently misaligned.
+
 - **Funding-aware position results**: `FundingCostModel` applies historical settlement rates and mark prices through the existing holding-cost API. Model long payments and short credits, use UTC-aligned fixed schedules across gaps or larger bars, and evaluate funded positions with the existing profit and equity curves. `CostModel.calculate(position, firstIndex, finalIndex)` supplies cumulative indexed costs with a default fallback; funding builds those marks in one uncached pass. Separate rate and mark series must use compatible numeric types.
 
 - **Causal L2 strategy signals**: `OrderBookIndicator` joins frozen order-book histories to explicit bar-open or bar-close decisions with inclusive freshness limits and stable arrival-order ties. Retained bounds and the decision timestamp are captured atomically on concurrent series. Spread, midpoint, depth and imbalance indicators compose with existing threshold rules; `OrderBookReadyRule` guards unavailable or incomplete books. The offline `OrderBookBacktest` demonstrates ordinary strategies with next-open bar fills, not simulated L2 execution. External-history configuration serialization fails explicitly rather than silently dropping its dataset.
@@ -19,6 +21,8 @@
 
 
 ### Changed
+
+- **Depleted and sub-lot accounts keep backtesting**: A dynamic `PositionSizer` result of zero now skips the entry and continues instead of aborting the run. Fixed-amount overloads and exit sizing are unchanged.
 
 - **Elliott phase cache type**: `ElliottPhaseIndicator` now extends `CachedIndicator<ElliottPhase>` instead of `RecursiveCachedIndicator<ElliottPhase>`. Callers declaring the old supertype must use `CachedIndicator<ElliottPhase>` or `Indicator<ElliottPhase>`; constructors and calculated results are unchanged.
 - **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases, including low-precision decimal totals, reconstruct from the existing calculation when reuse is unsafe.

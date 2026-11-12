@@ -4,6 +4,8 @@
 package org.ta4j.core.backtest;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
@@ -12,6 +14,8 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -37,10 +41,11 @@ public interface PositionSizer {
      * Returns the amount used to open a new position.
      *
      * <p>
-     * Implementations must return a positive, finite {@link Num} compatible with
-     * {@link Context#numFactory()}. Factory-created sizers validate their
-     * constructor inputs eagerly; custom implementations are responsible for
-     * honoring this contract when they are called.
+     * Implementations must return a non-negative, finite {@link Num} compatible
+     * with {@link Context#numFactory()}. Zero skips the entry without submitting an
+     * order; the run continues. Factory-created sizers validate their constructor
+     * inputs eagerly; custom implementations are responsible for honoring this
+     * contract when they are called.
      * </p>
      *
      * @param context entry sizing context
@@ -48,6 +53,85 @@ public interface PositionSizer {
      * @since 0.22.9
      */
     Num amount(Context context);
+
+    /**
+     * Multiplies this sizer's amount by the supplied leverage.
+     *
+     * <p>
+     * With {@link #balance(Number)}, the balance acts as margin. Transaction fees
+     * on the leveraged notional reduce profit; they are not reserved from margin.
+     *
+     * @param leverage positive, finite amount multiplier
+     * @return a leveraged version of this sizer
+     * @throws NullPointerException     if leverage is null
+     * @throws IllegalArgumentException if leverage is not positive and finite
+     * @since 0.28.1
+     */
+    default PositionSizer leveraged(Number leverage) {
+        Number fixedLeverage = snapshotNumber(leverage, "leverage");
+        return context -> amount(context).multipliedBy(context.numOf(fixedLeverage));
+    }
+
+    /**
+     * Floors this sizer's amount to a multiple of the supplied quantity step.
+     *
+     * <p>
+     * An amount smaller than one step becomes zero, except for the narrow
+     * {@link DoubleNum} boundary tolerance described below. Apply this decorator
+     * after every amount-changing decorator, such as {@link #leveraged(Number)}, to
+     * round the final order quantity. Later decorators may change the amount and
+     * break its alignment to the step.
+     *
+     * <p>
+     * Quantization uses decimal values before converting the result with the
+     * context's number factory. A {@code DoubleNum} amount is treated as aligned to
+     * the next boundary if it is at most two representable double values and at
+     * most one billionth of a step below that boundary. This corrects tiny
+     * floating-point drift; other values are floored. A decimal result must
+     * represent the rounded quantity exactly without exceeding the requested amount.
+     *
+     * @param quantityStep positive, finite quantity increment
+     * @return a quantity-step-rounded version of this sizer
+     * @throws NullPointerException     if the step is null
+     * @throws IllegalArgumentException if the step is not positive and finite, or
+     *                                  the rounded quantity cannot be represented
+     *                                  safely by the decimal number factory
+     * @since 0.28.1
+     */
+    default PositionSizer roundedDownTo(Number quantityStep) {
+        Number fixedStep = snapshotNumber(quantityStep, "quantityStep");
+        BigDecimal step = fixedStep instanceof BigDecimal decimal ? decimal : new BigDecimal(fixedStep.toString());
+        BigDecimal maxDoubleBoundaryGap = step.movePointLeft(9);
+        return context -> {
+            Num rawAmount = amount(context);
+            if (!Num.isFinite(rawAmount) || !rawAmount.isPositive()) {
+                return rawAmount;
+            }
+            // Num division can round across a lot boundary before floor is applied.
+            BigDecimal quantity = rawAmount.bigDecimalValue();
+            BigDecimal remainder = quantity.remainder(step);
+            if (remainder.signum() == 0) {
+                return rawAmount;
+            }
+            BigDecimal rounded = quantity.subtract(remainder);
+            if (rawAmount instanceof DoubleNum && step.subtract(remainder).compareTo(maxDoubleBoundaryGap) <= 0) {
+                BigDecimal nextBoundary = rounded.add(step);
+                // Num has no ulp operation, so compare adjacent double values directly.
+                double value = rawAmount.doubleValue();
+                double boundary = nextBoundary.doubleValue();
+                if (Double.isFinite(boundary) && boundary > value && boundary <= Math.nextUp(Math.nextUp(value))) {
+                    rounded = nextBoundary;
+                }
+            }
+            Num result = context.numOf(rounded);
+            if (result instanceof DecimalNum
+                    && (result.bigDecimalValue().compareTo(rounded) != 0
+                            || result.bigDecimalValue().compareTo(quantity) > 0)) {
+                throw new IllegalArgumentException("Rounded amount cannot be represented by the decimal number factory");
+            }
+            return result;
+        };
+    }
 
     /**
      * Returns a position sizer that opens one unit.
@@ -173,7 +257,7 @@ public interface PositionSizer {
 
     private static Number snapshotNumber(Number value, String name) {
         validatePositiveNumber(value, name);
-        return Double.valueOf(value.doubleValue());
+        return value instanceof BigDecimal || value instanceof BigInteger ? value : Double.valueOf(value.doubleValue());
     }
 
     private static void validateProbability(Number value, String name) {

@@ -261,7 +261,7 @@ public class BarSeriesManagerTest {
     }
 
     @Test
-    public void runWithPositionSizerRejectsNonPositiveAndNonFiniteAmounts() {
+    public void runWithPositionSizerRejectsNegativeAndNonFiniteAmounts() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40).build();
         BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
         Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
@@ -269,13 +269,29 @@ public class BarSeriesManagerTest {
         assertThrows(IllegalArgumentException.class,
                 () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> null));
         assertThrows(IllegalArgumentException.class,
-                () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> numFactory.zero()));
-        assertThrows(IllegalArgumentException.class,
                 () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> DoubleNum.valueOf(-1)));
         assertThrows(IllegalArgumentException.class,
                 () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> DoubleNum.valueOf(Double.NaN)));
         assertThrows(IllegalArgumentException.class, () -> localManager.run(oneTradeStrategy, TradeType.BUY,
                 context -> DoubleNum.valueOf(Double.POSITIVE_INFINITY)));
+    }
+
+    @Test
+    public void zeroSizerSkipsEntriesIncludingTheFinalBarWithoutChangingExits() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40, 50).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy entrySignals = new BaseStrategy(new FixedRule(0, 1, 4), new FixedRule(2));
+        PositionSizer sizer = context -> context.signalIndex() == 1 ? numFactory.one() : numFactory.zero();
+
+        TradingRecord record = localManager.run(entrySignals, TradeType.BUY, sizer);
+
+        assertEquals(1, record.getPositionCount());
+        Position position = record.getPositions().getFirst();
+        assertEquals(1, position.getEntry().getIndex());
+        assertEquals(2, position.getExit().getIndex());
+        assertEquals(numFactory.one(), position.getEntry().getAmount());
+        assertEquals(numFactory.one(), position.getExit().getAmount());
+        assertTrue(record.isClosed());
     }
 
     @Test
@@ -861,6 +877,27 @@ public class BarSeriesManagerTest {
                         firstPosition.getEntry().getAmount());
                 assertEquals(firstPosition.getEntry().getAmount(), firstPosition.getExit().getAmount());
             }
+        }
+    }
+
+    @Test
+    public void runWalkForwardSkipsZeroSizedSignalsAndClosesTheLaterEntry() {
+        WalkForwardConfig config = new WalkForwardConfig(3, 3, 3, 0, 0, 0, 1, List.of(), 1, List.of(1), 7L);
+        List<WalkForwardSplit> splits = new AnchoredExpandingWalkForwardSplitter().split(seriesForRun, config);
+        Strategy entrySignals = new BaseStrategy(BooleanRule.TRUE, BooleanRule.FALSE);
+        PositionSizer sizer = context -> context.signalIndex() == 3 || context.signalIndex() == 6 ? numFactory.zero()
+                : numFactory.one();
+
+        StrategyWalkForwardExecutionResult result = manager.runWalkForward(entrySignals, TradeType.BUY, sizer, config);
+
+        assertEquals(2, result.folds().size());
+        for (int i = 0; i < result.folds().size(); i++) {
+            TradingRecord record = result.folds().get(i).tradingStatement().getTradingRecord();
+            assertEquals(1, record.getPositionCount());
+            Position position = record.getPositions().getFirst();
+            assertEquals(splits.get(i).testStart() + 1, position.getEntry().getIndex());
+            assertEquals(splits.get(i).testEnd(), position.getExit().getIndex());
+            assertEquals(numFactory.one(), position.getExit().getAmount());
         }
     }
 

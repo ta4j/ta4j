@@ -312,6 +312,11 @@ public class BarSeriesManager {
      * Runs the provided strategy over the managed series using a dynamic entry
      * position sizer.
      *
+     * <p>
+     * A zero-sized entry amount skips the entry signal only while no position is
+     * open. Exit signals still run, and later entry signals remain eligible.
+     * </p>
+     *
      * @param strategy      strategy to execute
      * @param tradeType     the {@link TradeType} used to open the position
      * @param positionSizer dynamic entry position sizer
@@ -326,6 +331,11 @@ public class BarSeriesManager {
     /**
      * Runs the provided strategy over the managed series using a dynamic entry
      * position sizer.
+     *
+     * <p>
+     * A zero-sized entry amount skips the entry signal only while no position is
+     * open. Exit signals still run, and later entry signals remain eligible.
+     * </p>
      *
      * @param strategy      strategy to execute
      * @param positionSizer dynamic entry position sizer
@@ -342,6 +352,11 @@ public class BarSeriesManager {
      * finishIndex) using the strategy starting type and a dynamic entry position
      * sizer.
      *
+     * <p>
+     * A zero-sized entry amount skips the entry signal only while no position is
+     * open. Exit signals still run, and later entry signals remain eligible.
+     * </p>
+     *
      * @param strategy      strategy to execute
      * @param positionSizer dynamic entry position sizer
      * @param startIndex    the start index for the run (included)
@@ -357,6 +372,11 @@ public class BarSeriesManager {
     /**
      * Runs the provided strategy over the managed series (from startIndex to
      * finishIndex) using a dynamic entry position sizer.
+     *
+     * <p>
+     * A zero-sized entry amount skips the entry signal only while no position is
+     * open. Exit signals still run, and later entry signals remain eligible.
+     * </p>
      *
      * @param strategy      strategy to execute
      * @param tradeType     the {@link TradeType} used to open the position
@@ -430,12 +450,17 @@ public class BarSeriesManager {
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
             int finishIndex) {
         Objects.requireNonNull(amount, "amount");
-        return run(strategy, tradingRecord, startIndex, finishIndex, (index, runSeries) -> amount);
+        return run(strategy, tradingRecord, startIndex, finishIndex, (index, runSeries) -> amount, false);
     }
 
     /**
      * Runs the provided strategy over the managed series using a dynamic entry
      * position sizer and a supplied trading record.
+     *
+     * <p>
+     * A zero-sized entry amount skips the entry signal only while no position is
+     * open. Exit signals still run, and later entry signals remain eligible.
+     * </p>
      *
      * @param strategy      strategy to execute
      * @param tradingRecord the trading record instance to mutate
@@ -452,6 +477,11 @@ public class BarSeriesManager {
      * Runs the provided strategy over the managed series (from startIndex to
      * finishIndex) using a supplied trading record and dynamic entry position
      * sizer.
+     *
+     * <p>
+     * A zero-sized entry amount skips the entry signal only while no position is
+     * open. Exit signals still run, and later entry signals remain eligible.
+     * </p>
      *
      * @param strategy      strategy to execute
      * @param tradingRecord the trading record instance to mutate
@@ -547,6 +577,11 @@ public class BarSeriesManager {
      * Executes walk-forward testing for one strategy using the provided entry trade
      * type and dynamic entry position sizer.
      *
+     * <p>
+     * A zero-sized entry amount skips the entry signal only while no position is
+     * open. Exit signals still run, and later entry signals remain eligible.
+     * </p>
+     *
      * @param strategy      strategy to execute
      * @param tradeType     trade type used to open positions
      * @param positionSizer dynamic entry position sizer
@@ -562,6 +597,11 @@ public class BarSeriesManager {
     /**
      * Executes walk-forward testing for one strategy with a dynamic entry position
      * sizer.
+     *
+     * <p>
+     * A zero-sized entry amount skips the entry signal only while no position is
+     * open. Exit signals still run, and later entry signals remain eligible.
+     * </p>
      *
      * @param strategy      strategy to execute
      * @param positionSizer dynamic entry position sizer
@@ -598,6 +638,11 @@ public class BarSeriesManager {
      * Executes walk-forward testing for one strategy with dynamic entry amount
      * provider and optional per-fold progress updates.
      *
+     * <p>
+     * A zero-sized entry amount skips the entry signal only while no position is
+     * open. Exit signals still run, and later entry signals remain eligible.
+     * </p>
+     *
      * @param strategy         strategy to execute
      * @param tradeType        trade type used to open positions
      * @param positionSizer    dynamic entry position sizer
@@ -620,7 +665,8 @@ public class BarSeriesManager {
         TradeType runTradeType = tradingRecord.getStartingType();
         return run(strategy, tradingRecord, startIndex, finishIndex,
                 (index, runSeries) -> amountForNextOperation(positionSizer, index, strategy, tradingRecord,
-                        runTradeType, runSeries));
+                        runTradeType, runSeries),
+                true);
     }
 
     /**
@@ -632,7 +678,7 @@ public class BarSeriesManager {
      * saw.
      */
     private TradingRecord run(Strategy strategy, TradingRecord tradingRecord, int startIndex, int finishIndex,
-            AmountResolver amountResolver) {
+            AmountResolver amountResolver, boolean skipZeroEntries) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradingRecord, "tradingRecord");
         Objects.requireNonNull(amountResolver, "amountResolver");
@@ -657,7 +703,12 @@ public class BarSeriesManager {
                     tradeExecutionModel.onBar(i, tradingRecord, runSeries);
                     // For each bar between both indexes...
                     if (strategy.shouldOperate(i, tradingRecord)) {
-                        tradeExecutionModel.execute(i, tradingRecord, runSeries, amountResolver.amount(i, runSeries));
+                        Num amount = amountResolver.amount(i, runSeries);
+                        if (skipZeroEntries && tradingRecord.isClosed() && amount.isZero()) {
+                            log.debug("Skipping entry at index {} because the position sizer returned zero", i);
+                        } else {
+                            tradeExecutionModel.execute(i, tradingRecord, runSeries, amount);
+                        }
                     }
                     if (i == runEndIndex) {
                         break;
@@ -678,6 +729,9 @@ public class BarSeriesManager {
     private Num amountForIndex(PositionSizer positionSizer, int index, Strategy strategy, TradingRecord tradingRecord,
             TradeType tradeType, BarSeries runSeries) {
         Num amount = positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType, runSeries));
+        if (amount != null && amount.isZero()) {
+            return amount;
+        }
         validateAmount(amount);
         return amount;
     }
