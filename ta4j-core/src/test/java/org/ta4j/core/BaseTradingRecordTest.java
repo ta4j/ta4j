@@ -3,9 +3,19 @@
  */
 package org.ta4j.core;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -15,14 +25,19 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.analysis.AnalysisWindow;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -38,27 +53,536 @@ import org.ta4j.core.criteria.pnl.GrossProfitCriterion;
 import org.ta4j.core.criteria.pnl.GrossProfitLossRatioCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossRatioCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 class BaseTradingRecordTest {
 
     private final NumFactory numFactory = DoubleNumFactory.getInstance();
+
+    @Test
+    void legacyRecordStreamHasNoHoldingCostsAndRemainsWritable() throws Exception {
+        // Written by the pre-settlement implementation at 1345d33.
+        byte[] data;
+        try (InputStream resource = getClass().getResourceAsStream("/data/record-before-holding-costs.b64")) {
+            assertNotNull(resource);
+            data = Base64.getMimeDecoder().decode(resource.readAllBytes());
+        }
+        BaseTradingRecord restored;
+        try (ObjectInputStream input = new ObjectInputStream(new ByteArrayInputStream(data))) {
+            restored = (BaseTradingRecord) input.readObject();
+        }
+        assertEquals(numFactory.zero(), restored.getPositions().getFirst().getHoldingCost());
+        assertEquals(numFactory.zero(), restored.getCurrentPosition().getHoldingCost());
+        assertEquals(numFactory.two(), restored.getCurrentPosition().getEntry().getAmount());
+        restored.recordHoldingCost(2, numFactory.numOf(6));
+        restored.operate(Trade.sellAt(3, numFactory.numOf(110), numFactory.two()));
+        assertEquals(numFactory.numOf(6), restored.getPositions().get(1).getHoldingCost());
+        assertEquals(numFactory.numOf(14), restored.getPositions().get(1).getProfit());
+    }
+
+    @Test
+    void copyingARecordedPositionPreservesItsCostsWithoutChargingLaterPositions() {
+        BaseTradingRecord source = new BaseTradingRecord();
+        source.operate(Trade.buyAt(0, numFactory.hundred(), numFactory.one()));
+        source.recordHoldingCost(1, numFactory.two());
+        source.operate(Trade.sellAt(2, numFactory.numOf(110), numFactory.one()));
+        BaseTradingRecord copy = new BaseTradingRecord(source.getPositions().getFirst());
+        assertEquals(numFactory.two(), copy.getPositions().getFirst().getHoldingCost());
+        copy.operate(Trade.buyAt(3, numFactory.hundred(), numFactory.one()));
+        copy.operate(Trade.sellAt(4, numFactory.numOf(110), numFactory.one()));
+        assertEquals(numFactory.zero(), copy.getPositions().get(1).getHoldingCost());
+        assertEquals(numFactory.numOf(18),
+                copy.getPositions().stream().map(Position::getProfit).reduce(numFactory.zero(), Num::plus));
+    }
+
+    @Test
+    void copyingRecordedPositionListsPreservesEachLotsCosts() {
+        for (NumFactory nums : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BaseTradingRecord source = new BaseTradingRecord();
+            source.operate(Trade.buyAt(0, nums.hundred(), nums.one()));
+            source.operate(Trade.buyAt(1, nums.hundred(), nums.three()));
+            source.recordHoldingCost(2, nums.numOf(8));
+            BaseTradingRecord openCopy = new BaseTradingRecord(source.getOpenPositions());
+            assertEquals(nums.two(), openCopy.getOpenPositions().get(0).getHoldingCost());
+            assertEquals(nums.numOf(6), openCopy.getOpenPositions().get(1).getHoldingCost());
+            for (BaseTradingRecord record : List.of(source, openCopy)) {
+                record.operate(Trade.sellAt(3, nums.numOf(110), nums.one()));
+                record.operate(Trade.sellAt(4, nums.numOf(110), nums.three()));
+            }
+            BaseTradingRecord closedCopy = new BaseTradingRecord(source.getPositions());
+            for (BaseTradingRecord copy : List.of(openCopy, closedCopy)) {
+                assertEquals(nums.two(), copy.getPositions().get(0).getHoldingCost());
+                assertEquals(nums.numOf(6), copy.getPositions().get(1).getHoldingCost());
+                assertEquals(nums.numOf(32),
+                        copy.getPositions().stream().map(Position::getProfit).reduce(nums.zero(), Num::plus));
+                copy.operate(Trade.buyAt(5, nums.hundred(), nums.one()));
+                copy.operate(Trade.sellAt(6, nums.numOf(110), nums.one()));
+                assertEquals(nums.zero(), copy.getPositions().get(2).getHoldingCost());
+            }
+        }
+    }
+
+    @Test
+    void copiedOpenPositionsAdvanceAutomaticFillIndicesPastImportedSettlements() {
+        for (NumFactory nums : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            for (TradeType type : TradeType.values()) {
+                for (int sign : new int[] { 1, -1 }) {
+                    BaseTradingRecord source = new BaseTradingRecord(type);
+                    source.operate(new BaseTrade(0, type, nums.hundred(), nums.three(), new ZeroCostModel()));
+                    source.recordHoldingCost(5, nums.numOf(6 * sign));
+                    ExecutionSide exitSide = type == TradeType.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
+                    Num exitPrice = nums.numOf(type == TradeType.BUY ? 110 : 90);
+                    for (BaseTradingRecord record : List.of(source,
+                            new BaseTradingRecord(source.getOpenPositions().getFirst()),
+                            new BaseTradingRecord(source.getOpenPositions()))) {
+                        record.operate(fill(exitSide, exitPrice, nums.one()));
+                        assertEquals(6, record.getLastTrade().getIndex());
+                        assertEquals(nums.numOf(2 * sign), record.getPositions().getFirst().getHoldingCost());
+                        assertEquals(nums.numOf(10 - 2 * sign), record.getPositions().getFirst().getProfit());
+                        assertEquals(nums.numOf(4 * sign), record.getCurrentPosition().getHoldingCost());
+                        record.operate(fill(exitSide, exitPrice, nums.two()));
+                        assertEquals(7, record.getLastTrade().getIndex());
+                        assertTrue(record.isClosed());
+                        assertEquals(nums.numOf(4 * sign), record.getPositions().get(1).getHoldingCost());
+                        assertEquals(nums.numOf(20 - 4 * sign), record.getPositions().get(1).getProfit());
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void copyingMixedPositionListsDoesNotMatchExitsAgainstOtherSourcesOpenLots() {
+        for (TradeType type : TradeType.values()) {
+            BaseTradingRecord openSource = new BaseTradingRecord(type);
+            BaseTradingRecord closedSource = new BaseTradingRecord(type);
+            openSource.operate(new BaseTrade(0, type, numFactory.hundred(), numFactory.one(), new ZeroCostModel()));
+            openSource.recordHoldingCost(2, numFactory.two());
+            closedSource
+                    .operate(new BaseTrade(1, type, numFactory.numOf(120), numFactory.three(), new ZeroCostModel()));
+            closedSource.recordHoldingCost(2, numFactory.numOf(6));
+            closedSource.operate(new BaseTrade(3, type.complementType(),
+                    numFactory.numOf(type == TradeType.BUY ? 130 : 110), numFactory.three(), new ZeroCostModel()));
+            Position open = openSource.getOpenPositions().getFirst();
+            Position closed = closedSource.getPositions().getFirst();
+            for (List<Position> positions : List.of(List.of(open, closed), List.of(closed, open))) {
+                BaseTradingRecord copy = new BaseTradingRecord(positions);
+                assertEquals(numFactory.numOf(120), copy.getPositions().getFirst().getEntry().getPricePerAsset());
+                assertEquals(numFactory.three(), copy.getPositions().getFirst().getEntry().getAmount());
+                assertEquals(numFactory.numOf(6), copy.getPositions().getFirst().getHoldingCost());
+                assertEquals(numFactory.numOf(24), copy.getPositions().getFirst().getProfit());
+                assertEquals(numFactory.hundred(), copy.getCurrentPosition().getEntry().getPricePerAsset());
+                assertEquals(numFactory.one(), copy.getCurrentPosition().getEntry().getAmount());
+                assertEquals(numFactory.two(), copy.getCurrentPosition().getHoldingCost());
+                copy.operate(new BaseTrade(4, type.complementType(), numFactory.numOf(type == TradeType.BUY ? 110 : 90),
+                        numFactory.one(), new ZeroCostModel()));
+                assertEquals(numFactory.numOf(8), copy.getPositions().get(1).getProfit());
+            }
+        }
+    }
+
+    @Test
+    void incompatibleSettlementNumbersAreRejectedWithoutChangingLotShares() {
+        for (NumFactory nums : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            NumFactory other = nums instanceof DoubleNumFactory ? DecimalNumFactory.getInstance()
+                    : DoubleNumFactory.getInstance();
+            BaseTradingRecord record = new BaseTradingRecord();
+            record.operate(Trade.buyAt(0, nums.hundred(), nums.one()));
+            record.operate(Trade.buyAt(1, nums.hundred(), nums.three()));
+            record.recordHoldingCost(2, nums.numOf(8));
+            assertThrows(IllegalArgumentException.class, () -> record.recordHoldingCost(3, other.one()));
+            assertEquals(nums.two(), record.getOpenPositions().get(0).getHoldingCost());
+            assertEquals(nums.numOf(6), record.getOpenPositions().get(1).getHoldingCost());
+            record.recordHoldingCost(3, nums.numOf(-4));
+            record.operate(Trade.sellAt(4, nums.numOf(110), nums.numOf(4)));
+            assertEquals(nums.numOf(36),
+                    record.getPositions().stream().map(Position::getProfit).reduce(nums.zero(), Num::plus));
+        }
+    }
+
+    @Test
+    void recordedHoldingCostsAreProportionalIndexedAndSnapshotSafe() {
+        for (NumFactory nums : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            for (int sign : new int[] { 1, -1 }) {
+                BaseTradingRecord record = new BaseTradingRecord();
+                record.operate(Trade.buyAt(1, nums.hundred(), nums.one()));
+                record.operate(Trade.buyAt(2, nums.hundred(), nums.three()));
+                Position before = record.getCurrentPosition();
+                record.recordHoldingCost(7, nums.numOf(8 * sign));
+                List<Position> lots = record.getOpenPositions();
+                assertEquals(nums.zero(), before.getHoldingCost());
+                assertEquals(nums.numOf(2 * sign), lots.get(0).getHoldingCost());
+                assertEquals(nums.numOf(6 * sign), lots.get(1).getHoldingCost());
+                assertEquals(nums.zero(), lots.get(0).getHoldingCost(6));
+                assertEquals(nums.numOf(2 * sign), lots.get(0).getHoldingCost(7));
+                assertEquals(nums.numOf(8 * sign), record.getCurrentPosition().getHoldingCost());
+                record.operate(Trade.sellAt(8, nums.numOf(110), nums.numOf(4)));
+                Num profit = record.getPositions().stream().map(Position::getProfit).reduce(nums.zero(), Num::plus);
+                assertEquals(nums.numOf(40 - 8 * sign), profit);
+            }
+        }
+    }
+
+    @Test
+    void partialClosesPreserveHoldingCostSharesForEveryMatchPolicy() {
+        for (ExecutionMatchPolicy policy : ExecutionMatchPolicy.values()) {
+            BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, policy, new ZeroCostModel(),
+                    new ZeroCostModel(), null, null);
+            record.operate(new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.three(), numFactory.zero(),
+                    ExecutionSide.BUY, "entry", "lot"));
+            record.recordHoldingCost(2, numFactory.numOf(6));
+            record.operate(new BaseTrade(3, Instant.EPOCH, numFactory.numOf(110), numFactory.one(), numFactory.zero(),
+                    ExecutionSide.SELL, "partial-exit", "lot"));
+            assertEquals(numFactory.two(), record.getPositions().getFirst().getHoldingCost(), policy.name());
+            assertEquals(numFactory.numOf(4), record.getCurrentPosition().getHoldingCost(), policy.name());
+            record.recordHoldingCost(4, numFactory.numOf(-2));
+            record.operate(new BaseTrade(5, Instant.EPOCH, numFactory.numOf(110), numFactory.two(), numFactory.zero(),
+                    ExecutionSide.SELL, "final-exit", "lot"));
+            assertEquals(numFactory.two(), record.getPositions().get(1).getHoldingCost(), policy.name());
+            assertEquals(numFactory.numOf(4),
+                    record.getPositions().stream().map(Position::getHoldingCost).reduce(numFactory.zero(), Num::plus),
+                    policy.name());
+        }
+    }
+
+    @Test
+    void backdatedExitsCannotConsumeSettledLotsOrPartiallyApplyGroupedFills() {
+        for (ExecutionMatchPolicy policy : ExecutionMatchPolicy.values()) {
+            for (int amount : new int[] { 1, 3 }) {
+                BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, policy, new ZeroCostModel(),
+                        new ZeroCostModel(), null, null);
+                record.operate(new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.three(),
+                        numFactory.one(), ExecutionSide.BUY, "entry", "lot"));
+                record.recordHoldingCost(4, numFactory.numOf(6));
+                Trade backdated = new BaseTrade(2, Instant.EPOCH, numFactory.numOf(110), numFactory.numOf(amount),
+                        numFactory.two(), ExecutionSide.SELL, "backdated", "lot");
+                assertThrows(IllegalArgumentException.class, () -> record.operate(backdated));
+                assertThrows(IllegalArgumentException.class,
+                        () -> record.exit(2, numFactory.numOf(110), numFactory.numOf(amount)));
+                if (amount == 1) {
+                    Trade grouped = Trade.fromFills(TradeType.SELL,
+                            List.of(new TradeFill(5, Instant.EPOCH, numFactory.numOf(110), numFactory.one(),
+                                    numFactory.one(), ExecutionSide.SELL, "first", "lot"),
+                                    new TradeFill(2, Instant.EPOCH, numFactory.numOf(110), numFactory.one(),
+                                            numFactory.one(), ExecutionSide.SELL, "backdated", "lot")),
+                            new ZeroCostModel());
+                    assertThrows(IllegalArgumentException.class, () -> record.operate(grouped));
+                }
+                assertEquals(numFactory.three(), record.getCurrentPosition().getEntry().getAmount());
+                assertEquals(numFactory.numOf(6), record.getCurrentPosition().getHoldingCost());
+                assertEquals(numFactory.one(), record.getTotalFees());
+                record.operate(new BaseTrade(5, Instant.EPOCH, numFactory.numOf(110), numFactory.three(),
+                        numFactory.two(), ExecutionSide.SELL, "exit", "lot"));
+                assertEquals(numFactory.numOf(6), record.getPositions().getFirst().getHoldingCost());
+                assertEquals(numFactory.numOf(21), record.getPositions().getFirst().getProfit());
+            }
+        }
+    }
+
+    @Test
+    void recordedCostsRetainFiniteHighPrecisionAmounts() {
+        NumFactory nums = DecimalNumFactory.getInstance();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.operate(Trade.buyAt(0, nums.hundred(), nums.one()));
+        Num cost = nums.numOf("1e400");
+        record.recordHoldingCost(1, cost);
+        assertEquals(cost, record.getCurrentPosition().getHoldingCost());
+    }
+
+    @Test
+    void largeFiniteSettlementsAllocateWithoutMultiplicationOverflow() {
+        for (int sign : new int[] { 1, -1 }) {
+            BaseTradingRecord record = new BaseTradingRecord();
+            Num amount = numFactory.numOf(1e160);
+            Num cost = numFactory.numOf(sign * 1e160);
+            record.operate(Trade.buyAt(0, numFactory.one(), amount));
+            record.operate(Trade.buyAt(1, numFactory.one(), amount));
+
+            record.recordHoldingCost(2, cost);
+
+            Num expectedShare = numFactory.numOf(sign * 5e159);
+            List<Position> lots = record.getOpenPositions();
+            assertEquals(expectedShare, lots.get(0).getHoldingCost());
+            assertEquals(expectedShare, lots.get(1).getHoldingCost());
+            assertEquals(cost, record.getCurrentPosition().getHoldingCost());
+            Num closeAmount = amount.dividedBy(numFactory.two());
+            record.operate(Trade.sellAt(3, numFactory.one(), closeAmount));
+            Num closedShare = expectedShare.dividedBy(numFactory.two());
+            assertEquals(closedShare, record.getPositions().getFirst().getHoldingCost());
+            assertEquals(closedShare.negate(), record.getPositions().getFirst().getProfit());
+            assertEquals(expectedShare.minus(closedShare), record.getOpenPositions().get(0).getHoldingCost());
+            assertEquals(expectedShare, record.getOpenPositions().get(1).getHoldingCost());
+        }
+    }
+
+    @Test
+    void highPrecisionSettlementSumsAndSharesRemainFiniteBeyondDoubleRange() {
+        NumFactory nums = DecimalNumFactory.getInstance();
+        Num amount = nums.numOf("1e400");
+        Num cost = nums.numOf("1e400");
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.operate(Trade.buyAt(0, nums.one(), amount));
+        record.operate(Trade.buyAt(1, nums.one(), amount));
+
+        record.recordHoldingCost(2, cost);
+        record.recordHoldingCost(2, cost);
+
+        List<Position> lots = record.getOpenPositions();
+        assertEquals(cost, lots.get(0).getHoldingCost());
+        assertEquals(cost, lots.get(1).getHoldingCost());
+        assertEquals(nums.numOf("2e400"), record.getCurrentPosition().getHoldingCost());
+    }
+
+    @Test
+    void sameIndexOverflowIsRejectedForTailAndEarlierEntries() {
+        for (int sign : new int[] { 1, -1 }) {
+            for (boolean laterIndex : new boolean[] { false, true }) {
+                BaseTradingRecord record = new BaseTradingRecord();
+                Num cost = numFactory.numOf(sign * 1e308);
+                record.operate(Trade.buyAt(0, numFactory.one(), numFactory.one()));
+                record.recordHoldingCost(5, cost);
+                if (laterIndex) {
+                    record.recordHoldingCost(6, numFactory.numOf(-sign * 1e308));
+                }
+                Position before = record.getCurrentPosition();
+                List<Trade> trades = record.getTrades();
+
+                assertThrows(IllegalArgumentException.class, () -> record.recordHoldingCost(5, cost));
+
+                assertSame(trades, record.getTrades());
+                Position after = record.getCurrentPosition();
+                assertEquals(cost, before.getHoldingCost(5));
+                assertEquals(cost, after.getHoldingCost(5));
+                assertEquals(laterIndex ? numFactory.zero() : cost, after.getHoldingCost());
+                record.operate(fill(ExecutionSide.SELL, numFactory.one(), numFactory.one()));
+                assertEquals(laterIndex ? 7 : 6, record.getLastTrade().getIndex());
+                assertEquals(laterIndex ? numFactory.zero() : cost, record.getPositions().getFirst().getHoldingCost());
+            }
+        }
+    }
+
+    @Test
+    void overflowInLaterLotLeavesEarlierLotsCachesAndWatermarkUnchanged() {
+        for (int sign : new int[] { 1, -1 }) {
+            BaseTradingRecord record = new BaseTradingRecord();
+            record.operate(fill(ExecutionSide.BUY, numFactory.one(), numFactory.one()));
+            record.operate(fill(ExecutionSide.SELL, numFactory.one(), numFactory.one()));
+            record.operate(fill(ExecutionSide.BUY, numFactory.one(), numFactory.one()));
+            record.operate(fill(ExecutionSide.BUY, numFactory.one(), numFactory.three()));
+            Num original = numFactory.numOf(sign * 1.6e308);
+            record.recordHoldingCost(10, original);
+
+            List<Position> lotsBefore = record.getOpenPositions();
+            Num firstShare = numFactory.numOf(sign * 4e307);
+            Num lastShare = original.minus(firstShare);
+            assertEquals(firstShare, lotsBefore.get(0).getHoldingCost());
+            assertEquals(lastShare, lotsBefore.get(1).getHoldingCost());
+            Position netBefore = record.getCurrentPosition();
+            List<Trade> tradesBefore = record.getTrades();
+            List<Position> closedBefore = record.getPositions();
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> record.recordHoldingCost(10, numFactory.numOf(sign * 8e307)));
+
+            assertSame(tradesBefore, record.getTrades());
+            assertSame(closedBefore, record.getPositions());
+            List<Position> lotsAfter = record.getOpenPositions();
+            assertEquals(firstShare, lotsBefore.get(0).getHoldingCost());
+            assertEquals(lastShare, lotsBefore.get(1).getHoldingCost());
+            assertEquals(firstShare, lotsAfter.get(0).getHoldingCost());
+            assertEquals(lastShare, lotsAfter.get(1).getHoldingCost());
+            assertEquals(netBefore.getHoldingCost(), record.getCurrentPosition().getHoldingCost());
+            record.operate(fill(ExecutionSide.SELL, numFactory.one(), numFactory.one()));
+            assertEquals(11, record.getLastTrade().getIndex());
+            assertEquals(firstShare, record.getPositions().get(1).getHoldingCost());
+            assertEquals(lastShare, record.getCurrentPosition().getHoldingCost());
+        }
+    }
+
+    @Test
+    void nonFiniteTotalOpenAmountRejectsSettlementWithoutAdvancingWatermark() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        Num price = numFactory.numOf(1e-160);
+        Num amount = numFactory.numOf(1e308);
+        record.operate(fill(ExecutionSide.BUY, price, amount));
+        record.operate(fill(ExecutionSide.BUY, price, amount));
+        List<Trade> tradesBefore = record.getTrades();
+
+        assertThrows(IllegalArgumentException.class, () -> record.recordHoldingCost(100, numFactory.one()));
+
+        assertSame(tradesBefore, record.getTrades());
+        for (Position position : record.getOpenPositions()) {
+            assertEquals(numFactory.zero(), position.getHoldingCost());
+        }
+        record.operate(fill(ExecutionSide.BUY, price, numFactory.one()));
+        assertEquals(2, record.getLastTrade().getIndex());
+    }
+
+    @Test
+    void aggregateSnapshotRejectsOverflowWhenIndividualLotCostsRemainFinite() {
+        for (int sign : new int[] { 1, -1 }) {
+            BaseTradingRecord record = new BaseTradingRecord();
+            record.operate(Trade.buyAt(0, numFactory.one(), numFactory.one()));
+            record.operate(Trade.buyAt(1, numFactory.one(), numFactory.one()));
+            Num cost = numFactory.numOf(sign * 1.6e308);
+            record.recordHoldingCost(5, cost);
+            record.recordHoldingCost(5, cost);
+
+            List<Position> lots = record.getOpenPositions();
+            assertEquals(cost, lots.get(0).getHoldingCost());
+            assertEquals(cost, lots.get(1).getHoldingCost());
+            assertThrows(IllegalArgumentException.class, record::getCurrentPosition);
+            assertEquals(cost, record.getOpenPositions().get(0).getHoldingCost());
+            assertEquals(cost, record.getOpenPositions().get(1).getHoldingCost());
+        }
+    }
+
+    @Test
+    void averageCostMergesKeepPriorSettlementsAndAcceptOutOfOrderIndices() {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.AVG_COST,
+                new ZeroCostModel(), new ZeroCostModel(), null, null);
+        record.operate(Trade.buyAt(0, numFactory.hundred(), numFactory.two()));
+        record.recordHoldingCost(3, numFactory.numOf(6));
+        record.operate(Trade.buyAt(1, numFactory.hundred(), numFactory.one()));
+        record.recordHoldingCost(2, numFactory.numOf(-3));
+        record.recordHoldingCost(3, numFactory.three());
+        record.operate(Trade.sellAt(4, numFactory.numOf(110), numFactory.one()));
+        assertEquals(numFactory.minusOne(), record.getPositions().getFirst().getHoldingCost(2));
+        assertEquals(numFactory.two(), record.getPositions().getFirst().getHoldingCost());
+        assertEquals(numFactory.numOf(4), record.getCurrentPosition().getHoldingCost());
+    }
+
+    @Test
+    void recordedHoldingCostsAccumulateInIndexOrder() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.operate(Trade.buyAt(0, numFactory.hundred(), numFactory.one()));
+        record.recordHoldingCost(3, numFactory.three());
+        record.recordHoldingCost(5, numFactory.numOf(5));
+        record.recordHoldingCost(5, numFactory.minusOne());
+        record.recordHoldingCost(1, numFactory.one());
+        record.recordHoldingCost(2, numFactory.two());
+        record.recordHoldingCost(3, numFactory.minusOne());
+        record.recordHoldingCost(4, numFactory.numOf(4));
+
+        Position position = record.getCurrentPosition();
+        assertEquals(numFactory.zero(), position.getHoldingCost(0));
+        assertEquals(numFactory.one(), position.getHoldingCost(1));
+        assertEquals(numFactory.three(), position.getHoldingCost(2));
+        assertEquals(numFactory.numOf(5), position.getHoldingCost(3));
+        assertEquals(numFactory.numOf(9), position.getHoldingCost(4));
+        assertEquals(numFactory.numOf(13), position.getHoldingCost(5));
+        assertEquals(numFactory.numOf(13), position.getHoldingCost());
+    }
+
+    @Test
+    void recordedHoldingCostsSupplementTheConfiguredModelAndSurviveRestoration() throws Exception {
+        CostModel modeled = new FixedTransactionCostModel(2);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), modeled);
+        record.operate(Trade.buyAt(0, numFactory.hundred(), numFactory.three()));
+        record.recordHoldingCost(2, numFactory.numOf(6));
+        record.operate(Trade.sellAt(3, numFactory.numOf(110), numFactory.one()));
+        assertSame(modeled, record.getHoldingCostModel());
+        assertEquals(numFactory.numOf(6), record.getPositions().getFirst().getHoldingCost());
+        assertEquals(numFactory.numOf(6), record.getCurrentPosition().getHoldingCost());
+
+        BaseTradingRecord restored = restoreRecord(record);
+        assertEquals(numFactory.two(), restored.getPositions().getFirst().getHoldingCost());
+        assertEquals(numFactory.numOf(4), restored.getCurrentPosition().getHoldingCost());
+        restored.rehydrate(modeled);
+        assertEquals(numFactory.numOf(6), restored.getPositions().getFirst().getHoldingCost());
+        assertEquals(numFactory.numOf(6), restored.getCurrentPosition().getHoldingCost());
+        restored.recordHoldingCost(4, numFactory.numOf(-2));
+        restored.operate(Trade.sellAt(5, numFactory.numOf(110), numFactory.two()));
+        assertEquals(numFactory.numOf(6), restored.getPositions().get(1).getHoldingCost());
+    }
+
+    @Test
+    void windowProjectionPreservesSettlementsWithoutReadingFutureCosts() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 120, 130, 140)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.operate(Trade.buyAt(0, series, numFactory.two()));
+        record.recordHoldingCost(2, numFactory.numOf(6));
+        record.recordHoldingCost(4, numFactory.numOf(-2));
+        record.operate(Trade.sellAt(5, series, numFactory.two()));
+        NetProfitLossCriterion profit = new NetProfitLossCriterion();
+        assertEquals(numFactory.numOf(76), profit.calculate(series, record, AnalysisWindow.barRange(0, 5)));
+        AnalysisContext mark = AnalysisContext.defaults().withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+        assertEquals(numFactory.numOf(34), profit.calculate(series, record, AnalysisWindow.barRange(0, 3), mark));
+    }
+
+    @Test
+    void recordingErrorsLeaveExistingSettlementsUntouchedAndZeroIsANoOp() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.recordHoldingCost(-1, numFactory.zero());
+        assertThrows(NullPointerException.class, () -> record.recordHoldingCost(0, null));
+        assertThrows(IllegalArgumentException.class, () -> record.recordHoldingCost(0, NaN.NaN));
+        for (double value : new double[] { Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY }) {
+            assertThrows(IllegalArgumentException.class, () -> record.recordHoldingCost(0, DoubleNum.valueOf(value)));
+        }
+        assertThrows(IllegalStateException.class, () -> record.recordHoldingCost(0, numFactory.one()));
+        record.operate(Trade.buyAt(1, numFactory.hundred(), numFactory.one()));
+        record.operate(Trade.buyAt(3, numFactory.hundred(), numFactory.one()));
+        assertThrows(IllegalArgumentException.class, () -> record.recordHoldingCost(2, numFactory.numOf(6)));
+        assertEquals(numFactory.zero(), record.getCurrentPosition().getHoldingCost());
+        record.recordHoldingCost(3, numFactory.numOf(6));
+        assertEquals(numFactory.numOf(6), record.getCurrentPosition().getHoldingCost());
+    }
+
+    @Test
+    void automaticFillIndicesAdvancePastSettlementsForPartialAndFinalExits() {
+        for (NumFactory nums : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            for (int sign : new int[] { 1, -1 }) {
+                BaseTradingRecord record = new BaseTradingRecord();
+                record.operate(fill(ExecutionSide.BUY, nums.hundred(), nums.three()));
+                record.recordHoldingCost(5, nums.numOf(6 * sign));
+                record.operate(fill(ExecutionSide.SELL, nums.numOf(110), nums.one()));
+                assertEquals(0, record.getPositions().getFirst().getEntry().getIndex());
+                assertEquals(6, record.getPositions().getFirst().getExit().getIndex());
+                assertEquals(nums.numOf(2 * sign), record.getPositions().getFirst().getHoldingCost());
+                assertEquals(nums.numOf(4 * sign), record.getCurrentPosition().getHoldingCost());
+                record.operate(fill(ExecutionSide.SELL, nums.numOf(110), nums.two()));
+                assertEquals(7, record.getPositions().get(1).getExit().getIndex());
+                assertEquals(nums.numOf(4 * sign), record.getPositions().get(1).getHoldingCost());
+                assertEquals(nums.numOf(30 - 6 * sign),
+                        record.getPositions().stream().map(Position::getProfit).reduce(nums.zero(), Num::plus));
+            }
+        }
+    }
+
+    @Test
+    void settlementsPreserveHigherFillWatermarksAndFailuresDoNotAdvanceThem() {
+        for (NumFactory nums : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            NumFactory other = nums instanceof DoubleNumFactory ? DecimalNumFactory.getInstance()
+                    : DoubleNumFactory.getInstance();
+            BaseTradingRecord record = new BaseTradingRecord();
+            record.operate(fill(ExecutionSide.BUY, nums.hundred(), nums.three()));
+            record.recordHoldingCost(5, nums.numOf(6));
+            assertThrows(IllegalArgumentException.class, () -> record.recordHoldingCost(100, other.one()));
+            record.recordHoldingCost(100, nums.zero());
+            assertEquals(nums.numOf(6), record.getCurrentPosition().getHoldingCost());
+            record.operate(fill(ExecutionSide.SELL, nums.numOf(110), nums.one()));
+            assertEquals(6, record.getLastTrade().getIndex());
+            record.operate(new TradeFill(10, Instant.EPOCH, nums.numOf(110), nums.one(), nums.zero(),
+                    ExecutionSide.SELL, null, null));
+            record.recordHoldingCost(7, nums.numOf(-2));
+            record.operate(fill(ExecutionSide.SELL, nums.numOf(110), nums.one()));
+            assertEquals(11, record.getLastTrade().getIndex());
+            assertEquals(nums.zero(), record.getPositions().get(2).getHoldingCost());
+            assertEquals(nums.numOf(4),
+                    record.getPositions().stream().map(Position::getHoldingCost).reduce(nums.zero(), Num::plus));
+        }
+    }
 
     @Test
     void recordsPartialFillsUsingFifo() {

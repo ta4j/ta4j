@@ -12,6 +12,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 
+import org.ta4j.core.BaseTradingRecord.RecordedHoldingCostModel;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -43,12 +44,15 @@ import org.ta4j.core.num.Num;
  * their entry index.
  * </p>
  * <p>
- * Cost models are transient. After loading, transaction costs use a retained
- * trade model when available, preferring the entry model. A {@link BaseTrade}
- * whose transient model is lost defaults to zero and does not conflict with a
- * retained counterpart model, including in mixed legacy/live trade pairs.
- * Positions without a retained trade model and holding costs use zero-cost
- * models. Custom trades retaining serializable models continue to use them.
+ * Configured cost models are transient. After loading, transaction costs use a
+ * retained trade model when available, preferring the entry model. A
+ * {@link BaseTrade} whose transient model is lost defaults to zero and does not
+ * conflict with a retained counterpart model, including in mixed legacy/live
+ * trade pairs. Positions without a retained trade model use a zero-cost model.
+ * Custom trades retaining serializable models continue to use them. Recorded
+ * holding-cost allocations from a trading record are retained, but the
+ * configured holding-cost model is not; positions without recorded allocations
+ * use a zero-cost holding model after loading.
  * </p>
  */
 public class Position implements Serializable {
@@ -72,6 +76,9 @@ public class Position implements Serializable {
 
     /** The cost model for holding the asset */
     private final transient CostModel holdingCostModel;
+
+    /** Recorded holding costs retained independently of the transient modeled costs. */
+    private final RecordedHoldingCostModel recordedHoldingCostModel;
 
     /** Constructor with {@link #startingType} = BUY. */
     public Position() {
@@ -543,13 +550,17 @@ public class Position implements Serializable {
     }
 
     /**
-     * @return the holding cost model, or a zero-cost model after deserialization
-     *         when the model is unset
+     * @return the holding cost model while live; after deserialization, a model
+     *         containing retained recorded allocations with zero modeled cost, or
+     *         a zero-cost model if no allocations were retained
      *
      * @since 0.22.2
      */
     public CostModel getHoldingCostModel() {
-        return holdingCostModel == null ? ZERO_COST_MODEL : holdingCostModel;
+        if (holdingCostModel != null) {
+            return holdingCostModel;
+        }
+        return recordedHoldingCostModel == null ? ZERO_COST_MODEL : recordedHoldingCostModel;
     }
 
     /**
@@ -563,6 +574,7 @@ public class Position implements Serializable {
         this.startingType = config.startingType();
         this.transactionCostModel = config.transactionCostModel();
         this.holdingCostModel = config.holdingCostModel();
+        this.recordedHoldingCostModel = holdingCostModel instanceof RecordedHoldingCostModel recorded ? recorded : null;
     }
 
     private Position(ValidatedClosedPosition config) {
@@ -571,6 +583,7 @@ public class Position implements Serializable {
         this.exit = config.exit();
         this.transactionCostModel = config.transactionCostModel();
         this.holdingCostModel = config.holdingCostModel();
+        this.recordedHoldingCostModel = holdingCostModel instanceof RecordedHoldingCostModel recorded ? recorded : null;
     }
 
     private Position(ValidatedOpenPosition config) {
@@ -579,6 +592,7 @@ public class Position implements Serializable {
         this.exit = null;
         this.transactionCostModel = config.transactionCostModel();
         this.holdingCostModel = config.holdingCostModel();
+        this.recordedHoldingCostModel = holdingCostModel instanceof RecordedHoldingCostModel recorded ? recorded : null;
     }
 
     private static ValidatedStartingPosition validateStartingPosition(TradeType startingType,
@@ -649,7 +663,7 @@ public class Position implements Serializable {
     }
 
     /**
-     * Restores and validates the persisted position without changing its schema.
+     * Restores and validates the persisted position.
      *
      * @param stream the object stream
      * @throws IOException            if reading fails

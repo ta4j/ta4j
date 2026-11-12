@@ -2,6 +2,8 @@
 
 ### Added
 
+- **Actual holding-cost accounting**: `TradingRecord.recordHoldingCost` adds paid settlements and received credits to modeled costs, allocates them across open lots, and preserves their shares through mixed open/closed position copies, partial closes, standalone position snapshots, saved records and analysis windows. Automatic fill indices advance past both new and imported settlements, so later unindexed exits can close settled lots. Large finite settlements avoid intermediate allocation overflow; non-finite allocations or combined costs are rejected without changing the record. Incompatible numeric costs and exits preceding allocated settlements are also rejected. Indexed profit and equity exclude future settlements. `PerpetualFuturesFillRecordingExample` reconciles confirmed fill fees and funding; `PerpetualFuturesRecipes` covers custom fees, historical rates, observed-rate entry guards, contract conversion and capital-relative risk.
+
 - **Offline perpetual-futures backtests**: `PerpetualFuturesBacktest` combines leveraged sizing, contract-step rounding, fees, funding and a maintenance-margin stop approximation. `InversePerpetualFuturesBacktest` prices inverse contracts through reciprocal bars, including coin-denominated fees and funding. Both runnable examples report net profit, return on committed capital and absolute drawdown without network access.
 
 - **Returns on committed capital**: `ReturnOnCapitalCriterion` measures signed net profit against supplied capital rather than entry notional. Compare spot and leveraged strategies after transaction and holding costs, with additive decimal, multiplicative, percentage or logarithmic output. Arithmetic returns preserve losses beyond the committed capital. Capital follows the series' precision and rounding mode, with explicit rejection when its numeric type converts it to zero or infinity.
@@ -25,6 +27,8 @@
 
 
 ### Changed
+
+- **Position-specific holding costs in analysis**: `AnalysisCriterion` mark-to-market synthetic positions now use each position's own holding-cost model. Custom `TradingRecord` implementations with position-specific models can therefore see different outputs; plain records are unaffected.
 
 - **Depleted and sub-lot accounts keep backtesting**: A dynamic `PositionSizer` result of zero now skips the entry and continues instead of aborting the run. Fixed-amount overloads and exit sizing are unchanged.
 

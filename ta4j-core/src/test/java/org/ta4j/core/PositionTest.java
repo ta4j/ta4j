@@ -15,6 +15,8 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
@@ -31,6 +33,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
@@ -476,6 +479,138 @@ public class PositionTest {
 
     @ParameterizedTest
     @MethodSource("numFactories")
+    public void standaloneRecordedSnapshotsRetainSettlementsButNotModeledCosts(NumFactory factory) throws Exception {
+        for (TradeType type : TradeType.values()) {
+            CostModel modeled = new FixedTransactionCostModel(2);
+            BaseTradingRecord source = new BaseTradingRecord(type, new ZeroCostModel(), modeled);
+            Num exitPrice = factory.numOf(type == TradeType.BUY ? 110 : 90);
+            ExecutionSide entrySide = type == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+            ExecutionSide exitSide = entrySide == ExecutionSide.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
+            source.operate(new BaseTrade(1, type, factory.hundred(), factory.three(), new ZeroCostModel()));
+            source.recordHoldingCost(3, factory.numOf(6));
+            source.recordHoldingCost(5, factory.numOf(-3));
+            source.operate(new BaseTrade(6, type.complementType(), exitPrice, factory.one(), new ZeroCostModel()));
+
+            Position originalOpen = source.getOpenPositions().getFirst();
+            Position originalClosed = source.getPositions().getFirst();
+            assertNumEquals(4, originalOpen.getHoldingCost(5));
+            assertNumEquals(5, originalClosed.getHoldingCost());
+
+            Position open = restore(originalOpen);
+            Position closed = restore(originalClosed);
+            assertTrue(open.isOpened());
+            assertTrue(closed.isClosed());
+            assertNumEquals(0, open.getHoldingCost(2));
+            assertNumEquals(4, open.getHoldingCost(3));
+            assertNumEquals(4, open.getHoldingCost(4));
+            assertNumEquals(2, open.getHoldingCost(5));
+            assertNumEquals(2, open.getHoldingCost());
+            assertNumEquals(20, open.getProfit(2, exitPrice));
+            assertNumEquals(16, open.getProfit(3, exitPrice));
+            assertNumEquals(18, open.getProfit(5, exitPrice));
+            assertNumEquals(0, closed.getHoldingCost(2));
+            assertNumEquals(2, closed.getHoldingCost(3));
+            assertNumEquals(2, closed.getHoldingCost(4));
+            assertNumEquals(1, closed.getHoldingCost(5));
+            assertNumEquals(1, closed.getHoldingCost());
+            assertNumEquals(9, closed.getProfit());
+
+            Position newPosition = new Position(type, new ZeroCostModel(), originalOpen.getHoldingCostModel());
+            assertSame(originalOpen.getHoldingCostModel(), newPosition.getHoldingCostModel());
+            Position restoredNew = restore(newPosition);
+            assertTrue(restoredNew.isNew());
+            restoredNew.operate(1, factory.hundred(), factory.two());
+            assertNumEquals(4, restoredNew.getHoldingCost(3));
+            assertNumEquals(2, restoredNew.getHoldingCost(5));
+
+            for (BaseTradingRecord copy : List.of(new BaseTradingRecord(open), new BaseTradingRecord(List.of(open)))) {
+                assertNumEquals(2, copy.getOpenPositions().getFirst().getHoldingCost());
+                copy.operate(new TradeFill(-1, null, exitPrice, factory.two(), exitSide));
+                assertEquals(6, copy.getLastTrade().getIndex());
+                assertNumEquals(2, copy.getPositions().getFirst().getHoldingCost());
+                assertNumEquals(18, copy.getPositions().getFirst().getProfit());
+            }
+            for (BaseTradingRecord copy : List.of(new BaseTradingRecord(closed),
+                    new BaseTradingRecord(List.of(closed)))) {
+                assertNumEquals(1, copy.getPositions().getFirst().getHoldingCost());
+                assertNumEquals(9, copy.getPositions().getFirst().getProfit());
+                copy.operate(new TradeFill(-1, null, factory.hundred(), factory.one(), entrySide));
+                copy.operate(new TradeFill(-1, null, exitPrice, factory.one(), exitSide));
+                assertEquals(8, copy.getLastTrade().getIndex());
+                assertNumEquals(0, copy.getPositions().get(1).getHoldingCost());
+                assertNumEquals(10, copy.getPositions().get(1).getProfit());
+            }
+            BaseTradingRecord mixed = new BaseTradingRecord(List.of(open, closed));
+            mixed.operate(new TradeFill(-1, null, exitPrice, factory.two(), exitSide));
+            assertEquals(7, mixed.getLastTrade().getIndex());
+            assertNumEquals(1, mixed.getPositions().get(0).getHoldingCost());
+            assertNumEquals(2, mixed.getPositions().get(1).getHoldingCost());
+            assertNumEquals(9, mixed.getPositions().get(0).getProfit());
+            assertNumEquals(18, mixed.getPositions().get(1).getProfit());
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("numFactories")
+    public void ordinaryHoldingModelsRemainTransientEvenWhenSerializable(NumFactory factory) throws Exception {
+        Trade entry = Trade.buyAt(1, factory.hundred(), factory.one());
+        Trade exit = Trade.sellAt(3, factory.numOf(110), factory.one());
+        for (CostModel modeled : List.of(new FixedTransactionCostModel(2), new SerializableFeeModel(2))) {
+            Position open = new Position(entry, new ZeroCostModel(), modeled);
+            Position closed = new Position(entry, exit, new ZeroCostModel(), modeled);
+            assertSame(modeled, open.getHoldingCostModel());
+            assertSame(modeled, closed.getHoldingCostModel());
+            assertNumEquals(2, open.getHoldingCost(2));
+            assertNumEquals(4, closed.getHoldingCost());
+
+            Position restoredOpen = restore(open);
+            Position restoredClosed = restore(closed);
+            assertTrue(restoredOpen.getHoldingCostModel() instanceof ZeroCostModel);
+            assertTrue(restoredClosed.getHoldingCostModel() instanceof ZeroCostModel);
+            assertNumEquals(0, restoredOpen.getHoldingCost(2));
+            assertNumEquals(0, restoredClosed.getHoldingCost());
+            assertNumEquals(10, restoredClosed.getProfit());
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("numFactories")
+    public void legacyPositionStreamsWithoutRecordedAllocationsRemainOperational(NumFactory factory) throws Exception {
+        Trade entry = Trade.buyAt(1, factory.hundred(), factory.one());
+        Trade exit = Trade.sellAt(3, factory.numOf(110), factory.one());
+
+        Position fresh = restoreLegacy(new LegacySerializedPositionState(TradeType.BUY, null, null));
+        Position open = restoreLegacy(new LegacySerializedPositionState(TradeType.BUY, entry, null));
+        Position closed = restoreLegacy(new LegacySerializedPositionState(TradeType.BUY, entry, exit));
+        assertTrue(fresh.isNew());
+        assertTrue(open.isOpened());
+        assertTrue(closed.isClosed());
+        assertTrue(fresh.getHoldingCostModel() instanceof ZeroCostModel);
+        assertTrue(open.getHoldingCostModel() instanceof ZeroCostModel);
+        assertTrue(closed.getHoldingCostModel() instanceof ZeroCostModel);
+        assertNumEquals(0, open.getHoldingCost(3));
+        assertNumEquals(0, closed.getHoldingCost());
+        assertNumEquals(10, closed.getProfit());
+        open.operate(3, factory.numOf(110), factory.one());
+        assertNumEquals(10, open.getProfit());
+    }
+
+    @ParameterizedTest
+    @MethodSource("numFactories")
+    public void recordedSnapshotsDoNotPersistTheirModeledDelegate(NumFactory factory) throws Exception {
+        for (CostModel modeled : List.of(new FixedTransactionCostModel(2), new SerializableFeeModel(2))) {
+            BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), modeled);
+            record.operate(Trade.buyAt(1, factory.hundred(), factory.one()));
+            record.recordHoldingCost(2, factory.three());
+
+            Position snapshot = record.getOpenPositions().getFirst();
+            assertNumEquals(5, snapshot.getHoldingCost(2));
+            assertNumEquals(3, restore(snapshot).getHoldingCost(2));
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("numFactories")
     public void constructorSupportedEarlierAndEqualExitIndicesRemainValid(NumFactory factory) throws Exception {
         for (TradeType type : TradeType.values()) {
             for (int exitIndex : new int[] { 2, 5 }) {
@@ -642,6 +777,26 @@ public class PositionTest {
         }
     }
 
+    private static Position restoreLegacy(LegacySerializedPositionState state) throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ObjectOutputStream output = new ObjectOutputStream(bytes)) {
+            output.writeObject(state);
+        }
+        ByteArrayOutputStream renamed = new ByteArrayOutputStream();
+        try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(bytes.toByteArray()));
+                DataOutputStream output = new DataOutputStream(renamed)) {
+            // Keep the stream header and root object/class tokens, then rename only the
+            // legacy class descriptor. Its three fields and serial UID match old Position.
+            output.write(input.readNBytes(6));
+            assertEquals(LegacySerializedPositionState.class.getName(), input.readUTF());
+            output.writeUTF(Position.class.getName());
+            input.transferTo(output);
+        }
+        try (ObjectInputStream input = new ObjectInputStream(new ByteArrayInputStream(renamed.toByteArray()))) {
+            return (Position) input.readObject();
+        }
+    }
+
     /**
      * Matches Position's persisted fields without mutating production internals.
      */
@@ -651,8 +806,27 @@ public class PositionTest {
         private final Trade entry;
         private final Trade exit;
         private final TradeType startingType;
+        private final BaseTradingRecord.RecordedHoldingCostModel recordedHoldingCostModel;
 
         private SerializedPositionState(TradeType startingType, Trade entry, Trade exit) {
+            this.startingType = startingType;
+            this.entry = entry;
+            this.exit = exit;
+            this.recordedHoldingCostModel = null;
+        }
+    }
+
+    /**
+     * Matches the Position fields written before recorded allocations were retained.
+     */
+    private static final class LegacySerializedPositionState implements Serializable {
+        @Serial
+        private static final long serialVersionUID = -5484709075767220358L;
+        private final Trade entry;
+        private final Trade exit;
+        private final TradeType startingType;
+
+        private LegacySerializedPositionState(TradeType startingType, Trade entry, Trade exit) {
             this.startingType = startingType;
             this.entry = entry;
             this.exit = exit;
