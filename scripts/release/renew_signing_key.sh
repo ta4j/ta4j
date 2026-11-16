@@ -37,11 +37,18 @@ fingerprints="$(gpg --batch --with-colons --list-secret-keys | awk -F: '
   exit 1
 }
 
-# GnuPG updates the primary and the subkeys in separate operations.
+# GnuPG's "*" skips already-expired subkeys, so name each non-revoked subkey.
+subkeys="$(gpg --batch --with-colons --list-secret-keys | awk -F: '
+  $1 == "ssb" { include = ($2 != "r"); next }
+  $1 == "fpr" && include { print $10; include = 0 }
+')"
 printf '%s\n' "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
   --passphrase-fd 0 --quick-set-expire "$SIGNING_FINGERPRINT" 2y
-printf '%s\n' "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
-  --passphrase-fd 0 --quick-set-expire "$SIGNING_FINGERPRINT" 2y '*'
+while IFS= read -r subkey; do
+  [[ -n "$subkey" ]] || continue
+  printf '%s\n' "$GPG_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+    --passphrase-fd 0 --quick-set-expire "$SIGNING_FINGERPRINT" 2y "$subkey"
+done <<< "$subkeys"
 
 # Verify the exported secret, not merely the in-memory key modified above.
 mkdir "$work/verified-keyring"

@@ -17,13 +17,16 @@ gpg() {
   elif [[ "$args" == *' --list-secret-keys '* ]]; then
     printf 'sec:u:3072:1:0C40BB6B2A100CD4:1:9999999999:::::scSC:\n'
     printf 'fpr:::::::::%s:\n' "${ACTUAL_FINGERPRINT:-$SIGNING_FINGERPRINT}"
+    printf 'ssb:e:3072:1:AAAAAAAAAAAAAAAA:1:2:::::e:\n'
+    printf 'fpr:::::::::AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:\n'
   elif [[ "$args" == *' --quick-set-expire '* ]]; then
     IFS= read -r value
     [[ "$value" == passphrase-canary ]]
-    if [[ "${*: -1}" == '*' ]]; then
-      : > "$GNUPGHOME/subkeys"
-    else
+    if [[ "${*: -1}" == "$SIGNING_FINGERPRINT" ]]; then
       : > "$GNUPGHOME/primary"
+    else
+      [[ "${*: -1}" == AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ]]
+      : > "$GNUPGHOME/subkeys"
     fi
   elif [[ "$args" == *' --export-secret-keys '* ]]; then
     IFS= read -r value
