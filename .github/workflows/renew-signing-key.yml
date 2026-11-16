@@ -7,12 +7,6 @@ on:
         description: "Approved OpenPGP primary fingerprint to renew for two years (not an SSH key)."
         required: true
         type: string
-  # One-time bootstrap: remove this trigger after the approved recovery run.
-  push:
-    branches: [bugfix/renew-release-signing-key-20261116]
-    paths:
-      - .github/workflows/renew-signing-key.yml
-      - scripts/release/renew_signing_key.sh
 
 permissions:
   contents: read
@@ -32,7 +26,7 @@ jobs:
           persist-credentials: false
       - name: Renew, prove signing, publish public key, and update encrypted secret
         env:
-          SIGNING_FINGERPRINT: ${{ inputs.fingerprint || '43C18A2E124CF2177A50A71A0C40BB6B2A100CD4' }}
+          SIGNING_FINGERPRINT: ${{ inputs.fingerprint }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GH_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
