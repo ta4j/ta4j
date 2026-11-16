@@ -22,7 +22,7 @@ gpg() {
   elif [[ "$args" == *' --quick-set-expire '* ]]; then
     IFS= read -r value
     [[ "$value" == passphrase-canary ]]
-    if [[ "${*: -1}" == "$SIGNING_FINGERPRINT" ]]; then
+    if [[ "${*: -1}" == 2y ]]; then
       : > "$GNUPGHOME/primary"
     else
       [[ "${*: -1}" == AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ]]
@@ -84,7 +84,7 @@ run_case() {
     GPG_PASSPHRASE=passphrase-canary GITHUB_REPOSITORY=ta4j/ta4j GH_TOKEN=token-canary \
     FAIL_AT="$failure" bash "$ROOT/scripts/release/renew_signing_key.sh" > "$state/log" 2>&1 || status=$?
   if [[ "$expected" == success ]]; then
-    [[ "$status" == 0 && -f "$state/secret-updated" ]] || { echo "[FAIL] $name"; exit 1; }
+    [[ "$status" == 0 && -f "$state/secret-updated" ]] || { printf '[FAIL] %s (exit %s)\n%s\n' "$name" "$status" "$(<"$state/log")"; exit 1; }
   else
     [[ "$status" != 0 && ! -f "$state/secret-updated" ]] || { echo "[FAIL] $name"; exit 1; }
   fi
