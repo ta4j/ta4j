@@ -285,6 +285,14 @@ The checkpoint refs are an operational journal, not evidence that deployed bytes
 
 The durable `release-pending/<version>` at S blocks later automatic preparations until a completed publication checkpoint and tag identify R. Keep these journal refs until the release has been reconciled. Do not infer release success from master containing S alone.
 
+### Expired or unusable OpenPGP signing key
+
+Non-dry-run release and snapshot jobs sign and verify a temporary payload before publication (and before the snapshot build). A failure means the imported key or passphrase needs attention; dry-runs do not exercise signing. Maven Central requires OpenPGP signatures; SSH keys used for Git signing are not a substitute.
+
+1. Inspect the failing run and the imported key's public fingerprint, signing capability and expiration. For the current publishing key, the expected fingerprint is `43C18A2E124CF2177A50A71A0C40BB6B2A100CD4`. If expired, dispatch the maintenance workflow `renew-signing-key.yml` with the full fingerprint to renew the same primary key and subkeys for two years, prove the exported secret can sign and verify, upload the renewed public key to `keys.openpgp.org`, and update `GPG_PRIVATE_KEY`. Its `GH_TA4J_REPO_TOKEN` requires repository Secrets write permission. Update `GPG_PASSPHRASE` if needed. Do not silently replace the publishing identity or print private key material or the passphrase in logs.
+2. Keep the release freeze and publication journal refs. Check the failed run and Central's deployment state: a preflight failure before `publication-start` creates no new start checkpoint or upload, but an existing start checkpoint still requires the reconciliation in section 8.6. Remove a start ref only after definitively proving Central accepted no upload, with an expected-R lease.
+3. After reconciliation, resume publication of the original version and exact R; do not prepare a new version or blindly redeploy. If the completed checkpoint already exists, follow section 8.6 to finish the tag. Run the snapshot publisher separately as needed.
+
 ### 8.7 Dry-run warnings
 
 - Missing deploy secrets in dry-run are expected warnings.

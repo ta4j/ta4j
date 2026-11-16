@@ -907,6 +907,14 @@ jobs:
           gpgconf --launch gpg-agent 2>/dev/null || true
           echo "gpg.conf and gpg-agent.conf created"
 
+      - name: Preflight OpenPGP signing
+        id: signing_preflight
+        if: steps.dry_run.outputs.dryRun != 'true'
+        shell: bash
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: bash ../controller/scripts/release/release_helpers.sh signing-preflight
+
       - name: Create release tag
         if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists != 'true'
         env:
@@ -1054,6 +1062,8 @@ jobs:
           JAVADOC_WARNING_COUNT: ${{ steps.javadoc_warnings.outputs.javadoc_warning_count }}
           JAVADOC_WARNING_BASELINE_COUNT: ${{ steps.javadoc_warnings.outputs.javadoc_warning_baseline_count }}
           JAVADOC_WARNING_NEW_COUNT: ${{ steps.javadoc_warnings.outputs.javadoc_warning_new_count }}
+          SIGNING_FINGERPRINT: ${{ steps.signing_preflight.outputs.signing_fingerprint }}
+          SIGNING_PREFLIGHT_OUTCOME: ${{ steps.signing_preflight.outcome }}
         run: |
           echo "summary: dryRun=${DRY_RUN:-}"
           echo "summary: release=${RELEASE:-}"
@@ -1069,6 +1079,10 @@ jobs:
             mutation_plan="would create the release tag, deploy to Maven Central, push the tag, dispatch recovery snapshot.yml, and post the release discussion summary"
             rerun_guidance="rerun publish-release.yml with dryRun=false after inspecting these computed values and artifacts"
             snapshot_handoff="skipped in dry run"
+          elif [ "${SIGNING_PREFLIGHT_OUTCOME:-}" = "failure" ]; then
+            mutation_plan="OpenPGP signing preflight failed before tag creation and publication-start"
+            rerun_guidance="fix signing and reconcile any existing publication journal before resuming the same release commit"
+            snapshot_handoff="not dispatched"
           else
             mutation_plan="completed non-dry-run publish-release mutations"
             rerun_guidance="not needed for this non-dry-run publish run"
@@ -1093,6 +1107,7 @@ jobs:
             "javadocWarnings": "${JAVADOC_WARNING_COUNT:-}",
             "javadocWarningBaseline": "${JAVADOC_WARNING_BASELINE_COUNT:-}",
             "newJavadocWarnings": "${JAVADOC_WARNING_NEW_COUNT:-}",
+            "signingFingerprint": "${SIGNING_FINGERPRINT:-}",
             "runUrl": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           }
           EOF
@@ -1107,6 +1122,7 @@ jobs:
             echo "- merge commit: ${MERGE_COMMIT:-none}"
             echo "- release PR: ${PR_NUMBER:-none}"
             echo "- Javadoc warnings: ${JAVADOC_WARNING_COUNT:-unknown} current / ${JAVADOC_WARNING_BASELINE_COUNT:-unknown} baseline / ${JAVADOC_WARNING_NEW_COUNT:-unknown} new"
+            echo "- OpenPGP signing fingerprint: ${SIGNING_FINGERPRINT:-not checked}"
             echo "- snapshot handoff: ${snapshot_handoff}"
             echo "- mutation plan: ${mutation_plan}"
             echo "- rerun guidance: ${rerun_guidance}"
