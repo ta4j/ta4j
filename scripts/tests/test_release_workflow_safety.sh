@@ -451,8 +451,12 @@ test_release_scheduler_graph_and_permissions() {
 
   python3 - "$WORKFLOWS" <<'PYTHON'
 from pathlib import Path
+import os
 import re
+import subprocess
 import sys
+import tempfile
+import textwrap
 
 root = Path(sys.argv[1])
 
@@ -518,6 +522,31 @@ for name, block in assessment.items():
     assert 'FRAMEWORK_SHA: ${{ fromJSON(toJSON(job)).workflow_sha }}' in identity_guard
     assert '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' in identity_guard and '^[0-9a-f]{40}$' in identity_guard
     assert 'exit 1' in identity_guard
+    assert 'id: framework' in identity_guard
+    assert 'inputs.' not in identity_guard, 'native identity must not accept caller input'
+    # Execute the real guard: missing/malformed metadata must not produce even a
+    # partial checkout identity. A valid native identity is forwarded unchanged.
+    script = textwrap.dedent(identity_guard.split('        run: |\n', 1)[1])
+    cases = [('ta4j/ta4j', 'a' * 40, True), ('example/framework', 'b' * 40, True),
+             ('', '', False), (None, None, False), ('ta4j/ta4j', '', False),
+             ('ta4j/ta4j', 'master', False), ('owner/repo/extra', 'a' * 40, False),
+             ('ta4j/ta4j', 'A' * 40, False), ('ta4j/ta4j\nrepository=other/repo', 'a' * 40, False),
+             ('ta4j/ta4j', 'a' * 40 + '\nrevision=master', False)]
+    with tempfile.TemporaryDirectory(prefix='ta4j-framework-identity-') as temporary:
+        output = Path(temporary) / 'outputs'
+        for repository, revision, valid in cases:
+            output.write_text('')
+            environment = dict(os.environ, BASH_ENV='/dev/null', GITHUB_OUTPUT=str(output))
+            environment.pop('FRAMEWORK_REPOSITORY', None)
+            environment.pop('FRAMEWORK_SHA', None)
+            if repository is not None:
+                environment['FRAMEWORK_REPOSITORY'] = repository
+            if revision is not None:
+                environment['FRAMEWORK_SHA'] = revision
+            result = subprocess.run(['bash', '-c', script], cwd=temporary, env=environment,
+                                    text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            assert (result.returncode == 0) == valid, (name, repository, revision, result.stderr)
+            assert output.read_text() == (f'repository={repository}\nrevision={revision}\n' if valid else '')
     for step in steps:
         if 'uses: actions/checkout@' not in step:
             assert not re.search(r'(?:run:|python3|bash|node|source)\s+["\']?(?:\./)?release-assessment-work/candidate/', step)
@@ -526,8 +555,8 @@ for name, block in assessment.items():
         assert 'persist-credentials: false' in step
         if 'path: release-assessment-work/framework' in step:
             framework_checkouts += 1
-            assert 'repository: ${{ fromJSON(toJSON(job)).workflow_repository }}' in step
-            assert 'ref: ${{ fromJSON(toJSON(job)).workflow_sha }}' in step
+            assert 'repository: ${{ steps.framework.outputs.repository }}' in step
+            assert 'ref: ${{ steps.framework.outputs.revision }}' in step
             assert 'inputs.' not in step, 'caller input must not select executable framework code'
             assert block.index(identity_guard) < block.index(step), 'native identity must fail closed before checkout'
         else:

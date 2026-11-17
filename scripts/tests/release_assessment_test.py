@@ -228,6 +228,10 @@ class AssessmentTest(unittest.TestCase):
         self.assertEqual("input_json", typed["type"])
         self.assertEqual(self.context, typed["data"]["context"])
         self.assertEqual("complete frozen diff", typed["data"]["releaseDossier"])
+        minor = next(choice for choice in request["questions"][0]["choices"] if choice["value"] == "release_minor")
+        self.assertIn("under the frozen policy", minor["description"])
+        self.assertIn("pre-1.0 breaking changes when allowed", minor["description"])
+        self.assertNotIn("compatible minor", minor["description"])
         self.assertNotIn("reasoning", request)
         self.assertEqual("completed", result["status"])
         self.assertEqual("release_minor", result["recommendation"])
@@ -347,6 +351,45 @@ class AssessmentTest(unittest.TestCase):
         with patch.object(subprocess, "check_output", return_value="b" * 40):
             with self.assertRaisesRegex(ValueError, "candidate_checkout_mismatch"):
                 assessment.runner_setup(self.root, self.root, SHA)
+
+    def test_selfhosted_rejects_inaccessible_home_before_proxy_or_provider_setup(self):
+        import pwd
+        candidate, sha = self.repository_fixture()
+        service_home = self.root / "service-home"
+        service_home.mkdir(mode=0o700)
+        account = types.SimpleNamespace(pw_uid=os.getuid() + 12345, pw_gid=os.getgid(), pw_dir=str(service_home))
+        real_run = subprocess.run
+        real_access = os.access
+        sudo_calls = []
+
+        def run(command, **kwargs):
+            if command[0] == "sudo":
+                sudo_calls.append(command)
+                self.assertEqual(["sudo", "-n", "true"], command,
+                                 "inaccessible account must be rejected before creating proxy files")
+                return subprocess.CompletedProcess(command, 0)
+            return real_run(command, **kwargs)
+
+        def access(path, mode, **kwargs):
+            if Path(path) == service_home:
+                self.assertEqual(os.X_OK, mode)
+                return False
+            return real_access(path, mode, **kwargs)
+
+        env = {"ASSESSMENT_RUNNER_ENVIRONMENT": "self-hosted", "GITHUB_RUN_ID": "42",
+               "GITHUB_ENV": str(self.root / "env"), "GITHUB_PATH": str(self.root / "path")}
+        factory, _ = self.sdk()
+        with patch.dict(os.environ, env), patch.object(pwd, "getpwnam", return_value=account), \
+                patch.object(subprocess, "run", side_effect=run), patch.object(os, "access", side_effect=access):
+            with self.assertRaisesRegex(ValueError, "home_not_traversable_by_runner"):
+                assessment.runner_setup(self.root, candidate, sha, "codex-service")
+        self.assertEqual([["sudo", "-n", "true"]], sudo_calls)
+        factory.assert_not_called()
+        self.assertFalse((self.root / "runner-session.json").exists())
+        self.assertFalse((self.root / "outputs").exists(), "runtime output must not authorize the Codex action")
+        self.assertFalse((service_home / ".codex").exists())
+        self.assertFalse((service_home / ".ta4j-release-assessment-lock").exists())
+        self.assertEqual(0o700, service_home.stat().st_mode & 0o777, "preflight must not loosen service-home permissions")
 
     def test_workflow_has_independent_shadow_failure_boundary_and_policy_stage(self):
         text = (ROOT / ".github/workflows/reusable-release-assessment.yml").read_text()

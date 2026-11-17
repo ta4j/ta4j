@@ -143,8 +143,13 @@ confidence is not a calibrated correctness probability for TA4J.
 GitHub-hosted model jobs use the official action's `drop-sudo` strategy and
 read-only permission profile. Self-hosted jobs use `unprivileged-user`, which
 requires an explicitly preprovisioned account with no sudo, a clean dedicated
-home, and executable Node/Codex runtime paths. The setup checks these conditions,
-locks the account for the run, and cleans only state it created. It does not
+home, and executable Node/Codex runtime paths. The runner account must already
+have traversal access through the service account's home, because the official
+action starts and reads its proxy as the runner. Setup verifies that access and
+that the prepared proxy-info file is readable and writable by the runner; it
+fails before the model action if either is unavailable. It does not loosen the
+home directory's permissions. The setup locks the account for the run and cleans
+only state it created. It does not
 remove the persistent runner's sudo privileges or inherit an existing Codex
 configuration. Failed cleanup/abandoned locks need operator investigation.
 

@@ -252,7 +252,7 @@ def decisions(directory, source_sha):
         )
         choices = [
             {"value": "release_patch", "description": "Complete evidence justifies a compatible patch release now."},
-            {"value": "release_minor", "description": "Complete evidence justifies a compatible minor release now."},
+            {"value": "release_minor", "description": "Complete evidence justifies a minor release under the frozen policy, including pre-1.0 breaking changes when allowed."},
             {"value": "defer", "description": "Complete evidence does not justify releasing now under the policy."},
             {"value": "insufficient_evidence", "description": "A material fact needed for a supported release decision is missing."},
         ]
@@ -432,6 +432,11 @@ def runner_setup(directory, candidate, source_sha, codex_user=""):
             account = pwd.getpwnam(codex_user)
             if account.pw_uid in (0, os.getuid()) or not Path(account.pw_dir).is_absolute() or account.pw_dir == "/":
                 raise ValueError("codex_user_must_be_separate_unprivileged_account")
+            # The action starts its proxy as the runner, not the service user.
+            # A readable .codex directory cannot compensate for an inaccessible
+            # parent home; require existing traversal access without changing it.
+            if not os.access(account.pw_dir, os.X_OK):
+                raise ValueError("codex_user_home_not_traversable_by_runner")
             import grp
             groups = os.getgrouplist(codex_user, account.pw_gid)
             if 0 in groups or any(grp.getgrgid(group).gr_name in ("sudo", "wheel", "docker", "lxd", "disk") for group in groups):
@@ -456,8 +461,11 @@ def runner_setup(directory, candidate, source_sha, codex_user=""):
             write(state_path, state)
             # The proxy runs as the runner; Codex runs as the service user. The
             # official action locks this one server-info file to root/read-only.
+            proxy_info = codex_home / (state["runId"] + ".json")
             subprocess.run(["sudo", "-n", "install", "-m", "600", "-o", str(os.getuid()), "-g", str(os.getgid()),
-                            "/dev/null", str(codex_home / (state["runId"] + ".json"))], check=True)
+                            "/dev/null", str(proxy_info)], check=True)
+            if not os.access(proxy_info, os.R_OK | os.W_OK):
+                raise ValueError("codex_proxy_info_not_readable_and_writable_by_runner")
             subprocess.run(["sudo", "-n", "chown", codex_user, str(session / "result")], check=True)
             subprocess.run(["sudo", "-n", "chown", codex_user, str(session / "result" / "codex-decision.json")], check=True)
         state["codexHome"] = str(codex_home)
