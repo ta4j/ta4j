@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Fixed
+
+- **Maven signing preflight**: release and snapshot publishing sign and verify a temporary payload with the imported OpenPGP key before publication, failing early on unusable or expired keys and passphrases. A maintainer-run helper renews the existing signing identity without replacing its fingerprint or exposing administrative secrets to a branch-dispatch workflow.
 
 ## 0.29.0 (2026-11-16)
 

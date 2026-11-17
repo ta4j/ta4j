@@ -47,6 +47,7 @@ usage() {
 Usage: release_helpers.sh <command> [options]
 
 Commands:
+  signing-preflight
   model-preflight
   build-dossier
   build-ai-request
@@ -68,6 +69,37 @@ die() {
   echo "::error::$*" >&2
   exit 1
 }
+
+command_signing_preflight() (
+  [[ $# -eq 0 ]] || die "signing-preflight takes no arguments"
+  [[ -n "${GPG_PASSPHRASE:-}" ]] || die "OpenPGP signing preflight: GPG_PASSPHRASE is missing. Restore the signing secret; if the key is expired or unusable, renew the existing OpenPGP key and update the secret and public key. See RELEASE_PROCESS.md."
+
+  local tmpdir payload signature status fingerprint
+  tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/release-signing.XXXXXX")"
+  trap 'rm -rf "$tmpdir"' EXIT
+  trap 'exit 1' HUP INT TERM
+  payload="$tmpdir/payload"
+  signature="$tmpdir/payload.sig"
+  printf '%s\n' 'ta4j Maven signing preflight' > "$payload"
+
+  if ! printf '%s\n' "$GPG_PASSPHRASE" | gpg --batch --no-tty --yes \
+    --pinentry-mode loopback --passphrase-fd 0 --output "$signature" \
+    --detach-sign "$payload" >/dev/null 2>&1; then
+    die "OpenPGP signing preflight failed: the imported signing key is missing, expired or unusable, or GPG_PASSPHRASE is incorrect. Check the key and passphrase; renew the existing OpenPGP key if expired and update the secret and public key. See RELEASE_PROCESS.md."
+  fi
+  if ! status="$(gpg --batch --no-tty --status-fd 1 --verify "$signature" "$payload" 2>/dev/null)"; then
+    die "OpenPGP signing preflight could not verify its detached signature. Check the imported key; renew the existing OpenPGP key if expired and update the secret and public key. See RELEASE_PROCESS.md."
+  fi
+  if printf '%s\n' "$status" | grep -Eq '^\[GNUPG:\] (EXPKEYSIG|EXPSIG|REVKEYSIG|KEYEXPIRED|SIGEXPIRED)( |$)'; then
+    die "OpenPGP signing preflight found an expired or revoked key or signature. Renew the existing OpenPGP key if expired and update the secret and public key; investigate revocation. See RELEASE_PROCESS.md."
+  fi
+  fingerprint="$(printf '%s\n' "$status" | awk '$1 == "[GNUPG:]" && $2 == "VALIDSIG" { count++; fingerprint=$3 } END { if (count == 1) print fingerprint }')"
+  if [[ ! "$fingerprint" =~ ^[[:xdigit:]]+$ ]] || { [[ ${#fingerprint} -ne 40 ]] && [[ ${#fingerprint} -ne 64 ]]; }; then
+    die "OpenPGP signing preflight did not receive a valid signing fingerprint. Check the imported key and verification setup. See RELEASE_PROCESS.md."
+  fi
+  append_output "signing_fingerprint" "$fingerprint"
+  printf 'audit:signing_preflight=passed signing_fingerprint=%s\n' "$fingerprint"
+)
 
 require_value() {
   local option="$1"
@@ -2051,6 +2083,7 @@ main() {
   fi
   shift
   case "$command" in
+    signing-preflight) command_signing_preflight "$@" ;;
     model-preflight) command_model_preflight "$@" ;;
     build-dossier) command_build_dossier "$@" ;;
     build-ai-request) command_build_ai_request "$@" ;;
