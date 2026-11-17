@@ -1,5 +1,4 @@
 """Offline evidence, authority and official SDK contracts; no live inference."""
-import copy
 from contextlib import redirect_stdout
 import importlib.util
 from io import StringIO

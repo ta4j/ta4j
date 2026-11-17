@@ -122,6 +122,18 @@ test('newer queued canonical run supersedes an older passing run', async () => {
   assert.equal(state.ci.status, 'queued');
 });
 
+test('canonical CI accepts GitHub ref-qualified workflow paths with exact path boundaries', async () => {
+  for (const ref of ['master', 'refs/heads/master', source]) {
+    const { state } = await collect({ runs: [{ ...ci, path: `${ci.path}@${ref}` }] });
+    assert.equal(state.ci.runId, ci.id);
+    assert.equal(state.ci.conclusion, 'success');
+  }
+  for (const workflowPath of ['.github/workflows/other.yml@master', `${ci.path}.extra@master`, `${ci.path}@`, `${ci.path}@ `]) {
+    const { state } = await collect({ runs: [{ ...ci, path: workflowPath }] });
+    assert.equal(state.ci, null);
+  }
+});
+
 test('different head, branch, workflow and PR CI cannot substitute for the candidate check', async () => {
   const runs = [{ ...ci, head_sha: later }, { ...ci, head_branch: 'feature/test' },
     { ...ci, path: '.github/workflows/other.yml' }, { ...ci, event: 'pull_request' }];
@@ -174,6 +186,19 @@ test('accepted matching preparation is reused instead of dispatched again', asyn
       refs: { 'refs/heads/release-freeze/prepare-200': source } });
     assert.deepEqual(await handoff(mocked), { status: 'already_dispatched', runId: 200 });
     assert.equal(mocked.dispatched.length, 0);
+  }
+});
+
+test('preparation deduplication accepts a ref-qualified path without matching another workflow', async () => {
+  for (const ref of ['master', 'refs/heads/master', source]) {
+    const mocked = fixture({ preparations: [{ ...preparation, path: `${preparation.path}@${ref}` }] });
+    assert.deepEqual(await handoff(mocked), { status: 'already_dispatched', runId: preparation.id });
+    assert.equal(mocked.dispatched.length, 0);
+  }
+  for (const workflowPath of ['.github/workflows/other.yml@master', `${preparation.path}.extra@master`, `${preparation.path}@`]) {
+    const mocked = fixture({ preparations: [{ ...preparation, path: workflowPath }] });
+    assert.equal((await handoff(mocked)).status, 'dispatched');
+    assert.equal(mocked.dispatched.length, 1);
   }
 });
 

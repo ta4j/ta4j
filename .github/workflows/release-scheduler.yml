@@ -93,10 +93,11 @@ jobs:
     runs-on: ${{ fromJSON(vars.RELEASE_SCHEDULER_RUNNER || '["ubuntu-latest"]') }}
     timeout-minutes: 5
     steps:
-      - name: Checkout the eligible commit and release history
+      - name: Checkout the trusted context controller and release history
         uses: actions/checkout@v6
         with:
-          ref: ${{ needs.eligibility.outputs.source_sha }}
+          # Eligibility and freeze verify this trusted revision equals source_sha.
+          ref: ${{ github.workflow_sha }}
           fetch-depth: 0
           persist-credentials: false
           show-progress: false
@@ -161,10 +162,11 @@ jobs:
       version: ${{ steps.plan.outputs.version }}
       recommendation: ${{ steps.plan.outputs.recommendation }}
     steps:
-      - name: Checkout the assessed source for version validation
+      - name: Checkout the trusted version policy and release history
         uses: actions/checkout@v6
         with:
-          ref: ${{ needs.eligibility.outputs.source_sha }}
+          # Plan verifies this trusted revision equals the assessed source_sha.
+          ref: ${{ github.workflow_sha }}
           fetch-depth: 0
           persist-credentials: false
           show-progress: false

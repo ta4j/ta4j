@@ -5,6 +5,13 @@ const fs = require('node:fs');
 const SHA = /^[0-9a-f]{40}$/;
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
+function workflowPathMatches(actual, expected) {
+  // GitHub returns both a bare path and the documented path@ref representation.
+  // The boundary is exact: another workflow or an empty suffix is never a match.
+  return typeof actual === 'string' && (actual === expected ||
+    (actual.startsWith(`${expected}@`) && /^\S+$/.test(actual.slice(expected.length + 1))));
+}
+
 async function repositoryState({ github, context, sourceSha }) {
   if (!SHA.test(sourceSha)) throw new Error('Invalid candidate SHA');
   const defaultBranch = context.payload.repository.default_branch;
@@ -18,7 +25,7 @@ async function repositoryState({ github, context, sourceSha }) {
   // Do not substitute a PR, another workflow, an older successful attempt or a
   // nearby commit when the canonical exact-source run is absent or still pending.
   const candidates = runs.filter(run => run.head_sha === sourceSha && run.event === 'push' &&
-    run.head_branch === defaultBranch && run.path === '.github/workflows/test.yml');
+    run.head_branch === defaultBranch && workflowPathMatches(run.path, '.github/workflows/test.yml'));
   candidates.sort((a, b) => b.run_number - a.run_number || b.run_attempt - a.run_attempt);
   const latest = candidates[0];
   return {
@@ -74,7 +81,7 @@ async function handoff({ github, context, sourceSha, version, dryRun }) {
   const runs = await github.paginate(github.rest.actions.listWorkflowRuns, { ...context.repo,
     workflow_id: 'prepare-release.yml', branch: ref, event: 'workflow_dispatch', head_sha: sourceSha, per_page: 100 });
   const matching = runs.filter(run => run.head_sha === sourceSha && run.head_branch === ref &&
-    run.event === 'workflow_dispatch' && run.path === '.github/workflows/prepare-release.yml' && run.display_title === title);
+    run.event === 'workflow_dispatch' && workflowPathMatches(run.path, '.github/workflows/prepare-release.yml') && run.display_title === title);
   matching.sort((a, b) => b.run_number - a.run_number || b.run_attempt - a.run_attempt);
   if (matching.length) {
     const previous = matching[0];

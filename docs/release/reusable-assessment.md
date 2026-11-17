@@ -165,10 +165,16 @@ release credentials.
 
 Call the reusable workflow with `source_sha` and `evidence_artifact`. Optional
 `evidence_run_id` selects a producer run in the caller repository. Cross-repository
-callers must pin the workflow and `framework_sha` to the same reviewed immutable
-framework revision, set `framework_repository`, and supply the schema-2 context,
-dossier and manifest. Its outputs are `recommendation`, `should_release`, `bump`
-and `all_agree`; an empty agreement means the results are not comparable.
+callers pin the workflow to a reviewed immutable commit and supply the schema-2
+context, dossier and manifest. Framework scripts always come from that called
+workflow's own `job.workflow_repository` and `job.workflow_sha`; callers cannot
+replace controller code through candidate or framework inputs. The candidate is
+checked out separately and used only as assessment data. These native
+[workflow identity fields](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context)
+require GitHub.com and are unavailable on GitHub Enterprise Server; missing
+identity fails before framework checkout, without falling back to caller code.
+Its outputs are `recommendation`, `should_release`, `bump` and `all_agree`; an
+empty agreement means the results are not comparable.
 
 ## Output contract: why each item exists
 

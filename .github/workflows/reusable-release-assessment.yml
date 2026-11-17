@@ -19,14 +19,6 @@ on:
         description: JSON runner labels; POSIX GitHub-hosted or preconfigured self-hosted runner
         default: '["ubuntu-latest"]'
         type: string
-      framework_repository:
-        description: Framework repository; empty means caller repository
-        default: ''
-        type: string
-      framework_sha:
-        description: Framework commit; empty means source_sha
-        default: ''
-        type: string
       codex_model:
         default: gpt-6.1-sol
         type: string
@@ -63,6 +55,10 @@ env:
   NPM_CONFIG_AUDIT: 'false'
   NPM_CONFIG_PROGRESS: 'false'
   PIP_DISABLE_PIP_VERSION_CHECK: '1'
+# These two fields identify the called workflow, including cross-repository use.
+# The native job object roundtrip accommodates actionlint 1.7.12's older type
+# table without suppressing validation: https://github.com/rhysd/actionlint/issues/757.
+# No caller input or candidate ref can select executable framework code.
 jobs:
   context:
     name: Context preparation
@@ -71,11 +67,20 @@ jobs:
     steps:
       - name: Clear previous assessment workspace
         run: rm -rf -- "$GITHUB_WORKSPACE/release-assessment-work"
+      - name: Require the reusable workflow's trusted source identity
+        env:
+          FRAMEWORK_REPOSITORY: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          FRAMEWORK_SHA: ${{ fromJSON(toJSON(job)).workflow_sha }}
+        run: |
+          if [[ ! "$FRAMEWORK_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ || ! "$FRAMEWORK_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::This assessor requires GitHub.com workflow identity; refusing a caller-source fallback.'
+            exit 1
+          fi
       - name: Checkout immutable framework
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          repository: ${{ inputs.framework_repository || github.repository }}
-          ref: ${{ inputs.framework_sha || inputs.source_sha }}
+          repository: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
           path: release-assessment-work/framework
           persist-credentials: false
           show-progress: false
@@ -115,11 +120,20 @@ jobs:
     steps:
       - name: Clear previous assessment workspace
         run: rm -rf -- "$GITHUB_WORKSPACE/release-assessment-work"
+      - name: Require the reusable workflow's trusted source identity
+        env:
+          FRAMEWORK_REPOSITORY: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          FRAMEWORK_SHA: ${{ fromJSON(toJSON(job)).workflow_sha }}
+        run: |
+          if [[ ! "$FRAMEWORK_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ || ! "$FRAMEWORK_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::This assessor requires GitHub.com workflow identity; refusing a caller-source fallback.'
+            exit 1
+          fi
       - name: Checkout immutable framework
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          repository: ${{ inputs.framework_repository || github.repository }}
-          ref: ${{ inputs.framework_sha || inputs.source_sha }}
+          repository: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
           path: release-assessment-work/framework
           persist-credentials: false
           show-progress: false
@@ -196,11 +210,20 @@ jobs:
     steps:
       - name: Clear previous assessment workspace
         run: rm -rf -- "$GITHUB_WORKSPACE/release-assessment-work"
+      - name: Require the reusable workflow's trusted source identity
+        env:
+          FRAMEWORK_REPOSITORY: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          FRAMEWORK_SHA: ${{ fromJSON(toJSON(job)).workflow_sha }}
+        run: |
+          if [[ ! "$FRAMEWORK_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ || ! "$FRAMEWORK_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::This assessor requires GitHub.com workflow identity; refusing a caller-source fallback.'
+            exit 1
+          fi
       - name: Checkout immutable framework
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          repository: ${{ inputs.framework_repository || github.repository }}
-          ref: ${{ inputs.framework_sha || inputs.source_sha }}
+          repository: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
           path: release-assessment-work/framework
           persist-credentials: false
           show-progress: false
@@ -256,11 +279,20 @@ jobs:
     steps:
       - name: Clear previous assessment workspace
         run: rm -rf -- "$GITHUB_WORKSPACE/release-assessment-work"
+      - name: Require the reusable workflow's trusted source identity
+        env:
+          FRAMEWORK_REPOSITORY: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          FRAMEWORK_SHA: ${{ fromJSON(toJSON(job)).workflow_sha }}
+        run: |
+          if [[ ! "$FRAMEWORK_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ || ! "$FRAMEWORK_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::This assessor requires GitHub.com workflow identity; refusing a caller-source fallback.'
+            exit 1
+          fi
       - name: Checkout immutable policy implementation
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          repository: ${{ inputs.framework_repository || github.repository }}
-          ref: ${{ inputs.framework_sha || inputs.source_sha }}
+          repository: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
           path: release-assessment-work/framework
           persist-credentials: false
           show-progress: false

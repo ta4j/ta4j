@@ -507,6 +507,37 @@ for name, block in assessment.items():
 assert field(assessment["luna"], "continue-on-error") == "true", "shadow infrastructure failure must stay advisory"
 assert field(assessment["codex"], "continue-on-error") != "true", "authoritative provider failure must not be hidden"
 
+# Executable controllers must come from the pinned called workflow itself.
+# A caller-supplied candidate can be inspected, but cannot select controller code
+# in a job with an API credential or shared Actions artifact/cache scope.
+framework_checkouts = candidate_checkouts = 0
+for name, block in assessment.items():
+    steps = re.split(r"(?=^      - name:)", block, flags=re.MULTILINE)
+    identity_guard = next(step for step in steps if "Require the reusable workflow's trusted source identity" in step)
+    assert 'FRAMEWORK_REPOSITORY: ${{ fromJSON(toJSON(job)).workflow_repository }}' in identity_guard
+    assert 'FRAMEWORK_SHA: ${{ fromJSON(toJSON(job)).workflow_sha }}' in identity_guard
+    assert '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' in identity_guard and '^[0-9a-f]{40}$' in identity_guard
+    assert 'exit 1' in identity_guard
+    for step in steps:
+        if 'uses: actions/checkout@' not in step:
+            assert not re.search(r'(?:run:|python3|bash|node|source)\s+["\']?(?:\./)?release-assessment-work/candidate/', step)
+            assert not re.search(r'working-directory:\s*["\']?(?:\./)?release-assessment-work/candidate\s*$', step, re.MULTILINE)
+            continue
+        assert 'persist-credentials: false' in step
+        if 'path: release-assessment-work/framework' in step:
+            framework_checkouts += 1
+            assert 'repository: ${{ fromJSON(toJSON(job)).workflow_repository }}' in step
+            assert 'ref: ${{ fromJSON(toJSON(job)).workflow_sha }}' in step
+            assert 'inputs.' not in step, 'caller input must not select executable framework code'
+            assert block.index(identity_guard) < block.index(step), 'native identity must fail closed before checkout'
+        else:
+            candidate_checkouts += 1
+            assert name == 'codex' and 'path: release-assessment-work/candidate' in step
+            assert 'ref: ${{ inputs.source_sha }}' in step, 'candidate must remain isolated assessment data'
+assert framework_checkouts == len(assessment) and candidate_checkouts == 1
+source = (root / 'reusable-release-assessment.yml').read_text()
+assert 'framework_repository:' not in source and 'framework_sha:' not in source
+
 
 def states():
     value = {name: {"result": "success", "outputs": {}} for name in required}
