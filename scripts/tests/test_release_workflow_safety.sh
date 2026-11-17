@@ -166,12 +166,10 @@ test_mutating_manual_workflows_default_to_dry_run() {
 test_official_triggers_normalize_to_non_dry_run() {
   echo "Running test_official_triggers_normalize_to_non_dry_run"
 
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'if [ "$event" = "workflow_dispatch" ]; then' \
-    "release scheduler should branch normalization by event"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "raw=\"\${DRY_RUN_INPUT:-true}\"" \
-    "release scheduler manual default should normalize to dry-run"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "dry_run=false" \
-    "release scheduler scheduled runs should normalize to non-dry-run"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'DRY_RUN_INPUT: ${{ inputs.dryRun }}' \
+    "release scheduler should pass the typed manual flag to tested deterministic policy"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'python3 scripts/release/scheduler.py context' \
+    "release scheduler should use the tested event and cadence normalization"
 
   expect_file_contains "$WORKFLOWS/publish-release.yml" 'if [ "${{ github.event_name }}" = "pull_request" ]; then' \
     "publish-release should normalize merged release PRs to non-dry-run"
@@ -185,112 +183,13 @@ test_official_triggers_normalize_to_non_dry_run() {
   pass "test_official_triggers_normalize_to_non_dry_run"
 }
 
-test_release_scheduler_uses_true_biweekly_cadence_guard() {
-  echo "Running test_release_scheduler_uses_true_biweekly_cadence_guard"
 
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'cron: "0 9 * * 1"' \
-    "release scheduler should use a weekly cron for exact biweekly gating"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'anchor_date="2026-06-29"' \
-    "release scheduler cadence should be anchored to the intended first biweekly run"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "scheduler_due:" \
-    "release scheduler should expose scheduler_due as an analyze output"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "scheduler_reason:" \
-    "release scheduler should expose scheduler_reason as an analyze output"
-
-  local cadence_section
-  cadence_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Resolve scheduler cadence" "Resolve AI execution mode")"
-  expect_section_contains "$cadence_section" 'run_date="$(date -u +%F)"' \
-    "release scheduler cadence should evaluate the UTC run date"
-  expect_section_contains "$cadence_section" 'manual dispatch bypasses biweekly cadence guard' \
-    "manual release scheduler runs should bypass the cadence gate"
-  expect_section_contains "$cadence_section" 'delta_days=$(( (run_epoch - anchor_epoch) / 86400 ))' \
-    "release scheduler should compute date distance from the anchor"
-  expect_section_contains "$cadence_section" '$((delta_days % 14))' \
-    "release scheduler should allow only exact 14-day intervals"
-  expect_section_contains "$cadence_section" 'due=false' \
-    "release scheduler should mark off-cadence scheduled runs as not due"
-
-  local model_section
-  model_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Resolve AI model" "Read version from pom.xml")"
-  expect_section_contains "$model_section" "if: steps.scheduler_cadence.outputs.due == 'true'" \
-    "release scheduler should skip model setup before off-cadence scheduled runs"
-
-  local gate_section
-  gate_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Check if changes detected" "No release - AI execution skipped")"
-  expect_section_contains "$gate_section" 'SCHEDULER_DUE: ${{ steps.scheduler_cadence.outputs.due }}' \
-    "release scheduler gate should read the cadence output"
-  expect_section_contains "$gate_section" 'if [ "$scheduler_due" != "true" ]; then' \
-    "release scheduler gate should short-circuit off-cadence scheduled runs"
-  expect_section_contains "$gate_section" "No release - off biweekly cadence" \
-    "release scheduler should have an explicit off-cadence no-release path"
-
-  local post_section
-  post_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Post to Release Scheduler discussion" "with:")"
-  expect_section_contains "$post_section" "needs.analyze.outputs.scheduler_due != 'false'" \
-    "release scheduler should skip production discussion posts for off-cadence scheduled runs"
-
-  pass "test_release_scheduler_uses_true_biweekly_cadence_guard"
-}
-
-test_release_scheduler_feeds_last_release_to_ai() {
-  echo "Running test_release_scheduler_feeds_last_release_to_ai"
-
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "Resolve last release date" \
-    "release scheduler should resolve the last release date after the tag baselines"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'release_helpers.sh last-release-date --tag' \
-    "release scheduler should derive the last release date from the annotated tag via the release helper"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'releases/tag/${encoded_tag}' \
-    "release scheduler should build a tag-specific release URL from the percent-encoded tag"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'encode_tag()' \
-    "release scheduler should percent-encode the tag before building the release URL"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}' \
-    "release scheduler should pass the last release URL to the AI request step as an environment variable"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'LAST_RELEASE_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}' \
-    "release scheduler should pass the last reachable tag to the AI request step as an environment variable"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}' \
-    "release scheduler should pass the last release date to the AI request step as an environment variable"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-url "${LAST_RELEASE_URL}"' \
-    "release scheduler should reference the last release URL through a quoted environment expansion"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-tag "${LAST_RELEASE_TAG}"' \
-    "release scheduler should reference the last release tag through a quoted environment expansion"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-date "${LAST_RELEASE_DATE}"' \
-    "release scheduler should reference the last release date through a quoted environment expansion"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'decision:last_release_url=${LAST_RELEASE_URL:-unknown}' \
-    "release scheduler should record the last release URL in the decision audit"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'lastReleaseUrl=${LAST_RELEASE_URL:-}' \
-    "release scheduler should record the last release URL in the mutation-plan artifact"
-
-  local request_section
-  request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API once")"
-  expect_section_contains "$request_section" 'LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}' \
-    "AI request build should receive the resolved last release URL via its environment"
-  expect_section_contains "$request_section" 'LAST_RELEASE_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}' \
-    "AI request build should receive the last reachable tag via its environment"
-  expect_section_contains "$request_section" 'LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}' \
-    "AI request build should receive the last release date via its environment"
-  expect_section_contains "$request_section" '--last-release-url "${LAST_RELEASE_URL}"' \
-    "AI request build should pass the last release URL through a quoted environment expansion"
-  expect_section_contains "$request_section" '--last-release-tag "${LAST_RELEASE_TAG}"' \
-    "AI request build should pass the last reachable tag through a quoted environment expansion"
-  expect_section_contains "$request_section" '--last-release-date "${LAST_RELEASE_DATE}"' \
-    "AI request build should pass the last release date through a quoted environment expansion"
-  expect_section_contains "$request_section" 'lastReleaseTag: $lastReleaseTag' \
-    "probe metadata should record the last release tag for schema parity with full mode"
-  expect_section_contains "$request_section" 'lastReleaseDate: $lastReleaseDate' \
-    "probe metadata should record the last release date for schema parity with full mode"
-  expect_section_contains "$request_section" 'lastReleaseUrl: $lastReleaseUrl' \
-    "probe metadata should record the last release URL for schema parity with full mode"
-
-  pass "test_release_scheduler_feeds_last_release_to_ai"
-}
 
 test_downstream_dispatches_explicitly_pass_dry_run() {
   echo "Running test_downstream_dispatches_explicitly_pass_dry_run"
 
-  local scheduler_dispatch
-  scheduler_dispatch="$(workflow_section "$WORKFLOWS/release-scheduler.yml" 'workflow_id: "prepare-release.yml"' "dryRun")"
-  expect_section_contains "$scheduler_dispatch" "dryRun" \
-    "release scheduler dispatch should pass dryRun to prepare-release"
+  expect_file_contains "$ROOT/scripts/release/scheduler.cjs" 'inputs: { releaseVersion: version, dryRun, sourceSha }' \
+    "release scheduler dispatch should bind preparation version, dry-run flag and assessed source"
 
   local prepare_dispatch
   prepare_dispatch="$(workflow_section "$WORKFLOWS/prepare-release.yml" '  publish_automatic:' '    secrets: inherit')"
@@ -312,8 +211,8 @@ test_downstream_dispatches_explicitly_pass_dry_run() {
 test_mutating_steps_remain_dry_run_gated() {
   echo "Running test_mutating_steps_remain_dry_run_gated"
 
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: always() && needs.analyze.result != 'skipped' && needs.analyze.outputs.dryRun != 'true' && needs.analyze.outputs.scheduler_due != 'false'" \
-    "release scheduler discussion mutation should skip dry-run, skipped, and off-cadence scheduled runs"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "needs.eligibility.outputs.dry_run == 'false' && needs.eligibility.outputs.due == 'true'" \
+    "release scheduler discussion mutation should require an explicitly live due run"
 
   expect_file_contains "$WORKFLOWS/prepare-release.yml" "if: needs.plan.outputs.dry_run != 'true'" \
     "prepare-release mutations should be dry-run gated"
@@ -348,8 +247,10 @@ test_mutating_steps_remain_dry_run_gated() {
 test_dry_run_summaries_and_audits_show_rerun_guidance() {
   echo "Running test_dry_run_summaries_and_audits_show_rerun_guidance"
 
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "release-scheduler-mutation-plan.txt" \
-    "release scheduler audit artifact should include the dry-run mutation plan"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "release-evidence/scheduler-outcome.json" \
+    "release scheduler should retain its typed outcome and decision path"
+  expect_file_contains "$ROOT/scripts/release/scheduler.py" "For a stale candidate or changed evidence, start a new scheduler run." \
+    "release scheduler should explain recovery without encouraging blind model retries"
   expect_file_contains "$WORKFLOWS/prepare-release.yml" '"mutationPlan"' \
     "prepare-release audit JSON should include mutation plan"
   expect_file_contains "$WORKFLOWS/publish-release.yml" '"mutationPlan"' \
@@ -372,177 +273,7 @@ test_dry_run_summaries_and_audits_show_rerun_guidance() {
   pass "test_dry_run_summaries_and_audits_show_rerun_guidance"
 }
 
-test_release_scheduler_ai_modes_protect_manual_debug_budget() {
-  echo "Running test_release_scheduler_ai_modes_protect_manual_debug_budget"
 
-  local input_section
-  input_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "aiMode:" "permissions:")"
-  expect_section_contains "$input_section" "default: full" \
-    "release scheduler manual AI mode should default to full"
-  expect_section_contains "$input_section" "type: choice" \
-    "release scheduler AI mode should be a choice input"
-  expect_section_contains "$input_section" "- probe" \
-    "release scheduler AI mode should support probe"
-  expect_section_contains "$input_section" "- full" \
-    "release scheduler AI mode should support full"
-  expect_section_contains "$input_section" "- skip" \
-    "release scheduler AI mode should support skip"
-
-  local mode_section
-  mode_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Resolve AI execution mode" "Read version from pom.xml")"
-  expect_section_contains "$mode_section" 'raw="${AI_MODE_INPUT:-full}"' \
-    "manual release scheduler runs should default AI mode to full"
-  expect_section_contains "$mode_section" 'raw="full"' \
-    "scheduled release scheduler runs should keep full AI analysis"
-  expect_section_contains "$mode_section" 'full|probe|skip)' \
-    "release scheduler should validate supported AI modes"
-
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "No release - AI execution skipped" \
-    "release scheduler should expose an explicit no-model-call skip path"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "gpt-5.6-luna" \
-    "release scheduler should pin the exact OpenAI model"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'reasoning_effort="high"' \
-    "release scheduler should pin high reasoning effort"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "OPENAI_API_KEY" \
-    "release scheduler should use the OpenAI repository secret"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "https://api.openai.com/v1/responses" \
-    "release scheduler should call the OpenAI Responses API"
-  expect_file_not_contains "$WORKFLOWS/release-scheduler.yml" "models.github.ai" \
-    "release scheduler should not call the retired GitHub Models endpoint"
-  expect_file_not_contains "$WORKFLOWS/release-scheduler.yml" "GH_MODELS_TOKEN" \
-    "release scheduler should not require the retired GitHub Models secret"
-  expect_file_not_contains "$WORKFLOWS/release-scheduler.yml" "RELEASE_AI_MODEL" \
-    "release scheduler should not allow an unpinned model override"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip'" \
-    "release scheduler model token checks should skip aiMode=skip"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode == 'full'" \
-    "release scheduler should only run full-analysis setup in full AI mode"
-
-  local request_section
-  request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API once")"
-	  expect_section_contains "$request_section" "audit:ai_probe_request" \
-	    "release scheduler probe mode should build a tiny probe request"
-  expect_section_contains "$request_section" "max_output_tokens: 4096" \
-	    "release scheduler probe request should cap response size"
-  expect_section_contains "$request_section" 'reasoning: {effort: "high"}' \
-    "release scheduler probe request should use high reasoning effort"
-  expect_section_contains "$request_section" 'store: false' \
-    "release scheduler probe request should disable provider-side response storage"
-	  expect_section_contains "$request_section" "input:" \
-	    "release scheduler should build Responses API input items"
-	  expect_section_contains "$request_section" "release-ai-request-metadata.json" \
-	    "release scheduler should emit request metadata for probe and full AI modes"
-	  expect_section_contains "$request_section" "--max-request-bytes" \
-	    "release scheduler should enforce a non-billed AI request transport budget before the model call"
-
-	  local call_section
-	  call_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Call AI API once" "Handle AI API failure")"
-	  expect_section_not_contains "$call_section" "--retry" \
-	    "release scheduler should avoid nested curl retries that multiply model calls"
-	  expect_section_contains "$call_section" 'attempts=1' \
-	    "release scheduler full and probe AI modes should make one model call"
-	  expect_section_contains "$call_section" 'ai_max_time=600' \
-	    "full AI requests should have a bounded high-effort timeout"
-	  expect_section_contains "$call_section" '--max-time "$ai_max_time"' \
-	    "AI requests should use the selected bounded timeout"
-	  expect_section_contains "$call_section" 'billed_full_retry=false' \
-	    "release scheduler should not repeat the same billed full AI request after transport failure"
-
-	  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "decision:ai_mode=" \
-	    "release scheduler summaries should include AI mode"
-	  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "decision:prompt_profile=" \
-	    "release scheduler summaries should include prompt profile"
-	  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "- ai mode: \${ai_mode}" \
-	    "release scheduler notification should include AI mode"
-	  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "- prompt profile: \${prompt_profile}" \
-	    "release scheduler notification should include prompt profile"
-
-  pass "test_release_scheduler_ai_modes_protect_manual_debug_budget"
-}
-
-test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
-  echo "Running test_release_scheduler_ai_failures_remain_diagnostic_and_red"
-
-  local preflight_section
-  preflight_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Preflight OpenAI model access" "Build release dossier")"
-  expect_section_contains "$preflight_section" "audit:model_preflight_retry" \
-    "release scheduler model preflight should retry transient OpenAI failures"
-  expect_section_contains "$preflight_section" '[ "$status" -ne 75 ]' \
-    "release scheduler model preflight should stop on permanent failures"
-
-  local ai_call_section
-  ai_call_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Call AI API once" "Handle AI API failure")"
-	  expect_section_contains "$ai_call_section" "curl-error.log" \
-	    "release scheduler should retain curl diagnostics for AI calls"
-	  expect_section_contains "$ai_call_section" "response-headers.txt" \
-	    "release scheduler should retain response headers when available"
-	  expect_section_contains "$ai_call_section" "curl-metrics.log" \
-	    "release scheduler should retain curl transfer metrics"
-	  expect_section_contains "$ai_call_section" "--show-error" \
-	    "release scheduler curl invocation should preserve transport errors"
-  expect_section_contains "$ai_call_section" "--http1.1" \
-    "release scheduler should avoid HTTP/2 stream cancellations"
-  expect_section_contains "$ai_call_section" "api.openai.com/v1/responses" \
-    "release scheduler should call the OpenAI Responses API"
-  expect_section_contains "$ai_call_section" "X-Client-Request-Id" \
-    "release scheduler should provide a bounded OpenAI client request ID"
-	  expect_section_contains "$ai_call_section" "curl_exit_code=\$?" \
-	    "release scheduler should capture curl exit status"
-	  expect_section_contains "$ai_call_section" "audit:ai_request_attempt attempt=\$attempt status=\$response_status curl_exit=\$curl_exit_code response_bytes=\$response_bytes" \
-	    "release scheduler AI retry audit should include status, curl exit, and response bytes"
-
-	  local ai_failure_section
-	  ai_failure_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Handle AI API failure" "Extract AI response content")"
-	  expect_section_contains "$ai_failure_section" "steps.ai_call.outputs.curl_exit_code != '0'" \
-	    "release scheduler failure path should run when curl fails even if HTTP status is 200"
-  expect_section_contains "$ai_failure_section" "curl diagnostics (last 20 lines)" \
-    "release scheduler failure path should print bounded curl diagnostics"
-  expect_section_contains "$ai_failure_section" "response metadata (bounded)" \
-    "release scheduler failure path should avoid logging raw model responses"
-	  expect_section_contains "$ai_failure_section" "ai-transport-diagnostics" \
-	    "release scheduler failure path should write structured transport diagnostics"
-	  expect_section_contains "$ai_failure_section" "release-ai-transport-diagnostics.json" \
-	    "release scheduler failure path should persist diagnostics as an artifact"
-	  expect_section_contains "$ai_failure_section" 'error_annotation="${err_msg//' \
-	    "release scheduler should escape AI failure messages before creating workflow annotations"
-  expect_section_contains "$ai_failure_section" 'echo "::error::$error_annotation"' \
-    "release scheduler should surface escaped AI failure text as a GitHub Actions error"
-	  expect_section_contains "$ai_failure_section" "exit 1" \
-	    "release scheduler should fail when required AI inference does not answer"
-
-	  local ai_extract_section
-	  ai_extract_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Extract AI response content" "Parse AI JSON")"
-	  expect_section_contains "$ai_extract_section" "steps.ai_call.outputs.curl_exit_code == '0'" \
-	    "release scheduler should parse AI content only when curl completed cleanly"
-	  expect_section_contains "$ai_extract_section" "extract-response-content" \
-	    "release scheduler should parse Responses API output messages"
-  expect_section_contains "$ai_extract_section" "response-content-failure.txt" \
-    "release scheduler should preserve response validation failure reasons"
-  expect_section_contains "$ai_extract_section" "sanitize-response" \
-    "release scheduler should sanitize the uploaded response artifact"
-
-	  local artifact_section
-	  artifact_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Upload release scheduler audit artifacts" "retention-days")"
-	  expect_section_contains "$artifact_section" "curl-error.log" \
-	    "release scheduler audit artifact should include curl diagnostics"
-	  expect_section_contains "$artifact_section" "curl-metrics.log" \
-	    "release scheduler audit artifact should include curl metrics"
-	  expect_section_contains "$artifact_section" "response-headers.txt" \
-	    "release scheduler audit artifact should include response headers"
-	  expect_section_contains "$artifact_section" "release-ai-request-metadata.json" \
-	    "release scheduler audit artifact should include request metadata"
-	  expect_section_contains "$artifact_section" "release-ai-transport-diagnostics.json" \
-	    "release scheduler audit artifact should include structured transport diagnostics"
-	  expect_section_contains "$artifact_section" "response-content-failure.txt" \
-	    "release scheduler audit artifact should include response validation failures"
-
-	  local summary_section
-	  summary_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Debug decision summary" "Upload release scheduler audit artifacts")"
-	  expect_section_contains "$summary_section" "do not rerun billed aiMode=full blindly" \
-	    "release scheduler mutation plan should include non-blind recovery guidance"
-
-	  pass "test_release_scheduler_ai_failures_remain_diagnostic_and_red"
-	}
 
 test_snapshot_and_health_manual_dry_runs_do_not_mutate() {
   echo "Running test_snapshot_and_health_manual_dry_runs_do_not_mutate"
@@ -714,16 +445,183 @@ YAML
   pass "test_github_script_binding_scan_rejects_bad_fixture"
 }
 
+
+test_release_scheduler_graph_and_permissions() {
+  echo "Running test_release_scheduler_graph_and_permissions"
+
+  python3 - "$WORKFLOWS" <<'PYTHON'
+from pathlib import Path
+import re
+import sys
+
+root = Path(sys.argv[1])
+
+
+def jobs(path):
+    source = path.read_text().split("\njobs:\n", 1)[1]
+    matches = list(re.finditer(r"^  ([a-z_]+):\s*$", source, re.MULTILINE))
+    return {match[1]: source[match.end():matches[index + 1].start() if index + 1 < len(matches) else len(source)]
+            for index, match in enumerate(matches)}
+
+
+def field(block, name):
+    match = re.search(r"^    " + name + r":\s*(.+)$", block, re.MULTILINE)
+    return match[1].strip() if match else ""
+
+
+def dependencies(block):
+    return set(field(block, "needs").strip("[]").replace(" ", "").split(",")) - {""}
+
+
+def enabled(block, states, inputs=None):
+    expression = field(block, "if").removeprefix("${{").removesuffix("}}").strip() or "True"
+    # GitHub supplies success() implicitly unless the job condition explicitly
+    # uses a status function. Exercise that skipped/failed dependency boundary.
+    if not re.search(r"\b(always|success|failure|cancelled)\(\)", expression):
+        if any(states.get(name, {}).get("result") != "success" for name in dependencies(block)):
+            return False
+    expression = expression.replace("always()", "True").replace("&&", " and ").replace("||", " or ")
+    expression = re.sub(r"needs\.([a-z_]+)\.outputs\.([a-z_]+)",
+                        lambda match: repr(states.get(match[1], {}).get("outputs", {}).get(match[2], "")), expression)
+    expression = re.sub(r"needs\.([a-z_]+)\.result", lambda match: repr(states.get(match[1], {}).get("result", "")), expression)
+    expression = re.sub(r"inputs\.([a-z_]+)", lambda match: repr((inputs or {}).get(match[1], False)), expression)
+    return bool(eval(expression, {"__builtins__": {}}, {}))
+
+
+scheduler = jobs(root / "release-scheduler.yml")
+assessment = jobs(root / "reusable-release-assessment.yml")
+required = {"eligibility", "context_preparation", "release_assessment", "release_policy", "release_handoff", "outcome", "notification"}
+assert required <= scheduler.keys(), "named release stages must remain separate jobs"
+assert dependencies(scheduler["context_preparation"]) == {"eligibility"}
+assert dependencies(scheduler["release_assessment"]) == {"eligibility", "context_preparation"}
+assert dependencies(scheduler["release_policy"]) == {"eligibility", "context_preparation", "release_assessment"}
+assert dependencies(scheduler["release_handoff"]) == {"eligibility", "release_policy"}
+assert dependencies(scheduler["outcome"]) >= required - {"outcome", "notification"}
+assert dependencies(assessment["policy"]) == {"context", "codex", "luna"}
+for name in required:
+    assert field(scheduler[name], "name"), name + " needs a human-readable graph name"
+    writes = re.findall(r"^      ([a-z-]+): write\s*$", scheduler[name], re.MULTILINE)
+    assert set(writes) == ({"actions"} if name == "release_handoff" else {"discussions"} if name == "notification" else set()), (name, writes)
+for name, block in assessment.items():
+    assert not re.search(r"^\s+[a-z-]+: write\s*$", block, re.MULTILINE), name + " must not mutate repository state"
+assert field(assessment["luna"], "continue-on-error") == "true", "shadow infrastructure failure must stay advisory"
+assert field(assessment["codex"], "continue-on-error") != "true", "authoritative provider failure must not be hidden"
+
+
+def states():
+    value = {name: {"result": "success", "outputs": {}} for name in required}
+    value["eligibility"]["outputs"] = {"eligible": "true", "dry_run": "false", "due": "true"}
+    value["release_policy"]["outputs"] = {"should_release": "true"}
+    return value
+
+
+current = states()
+assert enabled(scheduler["context_preparation"], current)
+assert enabled(scheduler["release_assessment"], current)
+assert enabled(scheduler["release_policy"], current)
+assert enabled(scheduler["release_handoff"], current)
+assert enabled(scheduler["notification"], current)
+current["eligibility"]["outputs"]["eligible"] = "false"
+assert not enabled(scheduler["context_preparation"], current)
+assert not enabled(scheduler["release_assessment"], current)
+for stage in ("eligibility", "context_preparation", "release_assessment", "release_policy", "release_handoff"):
+    for result in ("failure", "cancelled", "skipped"):
+        current = states()
+        current[stage]["result"] = result
+        assert enabled(scheduler["outcome"], current), (stage, result, "must still report")
+        if stage in ("eligibility", "release_policy"):
+            assert not enabled(scheduler["release_handoff"], current), (stage, result, "must not dispatch")
+        if stage == "context_preparation":
+            assert not enabled(scheduler["release_assessment"], current)
+            assert not enabled(scheduler["release_policy"], current)
+        if stage == "release_assessment":
+            assert enabled(scheduler["release_policy"], current), "policy must record unavailable assessment"
+current = states()
+current["release_policy"]["outputs"]["should_release"] = "false"
+assert not enabled(scheduler["release_handoff"], current), "defer, insufficient and unavailable must not dispatch"
+for output, value in (("dry_run", "true"), ("due", "false"), ("dry_run", ""), ("due", "")):
+    current = states()
+    current["eligibility"]["outputs"][output] = value
+    assert not enabled(scheduler["notification"], current), (output, value, "must not notify")
+for codex in ("success", "failure", "skipped", "cancelled"):
+    for luna in ("success", "failure", "skipped", "cancelled"):
+        current = {"context": {"result": "success"}, "codex": {"result": codex}, "luna": {"result": luna}}
+        assert enabled(assessment["policy"], current), (codex, luna, "must record a fail-closed result")
+assert not enabled(assessment["luna"], {"context": {"result": "success"}}, {"evaluate_luna": False})
+assert enabled(assessment["luna"], {"context": {"result": "success"}}, {"evaluate_luna": True})
+PYTHON
+
+  pass "test_release_scheduler_graph_and_permissions"
+}
+
+test_release_scheduler_provider_and_evidence_contracts() {
+  echo "Running test_release_scheduler_provider_and_evidence_contracts"
+
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'cron: "0 9 * * 1"' \
+    "scheduler should retain the weekly trigger for tested biweekly eligibility"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "vars.RELEASE_SCHEDULER_ENABLED == 'true'" \
+    "scheduled inference should remain explicitly enabled"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'options: [full, skip]' \
+    "manual runs should support a charge-free deterministic-only path"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'evaluateLuna:' \
+    "additional shadow inference should be explicit"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'uses: ./.github/workflows/reusable-release-assessment.yml' \
+    "scheduler should call the shared assessment workflow"
+  expect_file_contains "$WORKFLOWS/reusable-release-assessment.yml" "permission-profile: ':read-only'" \
+    "model execution should use the native read-only permission profile"
+  if ! grep -Eq 'uses: openai/codex-action@[0-9a-f]{40}( |$)' "$WORKFLOWS/reusable-release-assessment.yml"; then
+    fail "release assessment must pin the official Codex action to an immutable commit"
+  fi
+  expect_file_contains "$WORKFLOWS/reusable-release-assessment.yml" 'output-schema-file:' \
+    "official Codex action should enforce a native typed output contract"
+  expect_file_contains "$WORKFLOWS/reusable-release-assessment.yml" 'CODEX_STATUS: ${{ needs.codex.result }}' \
+    "policy must reject failed provider jobs even when they leave valid JSON"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'ASSESSOR_STATUS: ${{ needs.release_assessment.result }}' \
+    "outer policy must preserve assessment workflow failures"
+  expect_file_contains "$WORKFLOWS/reusable-release-assessment.yml" '--requirement release-assessment-work/framework/scripts/release/requirements-assessment.txt' \
+    "shadow inference should install the pinned official SDK"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'release-evidence/release-assessment-manifest.json' \
+    "assessment inputs must retain the source-bound evidence manifest"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'source_sha: ${{ needs.eligibility.outputs.source_sha }}' \
+    "assessment should receive the exact eligible source"
+  expect_file_not_contains "$WORKFLOWS/release-scheduler.yml" 'api.openai.com' \
+    "scheduler should not implement a custom model HTTP client"
+  expect_file_not_contains "$ROOT/scripts/release/assessment.py" 'urllib.request' \
+    "Decisions should use the official SDK rather than custom HTTP"
+
+  pass "test_release_scheduler_provider_and_evidence_contracts"
+}
+
+test_release_scheduler_output_contracts() {
+  echo "Running test_release_scheduler_output_contracts"
+
+  expect_file_contains "$WORKFLOWS/reusable-release-assessment.yml" '"--json"' \
+    "Codex should suppress its default full prompt banner using supported structured output"
+  expect_file_contains "$WORKFLOWS/reusable-release-assessment.yml" 'model_reasoning_summary=' \
+    "routine provider output should not request a reasoning transcript"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'release-evidence/scheduler-outcome.md' \
+    "one concise final report should explain the decision path"
+  expect_file_contains "$WORKFLOWS/reusable-release-assessment.yml" 'assessment-result.json' \
+    "the validated provider result should remain available for diagnosis"
+  local workflow
+  for workflow in release-scheduler.yml reusable-release-assessment.yml; do
+    expect_file_not_contains "$WORKFLOWS/$workflow" 'response-headers.txt' \
+      "provider transport headers should not be retained by default"
+    expect_file_not_contains "$WORKFLOWS/$workflow" 'curl-error.log' \
+      "removed custom transport diagnostics should not remain in artifacts"
+    expect_file_not_contains "$WORKFLOWS/$workflow" '*.log' \
+      "release artifacts should use explicit paths rather than collecting every log"
+  done
+
+  pass "test_release_scheduler_output_contracts"
+}
+
 test_maven_workflow_jobs_setup_jdk25_before_maven
 test_mutating_manual_workflows_default_to_dry_run
 test_official_triggers_normalize_to_non_dry_run
-test_release_scheduler_uses_true_biweekly_cadence_guard
-test_release_scheduler_feeds_last_release_to_ai
 test_downstream_dispatches_explicitly_pass_dry_run
 test_mutating_steps_remain_dry_run_gated
 test_dry_run_summaries_and_audits_show_rerun_guidance
-test_release_scheduler_ai_modes_protect_manual_debug_budget
-test_release_scheduler_ai_failures_remain_diagnostic_and_red
 test_snapshot_and_health_manual_dry_runs_do_not_mutate
 test_snapshot_workflow_guarantees_exact_consumability
 test_line_of_reports_missing_needles_cleanly
@@ -731,3 +629,7 @@ test_publish_release_existing_tag_only_fails_real_runs
 test_github_release_preserves_workflow_support_checkout
 test_github_script_blocks_do_not_redeclare_injected_bindings
 test_github_script_binding_scan_rejects_bad_fixture
+
+test_release_scheduler_graph_and_permissions
+test_release_scheduler_provider_and_evidence_contracts
+test_release_scheduler_output_contracts

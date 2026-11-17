@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Added
+
+- **Traceable release assessments**: named Actions stages use the official Codex action with strict, commit-bound decisions and optional Luna 6 Decisions comparison through the official SDK. Deterministic CI/lifecycle gates, production-first evidence with explicit coverage, and exact-source preparation handoff fail closed on incomplete or stale assessments. Concise summaries explain the decision path; model jobs support hosted or explicitly isolated self-hosted runners. Existing scheduling and direct-release activation remain opt-in.
+
 ### Fixed
 
 - **Maven signing preflight**: release and snapshot publishing sign and verify a temporary payload with the imported OpenPGP key before publication, failing early on unusable or expired keys and passphrases. A maintainer-run helper renews the existing signing identity without replacing its fingerprint or exposing administrative secrets to a branch-dispatch workflow.

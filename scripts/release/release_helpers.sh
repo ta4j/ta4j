@@ -7,14 +7,6 @@ SNAPSHOT_REPOSITORY_ID="central-portal-snapshots"
 SNAPSHOT_WORKFLOW_NAME="Publish Snapshot to Maven Central"
 MAVEN_DEPENDENCY_PLUGIN_VERSION="3.11.0"
 SNAPSHOT_CONSUMPTION_DEADLINE_SECONDS=300
-AI_REQUEST_METADATA_SCHEMA_VERSION=2
-AI_TRANSPORT_DIAGNOSTICS_SCHEMA_VERSION=2
-DEFAULT_AI_REQUEST_MAX_BYTES=600000
-OPENAI_RELEASE_MODEL="gpt-5.6-luna"
-OPENAI_REASONING_EFFORT="high"
-OPENAI_RESPONSES_ENDPOINT="https://api.openai.com/v1/responses"
-OPENAI_MODELS_ENDPOINT="https://api.openai.com/v1/models"
-RETRYABLE_PREFLIGHT_EXIT_CODE=75
 
 TMP_HELPER_PATHS=()
 cleanup_release_helper_tmps() {
@@ -48,14 +40,8 @@ Usage: release_helpers.sh <command> [options]
 
 Commands:
   signing-preflight
-  model-preflight
   build-dossier
-  build-ai-request
   last-release-date
-  extract-response-content
-  sanitize-response
-  ai-transport-diagnostics
-  parse-decision
   release-pr-review-plan
   javadoc-warnings
   artifact-manifest
@@ -107,20 +93,10 @@ require_value() {
   [[ -n "$value" ]] || die "${option} requires a value"
 }
 
-json_string() {
-  jq -Rs .
-}
-
 write_json() {
   local output="$1"
   mkdir -p "$(dirname "$output")"
   jq -S . > "$output"
-}
-
-write_text() {
-  local output="$1"
-  mkdir -p "$(dirname "$output")"
-  cat > "$output"
 }
 
 append_output() {
@@ -142,26 +118,22 @@ append_output() {
 }
 
 redact_text() {
-  perl -pe 's#https?://\S+#[REDACTED_URL]#g; s#gh[oprsu]_[A-Za-z0-9_]{20,}#[REDACTED_TOKEN]#g; s#sk-[A-Za-z0-9_-]{16,}#[REDACTED_OPENAI_KEY]#g; s#(?<![A-Za-z0-9_])(?=[A-Za-z0-9+/=_-]{32,})(?=.*[0-9])[A-Za-z0-9+/=_-]{32,}#[REDACTED_SECRET]#g'
+  # Redact identifiable credentials, not arbitrary long words: Java paths and
+  # commit IDs are evidence, and ta4j paths commonly match generic token regexes.
+  perl -0777 -pe '
+    s#-----BEGIN ([A-Z ]*PRIVATE KEY(?: BLOCK)?)-----.*?-----END \1-----#[REDACTED_PRIVATE_KEY]#sg;
+    s#\b(?:gh[oprsu]_|github_pat_)[A-Za-z0-9_]{20,}#[REDACTED_TOKEN]#g;
+    s#\bsk-[A-Za-z0-9_-]{16,}#[REDACTED_OPENAI_KEY]#g;
+    s#\b(?:AKIA|ASIA)[A-Z0-9]{16}\b#[REDACTED_ACCESS_KEY]#g;
+    s#\b(Bearer[ \t]+)[A-Za-z0-9._~+/-]+=*#${1}[REDACTED_TOKEN]#gi;
+    s#\b(https?://)[^\s/@]+:[^\s/@]+\@#${1}[REDACTED_CREDENTIALS]\@#gi;
+    s#([?&](?:access_token|api_key|key|token|password|secret|signature|sig)=)[^&\x23\s"<>]+#${1}[REDACTED_SECRET]#gi;
+    s#((?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password|passwd|secret[_-]?key)["\x27]?[ \t]*[:=][ \t]*)(?:"[^"\r\n]*"|\x27[^\x27\r\n]*\x27|[^\s,;<>]+)#${1}[REDACTED_SECRET]#gi;
+  '
 }
 
 redact_log_text() {
   perl -pe 's#https?://\S+#[REDACTED_URL]#g; s#gh[oprsu]_[A-Za-z0-9_]{20,}#[REDACTED_TOKEN]#g'
-}
-
-sanitize_untrusted_text() {
-  local value="${1:-}"
-  value="$(printf '%s' "$value" | redact_text | tr '\r\n' ' ')"
-  printf '%s' "${value:0:2000}"
-}
-
-github_error_annotation() {
-  local value
-  value="$(sanitize_untrusted_text "${1:-}")"
-  value="${value//'%'/'%25'}"
-  value="${value//$'\r'/'%0D'}"
-  value="${value//$'\n'/'%0A'}"
-  printf '%s' "$value"
 }
 
 iso_utc_now() {
@@ -189,24 +161,6 @@ copy_prefix_with_notice() {
     printf '\n\n%s\n' "$notice" >> "$output"
   else
     cp "$input" "$output"
-  fi
-}
-
-bounded_file() {
-  local input="$1"
-  local max_chars="$2"
-  local label="$3"
-  local size
-  if (( max_chars <= 0 )); then
-    printf '[OMITTED: %s omitted to keep request under transport budget]\n' "$label"
-    return 0
-  fi
-  size="$(file_size_bytes "$input")"
-  if (( size <= max_chars )); then
-    sed -e '${/^$/d;}' "$input"
-  else
-    head -c "$max_chars" "$input"
-    printf '\n\n[TRUNCATED: %s exceeded compact request budget]\n' "$label"
   fi
 }
 
@@ -248,16 +202,26 @@ extract_unreleased_changelog() {
 changed_files_since() {
   local last_tag="$1"
   if [[ "$last_tag" == "none" ]]; then
-    git ls-tree -r --name-only HEAD
+    git ls-tree -rz --name-only HEAD
   else
-    git diff --name-only "${last_tag}..HEAD"
-  fi | sort
+    git diff --name-only -z "${last_tag}..HEAD"
+  fi | python3 -c '
+import sys
+paths = [path for path in sys.stdin.buffer.read().split(b"\0") if path]
+if any(any(character in path for character in (b"\n", b"\r", b"\t")) for path in paths):
+    raise SystemExit("Release evidence does not support paths containing tabs or line breaks")
+if paths:
+    sys.stdout.buffer.write(b"\n".join(sorted(paths)) + b"\n")
+'
 }
 
 public_api_signals() {
   local input="$1"
-  grep -E '^[+-][[:space:]]*(public|protected)[[:space:]]+((static|final|abstract|default|sealed|non-sealed)[[:space:]]+)*(class|interface|enum|record|@interface|[A-Za-z0-9_<>\[\], ?]+)[[:space:]]+[A-Za-z0-9_]+' "$input" \
-    | awk '!seen[$0]++ { print; count++; if (count >= 80) { print "[TRUNCATED: more public API signal lines omitted]"; exit } }' || true
+  awk '/^[+-][[:space:]]*(public|protected)[[:space:]]+/ && !seen[$0]++ {
+    print
+    count++
+    if (count >= 80) { print "[TRUNCATED: more public API signal lines omitted]"; exit }
+  }' "$input"
 }
 
 javadoc_signals() {
@@ -277,152 +241,6 @@ javadoc_signals() {
       }
     }
   ' "$input"
-}
-
-extract_markdown_section() {
-  local input="$1"
-  local heading="$2"
-  awk -v heading="$heading" '
-    $0 ~ "^##[[:space:]]+" heading "[[:space:]]*$" { capture=1; next }
-    capture && /^##[[:space:]]+/ { exit }
-    capture { print }
-  ' "$input" | sed -e '/./,$!d' -e ':a' -e '/^\n*$/{$d;N;ba' -e '}'
-}
-
-compact_changed_files() {
-  local input="$1"
-  local max_files="$2"
-  awk -v limit="$max_files" '
-    function flush_omitted() {
-      if (omitted) {
-        print "- [TRUNCATED: " omitted " additional file path(s) omitted in this category]"
-        omitted=0
-      }
-    }
-    /^### / {
-      flush_omitted()
-      print
-      emitted=0
-      next
-    }
-    /^- `/ {
-      if (emitted < limit) {
-        print
-        emitted++
-      } else {
-        omitted++
-      }
-      next
-    }
-    NF { print }
-    END { flush_omitted() }
-  ' "$input"
-}
-
-min_int() {
-  local a="$1"
-  local b="$2"
-  if (( a < b )); then
-    printf '%s' "$a"
-  else
-    printf '%s' "$b"
-  fi
-}
-
-build_compact_dossier() {
-  local input="$1"
-  local output="$2"
-  local category_limit="$3"
-  local changelog_chars="$4"
-  local signals_chars="$5"
-  local diff_chars="$6"
-  local metadata changed_files changelog api_signals doc_signals test_signals selected_diff
-
-  metadata="$(new_tmp_file)"
-  changed_files="$(new_tmp_file)"
-  changelog="$(new_tmp_file)"
-  api_signals="$(new_tmp_file)"
-  doc_signals="$(new_tmp_file)"
-  test_signals="$(new_tmp_file)"
-  selected_diff="$(new_tmp_file)"
-
-  extract_markdown_section "$input" "Metadata" > "$metadata"
-  extract_markdown_section "$input" "Changed Files by Category" > "$changed_files"
-  extract_markdown_section "$input" "Unreleased Changelog Context" > "$changelog"
-  extract_markdown_section "$input" "Public API Signals" > "$api_signals"
-  extract_markdown_section "$input" "Javadoc and @since Signals" > "$doc_signals"
-  extract_markdown_section "$input" "Test File Signals" > "$test_signals"
-  extract_markdown_section "$input" "Selected Diff" > "$selected_diff"
-
-  {
-    printf '# ta4j Release Dossier (compact transport-safe prompt)\n\n'
-    printf 'The full release-dossier.md is preserved in the scheduler audit artifact. This compact prompt keeps the release decision resumable without sending the entire artifact inline.\n\n'
-    printf '## Metadata\n\n'
-    bounded_file "$metadata" 4000 "metadata"
-    printf '\n## Changed Files by Category\n\n'
-    compact_changed_files "$changed_files" "$category_limit"
-    printf '\n\n## Unreleased Changelog Context\n\n'
-    bounded_file "$changelog" "$changelog_chars" "unreleased changelog context"
-    printf '\n## Public API Signals\n\n'
-    bounded_file "$api_signals" "$signals_chars" "public API signals"
-    printf '\n## Javadoc and @since Signals\n\n'
-    bounded_file "$doc_signals" "$signals_chars" "Javadoc signals"
-    printf '\n## Test File Signals\n\n'
-    bounded_file "$test_signals" "$signals_chars" "test file signals"
-    printf '\n## Selected Diff Excerpt\n\n'
-    bounded_file "$selected_diff" "$diff_chars" "selected diff"
-    printf '\n'
-  } > "$output"
-}
-
-build_ai_request_payload() {
-  local model="$1"
-  local semver_file="$2"
-  local dossier_file="$3"
-  local prompt_profile="$4"
-  local last_release_url="$5"
-  local last_release_tag="$6"
-  local last_release_date="$7"
-  local artifact_note=""
-  if [[ "$prompt_profile" == compact* ]]; then
-    artifact_note=$'\nThe full unabridged release dossier is preserved as release-dossier.md in the workflow audit artifact. Base the decision on this compact, artifact-backed dossier summary and explicitly call out uncertainty in missing or risks when the compact prompt omits detail.'
-  fi
-  local release_context=""
-  if [[ -n "$last_release_tag" && "$last_release_tag" != "none" ]]; then
-    release_context="today (UTC): $(date -u +%F)
-last release: ${last_release_tag}, created ${last_release_date:-unknown} (${last_release_url})
-Release recency is a judgment call: weigh the gap since the last release against the value of the unreleased changes. Defer (should_release=false) when the pending changes do not justify another release this soon. Calibration: 0.24.1 shipped too soon after 0.24.0 (minimal user-visible delta); 0.24.0 two days after 0.23.0 would have been justified (large delta)."
-  fi
-  jq -S -n \
-    --arg model "$model" \
-    --arg reasoning_effort "$OPENAI_REASONING_EFFORT" \
-    --rawfile semver "$semver_file" \
-    --rawfile dossier "$dossier_file" \
-    --arg artifact_note "$artifact_note" \
-    --arg release_context "$release_context" \
-    '{
-      model: $model,
-      reasoning: {effort: $reasoning_effort},
-      store: false,
-      max_output_tokens: 4096,
-      input: [
-        {
-          role: "system",
-          content: [{type: "input_text", text: "You are a SemVer release reviewer for a Java library. Return JSON only. Base every conclusion on the release dossier and any supplied release-cadence context."}]
-        },
-        {
-          role: "user",
-          content: [{type: "input_text", text: (
-            "Decide whether ta4j should cut a release from this dossier. If yes, choose bump patch or minor. Major is disabled for this workflow.\n\n"
-            + (if $release_context != "" then "Release cadence:\n" + $release_context + "\n\n" else "" end)
-            + "SemVer rules:\n" + $semver + "\n\n"
-            + "Return JSON only with this shape:\n"
-            + "{\"should_release\": true|false, \"bump\": \"patch|minor\", \"confidence\": 0.0-1.0, \"reason\": \"1-2 sentences\", \"evidence\": [\"specific dossier facts\"], \"risks\": [\"release risks or empty array\"], \"missing\": [\"missing changelog/javadoc/test evidence or empty array\"]}."
-            + $artifact_note + "\n\n" + $dossier
-          )}]
-        }
-      ]
-    }'
 }
 
 command_last_release_date() {
@@ -452,186 +270,80 @@ command_last_release_date() {
   printf '%s\n' "$release_date"
 }
 
-command_model_preflight() {
-  local model="$OPENAI_RELEASE_MODEL" model_url="" model_file="" response_status="" timeout_seconds=30 output="release-ai-model.json"
-  while (($#)); do
-    case "$1" in
-      --model) require_value "$1" "${2:-}"; model="$2"; shift 2 ;;
-      --model-url) require_value "$1" "${2:-}"; model_url="$2"; shift 2 ;;
-      --model-file) require_value "$1" "${2:-}"; model_file="$2"; shift 2 ;;
-      --response-status) require_value "$1" "${2:-}"; response_status="$2"; shift 2 ;;
-      --timeout-seconds) require_value "$1" "${2:-}"; timeout_seconds="$2"; shift 2 ;;
-      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
-      *) die "Unknown model-preflight option: $1" ;;
-    esac
-  done
-  [[ -n "$model" ]] || die "--model is required"
-  model_url="${model_url:-${OPENAI_MODELS_ENDPOINT}/${model}}"
+select_dossier_diff() {
+  # Category batches make the ordering real: git sorts pathspec arguments and
+  # therefore a single git diff cannot implement production-first sampling.
+  # Weighted allocation and a per-file cap retain breadth in each category.
+  python3 - "$1" "$2" "$3" "$4" <<'PY'
+import json
+from pathlib import Path
+import re
+import sys
 
-  local model_json headers_file curl_error_file curl_exit_code=0 error_preview selected_id
-  model_json="$(new_tmp_file)"
-  headers_file="$(new_tmp_file)"
-  curl_error_file="$(new_tmp_file)"
-  if [[ -n "$model_file" ]]; then
-    cp "$model_file" "$model_json"
-    response_status="${response_status:-200}"
-  else
-    local status_file
-    status_file="$(new_tmp_file)"
-    if curl --silent --show-error --location --http1.1 \
-      --connect-timeout 10 --max-time "$timeout_seconds" \
-      -D "$headers_file" -o "$model_json" -w '%{http_code}' \
-      -H "Accept: application/json" \
-      -H "Authorization: Bearer ${OPENAI_API_KEY:-}" \
-      -H "User-Agent: ta4j-release-automation" \
-      "$model_url" > "$status_file" 2> "$curl_error_file"; then
-      curl_exit_code=0
-    else
-      curl_exit_code=$?
-    fi
-    response_status="$(tr -cd '0-9' < "$status_file" 2>/dev/null || true)"
-    response_status="${response_status:-000}"
-  fi
+manifest, output, coverage_output, limit = sys.argv[1:]
+limit = int(limit)
+weights = {"production code": 70, "build metadata": 10, "tests": 10,
+           "release documentation": 4, "workflows": 2,
+           "release/tooling scripts": 2, "scripts": 1, "other": 1}
+per_file_limit = 24000
+categories = []
+for entry in Path(manifest).read_text(encoding="utf-8").splitlines():
+    category, filename = entry.split("\t", 1)
+    raw = Path(filename).read_bytes()
+    sections = [section for section in re.split(rb"(?=^diff --git )", raw, flags=re.M) if section]
+    categories.append((category, sections))
 
-  if jq -e . "$model_json" >/dev/null 2>&1; then
-    selected_id="$(jq -r '.id // empty' "$model_json")"
-  else
-    selected_id=""
-  fi
-  error_preview="$(head -c 2000 "$model_json" 2>/dev/null | redact_text || true)"
-  if [[ -s "$curl_error_file" ]]; then
-    error_preview="${error_preview}${error_preview:+$'\n'}$(head -c 1000 "$curl_error_file" | redact_text)"
-  fi
 
-  if [[ "$curl_exit_code" -eq 0 && "$response_status" == "200" && "$selected_id" == "$model" ]]; then
-    jq -S --arg provider "openai" --arg endpoint "$model_url" --arg httpStatus "$response_status" --arg curlExitCode "$curl_exit_code" \
-      '{schemaVersion: 2, provider: $provider, endpoint: $endpoint, available: true, httpStatus: $httpStatus, curlExitCode: $curlExitCode, id: .id, object: (.object // ""), owned_by: (.owned_by // ""), created: (.created // null)}' \
-      "$model_json" > "$output"
-    append_output "model_id" "$(jq -r '.id' "$output")"
-    append_output "model_provider" "openai"
-    append_output "model_endpoint" "$model_url"
-    append_output "model_http_status" "$response_status"
-    printf 'audit:model_preflight provider=openai model=%s status=%s endpoint=%s\n' "$model" "$response_status" "$model_url"
-    return 0
-  fi
+def allocate(demands, priorities, budget):
+    allocations = [0] * len(demands)
+    active = {index for index, demand in enumerate(demands) if demand}
+    while budget and active:
+        total_weight = sum(priorities[index] for index in active)
+        remaining = budget
+        for index in sorted(active):
+            share = max(1, remaining * priorities[index] // total_weight)
+            grant = min(share, demands[index] - allocations[index], budget)
+            allocations[index] += grant
+            budget -= grant
+        active = {index for index in active if allocations[index] < demands[index]}
+    return allocations
 
-  jq -S -n \
-    --arg provider "openai" \
-    --arg endpoint "$model_url" \
-    --arg requestedModel "$model" \
-    --arg responseModel "$selected_id" \
-    --arg httpStatus "$response_status" \
-    --arg curlExitCode "$curl_exit_code" \
-    --arg errorPreview "$error_preview" \
-    '{schemaVersion: 2, provider: $provider, endpoint: $endpoint, available: false, requestedModel: $requestedModel, responseModel: $responseModel, httpStatus: $httpStatus, curlExitCode: $curlExitCode, errorPreview: $errorPreview}' > "$output"
-  append_output "model_provider" "openai"
-  append_output "model_endpoint" "$model_url"
-  append_output "model_http_status" "$response_status"
-  echo "::error::OpenAI model preflight failed for '$model' (HTTP $response_status, curl exit $curl_exit_code)." >&2
-  if [[ -n "$error_preview" ]]; then
-    printf 'OpenAI preflight response (truncated): %s\n' "$error_preview" >&2
-  fi
-  printf 'audit:model_preflight provider=openai model=%s status=%s curl_exit=%s available=false\n' "$model" "$response_status" "$curl_exit_code" >&2
-  if [[ "$curl_exit_code" -ne 0 || "$response_status" == "000" || "$response_status" == "408" || "$response_status" == "429" || "$response_status" =~ ^5[0-9][0-9]$ ]]; then
-    return "$RETRYABLE_PREFLIGHT_EXIT_CODE"
-  fi
-  return 1
-}
 
-command_extract_response_content() {
-  local raw_file="response.json" output="ai-content.txt" failure_reason_output="" github_output=""
-  while (($#)); do
-    case "$1" in
-      --raw-file) require_value "$1" "${2:-}"; raw_file="$2"; shift 2 ;;
-      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
-      --failure-reason-output) require_value "$1" "${2:-}"; failure_reason_output="$2"; shift 2 ;;
-      --github-output) require_value "$1" "${2:-}"; github_output="$2"; shift 2 ;;
-      *) die "Unknown extract-response-content option: $1" ;;
-    esac
-  done
-
-  local reason="" content="" response_state="unknown" refusal=""
-  if ! jq -e . "$raw_file" >/dev/null 2>&1; then
-    reason="OpenAI response was not valid JSON"
-  else
-    response_state="$(jq -r '.status // "unknown"' "$raw_file")"
-    if [[ "$response_state" != "completed" ]]; then
-      reason="OpenAI response was incomplete (status: $response_state)"
-    else
-      content="$(jq -r '[.output[]? | select(.type == "message") | .content[]? | select(.type == "output_text") | .text] | map(select(type == "string" and length > 0)) | join("\n")' "$raw_file" 2>/dev/null || true)"
-      if [[ -z "$content" ]]; then
-        refusal="$(jq -r '[.output[]?.content[]? | select(.type == "refusal") | .refusal // empty] | join("; ")' "$raw_file" 2>/dev/null || true)"
-        reason="${refusal:-OpenAI response did not contain output_text content}"
-      fi
-    fi
-  fi
-
-  if [[ -n "$reason" ]]; then
-    reason="$(sanitize_untrusted_text "$reason")"
-    : > "$output"
-    [[ -n "$failure_reason_output" ]] && printf '%s\n' "$reason" > "$failure_reason_output"
-    append_output "response_content_status" "failed" "$github_output"
-    append_output "response_content_failure_reason" "$reason" "$github_output"
-    echo "::error::$(github_error_annotation "$reason")" >&2
-    return 1
-  fi
-
-  printf '%s\n' "$content" > "$output"
-  [[ -n "$failure_reason_output" ]] && : > "$failure_reason_output"
-  append_output "response_content_status" "ok" "$github_output"
-  printf 'audit:response_content status=completed output_text_chars=%s\n' "${#content}"
-}
-
-command_sanitize_response_artifact() {
-  local raw_file="response.json" output="response.json"
-  while (($#)); do
-    case "$1" in
-      --raw-file) require_value "$1" "${2:-}"; raw_file="$2"; shift 2 ;;
-      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
-      *) die "Unknown sanitize-response option: $1" ;;
-    esac
-  done
-
-  local sanitized
-  sanitized="$(new_tmp_file)"
-  if ! jq -e . "$raw_file" >/dev/null 2>&1; then
-    jq -S -n '{schemaVersion: 1, status: "invalid", reasoningOutputOmitted: true}' > "$sanitized"
-  else
-    jq -S '
-      {
-        schemaVersion: 1,
-        object: (.object // "response"),
-        id: (.id // ""),
-        model: (.model // ""),
-        status: (.status // "unknown"),
-        createdAt: (.created_at // null),
-        completedAt: (.completed_at // null),
-        error: (if .error == null then null else {type: (.error.type // ""), code: (.error.code // ""), message: "[REDACTED_PROVIDER_ERROR]"} end),
-        incompleteDetails: (.incomplete_details // null),
-        usage: (.usage // null),
-        output: [
-          .output[]?
-          | select(.type == "message")
-          | {
-              type: "message",
-              role: (.role // "assistant"),
-              content: [
-                .content[]?
-                | if .type == "output_text" then {type: "output_text", text: .text}
-                  elif .type == "refusal" then {type: "refusal", refusal: "[REDACTED_REFUSAL]"}
-                  else empty
-                  end
-              ]
-            }
-          | select(.content | length > 0)
-        ],
-        reasoningOutputOmitted: true
-      }
-    ' "$raw_file" > "$sanitized"
-  fi
-  mkdir -p "$(dirname "$output")"
-  mv "$sanitized" "$output"
-  printf 'audit:response_artifact_sanitized output=%s reasoning_output_omitted=true\n' "$output"
+demands = [sum(min(len(section), per_file_limit) for section in sections)
+           for _, sections in categories]
+budgets = allocate(demands, [weights[category] for category, _ in categories], limit)
+coverage = {"strategy": "production-first-balanced-v1", "available": True, "source_byte_budget": limit,
+            "per_file_byte_limit": per_file_limit, "categories": {}}
+chunks = []
+for (category, sections), budget in zip(categories, budgets):
+    allocations = allocate([min(len(section), per_file_limit) for section in sections],
+                           [1] * len(sections), budget)
+    included = truncated = emitted_bytes = 0
+    for section, allowance in zip(sections, allocations):
+        if len(section) <= allowance:
+            excerpt = section
+        elif allowance >= 80:
+            notice = b"\n[TRUNCATED: remaining file diff omitted]\n"
+            excerpt = section[:allowance - len(notice)].decode("utf-8", errors="ignore").encode("utf-8") + notice
+            truncated += 1
+        else:
+            continue
+        chunks.append(excerpt)
+        included += 1
+        emitted_bytes += len(excerpt)
+    coverage["categories"][category] = {
+        "available_files": len(sections), "included_files": included,
+        "omitted_files": len(sections) - included, "truncated_files": truncated,
+        "available_bytes": sum(len(section) for section in sections),
+        "included_bytes": emitted_bytes,
+    }
+coverage["truncated"] = any(row["truncated_files"] or row["omitted_files"]
+                            for row in coverage["categories"].values())
+if not chunks and coverage["truncated"]:
+    chunks.append(b"[TRUNCATED: no file diff fits the selected budget]\n"[:limit])
+Path(output).write_bytes(b"".join(chunks))
+Path(coverage_output).write_text(json.dumps(coverage, indent=2) + "\n", encoding="utf-8")
+PY
 }
 
 command_build_dossier() {
@@ -648,56 +360,68 @@ command_build_dossier() {
     esac
   done
   [[ -n "$last_tag" && -n "$current_version" && -n "$pom_base" ]] || die "--last-tag, --current-version, and --pom-base are required"
+  [[ "$max_diff_chars" =~ ^[0-9]+$ ]] && (( max_diff_chars > 0 )) || die "--max-diff-chars must be a positive integer"
 
-  local tmpdir files_file categories_file diff_file redacted_diff api_file doc_file test_file changelog_file generated_at diff_truncated selected_diff_chars changed_file_count
+  local tmpdir files_file categories_file redacted_diff api_file doc_file test_file changelog_file generated_at diff_truncated selected_diff_chars changed_file_count
+  local diff_manifest coverage_file signal_diff category batch index=0
   tmpdir="$(new_tmp_dir)"
   files_file="$tmpdir/files.txt"
   categories_file="$tmpdir/categories.tsv"
-  diff_file="$tmpdir/diff.txt"
   redacted_diff="$tmpdir/redacted-diff.txt"
+  diff_manifest="$tmpdir/diff-manifest.tsv"
+  coverage_file="$tmpdir/diff-coverage.json"
+  signal_diff="$tmpdir/signal-diff.txt"
   api_file="$tmpdir/api.txt"
   doc_file="$tmpdir/doc.txt"
   test_file="$tmpdir/tests.txt"
   changelog_file="$tmpdir/changelog.txt"
 
   changed_files_since "$last_tag" > "$files_file"
-  while IFS= read -r path; do
-    [[ -n "$path" ]] || continue
-    printf '%s\t%s\n' "$(category_for "$path")" "$path" >> "$categories_file"
-  done < "$files_file"
   : > "$categories_file"
+  : > "$diff_manifest"
+  : > "$signal_diff"
   while IFS= read -r path; do
     [[ -n "$path" ]] || continue
     printf '%s\t%s\n' "$(category_for "$path")" "$path" >> "$categories_file"
   done < "$files_file"
 
   if [[ "$last_tag" == "none" || ! -s "$files_file" ]]; then
-    printf '(No prior release tag diff available.)\n' > "$redacted_diff"
+    if [[ "$last_tag" == "none" ]]; then
+      printf '(No prior release tag diff available.)\n' > "$redacted_diff"
+      printf '{"strategy":"production-first-balanced-v1","available":false,"categories":{},"truncated":false}\n' > "$coverage_file"
+    else
+      printf '(No changed files since the release baseline.)\n' > "$redacted_diff"
+      printf '{"strategy":"production-first-balanced-v1","available":true,"categories":{},"truncated":false}\n' > "$coverage_file"
+    fi
     diff_truncated=false
   else
-    local diff_status=0
     local path_args=()
-    while IFS= read -r path; do
-      [[ -n "$path" ]] && path_args+=("$path")
-    done < <(awk -F '\t' '{ pri=($1 == "production code" || $1 == "build metadata") ? 0 : 1; print pri "\t" $2 }' "$categories_file" | sort -k1,1n -k2,2 | cut -f2-)
-    git diff --no-ext-diff --find-renames --unified=80 "${last_tag}..HEAD" -- "${path_args[@]}" > "$diff_file" 2>"$tmpdir/diff.err" || diff_status=$?
-    if (( diff_status != 0 )); then
-      cat "$tmpdir/diff.err" >> "$diff_file"
-    fi
-    redact_text < "$diff_file" > "$tmpdir/redacted-full-diff.txt"
-    if (( $(file_size_bytes "$tmpdir/redacted-full-diff.txt") > max_diff_chars )); then
-      head -c "$max_diff_chars" "$tmpdir/redacted-full-diff.txt" > "$redacted_diff"
-      printf '\n\n[TRUNCATED: selected diff exceeded dossier budget]\n' >> "$redacted_diff"
-      diff_truncated=true
-    else
-      cp "$tmpdir/redacted-full-diff.txt" "$redacted_diff"
-      diff_truncated=false
-    fi
+    for category in 'production code' 'build metadata' 'tests' 'release documentation' 'workflows' 'release/tooling scripts' 'scripts' 'other'; do
+      path_args=()
+      while IFS= read -r path; do
+        [[ -n "$path" ]] && path_args+=("$path")
+      done < <(awk -F '\t' -v category="$category" '$1 == category { print $2 }' "$categories_file")
+      (( ${#path_args[@]} )) || continue
+      batch="$tmpdir/diff-${index}.txt"
+      if ! git --literal-pathspecs diff --no-color --no-ext-diff --no-textconv --find-renames --unified=8 \
+        "${last_tag}..HEAD" -- "${path_args[@]}" > "$tmpdir/raw-diff.txt" 2>"$tmpdir/diff.err"; then
+        die "Could not collect the release diff; assessment evidence is incomplete."
+      fi
+      redact_text < "$tmpdir/raw-diff.txt" > "$batch"
+      printf '%s\t%s\n' "$category" "$batch" >> "$diff_manifest"
+      if [[ "$category" == 'production code' ]]; then
+        cat "$batch" >> "$signal_diff"
+      fi
+      index=$((index + 1))
+    done
+    select_dossier_diff "$diff_manifest" "$redacted_diff" "$coverage_file" "$max_diff_chars"
+    diff_truncated="$(jq -r '.truncated' "$coverage_file")"
   fi
 
-  public_api_signals "$redacted_diff" > "$api_file"
-  javadoc_signals "$redacted_diff" > "$doc_file"
-  awk -F '\t' '$1 == "tests" { print $2 }' "$categories_file" > "$test_file"
+  # Signals scan all changed production lines before excerpts are bounded.
+  public_api_signals "$signal_diff" > "$api_file"
+  javadoc_signals "$signal_diff" > "$doc_file"
+  awk -F '\t' '$1 == "tests" { print $2 }' "$categories_file" | redact_text > "$test_file"
   extract_unreleased_changelog | redact_text > "$changelog_file"
 
   generated_at="$(iso_utc_now)"
@@ -714,6 +438,7 @@ command_build_dossier() {
     --argjson category_counts "$category_counts_json" \
     --argjson selected_diff_chars "$selected_diff_chars" \
     --argjson selected_diff_truncated "$diff_truncated" \
+    --slurpfile diff_coverage "$coverage_file" \
     --argjson public_api_signal_count "$(grep -c . "$api_file" || true)" \
     --argjson javadoc_signal_count "$(grep -c . "$doc_file" || true)" \
     --argjson test_file_count "$(grep -c . "$test_file" || true)" \
@@ -726,6 +451,8 @@ command_build_dossier() {
       category_counts: $category_counts,
       selected_diff_chars: $selected_diff_chars,
       selected_diff_truncated: $selected_diff_truncated,
+      diff_coverage: $diff_coverage[0],
+      signal_scope: "all changed production lines before diff sampling; each signal list is capped at 80 lines",
       public_api_signal_count: $public_api_signal_count,
       javadoc_signal_count: $javadoc_signal_count,
       test_file_count: $test_file_count
@@ -745,7 +472,7 @@ command_build_dossier() {
       local count
       count="$(awk -F '\t' -v category="$category" '$1 == category { count++ } END { print count + 0 }' "$categories_file")"
       printf '### %s (%s)\n' "$category" "$count"
-      awk -F '\t' -v category="$category" '$1 == category { printf "- `%s`\n", $2 }' "$categories_file"
+      awk -F '\t' -v category="$category" '$1 == category { printf "- `%s`\n", $2 }' "$categories_file" | redact_text
       printf '\n'
     done
     printf '## Unreleased Changelog Context\n\n```markdown\n'
@@ -768,6 +495,15 @@ command_build_dossier() {
     else
       printf -- '- (none detected)\n'
     fi
+    printf '\n## Evidence Coverage\n\n'
+    printf 'Diff excerpts are ordered by production, build, tests, documentation, then tooling. Large files share a bounded category budget; omitted excerpts are missing evidence, not proof that a change is safe.\n\n'
+    printf 'API and Javadoc signals scan all changed production lines before excerpt sampling; each signal list is capped at 80 lines.\n\n'
+    printf '| Category | Available files | Included | Omitted | Truncated | Available bytes | Included bytes |\n'
+    printf '|---|---:|---:|---:|---:|---:|---:|\n'
+    jq -r '.categories | to_entries[] | "| \(.key) | \(.value.available_files) | \(.value.included_files) | \(.value.omitted_files) | \(.value.truncated_files) | \(.value.available_bytes) | \(.value.included_bytes) |"' "$coverage_file"
+    if [[ "$last_tag" == "none" ]]; then
+      printf '\nNo prior release baseline is available; release-diff coverage is unavailable.\n'
+    fi
     printf '\n## Selected Diff\n\n```diff\n'
     cat "$redacted_diff"
     printf '\n```\n'
@@ -780,450 +516,6 @@ command_build_dossier() {
   append_output "changed_file_count" "$changed_file_count"
   append_output "selected_diff_chars" "$selected_diff_chars"
   append_output "selected_diff_truncated" "$diff_truncated"
-}
-
-command_build_ai_request() {
-  local model="" dossier="release-dossier.md" semver_rules=".github/workflows/semver-rules-override.txt" max_dossier_chars=900000 max_request_bytes="$DEFAULT_AI_REQUEST_MAX_BYTES" output="request.json" metadata_output="release-ai-request-metadata.json" last_release_url="https://github.com/ta4j/ta4j/releases" last_release_tag="none" last_release_date="none"
-  while (($#)); do
-    case "$1" in
-      --model) require_value "$1" "${2:-}"; model="$2"; shift 2 ;;
-      --dossier) require_value "$1" "${2:-}"; dossier="$2"; shift 2 ;;
-      --semver-rules) require_value "$1" "${2:-}"; semver_rules="$2"; shift 2 ;;
-      --last-release-url) require_value "$1" "${2:-}"; last_release_url="$2"; shift 2 ;;
-      --last-release-tag) require_value "$1" "${2:-}"; last_release_tag="$2"; shift 2 ;;
-      --last-release-date) require_value "$1" "${2:-}"; last_release_date="$2"; shift 2 ;;
-      --max-dossier-chars) require_value "$1" "${2:-}"; max_dossier_chars="$2"; shift 2 ;;
-      --max-request-bytes) require_value "$1" "${2:-}"; max_request_bytes="$2"; shift 2 ;;
-      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
-      --metadata-output) require_value "$1" "${2:-}"; metadata_output="$2"; shift 2 ;;
-      *) die "Unknown build-ai-request option: $1" ;;
-    esac
-  done
-  [[ -n "$model" ]] || die "--model is required"
-  [[ "$max_request_bytes" =~ ^[0-9]+$ && "$max_request_bytes" -gt 0 ]] || die "--max-request-bytes must be positive."
-
-  local tmpdir full_dossier prompt_dossier semver_file rules_source request_tmp full_request_size request_size full_dossier_truncated=false prompt_profile="full-inline" compacted=false compaction_level=0 selected_diff_excerpt_chars=0
-  tmpdir="$(new_tmp_dir)"
-  full_dossier="$dossier"
-  prompt_dossier="$tmpdir/prompt-dossier.md"
-  copy_prefix_with_notice "$full_dossier" "$prompt_dossier" "$max_dossier_chars" "[TRUNCATED: dossier exceeded request budget]"
-  if (( $(file_size_bytes "$full_dossier") > max_dossier_chars )); then
-    full_dossier_truncated=true
-  fi
-  semver_file="$tmpdir/semver-rules.txt"
-  if [[ -s "$semver_rules" ]]; then
-    cp "$semver_rules" "$semver_file"
-    rules_source="$semver_rules"
-  else
-    cat > "$semver_file" <<'EOF'
-Decide release go/no-go from unreleased binary-impacting changes.
-If go, choose bump: patch|minor.
-MINOR: backward-compatible, user-visible new features, and breaking-change cases.
-PATCH: backward-compatible bug fixes or internal improvements.
-If binary change count is 0 => should_release=false.
-If binary change list empty or changelog-only => should_release=false.
-If unsure between MINOR and PATCH, prefer PATCH.
-Pre-1.0.0: breaking changes can be MINOR.
-EOF
-    rules_source="default"
-  fi
-
-  request_tmp="$tmpdir/request.json"
-  build_ai_request_payload "$model" "$semver_file" "$prompt_dossier" "$prompt_profile" "$last_release_url" "$last_release_tag" "$last_release_date" > "$request_tmp"
-  full_request_size="$(file_size_bytes "$request_tmp")"
-  local selected_diff_file
-  selected_diff_file="$tmpdir/selected-diff.txt"
-  extract_markdown_section "$prompt_dossier" "Selected Diff" > "$selected_diff_file"
-  selected_diff_excerpt_chars="$(file_size_bytes "$selected_diff_file")"
-
-  if (( full_request_size > max_request_bytes )); then
-    compacted=true
-    local limits=(50 25 10 5 2)
-    local changelog_limits signals_limits diff_limits
-    changelog_limits=(
-      "$(min_int 40000 $((max_request_bytes / 6)))"
-      "$(min_int 20000 $((max_request_bytes / 8)))"
-      "$(min_int 8000 $((max_request_bytes / 12)))"
-      "$(min_int 3000 $((max_request_bytes / 16)))"
-      "$(min_int 1000 $((max_request_bytes / 24)))"
-    )
-    signals_limits=(
-      "$(min_int 30000 $((max_request_bytes / 8)))"
-      "$(min_int 15000 $((max_request_bytes / 10)))"
-      "$(min_int 8000 $((max_request_bytes / 12)))"
-      "$(min_int 3000 $((max_request_bytes / 16)))"
-      "$(min_int 1000 $((max_request_bytes / 24)))"
-    )
-    diff_limits=(
-      "$((max_request_bytes / 2))"
-      "$((max_request_bytes / 3))"
-      "$((max_request_bytes / 5))"
-      "$((max_request_bytes / 10))"
-      "0"
-    )
-    local i candidate_dossier candidate_request candidate_profile candidate_size
-    for i in 0 1 2 3 4; do
-      compaction_level=$((i + 1))
-      candidate_dossier="$tmpdir/compact-${compaction_level}.md"
-      candidate_request="$tmpdir/request-${compaction_level}.json"
-      candidate_profile="compact-artifact-backed-v${compaction_level}"
-      build_compact_dossier "$full_dossier" "$candidate_dossier" "${limits[$i]}" "${changelog_limits[$i]}" "${signals_limits[$i]}" "${diff_limits[$i]}"
-      build_ai_request_payload "$model" "$semver_file" "$candidate_dossier" "$candidate_profile" "$last_release_url" "$last_release_tag" "$last_release_date" > "$candidate_request"
-      candidate_size="$(file_size_bytes "$candidate_request")"
-      if (( candidate_size <= max_request_bytes )); then
-        prompt_dossier="$candidate_dossier"
-        request_tmp="$candidate_request"
-        prompt_profile="$candidate_profile"
-        selected_diff_excerpt_chars="${diff_limits[$i]}"
-        break
-      fi
-    done
-    if [[ "$prompt_profile" == "full-inline" ]]; then
-      prompt_profile="compact-artifact-backed-minimal"
-      prompt_dossier="$tmpdir/compact-minimal.md"
-      request_tmp="$tmpdir/request-minimal.json"
-      build_compact_dossier "$dossier" "$prompt_dossier" 1 400 400 0
-      build_ai_request_payload "$model" "$semver_file" "$prompt_dossier" "$prompt_profile" "$last_release_url" "$last_release_tag" "$last_release_date" > "$request_tmp"
-      selected_diff_excerpt_chars=0
-    fi
-  fi
-
-  cp "$request_tmp" "$output"
-  request_size="$(file_size_bytes "$output")"
-  jq -S -n \
-    --arg generatedAt "$(iso_utc_now)" \
-    --arg model "$model" \
-    --arg provider "openai" \
-    --arg endpoint "$OPENAI_RESPONSES_ENDPOINT" \
-    --arg reasoningEffort "$OPENAI_REASONING_EFFORT" \
-    --arg semverRulesSource "$rules_source" \
-    --arg promptProfile "$prompt_profile" \
-    --arg fullDossierPath "$dossier" \
-    --arg compactedBecause "$([[ "$compacted" == true ]] && printf 'full request exceeded transport budget')" \
-    --arg metadataOutput "$metadata_output" \
-    --arg lastReleaseTag "$last_release_tag" \
-    --arg lastReleaseDate "$last_release_date" \
-    --arg lastReleaseUrl "$last_release_url" \
-    --argjson schemaVersion "$AI_REQUEST_METADATA_SCHEMA_VERSION" \
-    --argjson artifactBackedContext "$compacted" \
-    --argjson fullDossierChars "$(file_size_bytes "$dossier")" \
-    --argjson promptDossierChars "$(file_size_bytes "$prompt_dossier")" \
-    --argjson maxDossierChars "$max_dossier_chars" \
-    --argjson fullDossierTruncatedForPrompt "$full_dossier_truncated" \
-    --argjson fullRequestJsonSizeBytes "$full_request_size" \
-    --argjson requestJsonSizeBytes "$request_size" \
-    --argjson maxRequestBytes "$max_request_bytes" \
-    --argjson requestWithinTransportBudget "$([[ "$request_size" -le "$max_request_bytes" ]] && printf true || printf false)" \
-    --argjson compactionLevel "$([[ "$compacted" == true ]] && printf '%s' "$compaction_level" || printf 0)" \
-    --argjson selectedDiffExcerptChars "$selected_diff_excerpt_chars" \
-    '{
-      schemaVersion: $schemaVersion,
-      generatedAt: $generatedAt,
-      model: $model,
-      provider: $provider,
-      endpoint: $endpoint,
-      reasoningEffort: $reasoningEffort,
-      semverRulesSource: $semverRulesSource,
-      promptProfile: $promptProfile,
-      lastReleaseTag: $lastReleaseTag,
-      lastReleaseDate: $lastReleaseDate,
-      lastReleaseUrl: $lastReleaseUrl,
-      artifactBackedContext: $artifactBackedContext,
-      fullDossierPath: $fullDossierPath,
-      fullDossierChars: $fullDossierChars,
-      promptDossierChars: $promptDossierChars,
-      maxDossierChars: $maxDossierChars,
-      fullDossierTruncatedForPrompt: $fullDossierTruncatedForPrompt,
-      fullRequestJsonSizeBytes: $fullRequestJsonSizeBytes,
-      requestJsonSizeBytes: $requestJsonSizeBytes,
-      maxRequestBytes: $maxRequestBytes,
-      requestWithinTransportBudget: $requestWithinTransportBudget,
-      compactedBecause: $compactedBecause,
-      compactionLevel: $compactionLevel,
-      selectedDiffExcerptChars: $selectedDiffExcerptChars,
-      auditArtifacts: ["release-dossier.md", "release-audit.json", $metadataOutput]
-    }' > "$metadata_output"
-
-  if (( request_size > max_request_bytes )); then
-    echo "::error::AI request JSON is ${request_size} bytes, above transport budget ${max_request_bytes} bytes." >&2
-    return 1
-  fi
-  printf 'audit:ai_request provider=openai endpoint=%s model=%s reasoning_effort=%s semver_rules_source=%s prompt_profile=%s request_json_size_bytes=%s max_request_bytes=%s\n' \
-    "$OPENAI_RESPONSES_ENDPOINT" "$model" "$OPENAI_REASONING_EFFORT" "$rules_source" "$prompt_profile" "$request_size" "$max_request_bytes"
-  append_output "request_json_size_bytes" "$request_size"
-  append_output "request_max_bytes" "$max_request_bytes"
-  append_output "request_metadata_path" "$metadata_output"
-  append_output "prompt_profile" "$prompt_profile"
-  append_output "dossier_chars" "$(file_size_bytes "$dossier")"
-  append_output "prompt_dossier_chars" "$(file_size_bytes "$prompt_dossier")"
-}
-
-json_or_unparsed_file() {
-  local input="$1"
-  local output="$2"
-  if [[ ! -s "$input" ]]; then
-    printf 'null\n' > "$output"
-  elif jq -e . "$input" >/dev/null 2>&1; then
-    jq -S . "$input" > "$output"
-  else
-    local preview
-    preview="$(tail -n 80 "$input" | redact_text | head -c 4000)"
-    jq -S -n --arg unparsed "$preview" '{unparsed: $unparsed}' > "$output"
-  fi
-}
-
-tail_redacted_file() {
-  local input="$1"
-  local max_lines="$2"
-  local max_chars="$3"
-  if [[ ! -f "$input" ]]; then
-    return 0
-  fi
-  tail -n "$max_lines" "$input" | redact_text | head -c "$max_chars"
-}
-
-parse_key_value_log_file() {
-  local input="$1"
-  local output="$2"
-  if [[ ! -f "$input" ]]; then
-    printf '[]\n' > "$output"
-    return 0
-  fi
-  redact_text < "$input" | jq -Rs '
-    def parsepairs:
-      [match("([A-Za-z_][A-Za-z0-9_]*)=([^=]*?)(?=\\s+[A-Za-z_][A-Za-z0-9_]*=|$)"; "g")
-        | {(.captures[0].string): .captures[1].string}] | add // {};
-    reduce (split("\n")[] | select(length > 0)) as $line
-      ({entries: [], current: {}};
-        if (($line | startswith("attempt=")) and ((.current | length) > 0)) then
-          .entries += [.current] | .current = ($line | parsepairs)
-        else
-          ($line | parsepairs) as $pairs |
-          if (($pairs | length) > 0) then
-            .current += $pairs
-          else
-            .current.stderr = (((.current.stderr // "") + (if ((.current.stderr // "") == "") then "" else "\n" end) + $line))
-          end
-        end
-      )
-    | .entries + (if ((.current | length) > 0) then [.current] else [] end)
-  ' > "$output"
-}
-
-command_ai_transport_diagnostics() {
-  local ai_mode="full" model="" provider="openai" endpoint="$OPENAI_RESPONSES_ENDPOINT" reasoning_effort="$OPENAI_REASONING_EFFORT" failure_reason="" response_status="000" curl_exit_code="unknown" attempts="1" request_metadata="release-ai-request-metadata.json" release_audit="release-audit.json" curl_error="curl-error.log" curl_metrics="curl-metrics.log" response_headers="response-headers.txt" response="response.json" output="release-ai-transport-diagnostics.json" fallback_output="ai-content.txt"
-  while (($#)); do
-    case "$1" in
-      --ai-mode) require_value "$1" "${2:-}"; ai_mode="$2"; shift 2 ;;
-      --model) require_value "$1" "${2:-}"; model="$2"; shift 2 ;;
-      --provider) require_value "$1" "${2:-}"; provider="$2"; shift 2 ;;
-      --endpoint) require_value "$1" "${2:-}"; endpoint="$2"; shift 2 ;;
-      --reasoning-effort) require_value "$1" "${2:-}"; reasoning_effort="$2"; shift 2 ;;
-      --failure-reason) require_value "$1" "${2:-}"; failure_reason="$2"; shift 2 ;;
-      --response-status) require_value "$1" "${2:-}"; response_status="$2"; shift 2 ;;
-      --curl-exit-code) require_value "$1" "${2:-}"; curl_exit_code="$2"; shift 2 ;;
-      --attempts) require_value "$1" "${2:-}"; attempts="$2"; shift 2 ;;
-      --request-metadata) require_value "$1" "${2:-}"; request_metadata="$2"; shift 2 ;;
-      --release-audit) require_value "$1" "${2:-}"; release_audit="$2"; shift 2 ;;
-      --curl-error) require_value "$1" "${2:-}"; curl_error="$2"; shift 2 ;;
-      --curl-metrics) require_value "$1" "${2:-}"; curl_metrics="$2"; shift 2 ;;
-      --response-headers) require_value "$1" "${2:-}"; response_headers="$2"; shift 2 ;;
-      --response) require_value "$1" "${2:-}"; response="$2"; shift 2 ;;
-      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
-      --fallback-output) require_value "$1" "${2:-}"; fallback_output="$2"; shift 2 ;;
-      *) die "Unknown ai-transport-diagnostics option: $1" ;;
-    esac
-  done
-
-  local classification="http_error" connection_closed_during="not_applicable" reason response_bytes tmpdir request_json audit_json attempts_json metrics_json headers_tail response_preview
-  if [[ "$response_status" == "000" ]]; then
-    classification="transport_failure_before_http_response"
-    connection_closed_during="unknown_before_response"
-  fi
-  if [[ -n "$failure_reason" ]]; then
-    classification="response_validation_failure"
-    reason="$(sanitize_untrusted_text "$failure_reason")"
-  elif [[ "$curl_exit_code" == "18" ]]; then
-    classification="curl_partial_file_transport_close"
-    connection_closed_during="response_read"
-    reason="AI response transfer closed before completion (curl exit ${curl_exit_code}, HTTP ${response_status})"
-  elif [[ "$curl_exit_code" != "0" && "$curl_exit_code" != "unknown" ]]; then
-    reason="AI transport failed with curl exit ${curl_exit_code} (HTTP ${response_status})"
-  elif [[ "$response_status" != "000" ]]; then
-    reason="AI call failed with HTTP ${response_status}"
-  else
-    reason="AI call failed before an HTTP response (curl exit ${curl_exit_code})"
-  fi
-
-  response_bytes="$(file_size_bytes "$response")"
-  tmpdir="$(new_tmp_dir)"
-  request_json="$tmpdir/request.json"
-  audit_json="$tmpdir/audit.json"
-  attempts_json="$tmpdir/attempts.json"
-  metrics_json="$tmpdir/metrics.json"
-  json_or_unparsed_file "$request_metadata" "$request_json"
-  json_or_unparsed_file "$release_audit" "$audit_json"
-  parse_key_value_log_file "$curl_error" "$attempts_json"
-  parse_key_value_log_file "$curl_metrics" "$metrics_json"
-  headers_tail="$(tail_redacted_file "$response_headers" 80 8000)"
-  response_preview="$(jq -c '{status: (.status // "unknown"), id: (.id // ""), model: (.model // ""), error: (if .error == null then null else {type: (.error.type // ""), code: (.error.code // ""), message: "[REDACTED_PROVIDER_ERROR]"} end), incomplete_details: (.incomplete_details // null)}' "$response" 2>/dev/null | head -c 2000 || true)"
-  local openai_request_id
-  openai_request_id="$(awk 'BEGIN { IGNORECASE=1 } tolower($1) == "x-request-id:" { sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit }' "$response_headers" 2>/dev/null || true)"
-
-  jq -S -n \
-    --arg generatedAt "$(iso_utc_now)" \
-    --arg classification "$classification" \
-    --arg connectionClosedDuring "$connection_closed_during" \
-    --arg aiMode "$ai_mode" \
-    --arg model "$model" \
-    --arg provider "$provider" \
-    --arg endpoint "$endpoint" \
-    --arg reasoningEffort "$reasoning_effort" \
-    --arg openaiRequestId "$openai_request_id" \
-    --arg failureReason "$reason" \
-    --arg attempts "$attempts" \
-    --arg responseStatus "$response_status" \
-    --arg curlExitCode "$curl_exit_code" \
-    --arg responseHeadersTail "$headers_tail" \
-    --arg responsePreview "$response_preview" \
-    --argjson schemaVersion "$AI_TRANSPORT_DIAGNOSTICS_SCHEMA_VERSION" \
-    --argjson responseBytes "$response_bytes" \
-    --slurpfile request "$request_json" \
-    --slurpfile releaseAudit "$audit_json" \
-    --slurpfile curlAttempts "$attempts_json" \
-    --slurpfile curlMetrics "$metrics_json" \
-    '{
-      schemaVersion: $schemaVersion,
-      generatedAt: $generatedAt,
-      classification: $classification,
-      connectionClosedDuring: $connectionClosedDuring,
-      aiMode: $aiMode,
-      model: $model,
-      provider: $provider,
-      endpoint: $endpoint,
-      reasoningEffort: $reasoningEffort,
-      openaiRequestId: $openaiRequestId,
-      failureReason: $failureReason,
-      attempts: $attempts,
-      responseStatus: $responseStatus,
-      curlExitCode: $curlExitCode,
-      responseBytes: $responseBytes,
-      request: $request[0],
-      releaseAudit: $releaseAudit[0],
-      curlAttempts: $curlAttempts[0],
-      curlMetrics: $curlMetrics[0],
-      responseHeadersTail: $responseHeadersTail,
-      responsePreview: $responsePreview,
-      recovery: [
-        "Do not rerun billed aiMode=full blindly with the same request.",
-        "Inspect release-ai-request-metadata.json and release-ai-transport-diagnostics.json from the audit artifact.",
-        "Use aiMode=probe to validate OpenAI connectivity without sending the full release dossier.",
-        "Retry aiMode=full only after request size, provider status, or scheduler compaction policy has been reviewed."
-      ]
-    }' > "$output"
-
-  jq -S -n \
-    --arg warning "${reason}; see ${output}" \
-    --arg reason "$reason" \
-    --arg output "$output" \
-    '{
-      should_release: false,
-      bump: "patch",
-      confidence: 0.0,
-      warning: $warning,
-      reason: $reason,
-      evidence: [],
-      risks: ["OpenAI transport or response validation failed before a usable release decision was returned"],
-      missing: ["Review " + $output + " before another billed full AI scheduler call"]
-    }' > "$fallback_output"
-  printf 'audit:ai_transport_diagnostics classification=%s status=%s curl_exit=%s response_bytes=%s output=%s\n' \
-    "$classification" "$response_status" "$curl_exit_code" "$response_bytes" "$output"
-  append_output "transport_diagnostics_path" "$output"
-}
-
-command_parse_decision() {
-  local raw_file="ai-content.txt" output="release-decision.json" github_output=""
-  while (($#)); do
-    case "$1" in
-      --raw-file) require_value "$1" "${2:-}"; raw_file="$2"; shift 2 ;;
-      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
-      --github-output) require_value "$1" "${2:-}"; github_output="$2"; shift 2 ;;
-      *) die "Unknown parse-decision option: $1" ;;
-    esac
-  done
-
-  local tmpdir candidate parsed parsed_status=0 hint
-  tmpdir="$(new_tmp_dir)"
-  candidate="$tmpdir/candidate.txt"
-  parsed="$tmpdir/parsed.json"
-  if [[ -f "$raw_file" ]]; then
-    perl -0777 -pe 's/^\s*```(?:json)?\s*//; s/\s*```\s*$//' "$raw_file" > "$candidate"
-  else
-    : > "$candidate"
-  fi
-  jq -e 'select(type == "object")' "$candidate" > "$parsed" 2>/dev/null || parsed_status=$?
-  if (( parsed_status != 0 )); then
-    perl -0777 -ne 'if (/(\{.*\})/s) { print $1 }' "$candidate" > "$tmpdir/extracted.json"
-    jq -e 'select(type == "object")' "$tmpdir/extracted.json" > "$parsed" 2>/dev/null || parsed_status=$?
-  fi
-  if (( parsed_status != 0 )); then
-    hint="$(tr '\n' ' ' < "$candidate" | head -c 200)"
-    jq -S -n --arg hint "$hint" '{
-      should_release: false,
-      bump: "patch",
-      confidence: 0.0,
-      warning: "Invalid AI JSON",
-      reason: (if $hint == "" then "AI response was not valid JSON" else "AI response was not valid JSON: " + $hint end),
-      evidence: [],
-      risks: ["AI response could not be parsed"],
-      missing: []
-    }' > "$output"
-  else
-    jq -S '
-      def append_warning($base; $msg):
-        if $base == "" then $msg else $base + "; " + $msg end;
-      def flag($value):
-        if ($value | type) == "boolean" then {value: $value, warning: ""}
-        elif (($value | type) == "number") and ($value == 1) then {value: true, warning: ""}
-        elif (($value | type) == "number") and ($value == 0) then {value: false, warning: ""}
-        elif ($value | type) == "string" then
-          (($value | gsub("^\\s+|\\s+$"; "") | ascii_downcase) as $normalized
-            | if ($normalized | IN("true", "1", "yes", "y", "on")) then {value: true, warning: ""}
-              elif ($normalized | IN("false", "0", "no", "n", "off", "")) then {value: false, warning: ""}
-              else {value: false, warning: ("invalid should_release '\''" + ($value | tostring) + "'\'', defaulted to false")}
-              end)
-        else {value: false, warning: ("invalid should_release '\''" + ($value | tostring) + "'\'', defaulted to false")}
-        end;
-      def string_list($key):
-        (.[ $key ] // []) as $value
-        | if ($value | type) == "array" then [$value[] | tostring] else [($value | tostring)] end;
-      (flag(.should_release // false)) as $flag
-      | ((.bump // "patch") | tostring | gsub("^\\s+|\\s+$"; "") | ascii_downcase) as $raw_bump
-      | ((.warning // "") | tostring) as $base_warning
-      | (if $flag.warning == "" then $base_warning else append_warning($base_warning; $flag.warning) end) as $warning1
-      | (if $raw_bump == "major" then {bump: "minor", warning: append_warning($warning1; "major bump disabled, downgraded to minor")}
-         elif ($raw_bump | IN("patch", "minor")) then {bump: $raw_bump, warning: $warning1}
-         else {bump: "patch", warning: append_warning($warning1; ("invalid bump '\''" + $raw_bump + "'\'', defaulted to patch"))}
-         end) as $bump_state
-      | {
-          should_release: $flag.value,
-          bump: (if $flag.value then $bump_state.bump else "patch" end),
-          confidence: ([0, ([1, ((.confidence | tonumber?) // 0)] | min)] | max),
-          warning: $bump_state.warning,
-          reason: ((.reason // "") | tostring),
-          evidence: string_list("evidence"),
-          risks: string_list("risks"),
-          missing: string_list("missing")
-        }
-    ' "$parsed" > "$output"
-  fi
-  append_output "should_release" "$(jq -r '.should_release' "$output")" "$github_output"
-  append_output "bump" "$(jq -r '.bump' "$output")" "$github_output"
-  append_output "confidence" "$(jq -r '.confidence' "$output")" "$github_output"
-  append_output "warning" "$(jq -r '.warning' "$output")" "$github_output"
-  append_output "reason" "$(jq -r '.reason' "$output")" "$github_output"
-  printf 'audit:ai_decision should_release=%s bump=%s confidence=%s output=%s\n' \
-    "$(jq -r '.should_release' "$output")" "$(jq -r '.bump' "$output")" "$(jq -r '.confidence' "$output")" "$output"
 }
 
 trim_text() {
@@ -2084,14 +1376,8 @@ main() {
   shift
   case "$command" in
     signing-preflight) command_signing_preflight "$@" ;;
-    model-preflight) command_model_preflight "$@" ;;
     build-dossier) command_build_dossier "$@" ;;
-    build-ai-request) command_build_ai_request "$@" ;;
     last-release-date) command_last_release_date "$@" ;;
-    extract-response-content) command_extract_response_content "$@" ;;
-    sanitize-response) command_sanitize_response_artifact "$@" ;;
-    ai-transport-diagnostics) command_ai_transport_diagnostics "$@" ;;
-    parse-decision) command_parse_decision "$@" ;;
     release-pr-review-plan) command_release_pr_review_plan "$@" ;;
     javadoc-warnings) command_javadoc_warnings "$@" ;;
     artifact-manifest) command_artifact_manifest "$@" ;;
