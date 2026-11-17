@@ -568,6 +568,91 @@ source = (root / 'reusable-release-assessment.yml').read_text()
 assert 'framework_repository:' not in source and 'framework_sha:' not in source
 
 
+# A successful producer can remain on attempt 1 while a failed consumer is
+# retried on attempt 2. Evaluate the actual YAML artifact expressions with those
+# distinct contexts; the consumer must still select the producer's retained name.
+def lookup(values, reference):
+    result = values
+    for part in reference.split('.'):
+        result = result.get(part, '') if isinstance(result, dict) else ''
+    return result
+
+
+def expression_value(expression, values):
+    expression = expression.removeprefix('${{').removesuffix('}}').strip()
+    expression = re.sub(r'\b[a-z_][a-z0-9_]*(?:\.[a-zA-Z0-9_-]+)+',
+                        lambda match: repr(lookup(values, match[0])), expression)
+    return eval(expression.replace('&&', ' and ').replace('||', ' or '), {'__builtins__': {}}, {})
+
+
+def interpolate(template, values):
+    return re.sub(r'\$\{\{(.*?)\}\}', lambda match: str(expression_value(match[0], values)), template)
+
+
+def yaml_value(block, key, indentation):
+    match = re.search(r'^' + ' ' * indentation + re.escape(key) + r':\s*(.+)$', block, re.MULTILINE)
+    assert match, (key, block)
+    return match[1].strip()
+
+
+produced = {}
+for workflow_name, workflow_jobs in (('scheduler', scheduler), ('assessment', assessment)):
+    for job_name, block in workflow_jobs.items():
+        if 'uses: actions/upload-artifact@' not in block:
+            continue
+        name_template = yaml_value(block, 'ARTIFACT_NAME', 6)
+        output_expression = yaml_value(block, 'artifact_name', 6)
+        upload = next(step for step in re.split(r'(?=^      - name:)', block, flags=re.MULTILINE)
+                      if 'uses: actions/upload-artifact@' in step)
+        assert 'id: artifact' in upload
+        first = {'github': {'run_id': '777', 'run_attempt': '1'}, 'steps': {'artifact': {'outputs': {'artifact-id': '123'}}}}
+        first['env'] = {'ARTIFACT_NAME': interpolate(name_template, first)}
+        retained_name = expression_value(output_expression, first)
+        assert retained_name == interpolate(yaml_value(upload, 'name', 10), first)
+        assert retained_name.endswith('-777-1'), (job_name, retained_name)
+        first['steps']['artifact']['outputs']['artifact-id'] = ''
+        assert expression_value(output_expression, first) == '', 'uncreated artifact must not export a misleading name'
+        second_name = interpolate(name_template, {'github': {'run_id': '777', 'run_attempt': '2'}})
+        assert second_name != retained_name and second_name.endswith('-777-2'), 'a producing rerun must keep a distinct artifact'
+        produced[(workflow_name, job_name)] = retained_name
+
+assert set(produced) == {('scheduler', name) for name in ('eligibility', 'context_preparation', 'release_policy', 'outcome')} | {
+    ('assessment', name) for name in ('context', 'codex', 'luna', 'policy')}
+consumer_needs = {name: {'result': 'success', 'outputs': {'artifact_name': retained}}
+                  for (_, name), retained in produced.items()}
+consumer = {'github': {'run_id': '777', 'run_attempt': '2'}, 'needs': consumer_needs,
+            'inputs': {'evidence_artifact': produced[('scheduler', 'context_preparation')]}}
+for workflow_jobs in (scheduler, assessment):
+    for block in workflow_jobs.values():
+        for step in re.split(r'(?=^      - name:)', block, flags=re.MULTILINE):
+            if 'uses: actions/download-artifact@' not in step:
+                continue
+            template = yaml_value(step, 'name', 10)
+            assert 'github.run_attempt' not in step and 'pattern:' not in step, 'consumer must not reconstruct or search for artifact identity'
+            reference = template.removeprefix('${{').removesuffix('}}').strip()
+            assert re.fullmatch(r'needs\.[a-z_]+\.outputs\.artifact_name|inputs\.evidence_artifact', reference), reference
+            selected = interpolate(template, consumer)
+            assert selected == lookup(consumer, reference) and selected.endswith('-777-1'), selected
+            condition = yaml_value(step, 'if', 8)
+            assert expression_value(condition, consumer), (reference, condition)
+            container = consumer
+            parts = reference.split('.')
+            for part in parts[:-1]:
+                container = container[part]
+            saved = container[parts[-1]]
+            container[parts[-1]] = ''
+            assert not expression_value(condition, consumer), 'empty artifact name must never download every artifact'
+            container[parts[-1]] = saved
+# Independent assessor producers may themselves be from different attempts.
+consumer['needs']['codex']['outputs']['artifact_name'] = 'assessment-codex-result-777-2'
+provider_steps = [step for step in re.split(r'(?=^      - name:)', assessment['policy'], flags=re.MULTILINE)
+                  if 'uses: actions/download-artifact@' in step and re.search(r'needs\.(codex|luna)\.outputs\.artifact_name', step)]
+assert [interpolate(yaml_value(step, 'name', 10), consumer) for step in provider_steps] == [
+    'assessment-codex-result-777-2', 'assessment-luna-result-777-1']
+assert yaml_value(scheduler['release_assessment'], 'evidence_artifact', 6) == '${{ needs.context_preparation.outputs.artifact_name }}'
+assert 'value: ${{ jobs.policy.outputs.artifact_name }}' in (root / 'reusable-release-assessment.yml').read_text()
+
+
 def states():
     value = {name: {"result": "success", "outputs": {}} for name in required}
     value["eligibility"]["outputs"] = {"eligible": "true", "dry_run": "false", "due": "true"}

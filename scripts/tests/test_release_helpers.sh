@@ -236,6 +236,7 @@ root.mkdir(parents=True)
     + "    public double lateApiChange() { return 2.0; }\n}\n", encoding="utf-8")
 (root / "ZImportant.java").write_text(
     "package org.ta4j.core;\n/** @since 1.1.0 */\npublic class ZImportant {\n"
+    + "    // Synthetic header: Authorization: Basic dXNlcjpwYXNz\n"
     + "    public double userVisibleChange() { return 3.0; }\n}\n", encoding="utf-8")
 workflow = Path(".github/workflows/large.yml")
 workflow.parent.mkdir(parents=True)
@@ -251,6 +252,8 @@ Path("CHANGELOG.md").write_text("""## Unreleased
 - API_KEY = "fixture-secret-value"
 - password='fixture-password-value'
 - Authorization: Bearer fixture-auth-value
+- Authorization: Basic dXNlcjpwYXNz
+- "Proxy-Authorization": "bAsIc Zml4dHVyZTpwYXNzd29yZA=="
 - https://fixture-user:fixture-pass@example.invalid/path?token=fixture-query-value
 -----BEGIN PRIVATE KEY-----
 fixture-private-key-material
@@ -284,14 +287,75 @@ assert "https://github.com/ta4j/ta4j/releases/tag/1.0.0" in dossier
 assert "1234567890abcdef1234567890abcdef12345678" in dossier
 assert "[REDACTED_OPENAI_KEY]" in dossier
 assert "[REDACTED_PRIVATE_KEY]" in dossier
+assert "Authorization: Basic [REDACTED_CREDENTIALS]" in dossier
+assert '"Proxy-Authorization": "bAsIc [REDACTED_CREDENTIALS]"' in dossier
 for secret in ("ABCDEFGHIJKLMNOPQRSTUVWXYZ123456", "fixture-secret-value",
                "fixture-password-value", "fixture-auth-value", "fixture-pass",
-               "fixture-query-value", "fixture-private-key-material"):
+               "fixture-query-value", "fixture-private-key-material",
+               "dXNlcjpwYXNz", "Zml4dHVyZTpwYXNzd29yZA=="):
     assert secret not in dossier, secret
 PY
 
   finish_test
   pass "test_build_dossier_preserves_production_evidence_and_credentials"
+}
+
+test_build_dossier_retains_production_deletion_when_file_moves_into_tests() {
+  echo "Running test_build_dossier_retains_production_deletion_when_file_moves_into_tests"
+  run_test
+
+  git init -q -b master
+  git config user.name "Test User"
+  git config user.email "test@example.com"
+  git config core.autocrlf false
+  git config diff.renames true
+  mkdir -p ta4j-core/src/main/java/org/ta4j/core ta4j-core/src/test/java/org/ta4j/core
+  printf '## Unreleased\n\n- Move the fixture into tests.\n' > CHANGELOG.md
+  cat > ta4j-core/src/main/java/org/ta4j/core/Moved.java <<'EOF'
+package org.ta4j.core;
+
+/** @since 0.1.0 */
+public class Moved {
+    public double value() { return 1.0; }
+}
+EOF
+  git add .
+  git commit -q -m "Initial public production class"
+  git tag 1.0.0
+  git mv ta4j-core/src/main/java/org/ta4j/core/Moved.java ta4j-core/src/test/java/org/ta4j/core/Moved.java
+  git commit -q -m "Move unchanged class into tests"
+  git diff --name-status --find-renames 1.0.0..HEAD > recognized-rename.txt
+  expect_file_contains recognized-rename.txt "R100" "fixture must reproduce a Git-detected exact rename"
+
+  bash "$SCRIPT" build-dossier --last-tag 1.0.0 --current-version 1.1.0-SNAPSHOT \
+    --pom-base 1.1.0 >/dev/null
+
+  python3 - <<'PY'
+import json
+from pathlib import Path
+report = json.loads(Path("release-audit.json").read_text())
+assert report["changed_file_count"] == 2
+assert report["category_counts"] == {"production code": 1, "tests": 1}
+for category in ("production code", "tests"):
+    coverage = report["diff_coverage"]["categories"][category]
+    assert coverage["available_files"] == coverage["included_files"] == 1
+    assert coverage["omitted_files"] == coverage["truncated_files"] == 0
+    assert coverage["available_bytes"] == coverage["included_bytes"] > 0
+dossier = Path("release-dossier.md").read_text()
+signals = dossier.split("## Public API Signals", 1)[1].split("## Javadoc", 1)[0]
+assert "-public class Moved" in signals
+assert "-    public double value()" in signals
+assert "+public class Moved" not in signals, "test-only additions must not mask a removed production API"
+diff = dossier.split("## Selected Diff", 1)[1]
+assert "deleted file mode" in diff
+assert "--- a/ta4j-core/src/main/java/org/ta4j/core/Moved.java" in diff
+assert "+++ /dev/null" in diff
+assert "+++ b/ta4j-core/src/test/java/org/ta4j/core/Moved.java" in diff
+assert diff.index("ta4j-core/src/main/") < diff.index("ta4j-core/src/test/")
+PY
+
+  finish_test
+  pass "test_build_dossier_retains_production_deletion_when_file_moves_into_tests"
 }
 
 test_last_release_date_uses_annotated_tag_date() {
@@ -411,6 +475,7 @@ test_release_pr_review_plan_uses_non_author_fallback_reviewers
 test_release_pr_review_plan_preserves_team_reviewers
 test_build_dossier_groups_and_truncates_diff
 test_build_dossier_preserves_production_evidence_and_credentials
+test_build_dossier_retains_production_deletion_when_file_moves_into_tests
 test_last_release_date_uses_annotated_tag_date
 test_artifact_manifest_validates_expected_release_jars
 test_javadoc_warning_baseline_rejects_new_warnings

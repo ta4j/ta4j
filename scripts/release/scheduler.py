@@ -108,7 +108,8 @@ def context(directory, event, dry_run, mode, run_date):
         if not complete:
             blockers.append("previous_release_incomplete")
             break
-    paths = git("diff", "--name-only", "-z", last_tag + "..HEAD").split("\0") if last_tag != "none" else []
+    # Count both sides of a move so a production deletion cannot disappear behind its test destination.
+    paths = git("diff", "--no-renames", "--name-only", "-z", last_tag + "..HEAD").split("\0") if last_tag != "none" else []
     paths = [path for path in paths if path]
     binary_count = sum(bool(re.search(r"(^|/)pom\.xml$|(^|/)src/main/", path)) for path in paths)
     if binary_count == 0:
@@ -195,15 +196,22 @@ def summarize(directory, stages):
     status = "failed" if any(stage.get("result") in ("failure", "cancelled") for stage in stages.values()) else recommendation
     context_file = root / "context.json"
     blockers = assessment.read(context_file)["preconditions"]["blockers"] if context_file.exists() else []
+    # Producer-owned names identify the actual retained files even after a partial rerun.
+    artifacts = {}
+    for name, stage in stages.items():
+        artifact = stage.get("outputs", {}).get("artifact_name", "")
+        if artifact:
+            artifacts[name] = artifact if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,127}", artifact) else "unavailable"
     result = {"schemaVersion": 1, "status": status, "recommendation": recommendation,
               "sourceSha": values.get("source_sha", "unavailable"), "dryRun": values.get("dry_run", "unknown"),
               "version": policy.get("outputs", {}).get("version", ""), "blockers": blockers,
-              "stages": {name: stage.get("result", "unknown") for name, stage in stages.items()}}
+              "stages": {name: stage.get("result", "unknown") for name, stage in stages.items()}, "artifacts": artifacts}
     assessment.write(root / "scheduler-outcome.json", result)
     lines = ["## Release scheduler outcome", "", f"**{status}**", "",
              f"Candidate: `{result['sourceSha']}` · Version: `{result['version'] or 'none'}` · Dry run: `{result['dryRun']}`", "",
-             "| Stage | Result |", "|---|---|"]
-    lines.extend(f"| {name.replace('_', ' ')} | {stage} |" for name, stage in result["stages"].items())
+             "| Stage | Result | Retained artifact |", "|---|---|---|"]
+    lines.extend(f"| {name.replace('_', ' ')} | {stage} | `{artifacts.get(name, 'none')}` |"
+                 for name, stage in result["stages"].items())
     if blockers:
         lines += ["", "Eligibility: " + ", ".join(f"`{item}`" for item in blockers) + "."]
     lines += ["", "Assessment evidence and any missing information are in the release assessment summary.",

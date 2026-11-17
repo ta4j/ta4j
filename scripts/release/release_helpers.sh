@@ -125,6 +125,7 @@ redact_text() {
     s#\b(?:gh[oprsu]_|github_pat_)[A-Za-z0-9_]{20,}#[REDACTED_TOKEN]#g;
     s#\bsk-[A-Za-z0-9_-]{16,}#[REDACTED_OPENAI_KEY]#g;
     s#\b(?:AKIA|ASIA)[A-Z0-9]{16}\b#[REDACTED_ACCESS_KEY]#g;
+    s#(\b(?:proxy-)?authorization["\x27]?[ \t]*[:=,][ \t]*["\x27]?basic[ \t]+)[A-Za-z0-9+/]+=*#${1}[REDACTED_CREDENTIALS]#gi;
     s#\b(Bearer[ \t]+)[A-Za-z0-9._~+/-]+=*#${1}[REDACTED_TOKEN]#gi;
     s#\b(https?://)[^\s/@]+:[^\s/@]+\@#${1}[REDACTED_CREDENTIALS]\@#gi;
     s#([?&](?:access_token|api_key|key|token|password|secret|signature|sig)=)[^&\x23\s"<>]+#${1}[REDACTED_SECRET]#gi;
@@ -204,7 +205,9 @@ changed_files_since() {
   if [[ "$last_tag" == "none" ]]; then
     git ls-tree -rz --name-only HEAD
   else
-    git diff --name-only -z "${last_tag}..HEAD"
+    # Both sides of a move matter: moving a public class into tests removes it
+    # from the production artifact even when Git recognizes an exact rename.
+    git diff --no-renames --name-only -z "${last_tag}..HEAD"
   fi | python3 -c '
 import sys
 paths = [path for path in sys.stdin.buffer.read().split(b"\0") if path]
@@ -403,7 +406,7 @@ command_build_dossier() {
       done < <(awk -F '\t' -v category="$category" '$1 == category { print $2 }' "$categories_file")
       (( ${#path_args[@]} )) || continue
       batch="$tmpdir/diff-${index}.txt"
-      if ! git --literal-pathspecs diff --no-color --no-ext-diff --no-textconv --find-renames --unified=8 \
+      if ! git --literal-pathspecs diff --no-color --no-ext-diff --no-textconv --no-renames --unified=8 \
         "${last_tag}..HEAD" -- "${path_args[@]}" > "$tmpdir/raw-diff.txt" 2>"$tmpdir/diff.err"; then
         die "Could not collect the release diff; assessment evidence is incomplete."
       fi

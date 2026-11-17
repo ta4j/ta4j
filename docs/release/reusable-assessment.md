@@ -178,8 +178,10 @@ checked out separately and used only as assessment data. These native
 [workflow identity fields](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context)
 require GitHub.com and are unavailable on GitHub Enterprise Server; missing
 identity fails before framework checkout, without falling back to caller code.
-Its outputs are `recommendation`, `should_release`, `bump` and `all_agree`; an
-empty agreement means the results are not comparable.
+Its outputs are `recommendation`, `should_release`, `bump`, `all_agree` and
+`artifact_name`. An empty agreement means the results are not comparable;
+`artifact_name` identifies the exact retained assessment report, or is empty if
+no report was uploaded.
 
 ## Output contract: why each item exists
 
@@ -199,7 +201,7 @@ trace, reasoning transcript or broad workspace glob is intentionally uploaded.
 | `audit:release_handoff` | Distinguishes new dispatch from an already-dispatched preparation |
 | Preparation's source audit | Lets maintainers match prepared and assessed commits |
 | Validation errors | Identify the failed invariant without dumping untrusted/provider content |
-| Job outputs | Carry only routing flags, source/version identity and reusable result fields consumed by dependencies |
+| Job outputs | Carry routing flags, source/version identity, validated reusable results and exact producer artifact names consumed by dependencies and the outcome |
 | Eligibility/evidence artifacts | Make the exact policy, source, coverage and evidence reproducible |
 | Provider/result artifacts | Preserve bounded rationale, concrete evidence, blockers and comparison usage/latency |
 | Release-plan artifact | Records exactly what the controller authorized for preparation |
@@ -214,6 +216,23 @@ tool output, final structured decision, lifecycle and usage events remain useful
 for diagnosing the action and are the explicit accepted logging boundary. Adding
 a custom wrapper or action fork solely to suppress those lines would undermine
 the official-action migration.
+
+## Retained evidence across reruns
+
+Each artifact name includes the run ID and the attempt that **produced** it. A
+producer exports its exact name only after upload succeeds. Consumers use that
+output rather than reconstructing a name from their own attempt. A failed-only
+rerun can therefore read successful context from attempt 1 and a retried Codex
+result from attempt 2. Codex and Luna results are downloaded separately by their
+exact retained names; empty identities never trigger a download-all fallback.
+
+A full rerun produces distinct artifacts for its new attempt. The outcome's
+retained-artifact column points to the exact producer records used across partial
+reruns, including eligibility, evidence, assessment and version planning. Missing
+or expired evidence remains unavailable and cannot authorize release. Inspect the
+failed stage before retrying: rerunning a model job incurs another model call;
+rerunning only validation reuses the retained decision. Changed source or evidence
+requires a new scheduler assessment.
 
 ## Validation and rollout
 

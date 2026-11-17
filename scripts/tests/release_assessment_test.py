@@ -153,6 +153,28 @@ class AssessmentTest(unittest.TestCase):
                 self.assertFalse(result["shouldRelease"])
                 self.assertEqual("unavailable", result["recommendation"])
 
+    def test_deferral_with_missing_evidence_is_invalid_not_a_completed_deferral(self):
+        value = decision("defer", "none")
+        value["blocking_risks"] = ["A confirmed regression still requires a fix"]
+        self.assertEqual(value, assessment.validate_decision(value, SHA))
+        assessment.write(self.root / "codex-decision.json", value)
+        result = self.report()
+        self.assertEqual("completed", result["status"])
+        self.assertEqual("defer", result["recommendation"])
+        self.assertFalse(result["shouldRelease"])
+
+        value["missing_evidence"] = ["The compatibility result is unavailable"]
+        with self.assertRaisesRegex(ValueError, "deferral_requires_complete_evidence"):
+            assessment.validate_decision(value, SHA)
+        assessment.write(self.root / "codex-decision.json", value)
+        result = self.report()
+        self.assertEqual("unavailable", result["status"])
+        self.assertEqual("unavailable", result["recommendation"])
+        self.assertFalse(result["shouldRelease"])
+
+        value["decision"] = "insufficient_evidence"
+        self.assertEqual(value, assessment.validate_decision(value, SHA))
+
     def test_deterministic_ineligibility_cannot_be_overridden(self):
         self.context["preconditions"] = {"eligible": False, "blockers": ["CI not successful"]}
         assessment.write(self.root / "context.json", self.context)

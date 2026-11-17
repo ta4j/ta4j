@@ -164,6 +164,8 @@ def validate_decision(value, source_sha):
             raise ValueError("release_requires_complete_unblocked_evidence")
     elif value["bump"] != "none":
         raise ValueError("nonrelease_requires_no_bump")
+    if value["decision"] == "defer" and value["missing_evidence"]:
+        raise ValueError("deferral_requires_complete_evidence")
     if value["decision"] == "insufficient_evidence" and not value["missing_evidence"]:
         raise ValueError("insufficient_evidence_requires_explanation")
     return value

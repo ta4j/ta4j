@@ -113,6 +113,23 @@ class SchedulerTest(unittest.TestCase):
                 self.state["ci"] = ci
                 self.assertIn("candidate_ci_not_successful", self.context()["preconditions"]["blockers"])
 
+    def test_production_to_test_move_counts_deleted_production_path(self):
+        # Keep the POM identical across the comparison so only the move can satisfy the binary gate.
+        self.git("-c", "tag.gpgSign=false", "tag", "-fa", "0.29.0", "-m", "move baseline")
+        self.git("config", "diff.renames", "true")
+        destination = self.root / "ta4j-core/src/test/java/Source.java"
+        destination.parent.mkdir(parents=True)
+        self.source_file.rename(destination)
+        self.commit()
+        self.source = self.git("rev-parse", "HEAD")
+        self.state["sourceSha"] = self.state["defaultSha"] = self.source
+        self.state["ci"]["sourceSha"] = self.source
+        self.assertTrue(self.git("diff", "--name-status", "0.29.0..HEAD").startswith("R100\t"))
+
+        value = self.context()
+        self.assertEqual({"eligible": True, "blockers": []}, value["preconditions"])
+        self.assertEqual({"binaryChangedFiles": 1, "changedFiles": 2}, value["metrics"])
+
     def test_source_movement_skip_and_off_cadence_stop_before_model(self):
         self.state["defaultSha"] = self.release
         value = self.context(mode="skip", event="schedule", run_date=date(2026, 7, 6))
@@ -189,16 +206,26 @@ class SchedulerTest(unittest.TestCase):
 
     def test_outcome_differentiates_operational_failure_from_deferral(self):
         self.context()
-        stages = {"eligibility": {"result": "success", "outputs": {"source_sha": self.source, "dry_run": "true"}},
-                  "release_assessment": {"result": "failure", "outputs": {}},
-                  "release_policy": {"result": "success", "outputs": {"recommendation": "unavailable"}},
+        stages = {"eligibility": {"result": "success", "outputs": {"source_sha": self.source, "dry_run": "true",
+                                                                 "artifact_name": "release-eligibility-42-1"}},
+                  "release_assessment": {"result": "failure", "outputs": {"artifact_name": "assessment-results-42-2"}},
+                  "release_policy": {"result": "success", "outputs": {"recommendation": "unavailable",
+                                                                    "artifact_name": "release-plan-42-2"}},
                   "release_handoff": {"result": "skipped", "outputs": {}}}
         scheduler.summarize(self.directory, stages)
-        self.assertEqual("failed", assessment.read(self.directory / "scheduler-outcome.json")["status"])
+        outcome = assessment.read(self.directory / "scheduler-outcome.json")
+        self.assertEqual("failed", outcome["status"])
+        self.assertEqual({"eligibility": "release-eligibility-42-1", "release_assessment": "assessment-results-42-2",
+                          "release_policy": "release-plan-42-2"}, outcome["artifacts"])
+        self.assertIn("`release-eligibility-42-1`", (self.directory / "scheduler-outcome.md").read_text())
         stages["release_assessment"]["result"] = "success"
         stages["release_policy"]["outputs"]["recommendation"] = "defer"
+        stages["release_assessment"]["outputs"]["artifact_name"] = "<script>untrusted</script>"
         scheduler.summarize(self.directory, stages)
-        self.assertEqual("defer", assessment.read(self.directory / "scheduler-outcome.json")["status"])
+        outcome = assessment.read(self.directory / "scheduler-outcome.json")
+        self.assertEqual("defer", outcome["status"])
+        self.assertEqual("unavailable", outcome["artifacts"]["release_assessment"])
+        self.assertNotIn("<script>", (self.directory / "scheduler-outcome.md").read_text())
 
 
 if __name__ == "__main__":

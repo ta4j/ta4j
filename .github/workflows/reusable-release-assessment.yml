@@ -34,6 +34,8 @@ on:
       OPENAI_API_KEY:
         required: true
     outputs:
+      artifact_name:
+        value: ${{ jobs.policy.outputs.artifact_name }}
       recommendation:
         value: ${{ jobs.policy.outputs.recommendation }}
       should_release:
@@ -64,6 +66,10 @@ jobs:
     name: Context preparation
     runs-on: ${{ fromJSON(inputs.runner_labels) }}
     timeout-minutes: 5
+    env:
+      ARTIFACT_NAME: assessment-context-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
     steps:
       - name: Clear previous assessment workspace
         run: rm -rf -- "$GITHUB_WORKSPACE/release-assessment-work"
@@ -94,6 +100,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Download frozen evidence
+        if: inputs.evidence_artifact != ''
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: ${{ inputs.evidence_artifact }}
@@ -105,9 +112,10 @@ jobs:
           SOURCE_SHA: ${{ inputs.source_sha }}
         run: python3 release-assessment-work/framework/scripts/release/assessment.py prepare --directory release-assessment-work/evidence --source-sha "$SOURCE_SHA"
       - name: Share verified inputs and unavailable-result placeholders
+        id: artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: assessment-context-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: |
             release-assessment-work/evidence/release-assessment-manifest.json
             release-assessment-work/evidence/context.json
@@ -122,6 +130,10 @@ jobs:
     needs: context
     runs-on: ${{ fromJSON(inputs.runner_labels) }}
     timeout-minutes: 15
+    env:
+      ARTIFACT_NAME: assessment-codex-result-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
     steps:
       - name: Clear previous assessment workspace
         run: rm -rf -- "$GITHUB_WORKSPACE/release-assessment-work"
@@ -160,9 +172,10 @@ jobs:
         with:
           python-version: '3.12'
       - name: Download verified context
+        if: needs.context.outputs.artifact_name != ''
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: assessment-context-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ needs.context.outputs.artifact_name }}
           path: release-assessment-work/evidence
       - name: Isolate runtime and verify runner permissions
         id: runtime
@@ -200,9 +213,10 @@ jobs:
         run: cp "$SESSION_ROOT/result/codex-decision.json" release-assessment-work/evidence/codex-decision.json
       - name: Upload explicit provider result
         if: always()
+        id: artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: assessment-codex-result-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: release-assessment-work/evidence/codex-decision.json
           if-no-files-found: ignore
           retention-days: 14
@@ -217,6 +231,10 @@ jobs:
     continue-on-error: true
     runs-on: ${{ fromJSON(inputs.runner_labels) }}
     timeout-minutes: 5
+    env:
+      ARTIFACT_NAME: assessment-luna-result-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
     steps:
       - name: Clear previous assessment workspace
         run: rm -rf -- "$GITHUB_WORKSPACE/release-assessment-work"
@@ -247,9 +265,10 @@ jobs:
         with:
           python-version: '3.12'
       - name: Download the same verified context
+        if: needs.context.outputs.artifact_name != ''
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: assessment-context-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ needs.context.outputs.artifact_name }}
           path: release-assessment-work/evidence
       - name: Create an isolated optional-evaluator environment
         id: sdk_environment
@@ -269,9 +288,10 @@ jobs:
         run: '"$SDK_DIRECTORY/bin/python" release-assessment-work/framework/scripts/release/assessment.py decisions --directory release-assessment-work/evidence --source-sha "$SOURCE_SHA"'
       - name: Upload only the typed recommendation, usage and timing
         if: always()
+        id: artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: assessment-luna-result-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: release-assessment-work/evidence/luna-result.json
           if-no-files-found: ignore
           retention-days: 14
@@ -286,7 +306,10 @@ jobs:
     if: ${{ always() }}
     runs-on: ${{ fromJSON(inputs.runner_labels) }}
     timeout-minutes: 5
+    env:
+      ARTIFACT_NAME: assessment-result-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
       recommendation: ${{ steps.policy.outputs.recommendation }}
       should_release: ${{ steps.policy.outputs.should_release }}
       bump: ${{ steps.policy.outputs.bump }}
@@ -321,19 +344,27 @@ jobs:
         with:
           python-version: '3.12'
       - name: Download context when preparation succeeded
+        if: needs.context.outputs.artifact_name != ''
         # Download failures become unavailable evidence in the policy, never release.
         continue-on-error: true
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: assessment-context-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ needs.context.outputs.artifact_name }}
           path: release-assessment-work/evidence
-      - name: Download available provider results
+      - name: Download Codex result when retained
+        if: needs.codex.outputs.artifact_name != ''
         continue-on-error: true
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          pattern: assessment-*-result-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ needs.codex.outputs.artifact_name }}
           path: release-assessment-work/evidence
-          merge-multiple: true
+      - name: Download Luna result when retained
+        if: needs.luna.outputs.artifact_name != ''
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ${{ needs.luna.outputs.artifact_name }}
+          path: release-assessment-work/evidence
       - name: Validate typed decision, source binding and release conditions
         id: policy
         env:
@@ -350,9 +381,10 @@ jobs:
           cat release-assessment-work/evidence/assessment-summary.md >> "$GITHUB_STEP_SUMMARY"
       - name: Publish the explicit release decision and concise stage summary
         if: always()
+        id: artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: assessment-result-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: |
             release-assessment-work/evidence/assessment-result.json
             release-assessment-work/evidence/assessment-summary.md
