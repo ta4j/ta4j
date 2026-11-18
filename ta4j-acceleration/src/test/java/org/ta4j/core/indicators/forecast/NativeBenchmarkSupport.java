@@ -21,6 +21,10 @@ import org.ta4j.core.indicators.forecast.projection.Forecast;
 /**
  * Measures native execution before a device has automatic-selection
  * qualification.
+ *
+ * <p>
+ * The benchmarks live in core's forecast package because they decode raw kernel
+ * outputs with the forecast indicators' protected {@code decode} method.
  */
 final class NativeBenchmarkSupport {
     private NativeBenchmarkSupport() {
