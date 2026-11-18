@@ -195,8 +195,7 @@ class NativeLibraryLoaderTest {
         assertThat(tempDir.resolve(".ta4j")).doesNotExist();
         if (tempDir.getFileSystem().supportedFileAttributeViews().contains("posix")) {
             assertThat(Files.getPosixFilePermissions(nativeDir)).containsExactlyInAnyOrder(
-                    PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE,
-                    PosixFilePermission.OWNER_EXECUTE);
+                    PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE);
         }
     }
 

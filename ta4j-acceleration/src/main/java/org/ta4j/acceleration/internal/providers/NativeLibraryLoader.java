@@ -26,9 +26,9 @@ final class NativeLibraryLoader {
 
     /**
      * Absolute directory under which packaged native libraries are extracted, for
-     * hosts whose home directory is read-only. Defaults to
-     * {@code ~/.ta4j/native}. The directory is created owner-only if missing (its
-     * parent must exist) and is rejected when other users can write to it.
+     * hosts whose home directory is read-only. Defaults to {@code ~/.ta4j/native}.
+     * The directory is created owner-only if missing (its parent must exist) and is
+     * rejected when other users can write to it.
      */
     static final String NATIVE_DIR_PROPERTY = "ta4j.acceleration.nativeDir";
 
