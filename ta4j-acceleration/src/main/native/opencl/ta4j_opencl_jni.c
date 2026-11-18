@@ -896,7 +896,7 @@ static int ensure_state(char* error, size_t error_size) {
 }
 
 JNIEXPORT jstring JNICALL
-Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeProbe(JNIEnv* environment, jclass,
+Java_org_ta4j_acceleration_JniOpenClNativeBridge_nativeProbe(JNIEnv* environment, jclass,
                                                                                     jint abi_version) {
     char error[STATE_ERROR_BUFFER];
     char payload[1024];
@@ -926,7 +926,7 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeProbe(
 }
 
 JNIEXPORT jdoubleArray JNICALL
-Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvaluate(
+Java_org_ta4j_acceleration_JniOpenClNativeBridge_nativeEvaluate(
         JNIEnv* environment, jclass, jint abi_version, jint from_inclusive, jint decision_count, jint horizon,
         jint iteration_count, jint lookback, jlong seed, jint shock_model, jint volatility_mode, jdouble decay,
         jdoubleArray means_array, jdoubleArray drifts_array, jdoubleArray variances_array,

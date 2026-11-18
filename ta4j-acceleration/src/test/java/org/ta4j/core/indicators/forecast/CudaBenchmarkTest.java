@@ -12,8 +12,8 @@ import java.util.Locale;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.ta4j.acceleration.internal.providers.CudaAccelerationProvider;
-import org.ta4j.acceleration.internal.providers.ShockPathReference;
+import org.ta4j.acceleration.CudaAccelerationProvider;
+import org.ta4j.acceleration.ShockPathReference;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.ShockModel;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.VolatilityUpdateMode;

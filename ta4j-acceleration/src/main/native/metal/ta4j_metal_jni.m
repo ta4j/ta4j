@@ -214,7 +214,7 @@ static id<MTLBuffer> floatBuffer(JNIEnv *environment, jdoubleArray source, jsize
 }
 
 JNIEXPORT jstring JNICALL
-Java_org_ta4j_acceleration_internal_providers_JniMetalNativeBridge_nativeProbe(
+Java_org_ta4j_acceleration_JniMetalNativeBridge_nativeProbe(
         JNIEnv *environment, jclass type, jint abiVersion) {
     @autoreleasepool {
         (void)type;
@@ -233,7 +233,7 @@ Java_org_ta4j_acceleration_internal_providers_JniMetalNativeBridge_nativeProbe(
 }
 
 JNIEXPORT jfloatArray JNICALL
-Java_org_ta4j_acceleration_internal_providers_JniMetalNativeBridge_nativeEvaluate(
+Java_org_ta4j_acceleration_JniMetalNativeBridge_nativeEvaluate(
         JNIEnv *environment, jclass type, jint abiVersion, jint fromInclusive, jint decisionCount, jint horizon,
         jint iterationCount, jint lookbackBarCount, jlong seed, jint shockModel, jint volatilityMode,
         jdouble volatilityDecayFactor, jdoubleArray meansArray, jdoubleArray driftsArray, jdoubleArray variancesArray,

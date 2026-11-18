@@ -216,7 +216,7 @@ std::vector<double> copy_doubles(JNIEnv* environment, jdoubleArray source, jsize
 }  // namespace
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_org_ta4j_acceleration_internal_providers_JniCudaNativeBridge_nativeProbe(
+Java_org_ta4j_acceleration_JniCudaNativeBridge_nativeProbe(
         JNIEnv* environment, jclass, jint abi_version) {
     try {
         std::lock_guard<std::mutex> guard(execution_mutex);
@@ -285,7 +285,7 @@ Java_org_ta4j_acceleration_internal_providers_JniCudaNativeBridge_nativeProbe(
 }
 
 extern "C" JNIEXPORT jdoubleArray JNICALL
-Java_org_ta4j_acceleration_internal_providers_JniCudaNativeBridge_nativeEvaluate(
+Java_org_ta4j_acceleration_JniCudaNativeBridge_nativeEvaluate(
         JNIEnv* environment, jclass, jint abi_version, jint from_inclusive, jint decision_count, jint horizon,
         jint iteration_count, jint lookback, jlong seed, jint shock_model, jint volatility_mode, jdouble decay,
         jdoubleArray means_array, jdoubleArray drifts_array, jdoubleArray variances_array,
