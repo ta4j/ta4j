@@ -24,6 +24,14 @@ import java.util.Set;
 
 final class NativeLibraryLoader {
 
+    /**
+     * Absolute directory under which packaged native libraries are extracted, for
+     * hosts whose home directory is read-only. Defaults to
+     * {@code ~/.ta4j/native}. The directory is created owner-only if missing (its
+     * parent must exist) and is rejected when other users can write to it.
+     */
+    static final String NATIVE_DIR_PROPERTY = "ta4j.acceleration.nativeDir";
+
     private static final Object LOAD_LOCK = new Object();
     private static final Map<String, Path> LOADED_PATHS = new HashMap<>();
 
@@ -77,9 +85,18 @@ final class NativeLibraryLoader {
         String implementationVersion = NativeLibraryLoader.class.getPackage().getImplementationVersion();
         String version = implementationVersion == null || implementationVersion.isBlank() ? "development"
                 : implementationVersion;
-        Path directory = Path.of(System.getProperty("user.home"), ".ta4j", "native", backend + "-abi-" + abiVersion,
-                version, actualSha);
-        createPrivateDirectories(Path.of(System.getProperty("user.home"), ".ta4j"), directory);
+        String configured = System.getProperty(NATIVE_DIR_PROPERTY);
+        Path privateRoot;
+        Path extractionRoot;
+        if (configured == null || configured.isBlank()) {
+            privateRoot = Path.of(System.getProperty("user.home"), ".ta4j");
+            extractionRoot = privateRoot.resolve("native");
+        } else {
+            privateRoot = configuredRoot(configured);
+            extractionRoot = privateRoot;
+        }
+        Path directory = extractionRoot.resolve(backend + "-abi-" + abiVersion).resolve(version).resolve(actualSha);
+        createPrivateDirectories(privateRoot, directory);
         Path target = directory.resolve(libraryName);
         if (Files.exists(target)) {
             finalizeExtractedLibrary(target, actualSha, backend);
@@ -105,6 +122,14 @@ final class NativeLibraryLoader {
             Files.deleteIfExists(temporary);
         }
         return target;
+    }
+
+    private static Path configuredRoot(String configured) throws IOException {
+        Path root = Path.of(configured.strip());
+        if (!root.isAbsolute()) {
+            throw new IOException(NATIVE_DIR_PROPERTY + " must be an absolute path");
+        }
+        return root;
     }
 
     static void finalizeExtractedLibrary(Path target, String expectedSha, String backend) throws IOException {

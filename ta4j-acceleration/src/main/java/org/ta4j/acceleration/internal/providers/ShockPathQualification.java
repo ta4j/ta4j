@@ -20,7 +20,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  * (decisions, paths, horizon, lookback), cold and warm total timings of the
  * native lane and of the scalar lane on the same host, and the source revision
  * measured. Rows without that evidence stay absent and predict an unbounded
- * cost, which keeps the request scalar with a {@code CPU_FASTER} diagnostic
+ * cost, which keeps the request scalar with a {@code NOT_QUALIFIED} diagnostic
  * instead of engaging an unqualified device. No shipped row is qualified yet,
  * so automatic selection currently keeps every workload scalar.
  *

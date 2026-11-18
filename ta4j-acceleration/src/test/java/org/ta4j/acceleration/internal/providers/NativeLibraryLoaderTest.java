@@ -50,14 +50,15 @@ class NativeLibraryLoaderTest {
     @BeforeEach
     public void preserveProperties() {
         for (String property : List.of(LIBRARY_PROPERTY, CudaNativeLibrary.LIBRARY_PROPERTY,
-                MetalNativeLibrary.LIBRARY_PROPERTY, OpenClNativeLibrary.LIBRARY_PROPERTY, "user.home", "os.name",
-                "os.arch")) {
+                MetalNativeLibrary.LIBRARY_PROPERTY, OpenClNativeLibrary.LIBRARY_PROPERTY,
+                NativeLibraryLoader.NATIVE_DIR_PROPERTY, "user.home", "os.name", "os.arch")) {
             originalProperties.put(property, System.getProperty(property));
         }
         System.clearProperty(LIBRARY_PROPERTY);
         System.clearProperty(CudaNativeLibrary.LIBRARY_PROPERTY);
         System.clearProperty(MetalNativeLibrary.LIBRARY_PROPERTY);
         System.clearProperty(OpenClNativeLibrary.LIBRARY_PROPERTY);
+        System.clearProperty(NativeLibraryLoader.NATIVE_DIR_PROPERTY);
         System.setProperty("user.home", tempDir.toString());
     }
 
@@ -180,6 +181,32 @@ class NativeLibraryLoaderTest {
             assertThat(Files.getPosixFilePermissions(extracted))
                     .containsExactlyInAnyOrderElementsOf(privatePermissions);
         }
+    }
+
+    @Test
+    public void extractsUnderTheConfiguredNativeDirectoryInsteadOfTheHomeDirectory() throws Exception {
+        Path nativeDir = tempDir.resolve("native-cache");
+        System.setProperty(NativeLibraryLoader.NATIVE_DIR_PROPERTY, nativeDir.toString());
+
+        assertInvalidNativeLoad(load(RESOURCE_DIRECTORY, LIBRARY_NAME));
+
+        Path extracted = nativeDir.resolve(tempDir.resolve(".ta4j/native").relativize(extractedLibrary()));
+        assertThat(Files.readAllBytes(extracted)).containsExactly(fixtureContents());
+        assertThat(tempDir.resolve(".ta4j")).doesNotExist();
+        if (tempDir.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+            assertThat(Files.getPosixFilePermissions(nativeDir)).containsExactlyInAnyOrder(
+                    PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE,
+                    PosixFilePermission.OWNER_EXECUTE);
+        }
+    }
+
+    @Test
+    public void rejectsARelativeConfiguredNativeDirectory() {
+        System.setProperty(NativeLibraryLoader.NATIVE_DIR_PROPERTY, "relative-native-cache");
+
+        assertThat(load(RESOURCE_DIRECTORY, LIBRARY_NAME)).isEqualTo(new NativeLibraryLoader.LoadResult(false, null,
+                "IOException: " + NativeLibraryLoader.NATIVE_DIR_PROPERTY + " must be an absolute path"));
+        assertThat(tempDir.resolve(".ta4j")).doesNotExist();
     }
 
     @Test
