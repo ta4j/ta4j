@@ -13,4 +13,5 @@
 - Projects may call `NamedRule.initializeRegistry()` (defaults) or `NamedRule.initializeRegistry("com.mycompany.rules")` once at startup for package scanning.
 - Rule labels must serialize as `<SimpleName>_<param...>`.
 - Pass the concrete class and label parameters to `super(YourClass.class, params...)`; `NamedRule` builds the label. Use `NamedRule.buildLabel(...)` only when a label is needed without an instance.
+- Callers rebuild a rule from its label with `NamedRule.fromLabel(series, label)`; keep the `(BarSeries, String...)` constructor the exact inverse of the label.
 - Ensure the label encodes all reconstruction-critical data.

@@ -7,7 +7,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.named.NamedComponentRegistry;
+import org.ta4j.core.named.internal.NamedComponentRegistry;
 import org.ta4j.core.serialization.ComponentDescriptor;
 
 import java.util.*;
@@ -314,6 +314,36 @@ public abstract class NamedStrategy extends BaseStrategy {
             }
         }
         return strategies;
+    }
+
+    /**
+     * Rebuilds a named strategy from its compact label, the inverse of
+     * {@link #getName()}.
+     *
+     * <pre>{@code
+     * Strategy strategy = NamedStrategy.fromLabel(series, "MyStrategy_14_30");
+     * }</pre>
+     *
+     * <p>
+     * The strategy type must be registered (see
+     * {@link #registerImplementation(Class)} and
+     * {@link #initializeRegistry(String...)}); the label parameters are passed to
+     * its {@code (BarSeries, String...)} constructor.
+     * </p>
+     *
+     * @param series bar series the strategy runs on
+     * @param label  compact strategy label
+     * @return the rebuilt strategy
+     * @throws NullPointerException     if {@code series} or {@code label} is null
+     * @throws IllegalArgumentException if the label is blank, names an unregistered
+     *                                  strategy, or carries parameters the strategy
+     *                                  rejects
+     * @throws IllegalStateException    if the strategy type has no accessible
+     *                                  {@code (BarSeries, String...)} constructor
+     * @since 0.29.1
+     */
+    public static NamedStrategy fromLabel(BarSeries series, String label) {
+        return REGISTRY.fromLabel(series, label);
     }
 
     /**

@@ -314,6 +314,41 @@ class AccelerationRuntimeTest {
         assertEquals(0, provider.executions.get());
     }
 
+    @Test
+    void unmeasuredProviderReportsNotQualifiedAndStaysScalar() {
+        BarSeries series = series();
+        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        EchoProvider provider = new EchoProvider(Backend.METAL, "gpu-0", Long.MAX_VALUE, 1_000L);
+        AccelerationRuntime.useProvidersForTests(List.of(provider));
+
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(2), indicator.getValue(2));
+            Diagnostic diagnostic = AccelerationRuntime.lastDiagnostic().orElseThrow();
+            assertEquals(DiagnosticCode.NOT_QUALIFIED, diagnostic.code());
+            assertTrue(diagnostic.detail().contains("gpu-0"), diagnostic.detail());
+        }
+
+        assertEquals(0, provider.executions.get());
+    }
+
+    @Test
+    void measuredSlowProviderOutranksAnUnmeasuredOneInTheDiagnostic() {
+        BarSeries series = series();
+        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        EchoProvider unmeasured = new EchoProvider(Backend.METAL, "gpu-0", Long.MAX_VALUE, 1_000L);
+        EchoProvider slow = new EchoProvider(Backend.CUDA, "gpu-1", Long.MAX_VALUE / 2, 1_000L);
+        AccelerationRuntime.useProvidersForTests(List.of(unmeasured, slow));
+
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
+            indicator.getValue(2);
+            assertEquals(DiagnosticCode.CPU_FASTER, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        }
+
+        assertEquals(0, unmeasured.executions.get() + slow.executions.get());
+    }
+
     @ParameterizedTest
     @CsvSource({ "833334, false", "666667, false", "666666, true", "625000, true" })
     void automaticSelectionRequiresAPredictedSpeedupOfOnePointFive(long predictedNanos, boolean admitted) {

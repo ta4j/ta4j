@@ -5,6 +5,7 @@ package org.ta4j.core.criteria.drawdown;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.SplittableRandom;
 import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
@@ -197,11 +198,12 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
     /**
      * Returns the configured number of sampled trade blocks in each path.
      *
-     * @return the block count, or {@code null} to use the observed trade count
+     * @return the block count, or an empty value when each path uses the observed
+     *         trade count
      * @since 0.29.1
      */
-    public Integer getPathBlocks() {
-        return pathBlocks;
+    public OptionalInt getPathBlocks() {
+        return pathBlocks == null ? OptionalInt.empty() : OptionalInt.of(pathBlocks);
     }
 
     /**

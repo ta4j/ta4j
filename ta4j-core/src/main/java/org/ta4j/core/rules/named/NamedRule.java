@@ -3,9 +3,10 @@
  */
 package org.ta4j.core.rules.named;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.named.NamedComponentRegistry;
+import org.ta4j.core.named.internal.NamedComponentRegistry;
 import org.ta4j.core.rules.AbstractRule;
 
 import java.util.List;
@@ -165,6 +166,34 @@ public abstract class NamedRule extends AbstractRule {
     }
 
     /**
+     * Rebuilds a named rule from its compact label, the inverse of
+     * {@link #getName()}.
+     *
+     * <pre>{@code
+     * Rule rule = NamedRule.fromLabel(series, "RsiThresholdRule_BELOW_14_30");
+     * }</pre>
+     *
+     * <p>
+     * The rule type must be registered (see {@link #registerImplementation(Class)}
+     * and {@link #initializeRegistry(String...)}); the label parameters are passed
+     * to its {@code (BarSeries, String...)} constructor.
+     * </p>
+     *
+     * @param series bar series the rule evaluates
+     * @param label  compact rule label
+     * @return the rebuilt rule
+     * @throws NullPointerException     if {@code series} or {@code label} is null
+     * @throws IllegalArgumentException if the label is blank, names an unregistered
+     *                                  rule, or carries parameters the rule rejects
+     * @throws IllegalStateException    if the rule type has no accessible
+     *                                  {@code (BarSeries, String...)} constructor
+     * @since 0.29.1
+     */
+    public static NamedRule fromLabel(BarSeries series, String label) {
+        return REGISTRY.fromLabel(series, label);
+    }
+
+    /**
      * Restores the default-scan baseline for tests: clears the scanned-package set
      * and the initialized flag so the next {@link #initializeRegistry(String...)}
      * or default lookup re-scans. Registered implementations are not removed.
@@ -174,14 +203,21 @@ public abstract class NamedRule extends AbstractRule {
     }
 
     /**
-     * Keeps the reconstruction label fixed by ignoring rename attempts.
+     * Rejects renames, because the label is what
+     * {@link #fromLabel(BarSeries, String)} rebuilds the rule from. Setting the
+     * current label again is allowed, so descriptors that restore a rule's name
+     * keep working.
      *
-     * @param name ignored because named-rule labels are reconstruction-critical
+     * @param name the rule's current label
+     * @throws UnsupportedOperationException if {@code name} differs from the label
      * @since 0.29.1
      */
     @Override
     public final void setName(String name) {
-        // NamedRule labels are reconstruction-critical and stay fixed.
+        if (!label.equals(name)) {
+            throw new UnsupportedOperationException(
+                    "Named rule labels are fixed: cannot rename '" + label + "' to '" + name + "'");
+        }
     }
 
     /**

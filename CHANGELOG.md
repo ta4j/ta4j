@@ -2,13 +2,14 @@
 
 ### Added
 
-- **Rebuild rules from short labels (`CF-336`)**: Register a `NamedRule` subclass once and recreate it from a compact label such as `RsiThresholdRule_BELOW_14_30`. Subclasses call `super(TheirClass.class, parameters...)`; conflicting simple names fail fast rather than resolving by classpath order. `ta4j-examples` ships `RsiThresholdRule` and `ClosePriceCrossedMovingAverageRule` as reference implementations.
+- **Rebuild rules from short labels (`CF-336`)**: Register a `NamedRule` subclass once and recreate it with `NamedRule.fromLabel(series, "RsiThresholdRule_BELOW_14_30")`; `NamedStrategy.fromLabel` does the same for named strategies. A named rule's label is fixed, so renaming it throws `UnsupportedOperationException`. Subclasses call `super(TheirClass.class, parameters...)`; conflicting simple names fail fast rather than resolving by classpath order. `ta4j-examples` ships `RsiThresholdRule` and `ClosePriceCrossedMovingAverageRule` as reference implementations.
 - **Acceleration accuracy is fixed per indicator (`CF-336`)**: A `KernelIndicator` captures `ta4j.acceleration.approximateTolerance` when it is created and exposes it as `approximateTolerance()`. Its provider batches always use that contract, so cached values never mix approximate and exact results after the property changes.
+- **Say when a provider is unmeasured (`CF-336`)**: automatic acceleration reports `DiagnosticCode.NOT_QUALIFIED`, instead of `CPU_FASTER`, when a provider supports a workload but has no measured cost for it on the device (it predicts `Long.MAX_VALUE`). The workload still stays on the CPU.
 
 ### Fixed
 
 - **Keep rejected named-component scans out of lookups**: Classes discovered in a package are committed only after the entire package passes simple-name conflict checks. A failed scan leaves existing registrations and successful packages intact, and retries cannot resolve an arbitrary conflicting class.
-- **Explicit CSV loading policies**: `CsvFileBarSeriesDataSource` retains permissive malformed-row handling by default and offers an explicit strict-loading overload for applications that must reject partial input.
+- **Explicit CSV loading policies**: `CsvFileBarSeriesDataSource` retains permissive malformed-row handling by default and offers `loadCsvSeriesStrict` for applications that must reject partial input.
 - **Locale-independent walk-forward calibration metrics**: `WalkForwardTuner` now updates case-insensitive Brier, log-loss and calibration-error metric names consistently across system locales, including Turkish. Its calibration-metric benchmark exercises the same production path.
 - **Maven signing preflight**: release and snapshot publishing sign and verify a temporary payload with the imported OpenPGP key before publication, failing early on unusable or expired keys and passphrases. A maintainer-run helper renews the existing signing identity without replacing its fingerprint or exposing administrative secrets to a branch-dispatch workflow.
 

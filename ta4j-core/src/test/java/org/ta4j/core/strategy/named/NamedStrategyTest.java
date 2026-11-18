@@ -12,6 +12,7 @@ import org.ta4j.core.rules.FixedRule;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,6 +30,31 @@ class NamedStrategyTest {
     void buildLabelRejectsNullParameters() {
         assertThrows(NullPointerException.class,
                 () -> NamedStrategy.buildLabel(NamedStrategyFixture.class, "fast", null));
+    }
+
+    @Test
+    void fromLabelRebuildsTheStrategyThatPrintedTheLabel() {
+        var series = new MockBarSeriesBuilder().withData(1d, 2d, 3d).build();
+        NamedStrategyFixture original = NamedStrategyFixture.create(series, series.numFactory().numOf(2), 3);
+
+        NamedStrategy rebuilt = NamedStrategy.fromLabel(series, original.getName());
+
+        NamedStrategyFixture fixture = assertInstanceOf(NamedStrategyFixture.class, rebuilt);
+        assertEquals(original.getName(), fixture.getName());
+        assertEquals(3, fixture.getUnstableBars());
+        assertEquals(original.getThreshold(), fixture.getThreshold());
+    }
+
+    @Test
+    void fromLabelReportsTheLabelWhenTheStrategyRejectsItsParameters() {
+        var series = new MockBarSeriesBuilder().withData(1d).build();
+        NamedStrategyFixture.create(series, series.numFactory().numOf(2), 3);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> NamedStrategy.fromLabel(series, "NamedStrategyFixture_2"));
+
+        assertTrue(ex.getMessage().contains("NamedStrategyFixture_2"), ex.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> NamedStrategy.fromLabel(series, "MissingStrategy"));
     }
 
     @Test

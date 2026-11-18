@@ -1,12 +1,15 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.named;
+package org.ta4j.core.named.internal;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.BarSeries;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.net.JarURLConnection;
 import java.net.URISyntaxException;
@@ -244,6 +247,60 @@ public final class NamedComponentRegistry<T> {
         return lookup(simpleName).orElseThrow(() -> new IllegalArgumentException(
                 "Unknown named " + componentNoun + " '" + simpleName + "'. Ensure it is registered via " + facadeName
                         + ".registerImplementation() or initializeRegistry()."));
+    }
+
+    /**
+     * Rebuilds a registered component from its compact label by calling the
+     * component's {@code (BarSeries, String...)} constructor with the label's
+     * parameter tokens.
+     *
+     * @param series bar series the component is built on
+     * @param label  compact label such as {@code RsiThresholdRule_BELOW_14_30}
+     * @return the rebuilt component, whose label equals {@code label} when the
+     *         constructor encodes its parameters canonically
+     * @throws NullPointerException     when {@code series} or {@code label} is null
+     * @throws IllegalArgumentException when the label is blank, names an
+     *                                  unregistered component, or its parameters
+     *                                  are rejected by the component constructor
+     * @throws IllegalStateException    when the component has no accessible
+     *                                  {@code (BarSeries, String...)} constructor
+     *                                  or the constructor fails for another reason
+     * @since 0.29.1
+     */
+    public T fromLabel(BarSeries series, String label) {
+        Objects.requireNonNull(series, "series");
+        List<String> tokens = splitLabel(label);
+        String simpleName = tokens.get(0);
+        if (simpleName.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Named " + componentNoun + " label is missing its class name: label='" + label + "'");
+        }
+        Class<? extends T> type = requireRegistered(simpleName);
+        String[] parameters = tokens.subList(1, tokens.size()).toArray(String[]::new);
+        Constructor<? extends T> constructor;
+        try {
+            constructor = type.getDeclaredConstructor(BarSeries.class, String[].class);
+            constructor.setAccessible(true);
+        } catch (NoSuchMethodException | RuntimeException ex) {
+            throw new IllegalStateException("Named " + componentNoun
+                    + " has no accessible (BarSeries, String...) constructor: " + type.getName(), ex);
+        }
+        try {
+            return constructor.newInstance(series, parameters);
+        } catch (InvocationTargetException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof IllegalArgumentException) {
+                throw new IllegalArgumentException(
+                        "Invalid named " + componentNoun + " label '" + label + "': " + cause.getMessage(), cause);
+            }
+            throw new IllegalStateException(
+                    "Failed to build named " + componentNoun + " " + type.getName() + " from label '" + label + "'",
+                    cause);
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException(
+                    "Failed to build named " + componentNoun + " " + type.getName() + " from label '" + label + "'",
+                    ex);
+        }
     }
 
     /**
