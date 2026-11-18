@@ -60,7 +60,24 @@ class ShockPathErrorBoundTest {
     }
 
     @Test
-    void fp64BootstrapBoundIsOnlyTheAccumulationRounding() {
+    void boundCoversTheDoubleRoundingOfDecodingTerminalPrices() {
+        // fp32 narrows the return to 2^-53, which core decodes as exactly 1.0,
+        // while the scalar return decodes one ulp above it.
+        double scalarReturn = Math.nextUp(0x1.0p-53);
+        List<double[]> inputs = inputs(new double[] { 0d }, new double[] { 0d }, new double[] { 0d },
+                new double[] { scalarReturn });
+
+        double bound = ShockPathErrorBound.maxRelativePriceError(Precision.FP32, SHOCK_HISTORICAL_BOOTSTRAP, 1, inputs);
+        double scalarPrice = Math.exp(scalarReturn);
+        double nativePrice = Math.exp((float) scalarReturn);
+        double actual = Math.abs(nativePrice - scalarPrice) / Math.abs(scalarPrice);
+
+        assertThat(actual).isGreaterThan(1e-16);
+        assertThat(bound).isGreaterThanOrEqualTo(actual);
+    }
+
+    @Test
+    void fp64BootstrapBoundIsOnlyTheAccumulationAndDecodeRounding() {
         List<double[]> inputs = inputs(new double[] { 0d }, new double[] { 0d }, new double[] { 0d },
                 new double[] { 0.01d, -0.02d });
 

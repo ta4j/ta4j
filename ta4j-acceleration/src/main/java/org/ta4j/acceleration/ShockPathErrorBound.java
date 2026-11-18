@@ -72,6 +72,12 @@ final class ShockPathErrorBound {
      */
     private static final double GUARD_SLACK = 1e-9d;
 
+    /**
+     * Relative rounding of one terminal-price decode in core: {@code Math.exp} is
+     * within one ulp and the multiplication by the price within half an ulp.
+     */
+    private static final double DECODE_ROUNDING = 3d * 0x1.0p-53;
+
     private static final double LOG_MAX_VALUE = Math.log(Double.MAX_VALUE);
 
     private static final double LOG_MIN_NORMAL = Math.log(Double.MIN_NORMAL);
@@ -157,7 +163,9 @@ final class ShockPathErrorBound {
 
     /**
      * Returns an upper bound of the relative terminal-price error of any sample,
-     * for a request that {@link #uncertifiableReason} accepts.
+     * for a request that {@link #uncertifiableReason} accepts. It covers the
+     * cumulative log-return error and the double rounding of both the native and
+     * the scalar sample when core decodes them into prices.
      */
     static double maxRelativePriceError(Precision precision, int shockModel, int horizon, List<double[]> inputs) {
         double maxReturn = maxAbsReturn(inputs);
@@ -170,7 +178,7 @@ final class ShockPathErrorBound {
                     rowBound(precision, shockModel, horizon, maxReturn, means[row], drifts[row], variances[row])
                             .logReturnError());
         }
-        return Double.isFinite(worst) ? Math.expm1(worst) : Double.POSITIVE_INFINITY;
+        return Double.isFinite(worst) ? Math.expm1(worst + 2d * DECODE_ROUNDING) : Double.POSITIVE_INFINITY;
     }
 
     private static double maxAbsReturn(List<double[]> inputs) {
