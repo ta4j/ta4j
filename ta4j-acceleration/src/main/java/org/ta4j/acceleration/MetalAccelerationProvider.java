@@ -164,15 +164,18 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
         if (!osName.contains("mac")) {
             return null;
         }
-        Process process = null;
+        Process process;
         try {
-            // The brand string is far smaller than the pipe buffer, so waiting before
-            // reading cannot stall the
-            // process, and it keeps the 2-second bound that a blocking read would lose if
-            // sysctl hangs.
             process = new ProcessBuilder("sysctl", "-n", "machdep.cpu.brand_string")
                     .redirectError(ProcessBuilder.Redirect.DISCARD)
                     .start();
+        } catch (IOException exception) {
+            return null;
+        }
+        try {
+            // The brand string is far smaller than the pipe buffer, so waiting before
+            // reading cannot stall the process, and it keeps the 2-second bound that a
+            // blocking read would lose if sysctl hangs.
             if (!process.waitFor(2, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 return null;
@@ -187,10 +190,8 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
             Thread.currentThread().interrupt();
             return null;
         } finally {
-            if (process != null) {
-                closeQuietly(process.getOutputStream());
-                closeQuietly(process.getInputStream());
-            }
+            closeQuietly(process.getOutputStream());
+            closeQuietly(process.getInputStream());
         }
     }
 
