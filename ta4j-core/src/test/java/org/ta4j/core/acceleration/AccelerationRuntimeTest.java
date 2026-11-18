@@ -333,6 +333,22 @@ class AccelerationRuntimeTest {
     }
 
     @Test
+    void unmeasuredProviderNeverRunsEvenWithoutAScalarEstimate() {
+        BarSeries series = series();
+        UnknownScalarCostIndicator indicator = new UnknownScalarCostIndicator(series);
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        EchoProvider provider = new EchoProvider(Backend.METAL, "gpu-0", Long.MAX_VALUE, 1_000L);
+        AccelerationRuntime.useProvidersForTests(List.of(provider));
+
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(2), indicator.getValue(2));
+            assertEquals(DiagnosticCode.NOT_QUALIFIED, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        }
+
+        assertEquals(0, provider.executions.get());
+    }
+
+    @Test
     void measuredSlowProviderOutranksAnUnmeasuredOneInTheDiagnostic() {
         BarSeries series = series();
         ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
@@ -1481,6 +1497,18 @@ class AccelerationRuntimeTest {
 
         private ScopeAwareIndicator(BarSeries series) {
             super(series);
+        }
+    }
+
+    private static final class UnknownScalarCostIndicator extends AcceleratedTestIndicator {
+
+        private UnknownScalarCostIndicator(BarSeries series) {
+            super(series, new MarkerKernel() {
+                @Override
+                public long scalarNanosPerRow() {
+                    return 0L;
+                }
+            });
         }
     }
 
