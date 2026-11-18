@@ -92,7 +92,7 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
      * only indicators created afterwards.
      *
      * @return captured approximate tolerance, or {@code NaN} for exact execution
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public final double approximateTolerance() {
         Double captured = approximateTolerance;

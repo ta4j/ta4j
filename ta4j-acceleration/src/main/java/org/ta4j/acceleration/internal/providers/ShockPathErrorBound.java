@@ -59,7 +59,7 @@ import org.ta4j.core.indicators.forecast.MonteCarloKernel;
  * the smooth {@code exp(C)} mapping does not describe the scalar lane's
  * unstable result.
  *
- * @since 0.28.1
+ * @since 0.29.1
  */
 final class ShockPathErrorBound {
 
