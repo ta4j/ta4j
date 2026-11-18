@@ -1165,7 +1165,7 @@ public final class AccelerationRuntime {
                     continue;
                 }
                 long baseline = request.estimatedScalarNanos();
-                if (baseline > 0 && assessment.predictedTotalNanos() == Long.MAX_VALUE) {
+                if (assessment.predictedTotalNanos() == Long.MAX_VALUE) {
                     if (notQualifiedProvider == null) {
                         notQualifiedProvider = providerId;
                         notQualifiedDetail = "no measured cost for " + request.operation() + " on "
