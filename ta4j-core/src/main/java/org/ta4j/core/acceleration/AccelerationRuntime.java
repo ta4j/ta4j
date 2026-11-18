@@ -585,7 +585,16 @@ public final class AccelerationRuntime {
          *
          * @since 0.27.1
          */
-        INVALID_RESULT
+        INVALID_RESULT,
+
+        /**
+         * A provider supports the workload but has no measured cost for it on this
+         * device, so the runtime kept the CPU rather than engage an unqualified device.
+         * Providers signal this by predicting {@link Long#MAX_VALUE}.
+         *
+         * @since 0.29.1
+         */
+        NOT_QUALIFIED
     }
 
     /**
@@ -764,7 +773,10 @@ public final class AccelerationRuntime {
      * @param backend             backend the provider would use
      * @param deviceId            stable device identifier
      * @param predictedTotalNanos predicted end-to-end nanoseconds including
-     *                            transfer and launch overhead
+     *                            transfer and launch overhead, or
+     *                            {@link Long#MAX_VALUE} when the provider has no
+     *                            measured cost for this workload and device
+     *                            (reported as {@link DiagnosticCode#NOT_QUALIFIED})
      * @param peakDeviceBytes     provider-confirmed peak device memory
      * @param deterministic       whether the provider meets the request determinism
      *                            contract
@@ -1124,6 +1136,8 @@ public final class AccelerationRuntime {
             boolean cpuFasterObserved = false;
             String cpuFasterProvider = "none";
             String cpuFasterDetail = "";
+            String notQualifiedProvider = null;
+            String notQualifiedDetail = "";
             for (Provider provider : providers) {
                 Assessment assessment;
                 String providerId;
@@ -1151,6 +1165,14 @@ public final class AccelerationRuntime {
                     continue;
                 }
                 long baseline = request.estimatedScalarNanos();
+                if (baseline > 0 && assessment.predictedTotalNanos() == Long.MAX_VALUE) {
+                    if (notQualifiedProvider == null) {
+                        notQualifiedProvider = providerId;
+                        notQualifiedDetail = "no measured cost for " + request.operation() + " on "
+                                + assessment.deviceId() + "; it stays on the CPU until the provider is qualified";
+                    }
+                    continue;
+                }
                 if (baseline > 0
                         && (double) assessment.predictedTotalNanos() * MIN_PREDICTED_SPEEDUP > (double) baseline) {
                     cpuFasterObserved = true;
@@ -1172,6 +1194,8 @@ public final class AccelerationRuntime {
                     diagnostic = decline;
                 } else if (cpuFasterObserved) {
                     diagnostic = new Diagnostic(DiagnosticCode.CPU_FASTER, cpuFasterProvider, cpuFasterDetail);
+                } else if (notQualifiedProvider != null) {
+                    diagnostic = new Diagnostic(DiagnosticCode.NOT_QUALIFIED, notQualifiedProvider, notQualifiedDetail);
                 } else {
                     diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none",
                             "no provider accepted " + request.operation());

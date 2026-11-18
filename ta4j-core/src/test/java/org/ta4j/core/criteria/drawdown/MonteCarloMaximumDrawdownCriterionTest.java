@@ -30,6 +30,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import java.time.Instant;
+import java.util.OptionalInt;
 import org.junit.jupiter.api.Timeout;
 import java.util.concurrent.TimeUnit;
 
@@ -485,6 +486,17 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         Assertions.assertTrue(expected.isGreaterThan(historical));
         assertNumEquals(expected, criterion.calculate(series, record));
         assertNumEquals(expected, criterion.calculate(series, record, window, context));
+    }
+
+    @Test
+    void accessorsReportTheConfiguredSimulation() {
+        var observedTradeCount = new MonteCarloMaximumDrawdownCriterion(200, null, 123L, Statistics.P95);
+        var fixedBlocks = new MonteCarloMaximumDrawdownCriterion(50, 7, 123L, Statistics.P95);
+
+        assertEquals(200, observedTradeCount.getIterations());
+        assertEquals(OptionalInt.empty(), observedTradeCount.getPathBlocks());
+        assertEquals(50, fixedBlocks.getIterations());
+        assertEquals(OptionalInt.of(7), fixedBlocks.getPathBlocks());
     }
 
 }

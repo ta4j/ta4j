@@ -305,7 +305,7 @@ public class CsvBarSeriesDataSourceTest {
                     """);
             Files.write(tempFile, new byte[] { (byte) 0xC3, (byte) 0x28 }, StandardOpenOption.APPEND);
 
-            assertNull(CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString(), true));
+            assertNull(CsvFileBarSeriesDataSource.loadCsvSeriesStrict(tempFile.toString()));
         } finally {
             Files.deleteIfExists(tempFile);
         }
@@ -363,7 +363,7 @@ public class CsvBarSeriesDataSourceTest {
             assertNotNull(series);
             assertEquals(2, series.getBarCount());
             assertEquals(Instant.parse("2013-01-04T00:00:00Z"), series.getLastBar().getEndTime());
-            assertNull(CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString(), true));
+            assertNull(CsvFileBarSeriesDataSource.loadCsvSeriesStrict(tempFile.toString()));
         } finally {
             Files.deleteIfExists(tempFile);
         }

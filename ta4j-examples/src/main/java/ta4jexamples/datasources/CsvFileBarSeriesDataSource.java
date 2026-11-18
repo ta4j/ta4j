@@ -197,23 +197,23 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
      *                              completion
      */
     public static BarSeries loadCsvSeries(String filename) {
-        return loadCsvSeries(filename, false);
+        return loadCsvSeries(filename, null, false);
     }
 
     /**
-     * Loads daily CSV data, optionally rejecting the entire input when any data row
-     * is malformed. Blank lines and non-UTF-8 header bytes remain tolerated.
+     * Loads daily CSV data like {@link #loadCsvSeries(String)}, but rejects the
+     * entire input when any data row is malformed instead of skipping that row.
+     * Blank lines and non-UTF-8 header bytes remain tolerated.
      *
      * @param filename the name of the CSV file to load
-     * @param strict   whether a malformed data row rejects the entire input
      * @return the loaded series, or null if the file is not found, has no valid
-     *         rows, has invalid CSV syntax, or strict parsing rejects a data row
+     *         rows, has invalid CSV syntax, or has a malformed data row
      * @throws UncheckedIOException if the file exists but cannot be read to
      *                              completion
      * @since 0.29.1
      */
-    public static BarSeries loadCsvSeries(String filename, boolean strict) {
-        return loadCsvSeries(filename, null, strict);
+    public static BarSeries loadCsvSeriesStrict(String filename) {
+        return loadCsvSeries(filename, null, true);
     }
 
     /**

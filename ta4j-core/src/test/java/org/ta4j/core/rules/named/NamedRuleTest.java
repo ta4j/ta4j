@@ -122,6 +122,51 @@ class NamedRuleTest {
     }
 
     @Test
+    void fromLabelRebuildsTheRuleThatPrintedTheLabel() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1d, 2d, 3d).build();
+        NamedRuleFixture original = new NamedRuleFixture(series, NamedRuleFixture.Comparison.BELOW,
+                series.numFactory().numOf(2));
+
+        NamedRule rebuilt = NamedRule.fromLabel(series, original.getName());
+
+        assertThat(rebuilt).isInstanceOf(NamedRuleFixture.class);
+        assertThat(rebuilt.getName()).isEqualTo(original.getName());
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            assertThat(rebuilt.isSatisfied(index)).isEqualTo(original.isSatisfied(index));
+        }
+    }
+
+    @Test
+    void fromLabelExplainsUnknownRulesAndRejectedParameters() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1d, 2d, 3d).build();
+        new NamedRuleFixture(series, "ABOVE", "2");
+
+        assertThat(assertThrows(IllegalArgumentException.class, () -> NamedRule.fromLabel(series, "MissingRule_1")))
+                .hasMessageContaining("Unknown named rule 'MissingRule'");
+        assertThat(assertThrows(IllegalArgumentException.class,
+                () -> NamedRule.fromLabel(series, "NamedRuleFixture_SIDEWAYS_2")))
+                .hasMessageContaining("NamedRuleFixture_SIDEWAYS_2");
+        assertThrows(IllegalArgumentException.class, () -> NamedRule.fromLabel(series, "_ABOVE_2"));
+        assertThrows(IllegalArgumentException.class, () -> NamedRule.fromLabel(series, " "));
+        assertThrows(NullPointerException.class, () -> NamedRule.fromLabel(null, "NamedRuleFixture_ABOVE_2"));
+        assertThrows(NullPointerException.class, () -> NamedRule.fromLabel(series, null));
+    }
+
+    @Test
+    void setNameRejectsRenamesButAcceptsTheCurrentLabel() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1d, 2d, 3d).build();
+        NamedRuleFixture rule = new NamedRuleFixture(series, "ABOVE", "2");
+
+        rule.setName("NamedRuleFixture_ABOVE_2");
+
+        assertThat(rule.getName()).isEqualTo("NamedRuleFixture_ABOVE_2");
+        assertThat(assertThrows(UnsupportedOperationException.class, () -> rule.setName("Renamed")))
+                .hasMessageContaining("NamedRuleFixture_ABOVE_2");
+        assertThrows(UnsupportedOperationException.class, () -> rule.setName(null));
+        assertThat(rule.getName()).isEqualTo("NamedRuleFixture_ABOVE_2");
+    }
+
+    @Test
     void lookupAndUnregisterRoundTrip() {
         NamedRule.registerImplementation(TestUnregisterRule.class);
 
