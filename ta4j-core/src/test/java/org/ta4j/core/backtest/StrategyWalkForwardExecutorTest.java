@@ -42,6 +42,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatementGenerator;
 import org.ta4j.core.rules.BooleanRule;
+import org.ta4j.core.rules.JustOnceRule;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.walkforward.WalkForwardRunResult;
@@ -371,6 +372,25 @@ public class StrategyWalkForwardExecutorTest {
         for (int i = 0; i < progress.size(); i++) {
             assertEquals(Integer.valueOf(i + 1), progress.get(i));
         }
+    }
+
+    @Test
+    public void executeFactoryCreatesIndependentFoldStrategies() {
+        BarSeries series = buildSeries(48);
+        WalkForwardConfig config = walkForwardConfig();
+        Strategy prototype = new BaseStrategy(new JustOnceRule(), new JustOnceRule());
+        List<WalkForwardSplit> expectedSplits = new AnchoredExpandingWalkForwardSplitter().split(series, config);
+        AtomicInteger factoryCalls = new AtomicInteger();
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
+
+        StrategyWalkForwardExecutionResult result = executor.execute(prototype, split -> {
+            factoryCalls.incrementAndGet();
+            return new BaseStrategy(new JustOnceRule(), new JustOnceRule());
+        }, Trade.TradeType.BUY, context -> series.numFactory().one(), config, null);
+
+        assertEquals(expectedSplits.size(), factoryCalls.get());
+        assertEquals(expectedSplits.size(), result.folds().size());
+        assertTrue(result.folds().stream().allMatch(fold -> fold.tradingRecord().getPositions().size() == 1));
     }
 
     private BarSeries buildSeries(int bars) {

@@ -47,6 +47,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.acceleration.AccelerationRuntime.Assessment;
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.acceleration.AccelerationRuntime.Determinism;
 import org.ta4j.core.acceleration.AccelerationRuntime.Diagnostic;
 import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
 import org.ta4j.core.acceleration.AccelerationRuntime.KernelRequest;
@@ -78,6 +79,7 @@ class AccelerationRuntimeTest {
     void resetRuntime() {
         System.clearProperty(AccelerationRuntime.PROPERTY);
         System.clearProperty(AccelerationRuntime.MAX_DEVICE_BYTES_PROPERTY);
+        System.clearProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY);
         AccelerationRuntime.resetProvidersForTests();
     }
 
@@ -310,6 +312,96 @@ class AccelerationRuntimeTest {
         }
 
         assertEquals(0, provider.executions.get());
+    }
+
+    @Test
+    void unmeasuredProviderReportsNotQualifiedAndStaysScalar() {
+        BarSeries series = series();
+        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        EchoProvider provider = new EchoProvider(Backend.METAL, "gpu-0", Long.MAX_VALUE, 1_000L);
+        AccelerationRuntime.useProvidersForTests(List.of(provider));
+
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(2), indicator.getValue(2));
+            Diagnostic diagnostic = AccelerationRuntime.lastDiagnostic().orElseThrow();
+            assertEquals(DiagnosticCode.NOT_QUALIFIED, diagnostic.code());
+            assertTrue(diagnostic.detail().contains("gpu-0"), diagnostic.detail());
+        }
+
+        assertEquals(0, provider.executions.get());
+    }
+
+    @Test
+    void unmeasuredProviderNeverRunsEvenWithoutAScalarEstimate() {
+        BarSeries series = series();
+        UnknownScalarCostIndicator indicator = new UnknownScalarCostIndicator(series);
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        EchoProvider provider = new EchoProvider(Backend.METAL, "gpu-0", Long.MAX_VALUE, 1_000L);
+        AccelerationRuntime.useProvidersForTests(List.of(provider));
+
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(2), indicator.getValue(2));
+            assertEquals(DiagnosticCode.NOT_QUALIFIED, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        }
+
+        assertEquals(0, provider.executions.get());
+    }
+
+    @Test
+    void measuredSlowProviderOutranksAnUnmeasuredOneInTheDiagnostic() {
+        BarSeries series = series();
+        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        EchoProvider unmeasured = new EchoProvider(Backend.METAL, "gpu-0", Long.MAX_VALUE, 1_000L);
+        EchoProvider slow = new EchoProvider(Backend.CUDA, "gpu-1", Long.MAX_VALUE / 2, 1_000L);
+        AccelerationRuntime.useProvidersForTests(List.of(unmeasured, slow));
+
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
+            indicator.getValue(2);
+            assertEquals(DiagnosticCode.CPU_FASTER, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        }
+
+        assertEquals(0, unmeasured.executions.get() + slow.executions.get());
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "833334, false", "666667, false", "666666, true", "625000, true" })
+    void automaticSelectionRequiresAPredictedSpeedupOfOnePointFive(long predictedNanos, boolean admitted) {
+        // Reading the last index plans a one-row batch whose scalar baseline is
+        // 1,000,000ns: 1.2x and just under 1.5x stay scalar, while 1.5x and 1.6x
+        // engage.
+        BarSeries series = series();
+        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        EchoProvider provider = new EchoProvider(Backend.METAL, "gpu-0", predictedNanos, 1_000L);
+        AccelerationRuntime.useProvidersForTests(List.of(provider));
+
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
+            indicator.getValue(series.getEndIndex());
+            assertEquals(admitted ? DiagnosticCode.ACCELERATED : DiagnosticCode.CPU_FASTER,
+                    AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        }
+
+        assertEquals(admitted ? 1 : 0, provider.executions.get());
+    }
+
+    @Test
+    void kernelRequestsRejectMismatchedDeterminismAndTolerance() {
+        for (double tolerance : new double[] { Double.NaN, Double.POSITIVE_INFINITY, 0d, -0.01d }) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> request(AccelerationRuntime.Determinism.APPROXIMATE, tolerance));
+        }
+        assertThrows(IllegalArgumentException.class,
+                () -> request(AccelerationRuntime.Determinism.BITWISE_IDENTICAL, 0.01d));
+        assertEquals(0.01d, request(AccelerationRuntime.Determinism.APPROXIMATE, 0.01d).tolerance());
+        assertTrue(Double.isNaN(request(AccelerationRuntime.Determinism.BITWISE_IDENTICAL, Double.NaN).tolerance()));
+    }
+
+    private static KernelRequest request(AccelerationRuntime.Determinism determinism, double tolerance) {
+        return new KernelRequest(AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, 0, 0, 1,
+                AccelerationRuntime.NumericEncoding.FLOAT64, determinism, 7L, tolerance, new double[0],
+                List.of(new double[1]), 1L, 0L);
     }
 
     @Test
@@ -840,6 +932,65 @@ class AccelerationRuntimeTest {
     }
 
     @Test
+    void batchRequestsCarryTheOptedInDeterminismContract() {
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = longSeries();
+        KernelProvider kernel = new KernelProvider();
+        useProvidersForTests(List.of(kernel));
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            longForecast(series).getValue(252);
+        }
+        System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, "0.001");
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            longForecast(series).getValue(252);
+        }
+
+        assertEquals(2, kernel.requests.size());
+        assertEquals(Determinism.BITWISE_IDENTICAL, kernel.requests.get(0).determinism());
+        assertTrue(Double.isNaN(kernel.requests.get(0).tolerance()));
+        assertEquals(Determinism.APPROXIMATE, kernel.requests.get(1).determinism());
+        assertEquals(0.001d, kernel.requests.get(1).tolerance(), 0d);
+    }
+
+    @Test
+    void indicatorsKeepTheAccuracyContractTheyWereCreatedWith() {
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = longSeries();
+        KernelProvider kernel = new KernelProvider();
+        useProvidersForTests(List.of(kernel));
+        System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, "0.001");
+        MonteCarloPriceForecastIndicator approximate = longForecast(series);
+        System.clearProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY);
+        MonteCarloPriceForecastIndicator exact = longForecast(series);
+        System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, "0.01");
+
+        // Cached values of each instance must come from batches under one contract,
+        // whatever the property says when they are read.
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            approximate.getValue(252);
+            exact.getValue(252);
+        }
+
+        assertEquals(2, kernel.requests.size());
+        assertEquals(Determinism.APPROXIMATE, kernel.requests.get(0).determinism());
+        assertEquals(0.001d, kernel.requests.get(0).tolerance(), 0d);
+        assertEquals(Determinism.BITWISE_IDENTICAL, kernel.requests.get(1).determinism());
+        assertTrue(Double.isNaN(kernel.requests.get(1).tolerance()));
+    }
+
+    @Test
+    void capturedAccuracyContractStaysOutOfIndicatorSerialization() {
+        BarSeries series = longSeries();
+        MonteCarloPriceForecastIndicator exact = longForecast(series);
+        System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, "0.001");
+        MonteCarloPriceForecastIndicator approximate = longForecast(series);
+
+        String exactJson = exact.toJson();
+        assertFalse(exactJson.contains("approximateTolerance"), exactJson);
+        assertEquals(exactJson, approximate.toJson());
+    }
+
+    @Test
     void warmUpReadsStayScalarWithoutDisablingLaterAcceleration() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
         BarSeries series = longSeries();
@@ -1346,6 +1497,18 @@ class AccelerationRuntimeTest {
 
         private ScopeAwareIndicator(BarSeries series) {
             super(series);
+        }
+    }
+
+    private static final class UnknownScalarCostIndicator extends AcceleratedTestIndicator {
+
+        private UnknownScalarCostIndicator(BarSeries series) {
+            super(series, new MarkerKernel() {
+                @Override
+                public long scalarNanosPerRow() {
+                    return 0L;
+                }
+            });
         }
     }
 

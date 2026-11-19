@@ -743,6 +743,7 @@ test_artifact_manifest_validates_expected_release_jars() {
   echo "Running test_artifact_manifest_validates_expected_release_jars"
   run_test
 
+  write_reactor_pom ta4j-core ta4j-examples
   version=1.2.3
   for file in \
     "ta4j-core/target/ta4j-core-${version}.jar" \
@@ -768,6 +769,72 @@ test_artifact_manifest_validates_expected_release_jars() {
 
   finish_test
   pass "test_artifact_manifest_validates_expected_release_jars"
+}
+
+write_reactor_pom() {
+  local module
+  {
+    printf '<project xmlns="http://maven.apache.org/POM/4.0.0"><modules>\n'
+    for module in "$@"; do
+      printf '<module>%s</module>\n' "$module"
+    done
+    printf '</modules></project>\n'
+  } > pom.xml
+}
+
+test_artifact_manifest_includes_declared_acceleration_module() {
+  echo "Running test_artifact_manifest_includes_declared_acceleration_module"
+  run_test
+
+  local version=1.2.3 file
+  local -a base=(
+    "ta4j-core/target/ta4j-core-${version}.jar"
+    "ta4j-core/target/ta4j-core-${version}-sources.jar"
+    "ta4j-core/target/ta4j-core-${version}-javadoc.jar"
+    "ta4j-core/target/ta4j-core-${version}-tests.jar"
+    "ta4j-examples/target/ta4j-examples-${version}.jar"
+    "ta4j-examples/target/ta4j-examples-${version}-sources.jar"
+    "ta4j-examples/target/ta4j-examples-${version}-javadoc.jar"
+  )
+  local -a provider=(
+    "ta4j-acceleration/target/ta4j-acceleration-${version}.jar"
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-sources.jar"
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-javadoc.jar"
+  )
+  for file in "${base[@]}" "${provider[@]}"; do
+    mkdir -p "$(dirname "$file")"
+    : > "$file"
+  done
+  # Nested native build helpers are not reactor release artifacts.
+  mkdir -p ta4j-acceleration/target/native/build
+  : > ta4j-acceleration/target/native/build/resources.jar
+
+  write_reactor_pom ta4j-core ta4j-examples ta4j-acceleration
+  bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --github-output outputs.txt --strict >/dev/null
+  expect_file_contains outputs.txt "missing_count=0" "declared provider module should be fully present"
+  expect_file_contains outputs.txt "unexpected_count=0" "nested native build jars must be ignored"
+  expect_file_contains artifact-manifest.txt "- ta4j-acceleration/target/ta4j-acceleration-${version}.jar" \
+    "declared provider module should be an expected release artifact"
+
+  : > "ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar"
+  if bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict >classifier.log 2>&1; then
+    fail "strict artifact manifest should reject locally built native classifiers"
+  fi
+  expect_file_contains classifier.log "ta4j-acceleration-${version}-metal-macos-aarch64.jar" \
+    "strict failure should name the native classifier"
+  rm "ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar"
+
+  # A historical tag without the module keeps the original manifest, and stray
+  # provider outputs are unexpected rather than opting the module in.
+  write_reactor_pom ta4j-core ta4j-examples
+  if bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict >undeclared.log 2>&1; then
+    fail "strict artifact manifest should reject provider jars when the module is not declared"
+  fi
+  expect_file_contains undeclared.log "ta4j-acceleration/target/ta4j-acceleration-${version}.jar" \
+    "undeclared provider output should be reported as unexpected"
+
+  finish_test
+  pass "test_artifact_manifest_includes_declared_acceleration_module"
 }
 
 test_javadoc_warning_baseline_rejects_new_warnings() {
@@ -826,6 +893,7 @@ test_build_ai_request_includes_release_cadence
 test_last_release_date_uses_annotated_tag_date
 test_ai_transport_diagnostics_records_curl_exit_18
 test_artifact_manifest_validates_expected_release_jars
+test_artifact_manifest_includes_declared_acceleration_module
 test_javadoc_warning_baseline_rejects_new_warnings
 
 echo
