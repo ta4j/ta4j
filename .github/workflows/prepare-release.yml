@@ -1,7 +1,8 @@
 name: Prepare Release
 
 concurrency:
-  group: prepare-release-${{ github.repository }}
+  group: release-lifecycle-${{ github.repository }}
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
@@ -19,20 +20,17 @@ on:
         type: boolean
 
 permissions:
-  actions: write
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  prepare:
-    name: Prepare Release
+  plan:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
-
+    outputs:
+      automatic: ${{ steps.direct_push.outputs.enabled }}
+      dry_run: ${{ steps.dry_run.outputs.dryRun }}
+      base: ${{ steps.base.outputs.sha }}
     steps:
-      # -----------------------
-      # Setup and Validation
-      # -----------------------
       - name: Normalize dry run input
         id: dry_run
         run: |
@@ -73,12 +71,95 @@ jobs:
           echo "enabled=$enabled" >> $GITHUB_OUTPUT
           echo "::endgroup::"
 
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Capture starting master before acquiring the freeze
+        id: base
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          AUTOMATIC: ${{ steps.direct_push.outputs.enabled }}
+        run: |
+          set -euo pipefail
+          git fetch origin "refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
+          base=$(git rev-parse HEAD)
+          test "$base" = "$(git rev-parse "origin/${DEFAULT_BRANCH}")"
+          test "$base" = "$GITHUB_WORKFLOW_SHA"
+          if [ "$AUTOMATIC" = true ]; then python3 scripts/release/release_candidate.py pending; fi
+          echo "sha=$base" >> "$GITHUB_OUTPUT"
+
+  freeze:
+    name: Acquire the release merge barrier
+    needs: plan
+    if: needs.plan.outputs.automatic == 'true' && needs.plan.outputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-freeze-status-${{ github.repository }}
+      cancel-in-progress: false
+      queue: max
+    permissions:
+      contents: write
+      statuses: write
+      pull-requests: read
+    env:
+      BASE_SHA: ${{ needs.plan.outputs.base }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      RELEASE_FREEZE_AUTHORS: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.base }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+      - name: Acquire durable preparation freeze
+        run: python3 scripts/release/release_candidate.py freeze-prepare
+      - name: Block every currently open PR before preparing the candidate
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const freeze = require('./scripts/release/release_freeze.cjs');
+            const state = await freeze.synchronize({ github, context, core });
+            if (!state.locks.includes(`refs/heads/release-freeze/prepare-${context.runId}`)) throw new Error('Freeze ref is not visible through the API; refusing preparation');
+            if (state.releases.length) throw new Error('Finish the existing trusted release PR before automatic preparation');
+      - name: Require unchanged master and owned freeze after reconciliation
+        env:
+          FREEZE_REF: refs/heads/release-freeze/prepare-${{ github.run_id }}
+          FREEZE_SHA: ${{ needs.plan.outputs.base }}
+          FROZEN_MASTER: ${{ needs.plan.outputs.base }}
+        run: python3 scripts/release/release_candidate.py freeze-assert
+
+  prepare:
+    needs: [plan, freeze]
+    permissions:
+      actions: write
+      contents: write
+      issues: write
+      pull-requests: write
+    if: always() && needs.plan.result == 'success' && (needs.freeze.result == 'success' || needs.freeze.result == 'skipped')
+    outputs:
+      automatic: ${{ needs.plan.outputs.automatic }}
+      dry_run: ${{ needs.plan.outputs.dry_run }}
+      base: ${{ steps.base.outputs.sha }}
+      release: ${{ steps.release_commit.outputs.release_commit }}
+      snapshot: ${{ steps.snapshot_commit.outputs.sha }}
+      version: ${{ steps.versions.outputs.release }}
+      next: ${{ steps.versions.outputs.next }}
+    name: Prepare Release
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------
+      # Setup and Validation
+      # -----------------------
       - name: Preflight GH_TA4J_REPO_TOKEN permissions
         id: token_preflight
         env:
           GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
-          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
-          DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
+          DRY_RUN: ${{ needs.plan.outputs.dry_run }}
+          DIRECT_PUSH: ${{ needs.plan.outputs.automatic }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -220,9 +301,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: true
           token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
+
+      - name: Capture immutable starting master
+        id: base
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          AUTOMATIC: ${{ needs.plan.outputs.automatic }}
+        run: |
+          set -euo pipefail
+          git fetch origin "refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
+          base=$(git rev-parse HEAD)
+          test "$base" = "$(git rev-parse "origin/${DEFAULT_BRANCH}")"
+          test "$base" = "$GITHUB_WORKFLOW_SHA"
+          if [ "$AUTOMATIC" = true ]; then
+            python3 scripts/release/release_candidate.py pending
+          fi
+          echo "sha=$base" >> "$GITHUB_OUTPUT"
 
       - name: Validate documentation integrity
         run: |
@@ -376,32 +474,22 @@ jobs:
 
       - name: Preflight git push capability
         env:
-          DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
+          DIRECT_PUSH: ${{ needs.plan.outputs.automatic }}
           TARGET_BRANCH: ${{ github.event.repository.default_branch }}
           RELEASE_BRANCH: release/${{ steps.versions.outputs.release }}
           USE_REPO_TOKEN: ${{ steps.token_preflight.outputs.use_repo_token }}
-          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          DRY_RUN: ${{ needs.plan.outputs.dry_run }}
         run: |
           set -euo pipefail
           echo "::group::Git push dry-run capability probe"
-          if [ "${DIRECT_PUSH}" = "true" ]; then
-            if [ -z "${TARGET_BRANCH:-}" ]; then
-              echo "Default branch was not set; refusing to probe push capability."
-              exit 1
-            fi
-            refspec="HEAD:refs/heads/${TARGET_BRANCH}"
-            mode="default-branch"
-          else
-            refspec="HEAD:refs/heads/${RELEASE_BRANCH}"
-            mode="release-branch"
-          fi
-
+          refspec="HEAD:refs/heads/${RELEASE_BRANCH}"
+          mode="release-branch"
           echo "audit:push_probe_mode=${mode} refspec=${refspec} use_repo_token=${USE_REPO_TOKEN:-false} dryRun=${DRY_RUN:-false}"
-
           set +e
           if [ "${DIRECT_PUSH}" = "true" ]; then
             output=$(git push --dry-run origin "${refspec}" 2>&1)
           else
+            # Preserve repeat preparation/update of an existing manual release PR.
             output=$(git push --dry-run --force-with-lease origin "${refspec}" 2>&1)
           fi
           status=$?
@@ -419,7 +507,7 @@ jobs:
       # Release Preparation
       # -----------------------
       - name: Dry-run mode notice
-        if: steps.dry_run.outputs.dryRun == 'true'
+        if: needs.plan.outputs.dry_run == 'true'
         run: |
           echo "DRY RUN ENABLED: skipping commits, push, and PR creation."
 
@@ -431,7 +519,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Configure git user
-        if: steps.dry_run.outputs.dryRun != 'true'
+        if: needs.plan.outputs.dry_run != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -440,14 +528,14 @@ jobs:
       # Apply Release Version
       # -----------------------
       - name: Set Maven version to release
-        if: steps.dry_run.outputs.dryRun != 'true'
+        if: needs.plan.outputs.dry_run != 'true'
         env:
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
         run: |
           ./mvnw -B versions:set -DnewVersion=$RELEASE_VERSION
 
       - name: Commit Maven version change
-        if: steps.dry_run.outputs.dryRun != 'true'
+        if: needs.plan.outputs.dry_run != 'true'
         run: |
           ./mvnw -B versions:commit
 
@@ -459,7 +547,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Commit release version and notes
-        if: steps.dry_run.outputs.dryRun != 'true'
+        if: needs.plan.outputs.dry_run != 'true'
         run: |
           git add release/${{ steps.versions.outputs.release }}.md
           git add -u
@@ -467,7 +555,7 @@ jobs:
 
       - name: Capture release commit
         id: release_commit
-        if: steps.dry_run.outputs.dryRun != 'true'
+        if: needs.plan.outputs.dry_run != 'true'
         run: |
           sha=$(git rev-parse HEAD)
           echo "release_commit=$sha" >> $GITHUB_OUTPUT
@@ -475,7 +563,7 @@ jobs:
       - name: Gate release-ready deprecations
         id: deprecation_release_gate
         env:
-          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          DRY_RUN: ${{ needs.plan.outputs.dry_run }}
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
           REPORT_JSON: ${{ runner.temp }}/release-ready-deprecations.json
           REPORT_MD: ${{ runner.temp }}/release-ready-deprecations.md
@@ -519,21 +607,26 @@ jobs:
       # Apply Next Snapshot Version
       # -----------------------
       - name: Set Maven version to next snapshot
-        if: steps.dry_run.outputs.dryRun != 'true'
+        if: needs.plan.outputs.dry_run != 'true'
         env:
           NEXT_VERSION: ${{ steps.versions.outputs.next }}
         run: |
           ./mvnw -B versions:set -DnewVersion=$NEXT_VERSION
 
       - name: Commit Maven version change for next
-        if: steps.dry_run.outputs.dryRun != 'true'
+        if: needs.plan.outputs.dry_run != 'true'
         run: |
           ./mvnw -B versions:commit
 
       - name: Commit next snapshot version
-        if: steps.dry_run.outputs.dryRun != 'true'
+        if: needs.plan.outputs.dry_run != 'true'
         run: |
           git commit -am "Start ${{ steps.versions.outputs.next }}"
+
+      - name: Capture immutable next snapshot
+        id: snapshot_commit
+        if: needs.plan.outputs.dry_run != 'true'
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Scan removal-ready deprecations
         id: deprecation_scan
@@ -560,7 +653,7 @@ jobs:
 
       - name: Create or update removal-ready deprecation issues
         id: deprecation_issues
-        if: steps.dry_run.outputs.dryRun != 'true'
+        if: needs.plan.outputs.dry_run != 'true'
         uses: actions/github-script@v9
         env:
           REPORT_JSON: ${{ steps.deprecation_scan.outputs.report_json }}
@@ -747,7 +840,7 @@ jobs:
             ${{ steps.deprecation_issues.outputs.report_md }}
 
       - name: Fail dry-run on release-ready deprecations
-        if: steps.dry_run.outputs.dryRun == 'true' && steps.deprecation_release_gate.outputs.scan_status != '0'
+        if: needs.plan.outputs.dry_run == 'true' && steps.deprecation_release_gate.outputs.scan_status != '0'
         env:
           SCAN_STATUS: ${{ steps.deprecation_release_gate.outputs.scan_status }}
         run: |
@@ -757,63 +850,27 @@ jobs:
       # -----------------------
       # Push or PR
       # -----------------------
-      - name: Push release commits directly to default branch
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled == 'true'
+      - name: Stage automatic release candidate without changing master
+        if: needs.plan.outputs.dry_run != 'true' && needs.plan.outputs.automatic == 'true'
         env:
-          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          set -euo pipefail
-          branch="${TARGET_BRANCH:-}"
-          if [ -z "$branch" ]; then
-            echo "Default branch was not set; refusing to push."
-            exit 1
-          fi
-          git fetch origin "${branch}"
-          if ! git merge-base --is-ancestor "origin/${branch}" HEAD; then
-            echo "Default branch '${branch}' advanced after preparation; refusing to push."
-            exit 1
-          fi
-          echo "Pushing release commits directly to ${branch}."
-          git push origin "HEAD:${branch}"
-
-      - name: Dispatch publish-release workflow (direct push)
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled == 'true'
-        uses: actions/github-script@v9
-        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          BASE_SHA: ${{ steps.base.outputs.sha }}
+          RELEASE_SHA: ${{ steps.release_commit.outputs.release_commit }}
+          SNAPSHOT_SHA: ${{ steps.snapshot_commit.outputs.sha }}
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
-          RELEASE_COMMIT: ${{ steps.release_commit.outputs.release_commit }}
-          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
-        with:
-          github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
-          script: |
-            const releaseVersion = process.env.RELEASE_VERSION;
-            const releaseCommit = process.env.RELEASE_COMMIT;
-            const dryRun = process.env.DRY_RUN || "false";
-            if (!releaseVersion || !releaseCommit) {
-              throw new Error("Missing release version or release commit for publish dispatch.");
-            }
-            const ref = "${{ github.event.repository.default_branch }}";
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "publish-release.yml",
-              ref,
-              inputs: {
-                releaseVersion,
-                releaseCommit,
-                dryRun
-              }
-            });
+          NEXT_VERSION: ${{ steps.versions.outputs.next }}
+          CANDIDATE_BRANCH: release/${{ steps.versions.outputs.release }}
+        run: python3 scripts/release/release_candidate.py stage
 
       - name: Create release branch
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
+        if: needs.plan.outputs.dry_run != 'true' && needs.plan.outputs.automatic != 'true'
         env:
           RELEASE_BRANCH: release/${{ steps.versions.outputs.release }}
         run: |
           git checkout -b "${RELEASE_BRANCH}"
 
       - name: Push release branch
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
+        if: needs.plan.outputs.dry_run != 'true' && needs.plan.outputs.automatic != 'true'
         env:
           RELEASE_BRANCH: release/${{ steps.versions.outputs.release }}
         run: |
@@ -821,7 +878,7 @@ jobs:
 
       - name: Create or update release PR
         id: release_pr
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
+        if: needs.plan.outputs.dry_run != 'true' && needs.plan.outputs.automatic != 'true'
         uses: actions/github-script@v9
         env:
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
@@ -936,7 +993,7 @@ jobs:
 
       - name: Plan release PR reviewers
         id: release_review_plan
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
+        if: needs.plan.outputs.dry_run != 'true' && needs.plan.outputs.automatic != 'true'
         env:
           RELEASE_OWNER: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
           RELEASE_REVIEWERS: ${{ vars.RELEASE_REVIEWERS }}
@@ -952,7 +1009,7 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
 
       - name: Request release PR review
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true' && steps.release_review_plan.outputs.has_review_targets == 'true'
+        if: needs.plan.outputs.dry_run != 'true' && needs.plan.outputs.automatic != 'true' && steps.release_review_plan.outputs.has_review_targets == 'true'
         env:
           GH_TOKEN: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
           PR_NUMBER: ${{ steps.release_pr.outputs.pr_number }}
@@ -1005,7 +1062,7 @@ jobs:
           fi
 
       - name: Report release PR review warning
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true' && steps.release_review_plan.outputs.has_review_targets != 'true'
+        if: needs.plan.outputs.dry_run != 'true' && needs.plan.outputs.automatic != 'true' && steps.release_review_plan.outputs.has_review_targets != 'true'
         env:
           REVIEW_WARNING: ${{ steps.release_review_plan.outputs.warning }}
         run: |
@@ -1023,8 +1080,8 @@ jobs:
       - name: Prepare release summary
         if: always()
         env:
-          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
-          DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
+          DRY_RUN: ${{ needs.plan.outputs.dry_run }}
+          DIRECT_PUSH: ${{ needs.plan.outputs.automatic }}
           RELEASE: ${{ steps.versions.outputs.release }}
           NEXT: ${{ steps.versions.outputs.next }}
           CURRENT: ${{ steps.versions.outputs.current }}
@@ -1106,3 +1163,182 @@ jobs:
             release/${{ steps.versions.outputs.release }}.md
           if-no-files-found: ignore
           retention-days: 14
+
+  verify_release:
+    name: Verify exact release R
+    needs: prepare
+    if: needs.prepare.outputs.automatic == 'true' && needs.prepare.outputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      receipt: ${{ steps.verify.outputs.receipt_sha256 }}
+    env:
+      BASE_SHA: ${{ needs.prepare.outputs.base }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.release }}
+      SNAPSHOT_SHA: ${{ needs.prepare.outputs.snapshot }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      NEXT_VERSION: ${{ needs.prepare.outputs.next }}
+      CANDIDATE_BRANCH: release/${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.base }}
+          path: controller
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.release }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+      - name: Validate release and issue bound receipt
+        id: verify
+        working-directory: candidate
+        run: bash ../controller/scripts/release/verify_candidate.sh release "$RUNNER_TEMP/release"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: release-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 30
+
+  verify_snapshot:
+    name: Verify exact next snapshot S
+    needs: prepare
+    if: needs.prepare.outputs.automatic == 'true' && needs.prepare.outputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      receipt: ${{ steps.verify.outputs.receipt_sha256 }}
+    env:
+      BASE_SHA: ${{ needs.prepare.outputs.base }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.release }}
+      SNAPSHOT_SHA: ${{ needs.prepare.outputs.snapshot }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      NEXT_VERSION: ${{ needs.prepare.outputs.next }}
+      CANDIDATE_BRANCH: release/${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.base }}
+          path: controller
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.snapshot }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+      - name: Validate snapshot and issue bound receipt
+        id: verify
+        working-directory: candidate
+        run: bash ../controller/scripts/release/verify_candidate.sh snapshot "$RUNNER_TEMP/snapshot"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: snapshot-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/snapshot/
+          if-no-files-found: error
+          retention-days: 30
+
+  promote:
+    name: Promote verified candidate atomically
+    needs: [prepare, verify_release, verify_snapshot]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    env:
+      BASE_SHA: ${{ needs.prepare.outputs.base }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.release }}
+      SNAPSHOT_SHA: ${{ needs.prepare.outputs.snapshot }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      NEXT_VERSION: ${{ needs.prepare.outputs.next }}
+      CANDIDATE_BRANCH: release/${{ needs.prepare.outputs.version }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      RELEASE_RECEIPT_SHA256: ${{ needs.verify_release.outputs.receipt }}
+      SNAPSHOT_RECEIPT_SHA256: ${{ needs.verify_snapshot.outputs.receipt }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.base }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release
+      - uses: actions/download-artifact@v8
+        with:
+          name: snapshot-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: snapshot
+      - name: Recheck receipts, candidate and master; compare-and-swap promotion
+        run: |
+          set -euo pipefail
+          git fetch origin "refs/heads/${CANDIDATE_BRANCH}"
+          python3 scripts/release/release_candidate.py promote
+
+  publish_automatic:
+    permissions:
+      actions: write
+      contents: write
+      discussions: write
+      statuses: write
+      pull-requests: read
+    name: Publish promoted release
+    needs: [prepare, promote]
+    uses: ./.github/workflows/publish-release.yml
+    with:
+      releaseVersion: ${{ needs.prepare.outputs.version }}
+      releaseCommit: ${{ needs.prepare.outputs.release }}
+      dryRun: false
+      lifecycleHeld: true
+    secrets: inherit
+
+  abort_freeze:
+    name: Release only a proven pre-promotion freeze
+    needs: [plan, freeze, prepare, verify_release, verify_snapshot, promote]
+    if: always() && needs.plan.outputs.automatic == 'true' && needs.plan.outputs.dry_run == 'false' && needs.promote.result == 'skipped'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-freeze-status-${{ github.repository }}
+      cancel-in-progress: false
+      queue: max
+    permissions:
+      contents: write
+      statuses: write
+      pull-requests: read
+      actions: write
+    env:
+      BASE_SHA: ${{ needs.plan.outputs.base }}
+      SNAPSHOT_SHA: ${{ needs.prepare.outputs.snapshot }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      PROMOTION_RESULT: ${{ needs.promote.result }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      RELEASE_FREEZE_AUTHORS: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.base }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+      - name: Fail closed on unknown promotion or publication outcomes
+        run: python3 scripts/release/release_candidate.py freeze-abort
+      - name: Reconcile remaining freezes without rerunning successful tests
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const freeze = require('./scripts/release/release_freeze.cjs');
+            await freeze.synchronize({ github, context, core });

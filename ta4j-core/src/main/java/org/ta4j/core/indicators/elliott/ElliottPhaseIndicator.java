@@ -6,7 +6,7 @@ package org.ta4j.core.indicators.elliott;
 import java.util.List;
 import java.util.Objects;
 
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -24,9 +24,13 @@ import org.ta4j.core.num.NumFactory;
  * (for rules or visual overlays). For multiple alternative interpretations, use
  * {@link ElliottScenarioIndicator} instead.
  *
+ * <p>
+ * A phase depends only on the swing snapshot at the requested index. Historical
+ * phases are evaluated on demand, without prefilling unrelated earlier bars.
+ *
  * @since 0.22.0
  */
-public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase> {
+public class ElliottPhaseIndicator extends CachedIndicator<ElliottPhase> {
 
     private final ElliottSwingIndicator swingIndicator;
     private final ElliottFibonacciValidator fibonacciValidator;

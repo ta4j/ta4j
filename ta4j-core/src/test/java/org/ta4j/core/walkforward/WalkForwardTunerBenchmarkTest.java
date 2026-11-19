@@ -26,7 +26,7 @@ class WalkForwardTunerBenchmarkTest {
     private static final int ITERATIONS = 10_000_000;
 
     @Test
-    void benchmarkPatchCalibrationMetricsDirectly() {
+    public void benchmarkPatchCalibrationMetricsDirectly() {
         DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         Map<String, Num> metricMap = new HashMap<>();
         metricMap.put("brier_horizon_1", numFactory.zero());
@@ -42,31 +42,17 @@ class WalkForwardTunerBenchmarkTest {
 
         // Warmup
         for (int i = 0; i < 1_000_000; i++) {
-            patchCalibrationMetricsHelper(metricMap, brier, logLoss, ece);
+            WalkForwardTuner.patchCalibrationMetrics(metricMap, brier, logLoss, ece);
         }
 
         long start = System.nanoTime();
         for (int i = 0; i < ITERATIONS; i++) {
-            patchCalibrationMetricsHelper(metricMap, brier, logLoss, ece);
+            WalkForwardTuner.patchCalibrationMetrics(metricMap, brier, logLoss, ece);
         }
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
         assertFalse(metricMap.isEmpty());
         LOG.info("patchCalibrationMetrics benchmark: {} iterations -> {} ms ({} ops/sec)", ITERATIONS, elapsedMs,
                 ITERATIONS * 1000L / Math.max(1L, elapsedMs));
-    }
-
-    private static void patchCalibrationMetricsHelper(Map<String, Num> metricMap, Num brier, Num logLoss, Num ece) {
-        for (Map.Entry<String, Num> entry : metricMap.entrySet()) {
-            String normalized = entry.getKey().toLowerCase();
-            if (normalized.contains("brier")) {
-                entry.setValue(brier);
-            } else if (normalized.contains("logloss") || normalized.contains("log_loss")
-                    || normalized.contains("log-loss")) {
-                entry.setValue(logLoss);
-            } else if (normalized.contains("ece")) {
-                entry.setValue(ece);
-            }
-        }
     }
 }
