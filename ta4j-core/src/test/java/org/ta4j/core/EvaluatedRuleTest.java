@@ -151,8 +151,6 @@ public class EvaluatedRuleTest {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6).build();
         RecordingRule entry = new RecordingRule((index, record) -> new Snapshot(index, index == 1),
                 Snapshot::satisfied);
-        // Exit two bars after the recorded entry: the result depends on the forwarded
-        // trading record, not on a captured reference.
         RecordingRule exit = new RecordingRule((index, record) -> {
             Trade lastEntry = record.getLastEntry();
             return new Snapshot(index, lastEntry != null && index - lastEntry.getIndex() >= 2);
@@ -195,7 +193,7 @@ public class EvaluatedRuleTest {
                         assertSame(left.lastEvaluated, l);
                         assertSame(right.lastEvaluated, r);
                         joins.incrementAndGet();
-                        return false; // A lossy payload must not define the logical decision.
+                        return false;
                     };
                     EvaluatedRule<JoinedResult<Boolean>> joined = conjunction ? left.and(right, joiner)
                             : left.or(right, joiner);

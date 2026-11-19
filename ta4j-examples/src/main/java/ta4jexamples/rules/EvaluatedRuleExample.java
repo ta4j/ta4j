@@ -28,36 +28,16 @@ import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
 
 /**
- * Demonstrates {@link EvaluatedRule}: rules that return a typed, immutable
- * evaluation snapshot plus an explicit boolean projection of that snapshot.
- *
- * <p>
- * The same rule instances are used twice:
- * <ol>
- * <li>as ordinary {@link Rule}s inside a {@link BaseStrategy} backtest, where
- * the inherited boolean bridge evaluates once and projects once;</li>
- * <li>as rich rules, where the caller evaluates once, inspects the snapshot,
- * and projects that exact snapshot with {@code toBoolean(...)}.</li>
- * </ol>
- *
- * <p>
- * {@link ConfidenceGateRule} gates on a score. The score used here is RSI /
- * 100: a synthetic <em>heuristic score</em>, not a calibrated probability.
- * {@link FlatWithTradeBudgetRule} shows a non-confidence result that captures
- * trading-record observations. The explicit joining overload combines these
- * different result types into {@link EntryContext}. Both operands are
- * evaluated, unlike ordinary short-circuiting {@code and(Rule)}.
+ * Demonstrates {@link EvaluatedRule}: the same rules run in a backtest and are
+ * then evaluated directly to inspect their snapshots. The RSI-based score is a
+ * heuristic, not a calibrated probability.
  */
 public class EvaluatedRuleExample {
 
     private static final Logger LOG = LogManager.getLogger(EvaluatedRuleExample.class);
 
-    /** How a confidence score should be interpreted. */
     public enum ScoreKind {
-        /** A ranking/heuristic score; comparable to a threshold, not a probability. */
-        HEURISTIC_SCORE,
-        /** A probability that was calibrated against observed outcomes. */
-        CALIBRATED_PROBABILITY
+        HEURISTIC_SCORE, CALIBRATED_PROBABILITY
     }
 
     /**
@@ -70,28 +50,19 @@ public class EvaluatedRuleExample {
      */
     public record ConfidenceEvaluation(int index, Num score, Num threshold, ScoreKind kind) {
 
-        /**
-         * Validates the snapshot components.
-         */
         public ConfidenceEvaluation {
             Objects.requireNonNull(score, "score");
             Objects.requireNonNull(threshold, "threshold");
             Objects.requireNonNull(kind, "kind");
         }
 
-        /**
-         * @return {@code true} when a score was observed; a valid zero score is
-         *         available
-         */
         public boolean isAvailable() {
             return !score.isNaN();
         }
     }
 
     /**
-     * Satisfied when an available score is greater than or equal to the configured
-     * threshold. Warm-up bars and NaN scores are unavailable and never satisfy the
-     * gate.
+     * Satisfied when an available score is at least the threshold.
      */
     public static final class ConfidenceGateRule extends AbstractEvaluatedRule<ConfidenceEvaluation> {
 
@@ -100,14 +71,8 @@ public class EvaluatedRuleExample {
         private final ScoreKind kind;
 
         /**
-         * @param score     score indicator; its series' {@link NumFactory} converts the
-         *                  threshold
-         * @param threshold inclusive threshold; must be within {@code [0, 1]} for
-         *                  {@link ScoreKind#CALIBRATED_PROBABILITY}
-         * @param kind      score interpretation
-         * @throws IllegalArgumentException if the converted threshold is not finite, or
-         *                                  outside {@code [0, 1]} for a calibrated
-         *                                  probability
+         * @throws IllegalArgumentException if the threshold is not finite, or outside
+         *                                  {@code [0, 1]} for a calibrated probability
          */
         public ConfidenceGateRule(Indicator<Num> score, Number threshold, ScoreKind kind) {
             this.score = Objects.requireNonNull(score, "score");
@@ -161,17 +126,12 @@ public class EvaluatedRuleExample {
 
     /**
      * Satisfied while flat and fewer than {@code maxPositions} positions have been
-     * closed. The snapshot copies record observations, so projecting an old
-     * snapshot never rereads the live record.
+     * closed.
      */
     public static final class FlatWithTradeBudgetRule extends AbstractEvaluatedRule<ExposureEvaluation> {
 
         private final int maxPositions;
 
-        /**
-         * @param maxPositions maximum number of closed positions; must be positive
-         * @throws IllegalArgumentException if {@code maxPositions <= 0}
-         */
         public FlatWithTradeBudgetRule(int maxPositions) {
             if (maxPositions <= 0) {
                 throw new IllegalArgumentException("maxPositions must be positive: " + maxPositions);
@@ -202,7 +162,6 @@ public class EvaluatedRuleExample {
         FlatWithTradeBudgetRule tradeBudget = new FlatWithTradeBudgetRule(5);
         tradeBudget.setName("Flat with trade budget");
 
-        // The joiner defines the payload, not the logical AND decision.
         EvaluatedRule<JoinedResult<EntryContext>> entryRule = confidenceGate.and(tradeBudget, EntryContext::new);
         entryRule.setName("Confidence with trade budget");
         Rule exitRule = new UnderIndicatorRule(heuristicScore, 0.4);
@@ -210,8 +169,6 @@ public class EvaluatedRuleExample {
         TradingRecord tradingRecord = new BarSeriesManager(series).run(strategy);
         LOG.info("Backtest closed {} positions (budget {})", tradingRecord.getPositionCount(), 5);
 
-        // This is a new evaluation after the backtest, not a historical trade event.
-        // Inspect both observations and project the exact captured decision.
         int endIndex = series.getEndIndex();
         JoinedResult<EntryContext> entry = entryRule.evaluate(endIndex, tradingRecord);
         ConfidenceEvaluation confidence = entry.value().confidence();
