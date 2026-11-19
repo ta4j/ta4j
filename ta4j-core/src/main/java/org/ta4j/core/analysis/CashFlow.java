@@ -209,12 +209,12 @@ public class CashFlow implements PerformanceIndicator {
                 finalIndex, window, true);
         if (priced != null) {
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
-                    staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+                    staged -> calculatePosition(position, finalIndex, window, staged, priced));
         }
     }
 
     private void calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
-            OffsetNumBuffer buffer, Num holdingCost) {
+            OffsetNumBuffer buffer, AnalysisPositionSupport.PricedPosition priced) {
         Trade entry = position.getEntry();
         if (entry == null) {
             return;
@@ -240,7 +240,7 @@ public class CashFlow implements PerformanceIndicator {
                 return;
             }
             Trade exit = position.getExit();
-            Num netExitPrice = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
+            Num netExitPrice = addCost(exit.getNetPrice(), priced.holdingCostPerAsset(entry.getAmount()), isLongTrade);
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             buffer.multiplyRange(windowStartIndex, windowEndIndex, ratio);
             buffer.multiplyBaseline(ratio);
@@ -258,9 +258,8 @@ public class CashFlow implements PerformanceIndicator {
             ratioIndex = entryIndex + 1;
         }
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
-            Num basis = AnalysisPositionSupport.valuationBasis(this, barSeries, position, holdingCost, endIndex,
-                    windowStartIndex);
-            Num netExitPrice = AnalysisPositionSupport.markToMarket(this, barSeries, position, holdingCost, endIndex,
+            Num basis = AnalysisPositionSupport.valuationBasis(this, barSeries, position, priced, windowStartIndex);
+            Num netExitPrice = AnalysisPositionSupport.markToMarket(this, barSeries, position, priced, endIndex,
                     windowStartIndex, windowEndIndex, (index, netPrice, previousPrice) -> buffer.multiply(index,
                             getIntermediateRatio(isLongTrade, basis, netPrice)))
                     .netPrice();
@@ -278,7 +277,7 @@ public class CashFlow implements PerformanceIndicator {
 
         Trade exit = position.getExit();
         if (exit != null && endIndex >= exit.getIndex()) {
-            Num netExitPrice = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
+            Num netExitPrice = addCost(exit.getNetPrice(), priced.holdingCostPerAsset(entry.getAmount()), isLongTrade);
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             buffer.multiplyRange(Math.max(ratioIndex, windowStartIndex), windowEndIndex, ratio);
         }
