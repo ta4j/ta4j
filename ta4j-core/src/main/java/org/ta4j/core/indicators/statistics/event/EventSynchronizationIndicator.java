@@ -216,7 +216,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         try {
             return getResult(index).f1Score();
-        } catch (IllegalArgumentException matcherCapacityExceeded) {
+        } catch (EventSynchronizationSupport.MatcherCapacityException matcherCapacityExceeded) {
             return NaN.NaN;
         }
     }
@@ -849,9 +849,10 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 // count + 1 cells, so a single stream must stay at or below
                 // the cap minus one events.
                 if ((long) size + 2 > EventSynchronizationSupport.MAX_MATCHING_CELLS) {
-                    throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
-                            + (EventSynchronizationSupport.MAX_MATCHING_CELLS / 1_000_000L)
-                            + " million cells (~128 MB of alignment arrays)");
+                    throw new EventSynchronizationSupport.MatcherCapacityException(
+                            "event count exceeds the baseline matcher capacity of "
+                                    + (EventSynchronizationSupport.MAX_MATCHING_CELLS / 1_000_000L)
+                                    + " million cells (~128 MB of alignment arrays)");
                 }
                 if (size == events.length) {
                     events = Arrays.copyOf(events,

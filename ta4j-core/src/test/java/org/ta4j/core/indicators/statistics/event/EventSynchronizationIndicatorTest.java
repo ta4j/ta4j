@@ -669,6 +669,33 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void transientSourceFailureIsNotCachedAsNaN() {
+        BarSeries series = series();
+        Indicator<Boolean> stable = events(series, 0, 8, 11);
+        AtomicInteger failures = new AtomicInteger(1);
+        Indicator<Boolean> flaky = new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                if (index == 10 && failures.getAndDecrement() > 0) {
+                    throw new IllegalArgumentException("transient source failure");
+                }
+                return stable.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(flaky, stable, 5, 1, 1);
+        Num expected = indicator(stable, stable, 5, 1, 1).getValue(12);
+
+        assertThrows(IllegalArgumentException.class, () -> indicator.getValue(12));
+        assertNumEquals(expected, indicator.getValue(12));
+        assertFalse(expected.isNaN());
+    }
+
+    @Test
     public void denseWindowBeyondMatcherCapacityIsNaN() {
         int windowSize = 3_000;
         BarSeries series = series(1);
