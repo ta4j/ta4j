@@ -222,6 +222,26 @@ public interface TradingRecord extends Serializable {
     CostModel getHoldingCostModel();
 
     /**
+     * Records a paid (positive) or received (negative) holding cost, split by
+     * amount across the open lots. It adds to {@link #getHoldingCostModel()}, so do
+     * not model the same settlements twice.
+     *
+     * @param index the settlement's series index
+     * @param cost  the signed cost in the position's profit currency
+     * @throws NullPointerException          if {@code cost} is null
+     * @throws IllegalArgumentException      if {@code cost} is not finite or
+     *                                       incompatible, or {@code index} precedes
+     *                                       an open lot's entry
+     * @throws IllegalStateException         if no lot is open
+     * @throws UnsupportedOperationException if this implementation does not support
+     *                                       recorded holding costs
+     * @since 0.29.1
+     */
+    default void recordHoldingCost(int index, Num cost) {
+        throw new UnsupportedOperationException("Recorded holding costs are not supported");
+    }
+
+    /**
      * @return the recorded closed positions
      */
     List<Position> getPositions();

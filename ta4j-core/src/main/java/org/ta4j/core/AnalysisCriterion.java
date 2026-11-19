@@ -373,7 +373,7 @@ public interface AnalysisCriterion {
         if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
             List<Position> openPositions = openPositionsForMarkToMarket(source, end);
             for (Position openPosition : openPositions) {
-                Position syntheticPosition = createMarkToMarketPosition(series, openPosition, end, holdingCostModel);
+                Position syntheticPosition = createMarkToMarketPosition(series, openPosition, end);
                 if (syntheticPosition != null
                         && includeClosedPosition(syntheticPosition, start, end, inclusionPolicy)) {
                     includedPositions.add(syntheticPosition);
@@ -383,16 +383,12 @@ public interface AnalysisCriterion {
 
         includedPositions.sort(Comparator.comparingInt(position -> position.getExit().getIndex()));
         for (Position position : includedPositions) {
-            Trade entry = position.getEntry();
-            Trade exit = position.getExit();
-            projectedRecord.operate(entry);
-            projectedRecord.operate(exit);
+            projectedRecord.recordProjectedPosition(position, end);
         }
         return projectedRecord;
     }
 
-    private static Position createMarkToMarketPosition(BarSeries series, Position currentPosition, int windowEndIndex,
-            CostModel holdingCostModel) {
+    private static Position createMarkToMarketPosition(BarSeries series, Position currentPosition, int windowEndIndex) {
         if (!isOpenAtWindowEnd(currentPosition, windowEndIndex)) {
             return null;
         }
@@ -404,7 +400,7 @@ public interface AnalysisCriterion {
         Trade syntheticExit = entryTrade.isBuy()
                 ? Trade.sellAt(windowEndIndex, closePrice, amount, transactionCostModel)
                 : Trade.buyAt(windowEndIndex, closePrice, amount, transactionCostModel);
-        return new Position(entryTrade, syntheticExit, transactionCostModel, holdingCostModel);
+        return new Position(entryTrade, syntheticExit, transactionCostModel, currentPosition.getHoldingCostModel());
     }
 
     private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex) {

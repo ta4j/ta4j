@@ -353,6 +353,13 @@ public class TradingRecordTest {
         assertNull(record.getRecordedTotalFees());
     }
 
+    @Test
+    public void legacyTradingRecordExplicitlyRejectsRecordedHoldingCosts() {
+        TradingRecord record = new LegacyTradingRecordStub();
+        record.operate(1, numFactory.hundred(), numFactory.one());
+        assertThrows(UnsupportedOperationException.class, () -> record.recordHoldingCost(2, numFactory.one()));
+    }
+
     private Position roundTrip(Position position) throws Exception {
         var outputStream = new ByteArrayOutputStream();
         try (var objectOutputStream = new ObjectOutputStream(outputStream)) {
