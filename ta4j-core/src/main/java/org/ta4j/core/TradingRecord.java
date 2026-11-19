@@ -222,27 +222,16 @@ public interface TradingRecord extends Serializable {
     CostModel getHoldingCostModel();
 
     /**
-     * Records a paid holding cost (positive) or received credit (negative), shared
-     * proportionally by amount across the lots currently open. Partial closes
-     * retain proportional shares. Indexed position costs include only entries at or
-     * before the observation index; unindexed costs include all entries.
-     *
-     * <p>
-     * Recorded costs supplement, rather than replace,
-     * {@link #getHoldingCostModel()}. Do not also model settlements already
-     * recorded here. Zero is a no-op. Record fills and settlements in event order:
-     * {@link BaseTradingRecord} rejects exits before a settlement already assigned
-     * to an open lot.
+     * Records a paid (positive) or received (negative) holding cost, split by
+     * amount across the open lots. It adds to {@link #getHoldingCostModel()}, so do
+     * not model the same settlements twice.
      *
      * @param index the settlement's series index
-     * @param cost  the signed finite cost in the position's profit currency,
-     *              compatible with each open lot's numeric type
+     * @param cost  the signed cost in the position's profit currency
      * @throws NullPointerException          if {@code cost} is null
-     * @throws IllegalArgumentException      if {@code cost} is not finite, is
-     *                                       incompatible with an open lot's numeric
-     *                                       type, an allocation or combined cost is
-     *                                       not finite, or {@code index} precedes
-     *                                       any open lot's entry
+     * @throws IllegalArgumentException      if {@code cost} is not finite or
+     *                                       incompatible, or {@code index} precedes
+     *                                       an open lot's entry
      * @throws IllegalStateException         if no lot is open
      * @throws UnsupportedOperationException if this implementation does not support
      *                                       recorded holding costs

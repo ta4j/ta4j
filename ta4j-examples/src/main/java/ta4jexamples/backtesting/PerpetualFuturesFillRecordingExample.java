@@ -22,17 +22,8 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Records an offline sequence of venue-confirmed linear perpetual fills and
- * funding settlements. Prices, fees and funding are in quote currency; amounts
- * are in base-asset units. Positive holding costs are paid, negative costs are
- * received. A venue's contract size must be converted to base units first.
- *
- * <p>
- * Use the recorded transaction cost model so actual fill fees affect profit.
- * Map settlement times to consistent bar indices and reconcile amounts and
- * rounding against the venue statement. Persist the record and restore it on
- * restart alongside the adapter's own venue identifiers and checkpoints.
- * </p>
+ * Records venue-confirmed linear perpetual fills and funding settlements, in
+ * base-asset amounts and quote-currency prices, fees and funding.
  *
  * @since 0.29.1
  */
@@ -67,14 +58,12 @@ public class PerpetualFuturesFillRecordingExample {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 RecordedTradeCostModel.INSTANCE, new ZeroCostModel(), null, null);
 
-        // Two confirmed entry lots: two base units at 100 and one at 105.
         record.operate(new TradeFill(0, null, nums.numOf(100), nums.numOf(2), nums.numOf(2), ExecutionSide.BUY,
                 "entry-1", "lot-1"));
         record.operate(
                 new TradeFill(1, null, nums.numOf(105), nums.one(), nums.one(), ExecutionSide.BUY, "entry-2", "lot-2"));
         record.recordHoldingCost(3, nums.numOf(6)); // paid, allocated 4 and 2
 
-        // Close half of the first lot; it carries half of that lot's funding.
         record.operate(
                 new TradeFill(4, null, nums.numOf(110), nums.one(), nums.one(), ExecutionSide.SELL, "exit-1", null));
         record.recordHoldingCost(5, nums.numOf(-2)); // received, allocated to the remaining exposure

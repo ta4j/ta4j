@@ -34,11 +34,8 @@ import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
 /**
- * Offline recipes for comparing spot and a linear perpetual. Prices, capital,
- * fees, funding and profit are in quote currency; quantities are base units.
- * The sample funding rates are historical observations, not forecasts. The
- * comparison does not simulate margin calls, liquidation, or exchange rounding
- * beyond the illustrated quantity increment.
+ * Compares spot and a linear perpetual on synthetic data, in base-asset amounts
+ * and quote-currency results.
  *
  * @since 0.29.1
  */
@@ -68,16 +65,13 @@ public final class PerpetualFuturesRecipes {
         report("Perpetual", series, perpetual, capital);
     }
 
-    // Values align to the price bars. NaN means no settlement; zero is a valid
-    // rate.
+    // NaN means no settlement.
     static Indicator<Num> historicalRates(BarSeries series) {
         NumFactory nums = series.numFactory();
         return new FixedIndicator<>(series, nums.numOf(0.0005), nums.numOf(0.001), NaN.NaN, nums.numOf(-0.002),
                 NaN.NaN);
     }
 
-    // Build a separate signal for this offline history, carrying each observed
-    // settlement rate forward until the next one arrives.
     static Indicator<Num> latestObservedRates(BarSeries series, Indicator<Num> settlementRates) {
         FixedIndicator<Num> signal = new FixedIndicator<>(series);
         Num latest = NaN.NaN;
@@ -104,8 +98,6 @@ public final class PerpetualFuturesRecipes {
         return new BaseStrategy(entry, new FixedRule(series.getEndIndex()));
     }
 
-    // Contract size is base units per contract; lot increment is contracts per
-    // step.
     static BigDecimal baseAmountIncrement(String contractSize, String contractLotIncrement) {
         return new BigDecimal(contractSize).multiply(new BigDecimal(contractLotIncrement));
     }
@@ -137,7 +129,6 @@ public final class PerpetualFuturesRecipes {
                 drawdown.isZero() ? "0" : drawdown);
     }
 
-    /** Minimum commission per executed trade, not per position or bar. */
     static final class MinimumCommission implements CostModel {
         private final NumFactory numFactory;
         private final double rate;

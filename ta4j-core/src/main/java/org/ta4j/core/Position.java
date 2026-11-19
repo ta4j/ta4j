@@ -44,15 +44,8 @@ import org.ta4j.core.num.Num;
  * their entry index.
  * </p>
  * <p>
- * Configured cost models are transient. After loading, transaction costs use a
- * retained trade model when available, preferring the entry model. A
- * {@link BaseTrade} whose transient model is lost defaults to zero and does not
- * conflict with a retained counterpart model, including in mixed legacy/live
- * trade pairs. Positions without a retained trade model use a zero-cost model.
- * Custom trades retaining serializable models continue to use them. Recorded
- * holding-cost allocations from a trading record are retained, but the
- * configured holding-cost model is not; positions without recorded allocations
- * use a zero-cost holding model after loading.
+ * Cost models are transient: after loading, positions use the retained trade
+ * model or zero costs, plus any recorded holding costs.
  * </p>
  */
 public class Position implements Serializable {
@@ -77,9 +70,6 @@ public class Position implements Serializable {
     /** The cost model for holding the asset */
     private final transient CostModel holdingCostModel;
 
-    /**
-     * Recorded holding costs retained independently of the transient modeled costs.
-     */
     private final RecordedHoldingCostModel recordedHoldingCostModel;
 
     /** Constructor with {@link #startingType} = BUY. */
@@ -552,9 +542,7 @@ public class Position implements Serializable {
     }
 
     /**
-     * @return the holding cost model while live; after deserialization, a model
-     *         containing retained recorded allocations with zero modeled cost, or a
-     *         zero-cost model if no allocations were retained
+     * @return the holding cost model; after deserialization, recorded costs only
      *
      * @since 0.22.2
      */

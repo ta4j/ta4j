@@ -208,10 +208,7 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      *
      * <p>
-     * Preserves recorded holding-cost allocations while using zero modeled costs.
-     * Recorded costs remain attached to their original lots. Closed positions are
-     * imported before open lots so their exits cannot close another source
-     * position.
+     * Recorded holding costs are kept; modeled costs become zero.
      *
      * @param positions positions to record (must not be empty)
      * @since 0.22.2
@@ -424,12 +421,8 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * {@inheritDoc}
      *
-     * @apiNote Recorded costs are added to the configured holding cost model's
-     *          costs. When live settlements are authoritative, configure a
-     *          {@link ZeroCostModel} to avoid double counting. A nonzero settlement
-     *          advances the automatic fill index past its index, unless a later
-     *          index has already been assigned.
-     *
+     * @apiNote Recorded costs add to the holding cost model; use
+     *          {@link ZeroCostModel} to avoid double counting.
      * @since 0.29.1
      */
     @Override
@@ -461,7 +454,6 @@ public class BaseTradingRecord implements TradingRecord {
                     if (cost.index() > finalIndex) {
                         break;
                     }
-                    // Imported settlements already belong to this lot; do not reallocate them.
                     lot.holdingCosts = addHoldingCost(lot.holdingCosts, cost.index(), cost.cost());
                     nextTradeIndex = Math.max(nextTradeIndex, cost.index() + 1);
                     modificationCount++;

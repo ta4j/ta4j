@@ -785,8 +785,7 @@ public class PositionTest {
         ByteArrayOutputStream renamed = new ByteArrayOutputStream();
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(bytes.toByteArray()));
                 DataOutputStream output = new DataOutputStream(renamed)) {
-            // Keep the stream header and root object/class tokens, then rename only the
-            // legacy class descriptor. Its three fields and serial UID match old Position.
+            // Rename the class descriptor to the legacy Position layout.
             output.write(input.readNBytes(6));
             assertEquals(LegacySerializedPositionState.class.getName(), input.readUTF());
             output.writeUTF(Position.class.getName());
@@ -816,10 +815,7 @@ public class PositionTest {
         }
     }
 
-    /**
-     * Matches the Position fields written before recorded allocations were
-     * retained.
-     */
+    /** Position fields before recorded allocations were retained. */
     private static final class LegacySerializedPositionState implements Serializable {
         @Serial
         private static final long serialVersionUID = -5484709075767220358L;
