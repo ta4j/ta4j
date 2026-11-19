@@ -154,7 +154,7 @@ public class EvaluatedRuleExample {
      *
      * @param confidence the captured score observations
      * @param exposure   the captured trading-record observations
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public record EntryContext(ConfidenceEvaluation confidence, ExposureEvaluation exposure) {
     }

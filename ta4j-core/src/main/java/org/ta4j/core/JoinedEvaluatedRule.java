@@ -26,7 +26,7 @@ final class JoinedEvaluatedRule<L, R, T> extends AbstractEvaluatedRule<Evaluated
     }
 
     /**
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public JoinedResult<T> evaluate(int index, TradingRecord tradingRecord) {
@@ -41,7 +41,7 @@ final class JoinedEvaluatedRule<L, R, T> extends AbstractEvaluatedRule<Evaluated
     }
 
     /**
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public boolean toBoolean(JoinedResult<T> result) {

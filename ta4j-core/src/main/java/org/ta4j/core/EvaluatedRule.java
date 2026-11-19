@@ -56,7 +56,7 @@ import java.util.function.BiFunction;
  * a functional interface.
  *
  * @param <R> the evaluation result type
- * @since 0.28.1
+ * @since 0.29.1
  */
 public interface EvaluatedRule<R> extends Rule {
 
@@ -66,7 +66,7 @@ public interface EvaluatedRule<R> extends Rule {
      * @param index         the bar index
      * @param tradingRecord the trading record, may be {@code null}
      * @return the evaluation result, never {@code null}
-     * @since 0.28.1
+     * @since 0.29.1
      */
     R evaluate(int index, TradingRecord tradingRecord);
 
@@ -80,7 +80,7 @@ public interface EvaluatedRule<R> extends Rule {
      * @param result a non-null result previously returned by
      *               {@link #evaluate(int, TradingRecord)}
      * @return {@code true} if the result satisfies this rule
-     * @since 0.28.1
+     * @since 0.29.1
      */
     boolean toBoolean(R result);
 
@@ -89,7 +89,7 @@ public interface EvaluatedRule<R> extends Rule {
      *
      * @param index the bar index
      * @return the evaluation result, never {@code null}
-     * @since 0.28.1
+     * @since 0.29.1
      */
     default R evaluate(int index) {
         return evaluate(index, null);
@@ -128,7 +128,7 @@ public interface EvaluatedRule<R> extends Rule {
      * @return an evaluated rule containing the payload and captured AND decision
      * @throws NullPointerException if {@code other} or {@code joiner} is null, or
      *                              an evaluation or joiner returns null
-     * @since 0.28.1
+     * @since 0.29.1
      */
     default <S, T> EvaluatedRule<JoinedResult<T>> and(EvaluatedRule<S> other,
             BiFunction<? super R, ? super S, ? extends T> joiner) {
@@ -154,7 +154,7 @@ public interface EvaluatedRule<R> extends Rule {
      * @return an evaluated rule containing the payload and captured OR decision
      * @throws NullPointerException if {@code other} or {@code joiner} is null, or
      *                              an evaluation or joiner returns null
-     * @since 0.28.1
+     * @since 0.29.1
      */
     default <S, T> EvaluatedRule<JoinedResult<T>> or(EvaluatedRule<S> other,
             BiFunction<? super R, ? super S, ? extends T> joiner) {
@@ -174,7 +174,7 @@ public interface EvaluatedRule<R> extends Rule {
      * @param <T>       the immutable payload type
      * @param value     the non-null joined payload
      * @param satisfied the captured AND or OR decision
-     * @since 0.28.1
+     * @since 0.29.1
      */
     record JoinedResult<T>(T value, boolean satisfied) {
 
@@ -182,7 +182,7 @@ public interface EvaluatedRule<R> extends Rule {
          * Creates a joined snapshot.
          *
          * @throws NullPointerException if {@code value} is null
-         * @since 0.28.1
+         * @since 0.29.1
          */
         public JoinedResult {
             Objects.requireNonNull(value, "value");
@@ -198,7 +198,7 @@ public interface EvaluatedRule<R> extends Rule {
      * @return the boolean projection of the evaluation result
      * @throws NullPointerException if {@link #evaluate(int, TradingRecord)} returns
      *                              {@code null}
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     default boolean isSatisfied(int index, TradingRecord tradingRecord) {
