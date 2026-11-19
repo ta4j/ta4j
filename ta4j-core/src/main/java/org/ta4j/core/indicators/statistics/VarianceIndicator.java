@@ -21,6 +21,11 @@ import org.ta4j.core.num.NumFactory;
  * {@code n - 1}) for rolling windows. Use {@link #ofPopulation(Indicator, int)}
  * (or the {@link SampleType} constructor) when population variance is required.
  * </p>
+ *
+ * <p>
+ * Sequential requests reuse centered rolling moments when the series state and
+ * numeric precision permit; other requests use the window calculation.
+ * </p>
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 
