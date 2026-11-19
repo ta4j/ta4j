@@ -1,0 +1,3 @@
+org.ta4j.acceleration.MetalAccelerationProvider
+org.ta4j.acceleration.CudaAccelerationProvider
+org.ta4j.acceleration.OpenClAccelerationProvider
