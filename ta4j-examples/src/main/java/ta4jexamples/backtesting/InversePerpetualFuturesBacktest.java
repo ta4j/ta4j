@@ -27,23 +27,9 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.FixedRule;
 
 /**
- * Offline inverse-contract recipe without a separate core valuation model. An
- * inverse long of N quote-currency units is a short of amount N at reciprocal
- * prices: its gross profit is N * (1 / entryPrice - 1 / exitPrice), in base
- * coin. Venue contract counts must first be multiplied by their quote-unit face
- * value.
- *
- * <p>
- * Reciprocal prices are base coin per quote unit, so capital, fees, funding and
- * drawdown are also in base coin. Positive venue funding charges the economic
- * long: the rate must be negated because the transformed position is a short.
- * High and low prices exchange roles under reciprocation. Volume is copied only
- * as source metadata, not converted into a contract quantity.
- *
- * <p>
- * The synthetic current-close backtest uses closes as marks and a fixed funding
- * schedule. It does not model a margin account, liquidation, collateral changes
- * or exchange-specific settlement and fee conventions.
+ * Inverse perpetual backtest: an inverse long of N quote units is modeled as a
+ * short of N at reciprocal prices, so all results are in base coin and venue
+ * funding rates are negated. No margin, liquidation or venue fee model.
  *
  * @since 0.29.1
  */
@@ -86,7 +72,6 @@ public final class InversePerpetualFuturesBacktest {
                 TradeType.SELL, sizing);
     }
 
-    // Copies retained positive-price bars into a new, zero-based reciprocal series.
     static BarSeries reciprocalSeries(BarSeries source) {
         BarSeries reciprocal = new BaseBarSeriesBuilder().withName("synthetic inverse perpetual")
                 .withNumFactory(source.numFactory())
