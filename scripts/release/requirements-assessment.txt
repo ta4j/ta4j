@@ -1,0 +1,3 @@
+# Official SDK transport, typed responses, bounded timeouts, and retries.
+# Policy validation itself needs only Python's standard library.
+openai==3.52.0

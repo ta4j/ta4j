@@ -1,1436 +1,317 @@
-# Flow:
-#  - analyze (checkout, diff, changelog, AI decision, compute version) -> job outputs
-#  - approval (environment-protected) -> reserved for future major-release re-enable
-#  - publish (patch/minor) -> depends on analyze
-#  - publish_major -> reserved for future major-release re-enable
-#
-#
-# NOTE: major bumps are currently disabled and downgraded to minor.
-# The major-release approval path is kept for future re-enable.
-
 name: AI Semantic Release Scheduler
-
-concurrency:
-  group: semantic-release-ai-${{ github.repository }}
 
 on:
   schedule:
-    - cron: "0 9 * * 1" # weekly; cadence guard allows every other Monday from 2026-06-29
+    - cron: "0 9 * * 1" # Every other Monday, anchored at 2026-06-29 by scheduler.py.
   workflow_dispatch:
     inputs:
       dryRun:
-        description: "Simulate only; trigger prepare-release.yml with dryRun=true"
+        description: Assess normally and dispatch preparation with dryRun=true
         required: false
         default: true
         type: boolean
       aiMode:
-        description: "AI execution mode: probe sends a tiny request; full sends the release dossier; skip avoids OpenAI"
-        required: false
+        description: Full assessment or deterministic checks only (no model charge)
         default: full
         type: choice
-        options:
-          - probe
-          - full
-          - skip
+        options: [full, skip]
+      evaluateLuna:
+        description: Also evaluate Luna 6 Decisions for comparison (additional model charge)
+        default: false
+        type: boolean
 
+concurrency:
+  group: semantic-release-ai-${{ github.repository }}
+  cancel-in-progress: false
+
+# Model jobs never receive mutation permissions. Only the named handoff and
+# notification jobs can write, and neither executes model-generated commands.
 permissions:
-  contents: write
-  actions: write
-  discussions: write
+  contents: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  analyze:
-    name: Analyze changes & ask AI
-    runs-on: ubuntu-latest
+  eligibility:
+    name: Release eligibility
     if: ${{ github.event_name != 'schedule' || vars.RELEASE_SCHEDULER_ENABLED == 'true' }}
+    runs-on: ${{ fromJSON(vars.RELEASE_SCHEDULER_RUNNER || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    env:
+      ARTIFACT_NAME: release-eligibility-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    # Each output is consumed by a dependency or the final outcome. Repository
+    # evidence remains in an artifact, never in outputs or the console.
     outputs:
-      should_release: ${{ steps.parsed.outputs.should_release }}
-      bump: ${{ steps.parsed.outputs.bump }}
-      version: ${{ steps.version.outputs.version }}
-      reason: ${{ steps.parsed.outputs.reason }}
-      warning: ${{ steps.parsed.outputs.warning }}
-      dryRun: ${{ steps.run_meta.outputs.dryRun }}
-      scheduler_due: ${{ steps.scheduler_cadence.outputs.due }}
-      scheduler_reason: ${{ steps.scheduler_cadence.outputs.reason }}
-      ai_mode: ${{ steps.ai_mode.outputs.mode }}
-      binary_lines: ${{ steps.diff.outputs.lines }}
-      binary_changes: ${{ steps.diff.outputs.binary_changes }}
-      changelog_len: ${{ steps.changelog.outputs.length }}
-      gate_proceed: ${{ steps.gate.outputs.proceed }}
-      token_present: ${{ steps.api_key.outputs.present }}
-      token_gate: ${{ steps.token_gate.outputs.proceed }}
-      model: ${{ steps.model_config.outputs.model_id }}
-      reasoning_effort: ${{ steps.model_config.outputs.reasoning_effort }}
-      model_preflight_status: ${{ steps.model_preflight.outputs.model_http_status }}
-      dossier_chars: ${{ steps.build_request.outputs.dossier_chars }}
-      prompt_dossier_chars: ${{ steps.build_request.outputs.prompt_dossier_chars }}
-      prompt_profile: ${{ steps.build_request.outputs.prompt_profile }}
-      request_json_size_bytes: ${{ steps.build_request.outputs.request_json_size_bytes }}
-      request_max_bytes: ${{ steps.build_request.outputs.request_max_bytes }}
-      last_tag: ${{ steps.lasttag.outputs.last_reachable_tag }}
-      last_first_parent_tag: ${{ steps.lasttag.outputs.last_first_parent_tag }}
-      pom_version: ${{ steps.pom_version.outputs.version }}
-      pom_base: ${{ steps.pom_version.outputs.base }}
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
+      eligible: ${{ steps.policy.outputs.eligible }}
+      source_sha: ${{ steps.policy.outputs.source_sha }}
+      last_tag: ${{ steps.policy.outputs.last_tag }}
+      pom_version: ${{ steps.policy.outputs.pom_version }}
+      dry_run: ${{ steps.policy.outputs.dry_run }}
+      due: ${{ steps.policy.outputs.due }}
     steps:
-      # -----------------------
-      # Setup and Discovery
-      # -----------------------
-      - name: Checkout repository
+      - name: Checkout the scheduler candidate
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
-
-      - name: Fetch tags
-        run: git fetch --tags
-
-      - name: Resolve release tag baselines
-        id: lasttag
-        run: |
-          default_branch="${{ github.event.repository.default_branch }}"
-          target_ref="origin/${default_branch}"
-          git fetch origin "$default_branch" --tags
-
-          tag_state_file=$(mktemp)
-          scripts/resolve-release-tags.sh "$target_ref" > "$tag_state_file"
-
-          latest_tag="none"
-          last_reachable_tag="none"
-          last_first_parent_tag="none"
-          latest_tag_reachable="n/a"
-          while IFS='=' read -r key value; do
-            case "$key" in
-              latest_tag) latest_tag="$value" ;;
-              last_reachable_tag) last_reachable_tag="$value" ;;
-              last_first_parent_tag) last_first_parent_tag="$value" ;;
-              latest_tag_reachable) latest_tag_reachable="$value" ;;
-            esac
-          done < "$tag_state_file"
-
-          cat "$tag_state_file" >> "$GITHUB_OUTPUT"
-          rm -f "$tag_state_file"
-
-          echo "audit:last_tag=$last_reachable_tag default_branch=$default_branch first_parent_tag=$last_first_parent_tag prefer_no_v_tags=true"
-          echo "audit:latest_tag=$latest_tag latest_tag_reachable=$latest_tag_reachable"
-
-      - name: Resolve last release date
-        id: last_release
+          persist-credentials: false
+          show-progress: false
+      - name: Set up policy runtime
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Read exact-commit CI and release lifecycle state
+        uses: actions/github-script@v9
         env:
-          LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
-        run: |
-          set -euo pipefail
-          encode_tag() {
-            local s="$1" out="" c hex
-            while [ -n "$s" ]; do
-              c="${s%"${s#?}"}"
-              case "$c" in
-                [-_.~A-Za-z0-9]) out="${out}${c}" ;;
-                *) printf -v hex '%%%02X' "'${c}"; out="${out}${hex}" ;;
-              esac
-              s="${s#?}"
-            done
-            printf '%s' "$out"
-          }
-          if [ "${LAST_TAG:-none}" = "none" ]; then
-            release_date="none"
-            release_url="https://github.com/${GITHUB_REPOSITORY}/releases"
-          else
-            release_date="$(bash scripts/release/release_helpers.sh last-release-date --tag "${LAST_TAG}")"
-            encoded_tag="$(encode_tag "${LAST_TAG}")"
-            release_url="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${encoded_tag}"
-          fi
-          echo "date=$release_date" >> "$GITHUB_OUTPUT"
-          echo "url=$release_url" >> "$GITHUB_OUTPUT"
-          echo "audit:last_release_date=$release_date tag=${LAST_TAG:-none}"
-          echo "audit:last_release_url=$release_url"
-
-      - name: Capture event and normalize dry run flag
-        id: run_meta
+          SOURCE_SHA: ${{ github.sha }}
+        with:
+          script: |
+            const scheduler = require('./scripts/release/scheduler.cjs');
+            await scheduler.collect({ github, context, sourceSha: process.env.SOURCE_SHA, directory: 'release-evidence' });
+      - name: Apply deterministic eligibility rules
+        id: policy
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          DRY_RUN_INPUT: ${{ github.event.inputs.dryRun }}
-        run: |
-          event="${EVENT_NAME:-}"
-          if [ "$event" = "workflow_dispatch" ]; then
-            raw="${DRY_RUN_INPUT:-true}"
-            normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
-
-            if [ "$normalized" = "false" ] || [ "$normalized" = "0" ] || [ "$normalized" = "no" ]; then
-              dry_run=false
-            else
-              dry_run=true
-            fi
-          else
-            raw="${DRY_RUN_INPUT:-}"
-            dry_run=false
-          fi
-
-          echo "audit:event_name=$event"
-          echo "audit:dry_run_input_raw='${raw}'"
-          echo "audit:dry_run_normalized=$dry_run"
-          echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
-
-      - name: Resolve scheduler cadence
-        id: scheduler_cadence
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          set -euo pipefail
-          anchor_date="2026-06-29"
-          run_date="$(date -u +%F)"
-
-          event="${EVENT_NAME:-}"
-          if [ "$event" != "schedule" ]; then
-            due=true
-            reason="manual dispatch bypasses biweekly cadence guard"
-          else
-            anchor_epoch="$(date -u -d "${anchor_date}T00:00:00Z" +%s)"
-            run_epoch="$(date -u -d "${run_date}T00:00:00Z" +%s)"
-            delta_days=$(( (run_epoch - anchor_epoch) / 86400 ))
-
-            if [ "$delta_days" -ge 0 ] && [ $((delta_days % 14)) -eq 0 ]; then
-              due=true
-              reason="scheduled biweekly release window"
-            else
-              due=false
-              reason="scheduled run is outside biweekly release window anchored at ${anchor_date}"
-            fi
-          fi
-
-          echo "audit:scheduler_cadence event=${event:-unknown} anchor_date=$anchor_date run_date=$run_date due=$due reason=\"$reason\""
-          echo "due=$due" >> $GITHUB_OUTPUT
-          echo "anchor_date=$anchor_date" >> $GITHUB_OUTPUT
-          echo "run_date=$run_date" >> $GITHUB_OUTPUT
-          delim="SCHEDULER_REASON_$(date +%s%N)"
-          {
-            echo "reason<<$delim"
-            printf '%s\n' "$reason"
-            echo "$delim"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Resolve AI execution mode
-        id: ai_mode
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          AI_MODE_INPUT: ${{ github.event.inputs.aiMode }}
-        run: |
-          set -euo pipefail
-          event="${EVENT_NAME:-}"
-          if [ "$event" = "workflow_dispatch" ]; then
-            raw="${AI_MODE_INPUT:-full}"
-          else
-            raw="full"
-          fi
-
-          normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
-          case "$normalized" in
-            full|probe|skip) mode="$normalized" ;;
-            "") mode="probe" ;;
-            *)
-              echo "Unsupported aiMode '$raw'. Expected one of: full, probe, skip." >&2
-              exit 1
-              ;;
-          esac
-
-          echo "audit:ai_mode_input_raw='${raw}'"
-          echo "audit:ai_mode_normalized=$mode"
-          echo "mode=$mode" >> $GITHUB_OUTPUT
-
-      - name: Resolve AI model
-        id: model_config
-        if: steps.scheduler_cadence.outputs.due == 'true'
-        run: |
-          set -euo pipefail
-          model="gpt-5.6-luna"
-          reasoning_effort="high"
-          echo "audit:model_config provider=openai model=$model reasoning_effort=$reasoning_effort"
-          echo "model_id=$model" >> $GITHUB_OUTPUT
-          echo "reasoning_effort=$reasoning_effort" >> $GITHUB_OUTPUT
-
-      - name: Read version from pom.xml
-        id: pom_version
-        run: |
-          set -euo pipefail
-          version=$(python3 -c $'import xml.etree.ElementTree as ET\nimport sys\n\ndef find_version(path):\n    tree = ET.parse(path)\n    root = tree.getroot()\n    def find_first(elem):\n        if elem is None:\n            return None\n        for child in elem:\n            if child.tag.endswith(\"version\"):\n                text = (child.text or \"\").strip()\n                if text:\n                    return text\n        return None\n    return find_first(root) or find_first(root.find(\"./{*}parent\"))\n\nver = find_version(\"pom.xml\")\nif not ver:\n    sys.exit(1)\nprint(ver)\n') || { echo \"Could not read <version> from pom.xml\" >&2; exit 1; }
-
-          base="$version"
-          is_snapshot=false
-          if [[ "$version" == *-SNAPSHOT ]]; then
-            base="${version%-SNAPSHOT}"
-            is_snapshot=true
-          fi
-
-          echo "audit:pom_version=$version base=$base snapshot=$is_snapshot"
-          echo "version=$version" >> $GITHUB_OUTPUT
-          echo "base=$base" >> $GITHUB_OUTPUT
-          echo "snapshot=$is_snapshot" >> $GITHUB_OUTPUT
-
-      # -----------------------
-      # Change Detection
-      # -----------------------
-      - name: Collect binary-impacting changes since last release
-        id: diff
-        env:
-          LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
-        run: |
-          if [ "$LAST_TAG" = "none" ]; then
-            changed_files=$(git ls-tree -r --name-only HEAD)
-          else
-            changed_files=$(git diff --name-only "$LAST_TAG"..HEAD)
-          fi
-
-          binary_files=$(printf '%s\n' "$changed_files" | grep -E '(^|/)pom\.xml$|(^|/)src/main/' || true)
-          binary_files=$(printf '%s\n' "$binary_files" | sort -u)
-
-          # sanitize: mask URLs, common GH tokens, and long alnum tokens (avoid redacting long Java identifiers)
-          sanitized=$(printf '%s\n' "$binary_files" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/((?=[A-Za-z0-9]{32,})(?=.*[0-9])[A-Za-z0-9]+)/[REDACTED_SECRET]/g')
-
-          if [ -z "$sanitized" ]; then
-            count=0
-          else
-            count=$(printf '%s\n' "$sanitized" | wc -l | tr -d ' ')
-          fi
-
-          summary="(none)"
-          if [ "$count" -gt 0 ]; then
-            summary=$(printf '%s\n' "$sanitized" | awk -F/ '
-              NF>=3 && $2 == "src" && $3 == "main" {key=$1"/"$2"/"$3; counts[key]++; next}
-              NF>=2 {key=$1"/"$2; counts[key]++; next}
-              {counts[$1]++}
-              END {for (k in counts) printf "%s: %d files\n", k, counts[k]}
-            ' | sort)
-          fi
-
-          sample=""
-          if [ "$count" -gt 0 ] && [ "$count" -le 40 ]; then
-            sample="$sanitized"
-          fi
-
-          binary_prompt="$summary"
-          if [ -n "$sample" ]; then
-            binary_prompt="${binary_prompt}\nSample paths:\n${sample}"
-          fi
-          binary_prompt=$(printf '%s' "$binary_prompt" | cut -c1-1200)
-          binary_prompt_b64=$(printf '%s' "$binary_prompt" | base64 -w0)
-          binary_prompt_len=$(printf '%s' "$binary_prompt" | wc -c | tr -d ' ')
-
-          # truncate to 2000 chars for discussion output
-          sanitized_truncated=$(printf '%s' "$sanitized" | cut -c1-2000)
-
-          echo "audit:binary_change_lines=$count sanitized=true truncated=2000 summary_prompt_chars=$binary_prompt_len"
-          diff_b64=$(printf '%s' "$sanitized_truncated" | base64 -w0)
-          echo "binary_prompt_b64=$binary_prompt_b64" >> $GITHUB_OUTPUT
-          echo "binary_prompt_len=$binary_prompt_len" >> $GITHUB_OUTPUT
-          echo "diff_b64=$diff_b64" >> $GITHUB_OUTPUT
-          echo "lines=$count" >> $GITHUB_OUTPUT
-          delim="BIN_CHANGES_$(date +%s%N)"
-          {
-            echo "binary_changes<<$delim"
-            printf '%s\n' "$sanitized_truncated"
-            echo "$delim"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Check if CHANGELOG exists
-        id: changelog_exists
-        run: |
-          if [ ! -f CHANGELOG.md ]; then
-            echo "present=false" >> $GITHUB_OUTPUT
-            echo "audit:changelog_present=false"
-          else
-            echo "present=true" >> $GITHUB_OUTPUT
-            echo "audit:changelog_present=true"
-          fi
-
-      - name: Extract Unreleased section from CHANGELOG
-        id: changelog
-        run: |
-          if [ ! -f CHANGELOG.md ]; then
-            echo "audit:changelog_present=false"
-            echo "changelog_b64=" >> $GITHUB_OUTPUT
-            echo "length=0" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          unreleased=$(awk '
-            BEGIN{inSection=0}
-            /^## *\[?Unreleased\]?/ {inSection=1; next}
-            /^## / && inSection {exit}
-            inSection {print}
-          ' CHANGELOG.md)
-
-          filtered=$(printf '%s\n' "$unreleased" | grep -E '^[[:space:]]*(#{2,4}|[-*])' || true)
-          if [ -n "$filtered" ]; then
-            unreleased="$filtered"
-          fi
-
-          # truncate to keep payload bounded and token friendly
-          unreleased=$(printf '%s' "$unreleased" | cut -c1-2000)
-
-          changelog_b64=$(printf '%s' "$unreleased" | base64 -w0)
-          changelog_len=$(printf '%s' "$unreleased" | wc -c | tr -d ' ')
-          echo "audit:changelog_present=true"
-          echo "changelog_b64=$changelog_b64" >> $GITHUB_OUTPUT
-          echo "length=$changelog_len" >> $GITHUB_OUTPUT
-
-      # -----------------------
-      # Gate Checks
-      # -----------------------
-      - name: Check if changes detected
-        id: gate
-        env:
-          SCHEDULER_DUE: ${{ steps.scheduler_cadence.outputs.due }}
-          SCHEDULER_REASON: ${{ steps.scheduler_cadence.outputs.reason }}
-        run: |
-          binary_lines=${{ steps.diff.outputs.lines }}
-          changelog_len=${{ steps.changelog.outputs.length }}
-          binary_lines=${binary_lines:-0}
-          changelog_len=${changelog_len:-0}
-          scheduler_due="${SCHEDULER_DUE:-true}"
-
-          if [ "$scheduler_due" != "true" ]; then
-            reason="${SCHEDULER_REASON:-scheduled run is outside biweekly release window}"
-            echo "proceed=false" >> $GITHUB_OUTPUT
-            echo "audit:short_circuit=true reason=\"$reason\""
-          elif [ "$binary_lines" -eq 0 ]; then
-            echo "proceed=false" >> $GITHUB_OUTPUT
-            echo "audit:short_circuit=true reason=\"no binary-impacting changes\""
-          else
-            echo "proceed=true" >> $GITHUB_OUTPUT
-            echo "audit:short_circuit=false"
-          fi
-
-      - name: No release - no binary-impacting changes
-        if: steps.gate.outputs.proceed != 'true' && steps.scheduler_cadence.outputs.due == 'true'
-        run: echo "No release recommended (no binary-impacting changes)."
-
-      - name: No release - off biweekly cadence
-        if: steps.gate.outputs.proceed != 'true' && steps.scheduler_cadence.outputs.due != 'true'
-        env:
-          SCHEDULER_REASON: ${{ steps.scheduler_cadence.outputs.reason }}
-        run: |
-          echo "No release recommended (${SCHEDULER_REASON:-scheduled run is outside biweekly release window})."
-
-      - name: No release - AI execution skipped
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode == 'skip'
-        run: echo "No release recommended (AI execution skipped by aiMode=skip)."
-
-      - name: Check for OPENAI_API_KEY
-        id: api_key
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip'
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          if [ -z "${OPENAI_API_KEY:-}" ]; then
-            echo "present=false" >> $GITHUB_OUTPUT
-            echo "audit:openai_api_key_present=false"
-            exit 0
-          fi
-
-          echo "::add-mask::$OPENAI_API_KEY"
-          echo "present=true" >> $GITHUB_OUTPUT
-          echo "audit:openai_api_key_present=true"
-
-      - name: Check token gate
-        id: token_gate
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip'
-        run: |
-          present="${{ steps.api_key.outputs.present }}"
-          present=${present:-false}
-
-          if [ "$present" = "true" ]; then
-            echo "proceed=true" >> $GITHUB_OUTPUT
-            echo "audit:short_circuit_token=false"
-          else
-            echo "proceed=false" >> $GITHUB_OUTPUT
-            echo "audit:short_circuit_token=true reason=\"missing OPENAI_API_KEY\""
-          fi
-
-      - name: No release - missing OPENAI_API_KEY
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed != 'true'
-        run: echo "OPENAI_API_KEY not provided; skipping release."
-
-      # -----------------------
-      # AI Analysis
-      # -----------------------
-      - name: Preflight OpenAI model access
-        id: model_preflight
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true'
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          set -euo pipefail
-          model="${{ steps.model_config.outputs.model_id }}"
-          echo "::group::OpenAI model access preflight"
-          attempts=3
-          backoff=5
-          status=1
-          for attempt in $(seq 1 "$attempts"); do
-            if bash scripts/release/release_helpers.sh model-preflight \
-              --model "$model" \
-              --output release-ai-model.json; then
-              status=0
-              break
-            else
-              status=$?
-            fi
-
-            echo "audit:model_preflight_failure attempt=$attempt exit_code=$status" >&2
-            if [ "$status" -ne 75 ] || [ "$attempt" -ge "$attempts" ]; then
-              break
-            fi
-            echo "audit:model_preflight_retry attempt=$attempt exit_code=$status backoff=${backoff}s" >&2
-            sleep "$backoff"
-            backoff=$((backoff * 2))
-          done
-          echo "::endgroup::"
-          exit "$status"
-
-      - name: Build release dossier
-        id: dossier
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode == 'full' && steps.token_gate.outputs.proceed == 'true'
-        run: |
-          set -euo pipefail
-          echo "::group::Build release dossier"
-          bash scripts/release/release_helpers.sh build-dossier \
-            --last-tag "${{ steps.lasttag.outputs.last_reachable_tag }}" \
-            --current-version "${{ steps.pom_version.outputs.version }}" \
-            --pom-base "${{ steps.pom_version.outputs.base }}" \
-            --max-diff-chars 600000 \
-            --output release-dossier.md \
-            --audit-output release-audit.json
-          echo "::endgroup::"
-
-      - name: Build and validate AI request JSON
-        id: build_request
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true'
-        env:
-          AI_MODE: ${{ steps.ai_mode.outputs.mode }}
-          RELEASE_AI_MAX_REQUEST_BYTES: ${{ vars.RELEASE_AI_MAX_REQUEST_BYTES }}
-          LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}
-          LAST_RELEASE_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
-          LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}
-        run: |
-          set -euo pipefail
-          echo "::group::Build AI request"
-          max_request_bytes="${RELEASE_AI_MAX_REQUEST_BYTES:-600000}"
-          if ! [[ "$max_request_bytes" =~ ^[0-9]+$ ]] || [ "$max_request_bytes" -le 0 ]; then
-            echo "::error::RELEASE_AI_MAX_REQUEST_BYTES must be a positive integer when set." >&2
-            exit 1
-          fi
-          if [ "${AI_MODE:-full}" = "probe" ]; then
-            jq -n --arg model "${{ steps.model_config.outputs.model_id }}" \
-              '{
-                model: $model,
-                reasoning: {effort: "high"},
-                store: false,
-                max_output_tokens: 4096,
-                input: [
-                  {
-                    role: "system",
-                    content: [{type: "input_text", text: "You are an OpenAI Responses API connectivity probe. Return JSON only."}]
-                  },
-                  {
-                    role: "user",
-                    content: [{type: "input_text", text: "Return exactly this JSON object: {\"should_release\":false,\"bump\":\"patch\",\"confidence\":1.0,\"reason\":\"AI probe succeeded; full release analysis was not requested\",\"evidence\":[],\"risks\":[],\"missing\":[]}"}]
-                  }
-                ]
-              }' > request.json
-            request_size=$(wc -c < request.json | tr -d ' ')
-            echo "audit:ai_probe_request provider=openai endpoint=https://api.openai.com/v1/responses file=request.json model=${{ steps.model_config.outputs.model_id }} reasoning_effort=${{ steps.model_config.outputs.reasoning_effort }} request_json_size_bytes=$request_size"
-            jq -n \
-              --arg model "${{ steps.model_config.outputs.model_id }}" \
-              --arg reasoning_effort "${{ steps.model_config.outputs.reasoning_effort }}" \
-              --arg request_size "$request_size" \
-              --arg max_request_bytes "$max_request_bytes" \
-              --arg lastReleaseTag "$LAST_RELEASE_TAG" \
-              --arg lastReleaseDate "$LAST_RELEASE_DATE" \
-              --arg lastReleaseUrl "$LAST_RELEASE_URL" \
-              '{
-                schemaVersion: 2,
-                provider: "openai",
-                endpoint: "https://api.openai.com/v1/responses",
-                model: $model,
-                reasoningEffort: $reasoning_effort,
-                promptProfile: "probe",
-                lastReleaseTag: $lastReleaseTag,
-                lastReleaseDate: $lastReleaseDate,
-                lastReleaseUrl: $lastReleaseUrl,
-                artifactBackedContext: false,
-                fullDossierChars: 0,
-                promptDossierChars: 0,
-                requestJsonSizeBytes: ($request_size | tonumber),
-                maxRequestBytes: ($max_request_bytes | tonumber),
-                requestWithinTransportBudget: true
-              }' > release-ai-request-metadata.json
-            echo "request_json_size_bytes=$request_size" >> $GITHUB_OUTPUT
-            echo "request_max_bytes=$max_request_bytes" >> $GITHUB_OUTPUT
-            echo "request_metadata_path=release-ai-request-metadata.json" >> $GITHUB_OUTPUT
-            echo "prompt_profile=probe" >> $GITHUB_OUTPUT
-            echo "dossier_chars=0" >> $GITHUB_OUTPUT
-            echo "prompt_dossier_chars=0" >> $GITHUB_OUTPUT
-          elif [ "${AI_MODE:-full}" = "full" ]; then
-            bash scripts/release/release_helpers.sh build-ai-request \
-              --model "${{ steps.model_config.outputs.model_id }}" \
-              --dossier release-dossier.md \
-              --semver-rules .github/workflows/semver-rules-override.txt \
-              --last-release-url "${LAST_RELEASE_URL}" \
-              --last-release-tag "${LAST_RELEASE_TAG}" \
-              --last-release-date "${LAST_RELEASE_DATE}" \
-              --max-request-bytes "$max_request_bytes" \
-              --metadata-output release-ai-request-metadata.json \
-              --output request.json
-          else
-            echo "Unsupported aiMode '${AI_MODE:-}' for AI request build." >&2
-            exit 1
-          fi
-          if ! jq -e --arg model "${{ steps.model_config.outputs.model_id }}" \
-            --arg effort "${{ steps.model_config.outputs.reasoning_effort }}" \
-            '.model == $model and .reasoning.effort == $effort and (.input | type == "array" and length > 0)' request.json > /dev/null; then
-            echo "audit:request_json_valid=false" >&2
-            exit 1
-          fi
-
-          echo "audit:request_json_valid=true"
-          echo "::endgroup::"
-
-      - name: Call AI API once
-        id: ai_call
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true'
-        env:
-          AI_MODE: ${{ steps.ai_mode.outputs.mode }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          set -uo pipefail
-          echo "::group::Call OpenAI Responses API"
-          echo "audit:ai_mode=${AI_MODE:-full}"
-          echo "audit:request_json_size_bytes=$(wc -c < request.json | tr -d ' ')"
-          echo "audit:dossier_chars=${{ steps.build_request.outputs.dossier_chars }}"
-          echo "audit:model=${{ steps.model_config.outputs.model_id }}"
-          echo "audit:provider=openai"
-          echo "audit:endpoint=https://api.openai.com/v1/responses"
-          echo "audit:reasoning_effort=${{ steps.model_config.outputs.reasoning_effort }}"
-          echo "audit:model_preflight_status=${{ steps.model_preflight.outputs.model_http_status }}"
-          echo "audit:prompt_profile=${{ steps.build_request.outputs.prompt_profile }}"
-          echo "audit:prompt_dossier_chars=${{ steps.build_request.outputs.prompt_dossier_chars }}"
-          echo "audit:request_max_bytes=${{ steps.build_request.outputs.request_max_bytes }}"
-          echo "audit:external_call target=api.openai.com/v1/responses payload=request.json sanitized=true"
-
-          attempts=1
-          ai_max_time=120
-          if [ "${AI_MODE:-full}" = "full" ]; then
-            ai_max_time=600
-          fi
-          echo "audit:curl_max_time_seconds=$ai_max_time"
-          response_status=000
-          curl_exit_code=0
-          : > response.json
-          : > curl-error.log
-          : > response-headers.txt
-          : > curl-metrics.log
-
-          for attempt in $(seq 1 "$attempts"); do
-            attempt_error="curl-error-attempt-${attempt}.log"
-            attempt_headers="response-headers-attempt-${attempt}.txt"
-            attempt_metrics="curl-metrics-attempt-${attempt}.log"
-            : > "$attempt_error"
-            : > "$attempt_headers"
-            : > "$attempt_metrics"
-            if curl --silent --show-error --location --http1.1 \
-              --connect-timeout 10 --max-time "$ai_max_time" \
-              -D "$attempt_headers" \
-              -o response.json \
-              -w 'curl_json=%{json}\nhttp_code=%{http_code}\ntime_namelookup=%{time_namelookup}\ntime_connect=%{time_connect}\ntime_appconnect=%{time_appconnect}\ntime_starttransfer=%{time_starttransfer}\ntime_total=%{time_total}\nsize_upload=%{size_upload}\nsize_download=%{size_download}\nspeed_download=%{speed_download}\nnum_connects=%{num_connects}\nremote_ip=%{remote_ip}\nhttp_version=%{http_version}\n' \
-              -X POST \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer $OPENAI_API_KEY" \
-              -H "X-Client-Request-Id: ta4j-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
-              https://api.openai.com/v1/responses \
-              --data-binary @request.json >"$attempt_metrics" 2>"$attempt_error"; then
-              curl_exit_code=0
-            else
-              curl_exit_code=$?
-            fi
-            response_status=$(awk -F= '$1 == "http_code" { print $2; exit }' "$attempt_metrics" 2>/dev/null || true)
-            response_status=${response_status:-000}
-
-            {
-              echo "attempt=$attempt curl_exit_code=$curl_exit_code response_status=$response_status"
-              if [ -s "$attempt_error" ]; then
-                cat "$attempt_error"
-              else
-                echo "stderr=<empty>"
-              fi
-            } >> curl-error.log
-            {
-              echo "attempt=$attempt"
-              cat "$attempt_headers"
-            } >> response-headers.txt
-            {
-              echo "attempt=$attempt"
-              cat "$attempt_metrics"
-            } >> curl-metrics.log
-            response_bytes=$(wc -c < response.json | tr -d ' ')
-
-            if [ "$curl_exit_code" -eq 0 ] && [ "$response_status" = "200" ]; then
-              break
-            fi
-
-            echo "audit:ai_request_attempt attempt=$attempt status=$response_status curl_exit=$curl_exit_code response_bytes=$response_bytes billed_full_retry=false" >&2
-          done
-
-          echo "response_status=$response_status" >> $GITHUB_OUTPUT
-          echo "curl_exit_code=$curl_exit_code" >> $GITHUB_OUTPUT
-          echo "attempts=$attempts" >> $GITHUB_OUTPUT
-          echo "::endgroup::"
-
-      - name: Handle AI API failure
-        id: ai_failure
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && (steps.ai_call.outputs.response_status != '200' || steps.ai_call.outputs.curl_exit_code != '0')
-        env:
-          AI_MODE: ${{ steps.ai_mode.outputs.mode }}
-          MODEL: ${{ steps.model_config.outputs.model_id }}
-          RESPONSE_STATUS: ${{ steps.ai_call.outputs.response_status }}
-          CURL_EXIT_CODE: ${{ steps.ai_call.outputs.curl_exit_code }}
-          ATTEMPTS: ${{ steps.ai_call.outputs.attempts }}
-        run: |
-          if [ "${RESPONSE_STATUS:-}" = "000" ]; then
-            err_msg="AI call failed before an HTTP response (curl exit ${CURL_EXIT_CODE:-unknown})"
-          else
-            err_msg="AI call failed (HTTP ${RESPONSE_STATUS:-unknown}, curl exit ${CURL_EXIT_CODE:-unknown})"
-          fi
-          echo "audit:ai_request_failed mode=${AI_MODE:-unknown} attempts=${ATTEMPTS:-unknown} status=$RESPONSE_STATUS curl_exit=${CURL_EXIT_CODE:-unknown}" >&2
-          echo "response metadata (bounded):"
-          jq -c '{status: (.status // "unknown"), id: (.id // ""), model: (.model // ""), error: (if .error == null then null else {type: (.error.type // ""), code: (.error.code // ""), message: "[REDACTED_PROVIDER_ERROR]"} end), incomplete_details: (.incomplete_details // null)}' response.json 2>/dev/null | head -c 500 || echo "response metadata unavailable"
-          echo
-          echo "curl diagnostics (last 20 lines):"
-          tail -n 20 curl-error.log || true
-          echo "curl metrics (last 40 lines):"
-          tail -n 40 curl-metrics.log || true
-          bash scripts/release/release_helpers.sh ai-transport-diagnostics \
-            --ai-mode "${AI_MODE:-unknown}" \
-            --model "${MODEL:-unknown}" \
-            --provider openai \
-            --endpoint https://api.openai.com/v1/responses \
-            --reasoning-effort "${{ steps.model_config.outputs.reasoning_effort }}" \
-            --response-status "${RESPONSE_STATUS:-000}" \
-            --curl-exit-code "${CURL_EXIT_CODE:-unknown}" \
-            --attempts "${ATTEMPTS:-unknown}" \
-            --request-metadata release-ai-request-metadata.json \
-            --release-audit release-audit.json \
-            --curl-error curl-error.log \
-            --curl-metrics curl-metrics.log \
-            --response-headers response-headers.txt \
-            --response response.json \
-            --output release-ai-transport-diagnostics.json \
-            --fallback-output ai-content.txt
-          fallback=$(cat ai-content.txt)
-          diagnostic_reason=$(jq -r '.reason // empty' ai-content.txt 2>/dev/null || true)
-          err_msg=${diagnostic_reason:-$err_msg}
-          delim="AI_RESP_$(date +%s%N)"
-          {
-            echo "content<<$delim"
-            printf '%s\n' "$fallback"
-            echo "$delim"
-          } >> $GITHUB_OUTPUT
-          error_annotation="${err_msg//'%'/'%25'}"
-          error_annotation="${error_annotation//$'\r'/'%0D'}"
-          error_annotation="${error_annotation//$'\n'/'%0A'}"
-          echo "::error::$error_annotation"
-          exit 1
-
-      - name: Extract AI response content
-        id: ai
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status == '200' && steps.ai_call.outputs.curl_exit_code == '0'
-        run: |
-          resp_size=$(wc -c < response.json | tr -d ' ')
-          echo "audit:ai_response_bytes=$resp_size saved_to=response.json"
-          if ! bash scripts/release/release_helpers.sh extract-response-content \
-            --raw-file response.json \
-            --output ai-content.txt \
-            --failure-reason-output response-content-failure.txt; then
-            reason=$(cat response-content-failure.txt 2>/dev/null || printf 'OpenAI response content extraction failed')
-            echo "audit:ai_response_content_failed reason=$reason" >&2
-            bash scripts/release/release_helpers.sh ai-transport-diagnostics \
-              --ai-mode "${{ steps.ai_mode.outputs.mode }}" \
-              --model "${{ steps.model_config.outputs.model_id }}" \
-              --provider openai \
-              --endpoint https://api.openai.com/v1/responses \
-              --reasoning-effort "${{ steps.model_config.outputs.reasoning_effort }}" \
-              --failure-reason "$reason" \
-              --response-status "${{ steps.ai_call.outputs.response_status }}" \
-              --curl-exit-code "${{ steps.ai_call.outputs.curl_exit_code }}" \
-              --attempts "${{ steps.ai_call.outputs.attempts }}" \
-              --request-metadata release-ai-request-metadata.json \
-              --release-audit release-audit.json \
-              --curl-error curl-error.log \
-              --curl-metrics curl-metrics.log \
-              --response-headers response-headers.txt \
-              --response response.json \
-              --output release-ai-transport-diagnostics.json \
-              --fallback-output ai-content.txt
-            exit 1
-          fi
-          content=$(cat ai-content.txt)
-          delim="AI_RESP_$(date +%s%N)"
-          {
-            echo "content<<$delim"
-            printf '%s\n' "$content"
-            echo "$delim"
-          } >> $GITHUB_OUTPUT
-
-      - name: Sanitize AI response artifact
-        if: always()
-        run: |
-          set -euo pipefail
-          if [ -f response.json ]; then
-            bash scripts/release/release_helpers.sh sanitize-response \
-              --raw-file response.json \
-              --output response-sanitized.json
-            mv response-sanitized.json response.json
-          else
-            jq -S -n '{schemaVersion: 1, status: "missing", reasoningOutputOmitted: true}' > response.json
-          fi
-
-      - name: Parse AI JSON
-        id: parsed
-        if: always()
-        env:
-          AI_MODE: ${{ steps.ai_mode.outputs.mode }}
-          GATE_PROCEED: ${{ steps.gate.outputs.proceed }}
-          OPENAI_KEY_PRESENT: ${{ steps.api_key.outputs.present }}
-          SCHEDULER_DUE: ${{ steps.scheduler_cadence.outputs.due }}
-          SCHEDULER_REASON: ${{ steps.scheduler_cadence.outputs.reason }}
-        run: |
-          gate_proceed="${GATE_PROCEED:-false}"
-
-          if [ "$gate_proceed" != "true" ]; then
-            scheduler_due="${SCHEDULER_DUE:-true}"
-            if [ "$scheduler_due" != "true" ]; then
-              jq -n \
-                --arg reason "${SCHEDULER_REASON:-scheduled run is outside biweekly release window}" \
-                '{should_release:false,bump:"patch",confidence:1.0,warning:"Off-cadence scheduled run",reason:$reason}' > ai-content.txt
-            else
-              echo '{"should_release":false,"bump":"patch","confidence":1.0,"warning":"No binary changes","reason":"No binary-impacting changes detected"}' > ai-content.txt
-            fi
-          else
-            ai_mode="${AI_MODE:-full}"
-            openai_key_present="${OPENAI_KEY_PRESENT:-false}"
-            if [ "$ai_mode" = "skip" ]; then
-              echo '{"should_release":false,"bump":"patch","confidence":1.0,"warning":"AI execution skipped","reason":"aiMode=skip was requested; OpenAI was not called"}' > ai-content.txt
-            elif [ "$openai_key_present" != "true" ]; then
-              echo "AI call skipped because OPENAI_API_KEY is missing." >&2
-              echo '{"should_release":false,"bump":"patch","confidence":1.0,"warning":"OPENAI_API_KEY missing","reason":"OPENAI_API_KEY secret missing; cannot call OpenAI"}' > ai-content.txt
-            elif [ ! -s ai-content.txt ]; then
-              echo '{"should_release":false,"bump":"patch","confidence":0.0,"warning":"Missing AI response","reason":"AI response content missing"}' > ai-content.txt
-            fi
-          fi
-
-          echo "::group::Parse AI release decision"
-          bash scripts/release/release_helpers.sh parse-decision \
-            --raw-file ai-content.txt \
-            --output release-decision.json \
-            --github-output "$GITHUB_OUTPUT"
-          echo "::endgroup::"
-
-      - name: Stop if AI says no release
-        if: steps.parsed.outputs.should_release == 'false'
-        env:
-          REASON: ${{ steps.parsed.outputs.reason }}
-        run: |
-          echo "No release recommended."
-          if [ -n "${REASON:-}" ]; then
-            echo "Reason: ${REASON}"
-          fi
-
-      # -----------------------
-      # Version Computation
-      # -----------------------
-      - name: Compute new version
-        id: version
-        if: steps.parsed.outputs.should_release == 'true'
-        run: |
-          set -euo pipefail
-          last="${{ steps.lasttag.outputs.last_reachable_tag }}"
-          current="${{ steps.pom_version.outputs.version }}"
-          base="${{ steps.pom_version.outputs.base }}"
-          bump="${{ steps.parsed.outputs.bump }}"
-
-          if [ -z "$current" ] || [ -z "$base" ]; then
-            echo "Failed to read version from pom.xml" >&2
-            exit 1
-          fi
-
-          # Normalize base version (allow major.minor or major.minor.patch)
-          base_norm="$base"
-          if [[ "$base" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
-            base_norm="${base}.0"
-          elif [[ "$base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            : # already normalized
-          else
-            echo "POM version '$current' (base '$base') is not in a supported SemVer format (major.minor or major.minor.patch)." >&2
-            exit 1
-          fi
-
-          bump_base="$base"
-          # Prevent regressions relative to the last reachable default-branch release tag
-          if [ "$last" != "none" ] && echo "$last" | grep -Eq '^v?[0-9]+\.[0-9]+(\.[0-9]+)?([-+].*)?$'; then
-            last_norm=$(printf '%s\n' "$last" | sed -E 's/^v?([0-9]+)\.([0-9]+)(\.[0-9]+)?([-+].*)?$/\1.\2\3/')
-            last_norm=${last_norm:-}
-            last_norm=${last_norm%.}
-            if echo "$last_norm" | grep -Eq '^[0-9]+\.[0-9]+$'; then
-              last_norm="${last_norm}.0"
-            fi
-
-            if [ -n "$last_norm" ]; then
-              highest=$(printf '%s\n' "$last_norm" "$base_norm" | sort -V | tail -n1)
-              if [ "$highest" != "$base_norm" ]; then
-                echo "POM base version '$base' is behind the last reachable default-branch tag '$last_norm'; refusing to compute a lower release." >&2
-                exit 1
-              fi
-              bump_base="$last_norm"
-            fi
-          fi
-
-          # Use the selected bump base (prefer the last reachable tag when present) for incrementing
-          if [[ "$bump_base" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
-            major="${BASH_REMATCH[1]}"
-            minor="${BASH_REMATCH[2]}"
-            patch=0
-          elif [[ "$bump_base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            major="${BASH_REMATCH[1]}"
-            minor="${BASH_REMATCH[2]}"
-            patch="${BASH_REMATCH[3]}"
-          else
-            echo "Bump base '$bump_base' is not in a supported SemVer format (major.minor or major.minor.patch)." >&2
-            exit 1
-          fi
-
-          case "$bump" in
-            major) major=$((major+1)); minor=0; patch=0 ;;
-            minor) minor=$((minor+1)); patch=0 ;;
-            patch|"") patch=$((patch+1)) ;;
-            *) echo "Invalid bump value: $bump" >&2; exit 1 ;;
-          esac
-
-          new="${major}.${minor}.${patch}"
-          new_norm="$new"
-          if echo "$new_norm" | grep -Eq '^[0-9]+\.[0-9]+$'; then
-            new_norm="${new_norm}.0"
-          fi
-
-          # Ensure we never release a version lower than the POM base
-          if [ "$(printf '%s\n' "$new_norm" "$base_norm" | sort -V | tail -n1)" != "$new_norm" ]; then
-            echo "Computed version '$new' would be lower than pom.xml base '$base'; raising to pom base." >&2
-            new="$base"
-            new_norm="$base_norm"
-          fi
-
-          if git rev-parse "refs/tags/$new" >/dev/null 2>&1 || git rev-parse "refs/tags/v$new" >/dev/null 2>&1 || { [ "$new" != "$new_norm" ] && (git rev-parse "refs/tags/$new_norm" >/dev/null 2>&1 || git rev-parse "refs/tags/v$new_norm" >/dev/null 2>&1); }; then
-            echo "Computed tag $new (or v$new) already exists. Aborting." >&2
-            exit 1
-          fi
-
-          echo "version=$new" >> $GITHUB_OUTPUT
-
-      # -----------------------
-      # Summary
-      # -----------------------
-      - name: Debug decision summary
-        if: always()
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          DRY_RUN_INPUT: ${{ github.event.inputs.dryRun }}
-          DRY_RUN: ${{ steps.run_meta.outputs.dryRun }}
-          SCHEDULER_DUE: ${{ steps.scheduler_cadence.outputs.due }}
-          SCHEDULER_REASON: ${{ steps.scheduler_cadence.outputs.reason }}
-          AI_MODE: ${{ steps.ai_mode.outputs.mode }}
-          PROCEED: ${{ steps.gate.outputs.proceed }}
-          TOKEN_PRESENT: ${{ steps.api_key.outputs.present }}
-          TOKEN_GATE: ${{ steps.token_gate.outputs.proceed }}
-          MODEL: ${{ steps.model_config.outputs.model_id }}
-          REASONING_EFFORT: ${{ steps.model_config.outputs.reasoning_effort }}
-          MODEL_PREFLIGHT_STATUS: ${{ steps.model_preflight.outputs.model_http_status }}
-          DOSSIER_CHARS: ${{ steps.build_request.outputs.dossier_chars }}
-          PROMPT_DOSSIER_CHARS: ${{ steps.build_request.outputs.prompt_dossier_chars }}
-          PROMPT_PROFILE: ${{ steps.build_request.outputs.prompt_profile }}
-          REQUEST_JSON_SIZE_BYTES: ${{ steps.build_request.outputs.request_json_size_bytes }}
-          REQUEST_MAX_BYTES: ${{ steps.build_request.outputs.request_max_bytes }}
-          SHOULD_RELEASE: ${{ steps.parsed.outputs.should_release }}
-          BUMP: ${{ steps.parsed.outputs.bump }}
-          CONFIDENCE: ${{ steps.parsed.outputs.confidence }}
-          REASON: ${{ steps.parsed.outputs.reason }}
-          VERSION: ${{ steps.version.outputs.version }}
-          POM_VERSION: ${{ steps.pom_version.outputs.version }}
-          POM_BASE: ${{ steps.pom_version.outputs.base }}
-          LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
-          LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}
-          LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}
-        run: |
-          if [ "${SCHEDULER_DUE:-true}" != "true" ]; then
-            mutation_plan="no release mutation; scheduled run is outside the biweekly release window"
-            rerun_guidance="not needed; wait for the next scheduled biweekly release window or run workflow_dispatch intentionally"
-          elif [ -s release-ai-transport-diagnostics.json ]; then
-            mutation_plan="no release mutation; required AI inference failed before a durable HTTP response"
-            rerun_guidance="inspect release-ai-request-metadata.json and release-ai-transport-diagnostics.json, use aiMode=probe for non-billed connectivity validation, and do not rerun billed aiMode=full blindly with the same request"
-          elif [ "${DRY_RUN:-false}" = "true" ]; then
-            mutation_plan="would dispatch prepare-release.yml with dryRun=true; no discussion post is created"
-            rerun_guidance="rerun release-scheduler.yml with dryRun=false, or wait for the scheduled release path"
-          else
-            mutation_plan="dispatches prepare-release.yml with dryRun=false when the scheduler decides to release"
-            rerun_guidance="not needed for scheduled production runs"
-          fi
-
-          cat > release-scheduler-mutation-plan.txt <<EOF
-          dryRun=${DRY_RUN:-}
-          schedulerDue=${SCHEDULER_DUE:-}
-          schedulerReason=${SCHEDULER_REASON:-}
-          aiMode=${AI_MODE:-}
-          promptProfile=${PROMPT_PROFILE:-}
-          fullDossierChars=${DOSSIER_CHARS:-}
-          promptDossierChars=${PROMPT_DOSSIER_CHARS:-}
-          requestJsonSizeBytes=${REQUEST_JSON_SIZE_BYTES:-}
-          requestMaxBytes=${REQUEST_MAX_BYTES:-}
-          computedVersion=${VERSION:-}
-          bump=${BUMP:-}
-          lastReleaseUrl=${LAST_RELEASE_URL:-}
-          mutationPlan=${mutation_plan}
-          rerunGuidance=${rerun_guidance}
-          EOF
-
-          echo "decision:event_name=${EVENT_NAME:-}"
-          echo "decision:dry_run_input='${DRY_RUN_INPUT:-}' normalized=${DRY_RUN:-}"
-          echo "decision:scheduler_due=${SCHEDULER_DUE:-}"
-          echo "decision:scheduler_reason=${SCHEDULER_REASON:-}"
-          echo "decision:ai_mode=${AI_MODE:-}"
-          echo "decision:gate_proceed=${PROCEED:-}"
-          echo "decision:token_present=${TOKEN_PRESENT:-}"
-          echo "decision:token_gate_proceed=${TOKEN_GATE:-}"
-          echo "decision:model=${MODEL:-}"
-          echo "decision:provider=openai"
-          echo "decision:endpoint=https://api.openai.com/v1/responses"
-          echo "decision:reasoning_effort=${REASONING_EFFORT:-}"
-          echo "decision:model_preflight_status=${MODEL_PREFLIGHT_STATUS:-}"
-          echo "decision:dossier_chars=${DOSSIER_CHARS:-}"
-          echo "decision:prompt_dossier_chars=${PROMPT_DOSSIER_CHARS:-}"
-          echo "decision:prompt_profile=${PROMPT_PROFILE:-}"
-          echo "decision:request_json_size_bytes=${REQUEST_JSON_SIZE_BYTES:-}"
-          echo "decision:request_max_bytes=${REQUEST_MAX_BYTES:-}"
-          echo "decision:should_release=${SHOULD_RELEASE:-}"
-          echo "decision:bump=${BUMP:-}"
-          echo "decision:confidence=${CONFIDENCE:-}"
-          echo "decision:reason=${REASON:-}"
-          echo "decision:computed_version=${VERSION:-}"
-          echo "decision:pom_version=${POM_VERSION:-} pom_base=${POM_BASE:-}"
-          echo "decision:last_reachable_default_branch_tag=${LAST_TAG:-}"
-          echo "decision:last_release_date=${LAST_RELEASE_DATE:-unknown}"
-          echo "decision:last_release_url=${LAST_RELEASE_URL:-unknown}"
-          echo "decision:last_first_parent_tag=${{ steps.lasttag.outputs.last_first_parent_tag }}"
-          {
-            echo "## Release Scheduler Decision"
-            echo ""
-            echo "- model: ${MODEL:-unknown}"
-            echo "- scheduler due: ${SCHEDULER_DUE:-unknown}"
-            echo "- scheduler reason: ${SCHEDULER_REASON:-unknown}"
-            echo "- AI mode: ${AI_MODE:-unknown}"
-            echo "- provider: OpenAI"
-            echo "- endpoint: https://api.openai.com/v1/responses"
-            echo "- reasoning effort: ${REASONING_EFFORT:-unknown}"
-            echo "- model preflight status: ${MODEL_PREFLIGHT_STATUS:-unknown}"
-            echo "- dossier chars: ${DOSSIER_CHARS:-0}"
-            echo "- prompt dossier chars: ${PROMPT_DOSSIER_CHARS:-0}"
-            echo "- prompt profile: ${PROMPT_PROFILE:-unknown}"
-            echo "- request bytes: ${REQUEST_JSON_SIZE_BYTES:-0}"
-            echo "- request max bytes: ${REQUEST_MAX_BYTES:-0}"
-            echo "- should release: ${SHOULD_RELEASE:-unknown}"
-            echo "- bump: ${BUMP:-unknown}"
-            echo "- confidence: ${CONFIDENCE:-unknown}"
-            echo "- computed version: ${VERSION:-none}"
-            echo "- last reachable tag: ${LAST_TAG:-unknown}"
-            echo "- last release date: ${LAST_RELEASE_DATE:-unknown}"
-            echo "- last release url: ${LAST_RELEASE_URL:-unknown}"
-            echo "- reason: ${REASON:-none}"
-            echo "- mutation plan: ${mutation_plan}"
-            echo "- rerun guidance: ${rerun_guidance}"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload release scheduler audit artifacts
-        if: always()
+          DRY_RUN_INPUT: ${{ inputs.dryRun }}
+          AI_MODE: ${{ inputs.aiMode || 'full' }}
+        run: python3 scripts/release/scheduler.py context
+      - name: Preserve the eligibility decision for dependent jobs
+        id: artifact
         uses: actions/upload-artifact@v7
         with:
-          name: release-scheduler-audit-${{ github.run_id }}
-          path: |
-            release-ai-model.json
-            release-dossier.md
-            release-audit.json
-            release-ai-request-metadata.json
-            request.json
-            response.json
-            response-headers.txt
-            curl-metrics.log
-            curl-error.log
-            response-content-failure.txt
-            ai-content.txt
-            release-decision.json
-            release-ai-transport-diagnostics.json
-            release-scheduler-mutation-plan.txt
-          if-no-files-found: ignore
+          name: ${{ env.ARTIFACT_NAME }}
+          path: release-evidence/context.json
+          if-no-files-found: error
           retention-days: 14
 
-  # Reserved major-release approval path.
-  # Major bumps are currently downgraded to minor in analyze/parsing and this job should not run.
-  approval:
-    name: Major release approval (human)
-    needs: analyze
-    runs-on: ubuntu-latest
-    if: ${{ needs.analyze.outputs.should_release == 'true' && needs.analyze.outputs.bump == 'major' }}
-    environment:
-      name: major-release
+  context_preparation:
+    name: Context preparation
+    needs: eligibility
+    if: needs.eligibility.outputs.eligible == 'true'
+    runs-on: ${{ fromJSON(vars.RELEASE_SCHEDULER_RUNNER || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    env:
+      ARTIFACT_NAME: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
     steps:
-      - name: Wait for approval (environment protects this job)
-        run: |
-          echo "This job is blocked until an authorized reviewer approves or rejects in the GitHub UI."
-          echo "Computed version to approve: ${{ needs.analyze.outputs.version }}"
-          echo "Approvers must use the Environments UI or the Actions run page to approve."
-
-  # Publish job: runs automatically for non-major bumps, and after approval for major bumps.
-  publish:
-    name: Trigger publish workflow (patch/minor)
-    needs: analyze
-    runs-on: ubuntu-latest
-    if: needs.analyze.outputs.should_release == 'true' && needs.analyze.outputs.bump != 'major'
-    steps:
-      - name: Trigger publish workflow
-        uses: actions/github-script@v9
+      - name: Checkout the trusted context controller and release history
+        uses: actions/checkout@v6
         with:
-          github-token: ${{ github.token }}
-          script: |
-            const shouldRelease = "${{ needs.analyze.outputs.should_release }}";
-            if (shouldRelease !== "true") {
-              console.log("audit:skip_dispatch reason=should_release_false");
-              return;
-            }
-            const version = "${{ needs.analyze.outputs.version }}";
-            const dryRun = "${{ needs.analyze.outputs.dryRun }}";
-            const ref = "${{ github.event.repository.default_branch }}";
-            console.log(`audit:dispatch_workflow workflow=prepare-release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "prepare-release.yml",
-              ref,
-              inputs: {
-                releaseVersion: version,
-                dryRun
-              }
-            })
-
-  publish_major:
-    name: Trigger publish workflow (major after approval)
-    needs: [analyze, approval]
-    runs-on: ubuntu-latest
-    if: needs.analyze.outputs.should_release == 'true' && needs.analyze.outputs.bump == 'major' && needs.approval.result == 'success'
-    steps:
-      - name: Trigger publish workflow
-        uses: actions/github-script@v9
+          # Eligibility and freeze verify this trusted revision equals source_sha.
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          show-progress: false
+      - name: Set up evidence runtime
+        uses: actions/setup-python@v6
         with:
-          github-token: ${{ github.token }}
-          script: |
-            const shouldRelease = "${{ needs.analyze.outputs.should_release }}";
-            if (shouldRelease !== "true") {
-              console.log("audit:skip_dispatch reason=should_release_false");
-              return;
-            }
-            const version = "${{ needs.analyze.outputs.version }}";
-            const dryRun = "${{ needs.analyze.outputs.dryRun }}";
-            const ref = "${{ github.event.repository.default_branch }}";
-            console.log(`audit:dispatch_workflow workflow=prepare-release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "prepare-release.yml",
-              ref,
-              inputs: {
-                releaseVersion: version,
-                dryRun
-              }
-            })
-
-  # Dry-run convenience job to show the recommendation alongside the dry-run prepare dispatch.
-  dry_run_output:
-    name: Dry-run output
-    runs-on: ubuntu-latest
-    needs: analyze
-    if: ${{ needs.analyze.outputs.dryRun == 'true' && needs.analyze.outputs.should_release == 'true' }}
-    steps:
-      - name: Show dry-run results
+          python-version: '3.12'
+      - name: Retrieve the eligibility record
+        if: needs.eligibility.outputs.artifact_name != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.eligibility.outputs.artifact_name }}
+          path: release-evidence
+      - name: Select production evidence and record coverage
+        env:
+          LAST_TAG: ${{ needs.eligibility.outputs.last_tag }}
+          POM_VERSION: ${{ needs.eligibility.outputs.pom_version }}
         run: |
-          echo "======================="
-          echo "      DRY RUN MODE     "
-          echo "======================="
-          echo "AI recommends release:"
-          echo "  bump:    ${{ needs.analyze.outputs.bump }}"
-          echo "  version: ${{ needs.analyze.outputs.version }}"
-          echo ""
-          echo "(Dry run enabled - propagating dryRun=true to prepare-release.yml)"
-          {
-            echo "## Release Scheduler Dry Run"
-            echo ""
-            echo "- recommended bump: ${{ needs.analyze.outputs.bump }}"
-            echo "- computed version: ${{ needs.analyze.outputs.version }}"
-            echo "- mutation plan: would dispatch prepare-release.yml with dryRun=true"
-            echo "- rerun to mutate: rerun release-scheduler.yml with dryRun=false, or wait for the scheduled release path"
-          } >> "$GITHUB_STEP_SUMMARY"
+          GITHUB_OUTPUT= bash scripts/release/release_helpers.sh build-dossier \
+            --last-tag "$LAST_TAG" --current-version "$POM_VERSION" \
+            --pom-base "${POM_VERSION%-SNAPSHOT}" --max-diff-chars 160000 \
+            --output release-evidence/release-dossier.md \
+            --audit-output release-evidence/release-audit.json
+      - name: Bind evidence and policy to the exact candidate
+        run: python3 scripts/release/scheduler.py freeze
+      - name: Share only the frozen assessment inputs
+        id: artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: |
+            release-evidence/context.json
+            release-evidence/release-dossier.md
+            release-evidence/release-assessment-manifest.json
+          if-no-files-found: error
+          retention-days: 14
 
-  notify:
-    name: Notify release-scheduler outcome
-    runs-on: ubuntu-latest
-    needs: [analyze, approval, publish, publish_major, dry_run_output]
+  release_assessment:
+    name: Release assessment
+    needs: [eligibility, context_preparation]
+    if: needs.eligibility.outputs.eligible == 'true'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/reusable-release-assessment.yml
+    with:
+      source_sha: ${{ needs.eligibility.outputs.source_sha }}
+      evidence_artifact: ${{ needs.context_preparation.outputs.artifact_name }}
+      runner_labels: ${{ vars.RELEASE_ASSESSMENT_RUNNER || vars.RELEASE_SCHEDULER_RUNNER || '["ubuntu-latest"]' }}
+      codex_model: ${{ vars.RELEASE_ASSESSMENT_MODEL || 'gpt-6.1-sol' }}
+      codex_user: ${{ vars.RELEASE_ASSESSMENT_USER || '' }}
+      evaluate_luna: ${{ inputs.evaluateLuna || vars.RELEASE_LUNA_EVALUATION_ENABLED == 'true' }}
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  release_policy:
+    name: Release policy and version
+    needs: [eligibility, context_preparation, release_assessment]
+    if: ${{ always() && needs.context_preparation.result == 'success' }}
+    runs-on: ${{ fromJSON(vars.RELEASE_SCHEDULER_RUNNER || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    env:
+      ARTIFACT_NAME: release-plan-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
+      should_release: ${{ steps.plan.outputs.should_release }}
+      version: ${{ steps.plan.outputs.version }}
+      recommendation: ${{ steps.plan.outputs.recommendation }}
+    steps:
+      - name: Checkout the trusted version policy and release history
+        uses: actions/checkout@v6
+        with:
+          # Plan verifies this trusted revision equals the assessed source_sha.
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          show-progress: false
+      - name: Set up policy runtime
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Retrieve frozen policy and source identity
+        if: needs.context_preparation.outputs.artifact_name != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.context_preparation.outputs.artifact_name }}
+          path: release-evidence
+      - name: Fail closed on assessment failure and plan a monotonic version
+        id: plan
+        env:
+          RECOMMENDATION: ${{ needs.release_assessment.outputs.recommendation }}
+          ASSESSOR_STATUS: ${{ needs.release_assessment.result }}
+        run: python3 scripts/release/scheduler.py plan
+      - name: Retain the validated handoff plan
+        id: artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: release-evidence/release-plan.json
+          if-no-files-found: error
+          retention-days: 14
+
+  release_handoff:
+    name: Release handoff
+    needs: [eligibility, release_policy]
+    if: needs.release_policy.outputs.should_release == 'true'
+    runs-on: ${{ fromJSON(vars.RELEASE_SCHEDULER_RUNNER || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: read
+    steps:
+      - name: Checkout the trusted handoff controller
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          show-progress: false
+      - name: Recheck freshness and dispatch exact-source preparation
+        uses: actions/github-script@v9
+        env:
+          SOURCE_SHA: ${{ needs.eligibility.outputs.source_sha }}
+          RELEASE_VERSION: ${{ needs.release_policy.outputs.version }}
+          DRY_RUN: ${{ needs.eligibility.outputs.dry_run }}
+        with:
+          script: |
+            const scheduler = require('./scripts/release/scheduler.cjs');
+            const handoff = await scheduler.handoff({ github, context, sourceSha: process.env.SOURCE_SHA,
+              version: process.env.RELEASE_VERSION, dryRun: process.env.DRY_RUN });
+            core.info(`audit:release_handoff status=${handoff.status} source=${process.env.SOURCE_SHA} version=${process.env.RELEASE_VERSION} dry_run=${process.env.DRY_RUN}`);
+
+  outcome:
+    name: Decision path and outcome
+    needs: [eligibility, context_preparation, release_assessment, release_policy, release_handoff]
     if: always()
+    runs-on: ${{ fromJSON(vars.RELEASE_SCHEDULER_RUNNER || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    env:
+      ARTIFACT_NAME: release-outcome-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
     steps:
-      - name: Build discussion comment
-        id: notify_summary
-        if: always()
+      - name: Checkout the outcome reporter
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          show-progress: false
+      - name: Set up outcome runtime
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Retrieve eligibility reasons when available
+        if: needs.eligibility.result == 'success' && needs.eligibility.outputs.artifact_name != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.eligibility.outputs.artifact_name }}
+          path: release-evidence
+      - name: Explain successful, failed and skipped stages once
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          ANALYZE_RESULT: ${{ needs.analyze.result }}
-          APPROVAL_RESULT: ${{ needs.approval.result }}
-          PUBLISH_RESULT: ${{ needs.publish.result }}
-          PUBLISH_MAJOR_RESULT: ${{ needs.publish_major.result }}
-          DRY_RUN_RESULT: ${{ needs.dry_run_output.result }}
-          SHOULD_RELEASE: ${{ needs.analyze.outputs.should_release }}
-          BUMP: ${{ needs.analyze.outputs.bump }}
-          VERSION: ${{ needs.analyze.outputs.version }}
-          REASON: ${{ needs.analyze.outputs.reason }}
-          WARNING: ${{ needs.analyze.outputs.warning }}
-          DRY_RUN: ${{ needs.analyze.outputs.dryRun }}
-          SCHEDULER_DUE: ${{ needs.analyze.outputs.scheduler_due }}
-          SCHEDULER_REASON: ${{ needs.analyze.outputs.scheduler_reason }}
-          AI_MODE: ${{ needs.analyze.outputs.ai_mode }}
-          BINARY_LINES: ${{ needs.analyze.outputs.binary_lines }}
-          BINARY_CHANGES: ${{ needs.analyze.outputs.binary_changes }}
-          CHANGELOG_LEN: ${{ needs.analyze.outputs.changelog_len }}
-          GATE_PROCEED: ${{ needs.analyze.outputs.gate_proceed }}
-          TOKEN_PRESENT: ${{ needs.analyze.outputs.token_present }}
-          TOKEN_GATE: ${{ needs.analyze.outputs.token_gate }}
-          MODEL: ${{ needs.analyze.outputs.model }}
-          REASONING_EFFORT: ${{ needs.analyze.outputs.reasoning_effort }}
-          MODEL_PREFLIGHT_STATUS: ${{ needs.analyze.outputs.model_preflight_status }}
-          DOSSIER_CHARS: ${{ needs.analyze.outputs.dossier_chars }}
-          PROMPT_DOSSIER_CHARS: ${{ needs.analyze.outputs.prompt_dossier_chars }}
-          PROMPT_PROFILE: ${{ needs.analyze.outputs.prompt_profile }}
-          REQUEST_JSON_SIZE_BYTES: ${{ needs.analyze.outputs.request_json_size_bytes }}
-          REQUEST_MAX_BYTES: ${{ needs.analyze.outputs.request_max_bytes }}
-          LAST_TAG: ${{ needs.analyze.outputs.last_tag }}
-          LAST_FIRST_PARENT_TAG: ${{ needs.analyze.outputs.last_first_parent_tag }}
-          POM_VERSION: ${{ needs.analyze.outputs.pom_version }}
-          POM_BASE: ${{ needs.analyze.outputs.pom_base }}
-          RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
+          STAGE_RESULTS: ${{ toJSON(needs) }}
         run: |
-          status="success"
-          for result in "$ANALYZE_RESULT" "$APPROVAL_RESULT" "$PUBLISH_RESULT" "$PUBLISH_MAJOR_RESULT" "$DRY_RUN_RESULT"; do
-            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
-              status="failure"
-              break
-            fi
-          done
+          python3 scripts/release/scheduler.py summarize
+          cat release-evidence/scheduler-outcome.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain the concise outcome and recovery guidance
+        id: artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: |
+            release-evidence/scheduler-outcome.json
+            release-evidence/scheduler-outcome.md
+          if-no-files-found: error
+          retention-days: 14
 
-          status_upper=$(printf '%s' "$status" | tr '[:lower:]' '[:upper:]')
-          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-
-          gate_proceed="${GATE_PROCEED:-unknown}"
-          binary_lines="${BINARY_LINES:-0}"
-          changelog_len="${CHANGELOG_LEN:-0}"
-          token_present="${TOKEN_PRESENT:-unknown}"
-          token_gate="${TOKEN_GATE:-unknown}"
-          model="${MODEL:-}"
-          reasoning_effort="${REASONING_EFFORT:-}"
-          model_preflight_status="${MODEL_PREFLIGHT_STATUS:-}"
-          dossier_chars="${DOSSIER_CHARS:-}"
-          prompt_dossier_chars="${PROMPT_DOSSIER_CHARS:-}"
-          prompt_profile="${PROMPT_PROFILE:-}"
-          request_json_size_bytes="${REQUEST_JSON_SIZE_BYTES:-}"
-          request_max_bytes="${REQUEST_MAX_BYTES:-}"
-          should_release="${SHOULD_RELEASE:-unknown}"
-          bump="${BUMP:-unknown}"
-          version="${VERSION:-}"
-          reason="${REASON:-}"
-          warning="${WARNING:-}"
-          dry_run="${DRY_RUN:-unknown}"
-          scheduler_due="${SCHEDULER_DUE:-unknown}"
-          scheduler_reason="${SCHEDULER_REASON:-}"
-          ai_mode="${AI_MODE:-unknown}"
-          last_tag="${LAST_TAG:-}"
-          last_first_parent_tag="${LAST_FIRST_PARENT_TAG:-}"
-          pom_version="${POM_VERSION:-}"
-          pom_base="${POM_BASE:-}"
-          binary_changes="${BINARY_CHANGES:-}"
-
-          if [ "$dry_run" = "true" ]; then
-            mode_label="dry-run"
-            marker_run="dry-run"
-          else
-            mode_label="production"
-            marker_run="real"
-          fi
-
-          if [ "$status" = "success" ]; then
-            completion_text="completed successfully"
-          else
-            completion_text="completed with failures"
-          fi
-
-          timestamp=$(date '+%-I:%M:%S %p on %-m.%-d.%Y')
-
-          if [ -z "$binary_changes" ]; then
-            binary_changes="(none)"
-          fi
-          if [ -z "$version" ]; then
-            version="(none)"
-          fi
-          if [ -z "$reason" ]; then
-            reason="(none)"
-          fi
-          if [ -z "$warning" ]; then
-            warning="(none)"
-          fi
-          if [ -z "$scheduler_reason" ]; then
-            scheduler_reason="(none)"
-          fi
-          if [ -z "$last_tag" ]; then
-            last_tag="(none)"
-          fi
-          if [ -z "$last_first_parent_tag" ]; then
-            last_first_parent_tag="(none)"
-          fi
-          if [ -z "$pom_version" ]; then
-            pom_version="(unknown)"
-          fi
-          if [ -z "$pom_base" ]; then
-            pom_base="(unknown)"
-          fi
-          if [ -z "$model" ]; then
-            model="(none)"
-          fi
-          if [ -z "$reasoning_effort" ]; then
-            reasoning_effort="(unknown)"
-          fi
-          if [ -z "$model_preflight_status" ]; then
-            model_preflight_status="(unknown)"
-          fi
-          if [ -z "$dossier_chars" ]; then
-            dossier_chars="0"
-          fi
-          if [ -z "$prompt_dossier_chars" ]; then
-            prompt_dossier_chars="0"
-          fi
-          if [ -z "$prompt_profile" ]; then
-            prompt_profile="(none)"
-          fi
-          if [ -z "$request_json_size_bytes" ]; then
-            request_json_size_bytes="0"
-          fi
-          if [ -z "$request_max_bytes" ]; then
-            request_max_bytes="0"
-          fi
-
-          notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
-
-          cat > notification-body.txt <<EOF
-          <!-- ta4j:post-type=release-scheduler;run=${marker_run};lastTag=${last_tag};firstParentTag=${last_first_parent_tag};pomVersion=${pom_version};pomBase=${pom_base} -->
-          @${notify_user}
-
-          **Release Scheduler ${mode_label} ${completion_text} at ${timestamp}**
-          - Repository: ${GITHUB_REPOSITORY}
-          - Run: ${run_url}
-          - Event: ${EVENT_NAME}
-          - Status: ${status_upper}
-
-          Decision Summary:
-          - gate proceed: ${gate_proceed}
-          - binary change count: ${binary_lines}
-          - changelog length: ${changelog_len}
-          - OpenAI API key present: ${token_present}
-          - token gate proceed: ${token_gate}
-          - provider: OpenAI
-          - model: ${model}
-          - endpoint: https://api.openai.com/v1/responses
-          - reasoning effort: ${reasoning_effort}
-          - model preflight status: ${model_preflight_status}
-          - dossier chars: ${dossier_chars}
-          - prompt dossier chars: ${prompt_dossier_chars}
-          - prompt profile: ${prompt_profile}
-          - request bytes: ${request_json_size_bytes}
-          - request max bytes: ${request_max_bytes}
-          - should release: ${should_release}
-          - bump: ${bump}
-          - computed version: ${version}
-          - reason: ${reason}
-          - warning: ${warning}
-          - dryRun: ${dry_run}
-          - scheduler due: ${scheduler_due}
-          - scheduler reason: ${scheduler_reason}
-          - ai mode: ${ai_mode}
-          - last reachable tag: ${last_tag}
-          - last first-parent tag: ${last_first_parent_tag}
-          - pom version: ${pom_version}
-          - pom base: ${pom_base}
-
-          Binary-impacting changes (paths):
-          <details>
-          <summary>Show paths</summary>
-
-          ${binary_changes}
-
-          </details>
-
-          Job Results:
-          - analyze: ${ANALYZE_RESULT}
-          - approval: ${APPROVAL_RESULT}
-          - publish: ${PUBLISH_RESULT}
-          - publish_major: ${PUBLISH_MAJOR_RESULT}
-          - dry_run_output: ${DRY_RUN_RESULT}
-          EOF
-
-      - name: Post to Release Scheduler discussion
-        if: always() && needs.analyze.result != 'skipped' && needs.analyze.outputs.dryRun != 'true' && needs.analyze.outputs.scheduler_due != 'false'
+  notification:
+    name: Release discussion update
+    needs: [eligibility, outcome]
+    if: ${{ always() && needs.outcome.result == 'success' && needs.eligibility.outputs.dry_run == 'false' && needs.eligibility.outputs.due == 'true' }}
+    runs-on: ${{ fromJSON(vars.RELEASE_SCHEDULER_RUNNER || '["ubuntu-latest"]') }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      discussions: write
+    steps:
+      - name: Checkout the notification controller
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          show-progress: false
+      - name: Retrieve the single outcome report
+        if: needs.outcome.outputs.artifact_name != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.outcome.outputs.artifact_name }}
+          path: release-outcome
+      - name: Link the release decision path from its discussion
         uses: actions/github-script@v9
         env:
-          RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
+          DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
         with:
-          github-token: ${{ github.token }}
           script: |
-            const fs = require("fs");
-            const body = fs.readFileSync("notification-body.txt", "utf8");
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const rawNumber = process.env.RELEASE_SCHEDULER_DISCUSSION_NUMBER;
-            const number = rawNumber ? Number(rawNumber) : 1414;
-            if (!Number.isFinite(number)) {
-              throw new Error(`Invalid Release Scheduler discussion number: ${rawNumber}`);
-            }
-
-            const query = `
-              query($owner: String!, $repo: String!, $number: Int!) {
-                repository(owner: $owner, name: $repo) {
-                  discussion(number: $number) {
-                    id
-                  }
-                }
-              }
-            `;
-            const queryResult = await github.graphql(query, { owner, repo, number });
-            const discussion = queryResult?.repository?.discussion;
-            const discussionId = discussion?.id;
-            if (!discussionId) {
-              throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
-            }
-
-            const mutation = `
-              mutation($discussionId: ID!, $body: String!) {
-                addDiscussionComment(input: { discussionId: $discussionId, body: $body }) {
-                  comment {
-                    url
-                  }
-                }
-              }
-            `;
-            await github.graphql(mutation, { discussionId, body });
+            const fs = require('node:fs');
+            const scheduler = require('./scripts/release/scheduler.cjs');
+            await scheduler.notify({ github, context,
+              body: fs.readFileSync('release-outcome/scheduler-outcome.md', 'utf8'),
+              discussionNumber: process.env.DISCUSSION_NUMBER });

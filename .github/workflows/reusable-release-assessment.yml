@@ -1,0 +1,397 @@
+# Codex is the release assessor; deterministic validation owns the handoff output.
+# Luna is optional shadow evaluation. No job here has repository write permission.
+name: Reusable release assessment
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Immutable candidate commit matching the frozen evidence
+        required: true
+        type: string
+      evidence_artifact:
+        required: true
+        type: string
+      evidence_run_id:
+        description: Same-repository producer run; zero means this run
+        default: 0
+        type: number
+      runner_labels:
+        description: JSON runner labels; POSIX GitHub-hosted or preconfigured self-hosted runner
+        default: '["ubuntu-latest"]'
+        type: string
+      codex_model:
+        default: gpt-6.1-sol
+        type: string
+      codex_user:
+        description: Required on self-hosted runners; dedicated preprovisioned account without sudo and with a clean Codex home
+        default: ''
+        type: string
+      evaluate_luna:
+        description: Compare Luna Decisions without granting it release authority
+        default: false
+        type: boolean
+    secrets:
+      OPENAI_API_KEY:
+        required: true
+    outputs:
+      artifact_name:
+        value: ${{ jobs.policy.outputs.artifact_name }}
+      recommendation:
+        value: ${{ jobs.policy.outputs.recommendation }}
+      should_release:
+        value: ${{ jobs.policy.outputs.should_release }}
+      bump:
+        value: ${{ jobs.policy.outputs.bump }}
+      all_agree:
+        value: ${{ jobs.policy.outputs.all_agree }}
+permissions:
+  contents: read
+  actions: read
+defaults:
+  run:
+    shell: bash
+env:
+  # Installation failures are actionable; funding, audit and progress banners are not.
+  NPM_CONFIG_LOGLEVEL: error
+  NPM_CONFIG_FUND: 'false'
+  NPM_CONFIG_AUDIT: 'false'
+  NPM_CONFIG_PROGRESS: 'false'
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+# These two fields identify the called workflow, including cross-repository use.
+# The native job object roundtrip accommodates actionlint 1.7.12's older type
+# table without suppressing validation: https://github.com/rhysd/actionlint/issues/757.
+# No caller input or candidate ref can select executable framework code.
+jobs:
+  context:
+    name: Context preparation
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    timeout-minutes: 5
+    env:
+      ARTIFACT_NAME: assessment-context-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
+    steps:
+      - name: Clear previous assessment workspace
+        run: rm -rf -- "$GITHUB_WORKSPACE/release-assessment-work"
+      - name: Require the reusable workflow's trusted source identity
+        id: framework
+        # Checkout consumes only these validated native identity outputs;
+        # candidate and caller inputs never select executable framework code.
+        env:
+          FRAMEWORK_REPOSITORY: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          FRAMEWORK_SHA: ${{ fromJSON(toJSON(job)).workflow_sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$FRAMEWORK_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ || ! "$FRAMEWORK_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::This assessor requires GitHub.com workflow identity; refusing a caller-source fallback.'
+            exit 1
+          fi
+          printf 'repository=%s\nrevision=%s\n' "$FRAMEWORK_REPOSITORY" "$FRAMEWORK_SHA" >> "$GITHUB_OUTPUT"
+      - name: Checkout immutable framework
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: ${{ steps.framework.outputs.repository }}
+          ref: ${{ steps.framework.outputs.revision }}
+          path: release-assessment-work/framework
+          persist-credentials: false
+          show-progress: false
+      - name: Prepare Python runtime
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Download frozen evidence
+        if: inputs.evidence_artifact != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ${{ inputs.evidence_artifact }}
+          path: release-assessment-work/evidence
+          run-id: ${{ inputs.evidence_run_id || github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify source and evidence hashes
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: python3 release-assessment-work/framework/scripts/release/assessment.py prepare --directory release-assessment-work/evidence --source-sha "$SOURCE_SHA"
+      - name: Share verified inputs and unavailable-result placeholders
+        id: artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: |
+            release-assessment-work/evidence/release-assessment-manifest.json
+            release-assessment-work/evidence/context.json
+            release-assessment-work/evidence/release-dossier.md
+            release-assessment-work/evidence/codex-prompt.md
+            release-assessment-work/evidence/codex-decision.json
+            release-assessment-work/evidence/luna-result.json
+          if-no-files-found: error
+          retention-days: 14
+  codex:
+    name: Release assessment · Codex
+    needs: context
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    timeout-minutes: 15
+    env:
+      ARTIFACT_NAME: assessment-codex-result-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
+    steps:
+      - name: Clear previous assessment workspace
+        run: rm -rf -- "$GITHUB_WORKSPACE/release-assessment-work"
+      - name: Require the reusable workflow's trusted source identity
+        id: framework
+        # Checkout consumes only these validated native identity outputs;
+        # candidate and caller inputs never select executable framework code.
+        env:
+          FRAMEWORK_REPOSITORY: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          FRAMEWORK_SHA: ${{ fromJSON(toJSON(job)).workflow_sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$FRAMEWORK_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ || ! "$FRAMEWORK_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::This assessor requires GitHub.com workflow identity; refusing a caller-source fallback.'
+            exit 1
+          fi
+          printf 'repository=%s\nrevision=%s\n' "$FRAMEWORK_REPOSITORY" "$FRAMEWORK_SHA" >> "$GITHUB_OUTPUT"
+      - name: Checkout immutable framework
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: ${{ steps.framework.outputs.repository }}
+          ref: ${{ steps.framework.outputs.revision }}
+          path: release-assessment-work/framework
+          persist-credentials: false
+          show-progress: false
+      - name: Checkout exact candidate for read-only investigation
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          path: release-assessment-work/candidate
+          persist-credentials: false
+          show-progress: false
+      - name: Prepare Python runtime
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Download verified context
+        if: needs.context.outputs.artifact_name != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ${{ needs.context.outputs.artifact_name }}
+          path: release-assessment-work/evidence
+      - name: Isolate runtime and verify runner permissions
+        id: runtime
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          CODEX_USER: ${{ inputs.codex_user }}
+          ASSESSMENT_RUNNER_ENVIRONMENT: ${{ runner.environment }}
+        run: >-
+          python3 release-assessment-work/framework/scripts/release/assessment.py runner-setup
+          --directory release-assessment-work/evidence --candidate release-assessment-work/candidate
+          --source-sha "$SOURCE_SHA" --codex-user "$CODEX_USER"
+      - name: Assess exact candidate with the official Codex action
+        # JSON mode avoids the default full prompt/config banner. Lifecycle, selected
+        # command output, final decision and usage remain upstream-owned diagnostics.
+        uses: openai/codex-action@306c6a196a99dcc6582530c396a19d2672d5e9ec # v1.14
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          codex-version: '0.169.0'
+          prompt-file: ${{ steps.runtime.outputs.session }}/evidence/codex-prompt.md
+          output-schema-file: ${{ steps.runtime.outputs.session }}/evidence/assessment-schema.json
+          output-file: ${{ steps.runtime.outputs.session }}/result/codex-decision.json
+          working-directory: ${{ steps.runtime.outputs.session }}
+          model: ${{ inputs.codex_model }}
+          effort: high
+          permission-profile: ':read-only'
+          safety-strategy: ${{ steps.runtime.outputs.safety_strategy }}
+          codex-user: ${{ inputs.codex_user }}
+          codex-home: ${{ steps.runtime.outputs.codex_home }}
+          allow-bots: true
+          codex-args: '["--ephemeral", "--json", "--color", "never", "-c", "model_reasoning_summary=\"none\"", "-c", "project_doc_max_bytes=0"]'
+      - name: Preserve only the final decision for independent validation
+        if: ${{ always() && steps.runtime.outputs.session != '' }}
+        env:
+          SESSION_ROOT: ${{ steps.runtime.outputs.session }}
+        run: cp "$SESSION_ROOT/result/codex-decision.json" release-assessment-work/evidence/codex-decision.json
+      - name: Upload explicit provider result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: release-assessment-work/evidence/codex-decision.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Remove only this run's temporary runtime
+        if: always()
+        run: python3 release-assessment-work/framework/scripts/release/assessment.py runner-cleanup --directory release-assessment-work/evidence
+  luna:
+    name: Shadow evaluation · Luna Decisions
+    needs: context
+    if: ${{ inputs.evaluate_luna }}
+    # An optional SDK/install/runtime failure must not fail the caller's authority.
+    continue-on-error: true
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    timeout-minutes: 5
+    env:
+      ARTIFACT_NAME: assessment-luna-result-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
+    steps:
+      - name: Clear previous assessment workspace
+        run: rm -rf -- "$GITHUB_WORKSPACE/release-assessment-work"
+      - name: Require the reusable workflow's trusted source identity
+        id: framework
+        # Checkout consumes only these validated native identity outputs;
+        # candidate and caller inputs never select executable framework code.
+        env:
+          FRAMEWORK_REPOSITORY: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          FRAMEWORK_SHA: ${{ fromJSON(toJSON(job)).workflow_sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$FRAMEWORK_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ || ! "$FRAMEWORK_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::This assessor requires GitHub.com workflow identity; refusing a caller-source fallback.'
+            exit 1
+          fi
+          printf 'repository=%s\nrevision=%s\n' "$FRAMEWORK_REPOSITORY" "$FRAMEWORK_SHA" >> "$GITHUB_OUTPUT"
+      - name: Checkout immutable framework
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: ${{ steps.framework.outputs.repository }}
+          ref: ${{ steps.framework.outputs.revision }}
+          path: release-assessment-work/framework
+          persist-credentials: false
+          show-progress: false
+      - name: Prepare Python runtime
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Download the same verified context
+        if: needs.context.outputs.artifact_name != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ${{ needs.context.outputs.artifact_name }}
+          path: release-assessment-work/evidence
+      - name: Create an isolated optional-evaluator environment
+        id: sdk_environment
+        run: |
+          sdk_directory="$(mktemp -d "$RUNNER_TEMP/ta4j-luna.XXXXXX")"
+          echo "directory=$sdk_directory" >> "$GITHUB_OUTPUT"
+          python3 -m venv "$sdk_directory"
+      - name: Install the pinned official Decisions SDK
+        env:
+          SDK_DIRECTORY: ${{ steps.sdk_environment.outputs.directory }}
+        run: '"$SDK_DIRECTORY/bin/python" -m pip install --quiet --requirement release-assessment-work/framework/scripts/release/requirements-assessment.txt'
+      - name: Evaluate bounded evidence without release authority
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          SDK_DIRECTORY: ${{ steps.sdk_environment.outputs.directory }}
+        run: '"$SDK_DIRECTORY/bin/python" release-assessment-work/framework/scripts/release/assessment.py decisions --directory release-assessment-work/evidence --source-sha "$SOURCE_SHA"'
+      - name: Upload only the typed recommendation, usage and timing
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: release-assessment-work/evidence/luna-result.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Remove this job's evaluator environment
+        if: ${{ always() && steps.sdk_environment.outputs.directory != '' }}
+        env:
+          SDK_DIRECTORY: ${{ steps.sdk_environment.outputs.directory }}
+        run: rm -rf -- "$SDK_DIRECTORY"
+  policy:
+    name: Decision validation and handoff policy
+    needs: [context, codex, luna]
+    if: ${{ always() }}
+    runs-on: ${{ fromJSON(inputs.runner_labels) }}
+    timeout-minutes: 5
+    env:
+      ARTIFACT_NAME: assessment-result-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ steps.artifact.outputs.artifact-id && env.ARTIFACT_NAME || '' }}
+      recommendation: ${{ steps.policy.outputs.recommendation }}
+      should_release: ${{ steps.policy.outputs.should_release }}
+      bump: ${{ steps.policy.outputs.bump }}
+      all_agree: ${{ steps.policy.outputs.all_agree }}
+    steps:
+      - name: Clear previous assessment workspace
+        run: rm -rf -- "$GITHUB_WORKSPACE/release-assessment-work"
+      - name: Require the reusable workflow's trusted source identity
+        id: framework
+        # Checkout consumes only these validated native identity outputs;
+        # candidate and caller inputs never select executable framework code.
+        env:
+          FRAMEWORK_REPOSITORY: ${{ fromJSON(toJSON(job)).workflow_repository }}
+          FRAMEWORK_SHA: ${{ fromJSON(toJSON(job)).workflow_sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$FRAMEWORK_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ || ! "$FRAMEWORK_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::This assessor requires GitHub.com workflow identity; refusing a caller-source fallback.'
+            exit 1
+          fi
+          printf 'repository=%s\nrevision=%s\n' "$FRAMEWORK_REPOSITORY" "$FRAMEWORK_SHA" >> "$GITHUB_OUTPUT"
+      - name: Checkout immutable policy implementation
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: ${{ steps.framework.outputs.repository }}
+          ref: ${{ steps.framework.outputs.revision }}
+          path: release-assessment-work/framework
+          persist-credentials: false
+          show-progress: false
+      - name: Prepare Python runtime
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Download context when preparation succeeded
+        if: needs.context.outputs.artifact_name != ''
+        # Download failures become unavailable evidence in the policy, never release.
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ${{ needs.context.outputs.artifact_name }}
+          path: release-assessment-work/evidence
+      - name: Download Codex result when retained
+        if: needs.codex.outputs.artifact_name != ''
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ${{ needs.codex.outputs.artifact_name }}
+          path: release-assessment-work/evidence
+      - name: Download Luna result when retained
+        if: needs.luna.outputs.artifact_name != ''
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: ${{ needs.luna.outputs.artifact_name }}
+          path: release-assessment-work/evidence
+      - name: Validate typed decision, source binding and release conditions
+        id: policy
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          CODEX_STATUS: ${{ needs.codex.result }}
+          LUNA_STATUS: ${{ needs.luna.result }}
+          EVALUATE_LUNA: ${{ inputs.evaluate_luna }}
+        run: |
+          args=()
+          if [ "$EVALUATE_LUNA" = true ]; then args+=(--evaluate-luna); fi
+          python3 release-assessment-work/framework/scripts/release/assessment.py report \
+            --directory release-assessment-work/evidence --source-sha "$SOURCE_SHA" \
+            --codex-status "$CODEX_STATUS" --luna-status "$LUNA_STATUS" "${args[@]}"
+          cat release-assessment-work/evidence/assessment-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish the explicit release decision and concise stage summary
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: |
+            release-assessment-work/evidence/assessment-result.json
+            release-assessment-work/evidence/assessment-summary.md
+          if-no-files-found: error
+          retention-days: 14
+      - name: Fail unavailable authoritative assessment after publishing diagnostics
+        if: ${{ steps.policy.outputs.assessment_status == 'unavailable' }}
+        run: |
+          echo '::error::No valid source-bound Codex decision is available; release handoff is disabled.'
+          exit 1

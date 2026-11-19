@@ -13,7 +13,7 @@ Core release invariant:
 ## 1. At a Glance
 
 Preferred path (PR mode):
-1. Scheduler (`release-scheduler.yml`) builds a release dossier, validates OpenAI access to the pinned `gpt-5.6-luna` model, asks it for a SemVer decision with reasoning effort `high`, and dispatches prepare when appropriate.
+1. Scheduler (`release-scheduler.yml`) checks release eligibility, freezes evidence for one exact commit, assesses it with the official Codex action, validates the recommendation and version, then dispatches preparation with that same source SHA. These are separate named jobs in the Actions graph. Optional Luna 6 Decisions evaluation uses the official OpenAI SDK and records a comparison; it cannot authorize a release. See [Release assessment](docs/release/reusable-assessment.md) for the stage graph, decision contract, runner configuration and output policy.
 2. Prepare release (`prepare-release.yml`) creates release + next-snapshot commits on `release/<version>`.
 3. Maintainer reviews and merges release PR into `master` using a **merge commit**.
 4. The merge's `master` push immediately starts `snapshot.yml`; in parallel, `publish-release.yml` validates metadata/ancestry, runs the release-candidate gate, validates the artifact manifest, tags, deploys to Maven Central, and pushes the tag without dispatching a duplicate snapshot run.
@@ -30,7 +30,7 @@ The switch remains **off by default**; merging this implementation does not enab
 
 Validation path (dry run):
 1. Manually run any mutating release workflow and keep its default `dryRun=true`.
-2. The scheduler's manual `aiMode` default is `full` after OpenAI access has been validated; choose `aiMode=probe` for a connectivity-only check.
+2. The scheduler's manual `aiMode` default is `full`, which performs a billed assessment after eligibility passes. Choose `aiMode=skip` for deterministic checks without a model call. `evaluateLuna=true` adds a separate billed comparison; it is off by default.
 3. Inspect the computed release/tag/snapshot values, workflow summary, and audit artifacts.
 4. Rerun manually with `dryRun=false` only when intentionally mutating, or let the scheduled/push/merge release path run with its explicit `dryRun=false`.
 5. Prepare dry-runs still run the read-only release-ready and next-cycle deprecation scans and upload their reports.
@@ -106,9 +106,9 @@ Secrets and variables:
 
 1. Trigger **Prepare Release**
 - Via scheduler or manual `workflow_dispatch`.
-- Inputs: `releaseVersion` (optional if auto-detected), `nextVersion` (optional), `dryRun`.
+- Inputs: `releaseVersion` (optional if auto-detected), `nextVersion` (optional), `dryRun`, and `sourceSha` (optional for manual preparation; supplied by the scheduler).
 - Manual runs default `dryRun=true`. Set `dryRun=false` only for an intentional mutating run after reviewing a dry-run. Scheduled release automation dispatches prepare with explicit `dryRun=false`.
-- For scheduled production runs, confirm `release-scheduler.yml` logs `audit:dry_run_normalized=false` and `audit:dispatch_workflow workflow=prepare-release.yml ... dryRun=false`, then confirm `prepare-release.yml` logs `audit:dry_run_input_raw='false'` and `audit:dry_run_normalized=false`.
+- For scheduled production runs, inspect the scheduler's **Decision path and outcome** summary and the **Release handoff** audit line for the source SHA, version and `dry_run=false`. Preparation checks the assessed SHA against its checkout and current default branch before taking a release freeze. A stale candidate requires a fresh scheduler run.
 - If `nextVersion` is omitted and `releaseVersion` is a plain `X.Y.Z`, it is auto-generated as `<major>.<minor>.<patch+1>-SNAPSHOT` (for example `0.22.2` -> `0.22.3-SNAPSHOT`).
 - For RC/non-plain release versions, provide `nextVersion` explicitly.
 - Before the workflow commits the next snapshot version, it runs the Java-based `ta4jexamples.doc.RemovalReadyDeprecationScanner` against the release version and fails if any `@Deprecated(forRemoval = true)` symbols are due or overdue for removal. This read-only scan also runs in dry-run mode.
@@ -200,9 +200,9 @@ Expected behavior:
 - GitHub Release dry-runs build and validate the exact release artifact manifest from the selected tag while using workflow support files from the workflow commit.
 - Release-candidate checks use the canonical `--validate-only` gate and its non-demo test-tag policy, including integration and slow tests. Formatter/license repairs are rejected, not applied.
 - workflows upload audit artifacts such as release dossiers, decisions, manifests, logs, and tag-resolution files so failures can be diagnosed from the exact phase that produced them.
-- `release-scheduler.yml` full AI dry-runs compact oversized dossiers before calling OpenAI, record the prompt profile, provider, endpoint, reasoning effort, and byte budget in `release-ai-request-metadata.json`, and capture `response-headers.txt`, `curl-metrics.log`, and `release-ai-transport-diagnostics.json` when a provider transport or response-validation failure occurs.
-- `release-scheduler.yml` uses a weekly Monday cron plus an internal 14-day cadence guard anchored at `2026-06-29`. Only due scheduled runs continue into OpenAI key checks, model preflight, dossier/request generation, and the single inference call; off-cadence scheduled runs record `scheduler_due=false`, recommend no release, and skip scheduler discussion posts.
-- Required scheduler inference uses one curl attempt. The workflow intentionally avoids curl retries or workflow-level repeated model calls; failed full AI calls preserve diagnostics and must be reviewed before another billed `aiMode=full` run.
+- `release-scheduler.yml` records deterministic eligibility reasons, evidence coverage, the validated assessment, the version plan and the final stage outcomes as separate artifacts. Production changes receive priority in bounded diff excerpts; API and Javadoc signals are extracted before diff sampling. Codex can inspect the exact candidate checkout when the excerpts are incomplete.
+- The scheduler keeps its weekly Monday cron and 14-day cadence guard anchored at `2026-06-29`. Scheduled runs outside that window skip assessment, handoff and discussion updates. Due runs also require successful CI for the exact candidate, a usable release baseline, a snapshot POM, binary changes and no conflicting release lifecycle state.
+- A missing, failed, malformed or unsupported assessment cannot dispatch preparation. A release recommendation must identify the assessed commit, provide evidence and have no unresolved blockers or missing evidence. A justified deferral and insufficient evidence remain distinct outcomes. Review the named failing stage before starting another billed run; the workflow does not substitute a fallback release decision.
 
 ---
 
@@ -210,8 +210,9 @@ Expected behavior:
 
 | Workflow | Trigger(s) | Primary responsibility | Critical guardrails |
 |---|---|---|---|
-| `release-scheduler.yml` | schedule, manual | decide whether/how to release | manual runs default dry-run; schedule normalizes to production only on the `2026-06-29`-anchored biweekly cadence; binary-impact gate, one-call model inference, semver safety, tag collision checks |
-| `prepare-release.yml` | manual (or scheduler dispatch) | prepare PR or verify/promote/publish an automatic branch candidate | manual runs default dry-run; scheduler passes `dryRun`; docs-integrity checks, version validation, metadata validation, dry-run push capability probes |
+| `release-scheduler.yml` | schedule, manual | decide whether/how to release through named eligibility, context, assessment, policy, handoff and outcome jobs | manual runs default dry-run; biweekly cadence; exact-commit CI and lifecycle checks; strict assessment policy, monotonic version and tag checks; source SHA rechecked at handoff |
+| `reusable-release-assessment.yml` | reusable call from scheduler | assess frozen evidence with Codex and optionally compare Luna 6 Decisions | official action and SDK; read-only assessment; schema and source validation; optional comparison has no release authority |
+| `prepare-release.yml` | manual (or scheduler dispatch) | prepare PR or verify/promote/publish an automatic branch candidate | manual runs default dry-run; scheduler passes `dryRun` and `sourceSha`; stale assessment rejected before freeze; docs-integrity checks, version validation, metadata validation, dry-run push capability probes |
 | `publish-release.yml` | merged release PR close, manual, reusable call after promotion | release-candidate verification + tag + Maven Central deploy + release summary; manual recovery also dispatches snapshot | manual runs default dry-run; merged release PRs normalize to production and rely on the existing master-push snapshot run; merge discipline + ancestry checks, artifact manifest checks, post-push tag integrity/reachability checks |
 | `release-health.yml` | push to `master`, publish workflow completion, snapshot workflow completion, schedule, manual | detect drift in release state | manual runs default dry-run; non-manual triggers normalize to production; fails on tag reachability drift, snapshot version drift, missing exact snapshot POM/JAR once publication is authoritative, missing notes, stale release PRs |
 | `github-release.yml` | semver-like tag push, manual | GitHub release publication | manual runs default dry-run; tag pushes normalize to production; semver tag validation, exact artifact manifest using current workflow support files |
@@ -332,14 +333,14 @@ Non-dry-run release and snapshot jobs sign and verify a temporary payload before
 
 ### 8.8 Finding the failure point
 
-Release workflows use grouped log sections and upload audit artifacts on every run.
+Start with the scheduler's Actions graph and **Decision path and outcome** summary to distinguish completed, failed and skipped stages. Assessment jobs retain explicitly selected evidence and results; preparation and publishing retain their phase-specific audit artifacts.
 
 Look for these files first:
-- `release-dossier.md`: scheduler context sent to the model.
-- `release-ai-request-metadata.json`: scheduler AI prompt profile, byte budget, request size, full/prompt dossier sizes, and whether the prompt was compacted against the full dossier artifact.
-- `release-decision.json`: normalized AI release decision.
-- `release-ai-transport-diagnostics.json`: structured scheduler diagnostics for curl/provider transport failures, including request metadata, curl status, response size, captured headers, metrics, and recovery guidance.
-- `response-content-failure.txt`: sanitized reason recorded when the OpenAI response is not valid JSON, is incomplete, is a refusal, or contains no `output_text` content.
+- `scheduler-outcome.json` / `scheduler-outcome.md`: the decision path, eligibility blockers, source SHA, version and handoff outcome.
+- `context.json`: the release policy, cadence, exact-commit CI evidence and deterministic eligibility decision; the frozen assessment copy also includes diff coverage.
+- `release-dossier.md` and `release-assessment-manifest.json`: selected change evidence, explicit omissions and hashes binding the evidence to its source commit.
+- `assessment-result.json` / `assessment-summary.md`: the validated Codex outcome, bounded supporting evidence and optional Luna comparison. `codex-decision.json` retains the typed provider result; `luna-result.json` records the optional evaluation's result or availability status.
+- `release-plan.json`: the validated recommendation, planned version, source SHA and dry-run flag passed toward handoff.
 - `release-audit.json`: workflow-local release metadata.
 - `tag-resolution.txt`: resolved latest/reachable/first-parent tag state.
 - `artifact-manifest.txt`: exact JARs expected for publish/GitHub Release from the selected reactor, including ordinary provider artifacts when declared, never an implied native-classifier publication manifest.
@@ -352,14 +353,17 @@ If a grouped section fails, inspect the matching artifact before rerunning. Avoi
 
 Snapshot consumers must configure `https://central.sonatype.com/repository/maven-snapshots/` with snapshots enabled. Normal release search and Portal snapshot browsing are not consumability checks; browsing can be unavailable while Maven publishing and resolution continue to work. A manually started `snapshot.yml` run defaults to `dryRun=true` and intentionally skips both deployment and external consumption verification unless `dryRun=false` is selected.
 
-### 8.9 Scheduler full AI transport failure
+### 8.9 Scheduler assessment or handoff failure
 
-If a manual `release-scheduler.yml` dry-run with `aiMode=full` fails before an HTTP response, do not rerun the same full request blindly. First inspect:
-- `release-ai-request-metadata.json` for prompt profile, full dossier size, prompt dossier size, request byte size, and configured transport budget.
-- `release-ai-transport-diagnostics.json` for curl exit code, HTTP status, captured headers, transfer metrics, response preview, and recovery guidance.
-- `curl-error.log`, `curl-metrics.log`, and `response-headers.txt` for low-level provider or gateway symptoms.
+Inspect the first failed or blocked named stage and its structured result before rerunning:
 
-Use `aiMode=probe` to validate OpenAI key/model access and Responses API connectivity without sending the full release dossier. Retry `aiMode=full` only after request size, provider status, response validation, or scheduler compaction policy has been reviewed from the artifacts above.
+- **Release eligibility:** resolve the fixed blocker codes in `context.json`, such as candidate CI still running, a release freeze or an unfinished prior publication. `aiMode=skip` exercises these checks without model charges.
+- **Context preparation:** investigate missing or inconsistent evidence and its source identity. Do not repair a manifest by changing hashes manually; regenerate the evidence from the intended commit.
+- **Release assessment:** inspect the official action's failure and the validated assessment result. Confirm the API key, configured model and runner requirements. A refusal, invalid response or unavailable result leaves handoff disabled. Luna comparison failures do not replace or authorize a Codex decision.
+- **Release policy and version:** inspect the assessment recommendation, deterministic preconditions and tag collision. Insufficient evidence requires investigation; it is not equivalent to a decision that the changes lack release value.
+- **Release handoff:** if the default branch moved after assessment, start a new scheduler run for the new commit. If preparation started and failed, inspect its freeze and publication state before retrying that lifecycle.
+
+The [Release assessment reference](docs/release/reusable-assessment.md) describes runner setup, pinned dependencies, evidence limits and why each retained output exists. The workflow does not retain custom HTTP request/response dumps, headers or provider reasoning transcripts as diagnostic artifacts.
 
 ---
 
@@ -396,7 +400,7 @@ Do not key automation off author/body heuristics; key off marker metadata.
 | `MAVEN_CENTRAL_TOKEN_PASS` | publish, snapshot | Maven Central auth password/token |
 | `GPG_PRIVATE_KEY` | publish, snapshot | artifact signing key |
 | `GPG_PASSPHRASE` | publish, snapshot | signing key passphrase |
-| `OPENAI_API_KEY` | scheduler | direct OpenAI API access for `gpt-5.6-luna` |
+| `OPENAI_API_KEY` | reusable release assessment | official Codex action authentication and optional Luna Decisions SDK evaluation |
 | `GH_TA4J_REPO_TOKEN` | prepare, publish, github-release | PAT for release pushes/release creation |
 
 ### 10.2 Optional secrets
@@ -413,10 +417,15 @@ Do not key automation off author/body heuristics; key off marker metadata.
 | `RELEASE_OWNER` | prepare | release PR assignee and default reviewer candidate |
 | `RELEASE_REVIEWERS` | prepare | optional comma/whitespace/newline-separated fallback reviewer users; the PR author is filtered out |
 | `RELEASE_REVIEW_TEAMS` | prepare | optional comma/whitespace/newline-separated fallback team slugs for release PR review requests |
-| `RELEASE_NOTIFY_USER` | publish, scheduler, health | discussion mention target |
+| `RELEASE_NOTIFY_USER` | publish, health | discussion mention target |
 | `RELEASE_DISCUSSION_NUMBER` | publish | publish summary discussion |
 | `RELEASE_SCHEDULER_DISCUSSION_NUMBER` | scheduler, health | scheduler/health discussion |
 | `RELEASE_SCHEDULER_ENABLED` | scheduler | enable scheduled release decisions |
+| `RELEASE_SCHEDULER_RUNNER` | scheduler | JSON runner label string or array; defaults to `["ubuntu-latest"]` |
+| `RELEASE_ASSESSMENT_RUNNER` | reusable release assessment | optional assessment runner override; otherwise use the scheduler runner |
+| `RELEASE_ASSESSMENT_MODEL` | reusable release assessment | Codex model override; defaults to `gpt-6.1-sol` |
+| `RELEASE_ASSESSMENT_USER` | reusable release assessment | dedicated preprovisioned unprivileged account required for self-hosted Codex assessment; see the assessment reference |
+| `RELEASE_LUNA_EVALUATION_ENABLED` | reusable release assessment | set to `true` to enable the additional Luna 6 Decisions comparison; comparison does not authorize releases |
 | `RELEASE_PR_STALE_DAYS` | health | stale release PR threshold |
 
 ### 10.4 Environment

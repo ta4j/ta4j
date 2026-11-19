@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "decision": {"type": "string", "enum": ["release", "defer", "insufficient_evidence"]},
+    "bump": {"type": "string", "enum": ["patch", "minor", "none"]},
+    "source_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 1200},
+    "evidence": {"type": "array", "maxItems": 12, "items": {"type": "string", "minLength": 1, "maxLength": 600}},
+    "blocking_risks": {"type": "array", "maxItems": 12, "items": {"type": "string", "minLength": 1, "maxLength": 600}},
+    "missing_evidence": {"type": "array", "maxItems": 12, "items": {"type": "string", "minLength": 1, "maxLength": 600}}
+  },
+  "required": ["decision", "bump", "source_sha", "reason", "evidence", "blocking_risks", "missing_evidence"]
+}

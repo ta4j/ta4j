@@ -323,6 +323,163 @@ test_release_pr_review_request_uses_review_plan() {
   pass "test_release_pr_review_request_uses_review_plan"
 }
 
+
+test_assessed_source_binding() {
+  echo "Running test_assessed_source_binding"
+
+  expect_file_contains "$WORKFLOW" 'ref: ${{ steps.source.outputs.sha }}' \
+    "handoff checkout should use the validated assessment source"
+  expect_file_contains "$WORKFLOW" 'ref: ${{ needs.plan.outputs.base }}' \
+    "preparation checkout should retain the validated source"
+  expect_file_contains "$WORKFLOW" 'SOURCE_SHA: ${{ steps.source.outputs.sha }}' \
+    "handoff freshness check should compare the validated source"
+  expect_file_contains "$WORKFLOW" 'PLANNED_BASE: ${{ needs.plan.outputs.base }}' \
+    "preparation should recheck the validated source before mutation"
+  expect_file_contains "$WORKFLOW" '"sourceSha": "${SOURCE_SHA:-}"' \
+    "release audit should retain the validated assessment source"
+  expect_file_contains "$WORKFLOW" '- source commit: ${SOURCE_SHA:-unknown}' \
+    "prepare summary should make the source identity reviewable"
+
+  python3 - "$WORKFLOW" <<'PYTHON'
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+
+workflow = Path(sys.argv.pop()).read_text()
+
+
+def shell_step(name):
+    section = workflow.split("      - name: " + name + "\n", 1)[1]
+    run = section.split("        run: |\n", 1)[1]
+    lines = []
+    for line in run.splitlines():
+        if line and not line.startswith("          "):
+            break
+        lines.append(line[10:] if line else "")
+    return "\n".join(lines)
+
+
+identity = shell_step("Validate assessed source identity")
+plan = shell_step("Capture starting master before acquiring the freeze")
+prepare = shell_step("Capture immutable starting master")
+
+
+class SourceBindingTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.temp = tempfile.TemporaryDirectory(prefix="ta4j-source-binding-")
+        cls.root = Path(cls.temp.name)
+        cls.repo = cls.root / "work"
+        cls.repo.mkdir()
+        cls.remote = cls.root / "origin.git"
+        cls.env = {key: value for key, value in os.environ.items()
+                   if not key.startswith(("GIT_", "GITHUB_"))}
+        cls.env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1",
+                       GIT_AUTHOR_NAME="Fixture", GIT_AUTHOR_EMAIL="fixture@example.invalid",
+                       GIT_COMMITTER_NAME="Fixture", GIT_COMMITTER_EMAIL="fixture@example.invalid",
+                       BASH_ENV="/dev/null", AUTOMATIC="false", DEFAULT_BRANCH="master")
+        cls.git("init", "-q", "-b", "master")
+        cls.git("init", "-q", "--bare", str(cls.remote))
+        cls.git("remote", "add", "origin", str(cls.remote))
+        (cls.repo / "pom.xml").write_text("1.2.3-SNAPSHOT")
+        cls.git("add", ".")
+        cls.git("commit", "-qm", "assessed")
+        cls.base = cls.git("rev-parse", "HEAD")
+        (cls.repo / "pom.xml").write_text("1.2.4-SNAPSHOT")
+        cls.git("commit", "-qam", "later change")
+        cls.later = cls.git("rev-parse", "HEAD")
+        # Publish both objects once; each case only changes local fixture refs.
+        cls.git("push", "-q", "origin", "HEAD:refs/heads/master")
+        cls.env.update(GITHUB_WORKFLOW_SHA=cls.base, DISPATCH_SHA=cls.base,
+                       SOURCE_SHA=cls.base, PLANNED_BASE=cls.base)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.temp.cleanup()
+
+    @classmethod
+    def git(cls, *args):
+        return subprocess.check_output(["git", *args], cwd=cls.repo, env=cls.env,
+                                       text=True, stderr=subprocess.PIPE).strip()
+
+    def setUp(self):
+        self.git("checkout", "-q", "--detach", self.base)
+        self.git("--git-dir", str(self.remote), "update-ref", "refs/heads/master", self.base)
+        self.git("update-ref", "refs/remotes/origin/master", self.base)
+        self.output = self.root / "outputs"
+        self.output.write_text("")
+
+    def run_step(self, script, **env):
+        return subprocess.run(["bash", "-c", script], cwd=self.repo,
+                              env=dict(self.env, GITHUB_OUTPUT=str(self.output), **env),
+                              text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    def assert_success(self, script, **env):
+        result = self.run_step(script, **env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("sha=" + self.base + "\n", self.output.read_text())
+
+    def test_exact_assessed_commit_passes_every_boundary(self):
+        self.assert_success(identity, ASSESSED_SOURCE_SHA=self.base)
+        self.assert_success(plan)
+        self.assert_success(prepare)
+
+    def test_manual_omission_keeps_dispatch_source(self):
+        self.assert_success(identity, ASSESSED_SOURCE_SHA="")
+        self.assert_success(plan)
+        self.assert_success(prepare)
+
+    def test_malformed_source_fails_without_output_or_interpolation(self):
+        for value in ("master", self.base[:12], self.base.upper(), "g" * 40,
+                      self.base + "\n", "$(touch injected)"):
+            with self.subTest(value=value):
+                result = self.run_step(identity, ASSESSED_SOURCE_SHA=value)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.output.read_text(), "")
+                self.assertFalse((self.repo / "injected").exists())
+
+    def test_stale_assessment_rejects_newer_dispatch(self):
+        result = self.run_step(identity, ASSESSED_SOURCE_SHA=self.base,
+                               GITHUB_WORKFLOW_SHA=self.later, DISPATCH_SHA=self.later)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Reassess", result.stdout)
+        self.assertEqual(self.output.read_text(), "")
+
+    def test_default_branch_movement_rejects_before_freeze_and_preparation(self):
+        self.git("--git-dir", str(self.remote), "update-ref", "refs/heads/master", self.later)
+        for script in (plan, prepare):
+            result = self.run_step(script)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Default branch advanced", result.stdout)
+            self.assertEqual(self.output.read_text(), "")
+
+    def test_different_checkout_cannot_replace_assessed_source(self):
+        self.git("checkout", "-q", "--detach", self.later)
+        for script in (plan, prepare):
+            result = self.run_step(script)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("does not match", result.stdout)
+            self.assertEqual(self.output.read_text(), "")
+
+    def test_source_and_workflow_identity_are_both_required(self):
+        for script, changed in ((plan, {"SOURCE_SHA": self.later}),
+                                (prepare, {"PLANNED_BASE": self.later}),
+                                (plan, {"GITHUB_WORKFLOW_SHA": self.later}),
+                                (prepare, {"GITHUB_WORKFLOW_SHA": self.later})):
+            result = self.run_step(script, **changed)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(self.output.read_text(), "")
+
+
+unittest.main()
+PYTHON
+
+  pass "test_assessed_source_binding"
+}
+
 test_issue_permissions_declared
 test_issue_sync_uses_targeted_search
 test_deprecation_scan_uses_java_scanner
@@ -334,3 +491,5 @@ test_issue_sync_reconciles_stale_managed_issues
 test_deprecation_issue_sync_does_not_add_metadata_to_cleanup_issues
 test_deprecation_scans_run_during_dry_runs
 test_release_pr_review_request_uses_review_plan
+
+test_assessed_source_binding

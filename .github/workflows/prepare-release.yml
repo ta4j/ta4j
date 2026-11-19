@@ -1,4 +1,6 @@
 name: Prepare Release
+# Stable identity lets the scheduler detect an accepted dispatch after a retry.
+run-name: Prepare release ${{ inputs.releaseVersion || 'auto' }} at ${{ inputs.sourceSha || github.sha }} (dryRun=${{ inputs.dryRun }})
 
 concurrency:
   group: release-lifecycle-${{ github.repository }}
@@ -13,6 +15,10 @@ on:
       nextVersion:
         description: "OPTIONAL: Next snapshot version (e.g. 0.20.1-SNAPSHOT). Leave blank to auto-generate."
         required: false
+      sourceSha:
+        description: "OPTIONAL: Exact assessed commit. Preparation stops if the default branch has moved."
+        required: false
+        type: string
       dryRun:
         description: "Run prepare workflow in dry-run mode (no issue sync, push, or PR creation)."
         required: false
@@ -24,6 +30,7 @@ permissions:
 
 jobs:
   plan:
+    name: Validate release handoff
     if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     outputs:
@@ -71,9 +78,28 @@ jobs:
           echo "enabled=$enabled" >> $GITHUB_OUTPUT
           echo "::endgroup::"
 
-      - uses: actions/checkout@v6
+      - name: Validate assessed source identity
+        id: source
+        env:
+          ASSESSED_SOURCE_SHA: ${{ inputs.sourceSha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          source_sha="${ASSESSED_SOURCE_SHA:-$DISPATCH_SHA}"
+          if [[ ! "$source_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Release source must be an immutable lowercase 40-character commit SHA."
+            exit 1
+          fi
+          if [ "$source_sha" != "$GITHUB_WORKFLOW_SHA" ]; then
+            echo "::error::Assessed source differs from the trusted dispatch commit. Reassess the current default branch."
+            exit 1
+          fi
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact release source
+        uses: actions/checkout@v6
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ steps.source.outputs.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Capture starting master before acquiring the freeze
@@ -81,14 +107,22 @@ jobs:
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           AUTOMATIC: ${{ steps.direct_push.outputs.enabled }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: |
           set -euo pipefail
-          git fetch origin "refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
+          git fetch --quiet origin "refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
           base=$(git rev-parse HEAD)
-          test "$base" = "$(git rev-parse "origin/${DEFAULT_BRANCH}")"
-          test "$base" = "$GITHUB_WORKFLOW_SHA"
+          if [ "$base" != "$SOURCE_SHA" ] || [ "$base" != "$GITHUB_WORKFLOW_SHA" ]; then
+            echo "::error::Release checkout does not match the validated dispatch source."
+            exit 1
+          fi
+          if [ "$base" != "$(git rev-parse "origin/${DEFAULT_BRANCH}")" ]; then
+            echo "::error::Default branch advanced after assessment or dispatch. Reassess before preparing a release."
+            exit 1
+          fi
           if [ "$AUTOMATIC" = true ]; then python3 scripts/release/release_candidate.py pending; fi
           echo "sha=$base" >> "$GITHUB_OUTPUT"
+          echo "audit:release_source sha=$base"
 
   freeze:
     name: Acquire the release merge barrier
@@ -301,7 +335,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.plan.outputs.base }}
           fetch-depth: 0
           persist-credentials: true
           token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
@@ -311,12 +345,19 @@ jobs:
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           AUTOMATIC: ${{ needs.plan.outputs.automatic }}
+          PLANNED_BASE: ${{ needs.plan.outputs.base }}
         run: |
           set -euo pipefail
-          git fetch origin "refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
+          git fetch --quiet origin "refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
           base=$(git rev-parse HEAD)
-          test "$base" = "$(git rev-parse "origin/${DEFAULT_BRANCH}")"
-          test "$base" = "$GITHUB_WORKFLOW_SHA"
+          if [ "$base" != "$PLANNED_BASE" ] || [ "$base" != "$GITHUB_WORKFLOW_SHA" ]; then
+            echo "::error::Release preparation does not match the validated source."
+            exit 1
+          fi
+          if [ "$base" != "$(git rev-parse "origin/${DEFAULT_BRANCH}")" ]; then
+            echo "::error::Default branch advanced after handoff validation. Reassess before preparing a release."
+            exit 1
+          fi
           if [ "$AUTOMATIC" = true ]; then
             python3 scripts/release/release_candidate.py pending
           fi
@@ -1080,6 +1121,7 @@ jobs:
       - name: Prepare release summary
         if: always()
         env:
+          SOURCE_SHA: ${{ needs.plan.outputs.base }}
           DRY_RUN: ${{ needs.plan.outputs.dry_run }}
           DIRECT_PUSH: ${{ needs.plan.outputs.automatic }}
           RELEASE: ${{ steps.versions.outputs.release }}
@@ -1114,6 +1156,7 @@ jobs:
           fi
           cat > release-audit.json <<EOF
           {
+            "sourceSha": "${SOURCE_SHA:-}",
             "dryRun": "${DRY_RUN:-}",
             "directPush": "${DIRECT_PUSH:-}",
             "release": "${RELEASE:-}",
@@ -1134,6 +1177,7 @@ jobs:
           {
             echo "## Prepare Release"
             echo ""
+            echo "- source commit: ${SOURCE_SHA:-unknown}"
             echo "- dry run: ${DRY_RUN:-unknown}"
             echo "- direct push: ${DIRECT_PUSH:-unknown}"
             echo "- current: ${CURRENT:-unknown}"
