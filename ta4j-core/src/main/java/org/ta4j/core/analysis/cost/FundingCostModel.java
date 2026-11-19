@@ -53,7 +53,7 @@ import org.ta4j.core.num.Num;
  *
  * @see org.ta4j.core.backtest.TradeOnCurrentCloseModel
  *
- * @since 0.28.1
+ * @since 0.29.1
  */
 public final class FundingCostModel implements CostModel {
 
@@ -65,7 +65,7 @@ public final class FundingCostModel implements CostModel {
      *
      * @param fundingRate settlement rates, not annualized rates
      * @throws NullPointerException if the indicator or its series is null
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public FundingCostModel(Indicator<Num> fundingRate) {
         this(fundingRate, new ClosePriceIndicator(Objects.requireNonNull(fundingRate, "fundingRate").getBarSeries()));
@@ -78,7 +78,7 @@ public final class FundingCostModel implements CostModel {
      * @param markPrice   mark prices at the same absolute indices
      * @throws NullPointerException     if either indicator or its series is null
      * @throws IllegalArgumentException if the series use incompatible numeric types
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public FundingCostModel(Indicator<Num> fundingRate, Indicator<Num> markPrice) {
         this.fundingRate = Objects.requireNonNull(fundingRate, "fundingRate");
@@ -103,7 +103,7 @@ public final class FundingCostModel implements CostModel {
      * @throws NullPointerException     if any argument is null
      * @throws IllegalArgumentException if the rate is non-finite or the interval is
      *                                  not positive
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static FundingCostModel fixedRate(BarSeries series, Number ratePerInterval, Duration interval) {
         Objects.requireNonNull(series, "series");
@@ -124,7 +124,7 @@ public final class FundingCostModel implements CostModel {
     /**
      * Returns zero: a price and amount alone contain no holding window.
      *
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public Num calculate(Num price, Num amount) {
@@ -137,7 +137,7 @@ public final class FundingCostModel implements CostModel {
      *
      * @throws IllegalArgumentException if the position is open
      * @throws NullPointerException     if the position is null
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public Num calculate(Position position) {
@@ -156,7 +156,7 @@ public final class FundingCostModel implements CostModel {
      * @throws NullPointerException            if the position is null
      * @throws ConcurrentModificationException if retained input history changes
      *                                         during indicator evaluation
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public Num calculate(Position position, int finalIndex) {
@@ -217,7 +217,7 @@ public final class FundingCostModel implements CostModel {
      *                                         {@link Integer#MAX_VALUE}
      * @throws ConcurrentModificationException if retained input history changes
      *                                         during indicator evaluation
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public Num[] calculate(Position position, int firstIndex, int finalIndex) {
@@ -290,7 +290,7 @@ public final class FundingCostModel implements CostModel {
     /**
      * Compares the indicator instances, not their current values.
      *
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public boolean equals(CostModel otherModel) {

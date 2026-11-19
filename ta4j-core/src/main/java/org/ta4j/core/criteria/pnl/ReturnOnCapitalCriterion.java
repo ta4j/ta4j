@@ -39,7 +39,7 @@ import org.ta4j.core.num.Num;
  * is converted with the series' numeric context; calculation rejects a capital
  * value that this context cannot represent as positive and finite.
  *
- * @since 0.28.1
+ * @since 0.29.1
  */
 public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion implements ReturnCriterion {
 
@@ -55,7 +55,7 @@ public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion im
      *                construction
      * @throws NullPointerException     if capital is null
      * @throws IllegalArgumentException if capital is not positive and finite
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public ReturnOnCapitalCriterion(Number capital) {
         this(capital, ReturnRepresentationPolicy.getDefaultRepresentation());
@@ -69,7 +69,7 @@ public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion im
      * @param representation the output representation
      * @throws NullPointerException     if either argument is null
      * @throws IllegalArgumentException if capital is not positive and finite
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public ReturnOnCapitalCriterion(Number capital, ReturnRepresentation representation) {
         this.capital = new BigDecimal(Objects.requireNonNull(capital, "capital").toString());
@@ -82,7 +82,7 @@ public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion im
     /**
      * {@inheritDoc}
      *
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public Optional<ReturnRepresentation> getReturnRepresentation() {
@@ -95,7 +95,7 @@ public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion im
      * @throws IllegalArgumentException if the series' numeric context converts
      *                                  capital to zero or a non-finite value
      *
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -108,7 +108,7 @@ public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion im
      * @throws IllegalArgumentException if the series' numeric context converts
      *                                  capital to zero or a non-finite value
      *
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
@@ -128,7 +128,7 @@ public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion im
     /**
      * Returns whether the first return is higher than the second.
      *
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {

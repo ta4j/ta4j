@@ -65,7 +65,7 @@ public interface PositionSizer {
      * @return a leveraged version of this sizer
      * @throws NullPointerException     if leverage is null
      * @throws IllegalArgumentException if leverage is not positive and finite
-     * @since 0.28.1
+     * @since 0.29.1
      */
     default PositionSizer leveraged(Number leverage) {
         Number fixedLeverage = snapshotNumber(leverage, "leverage");
@@ -96,7 +96,7 @@ public interface PositionSizer {
      * @throws IllegalArgumentException if the step is not positive and finite, or
      *                                  the rounded quantity cannot be represented
      *                                  safely by the decimal number factory
-     * @since 0.28.1
+     * @since 0.29.1
      */
     default PositionSizer roundedDownTo(Number quantityStep) {
         Number fixedStep = snapshotNumber(quantityStep, "quantityStep");
@@ -257,7 +257,19 @@ public interface PositionSizer {
 
     private static Number snapshotNumber(Number value, String name) {
         validatePositiveNumber(value, name);
-        return value instanceof BigDecimal || value instanceof BigInteger ? value : Double.valueOf(value.doubleValue());
+        // Exact JDK value classes are immutable and keep every digit. BigDecimal and
+        // BigInteger are not final, so a subclass may change its observable value:
+        // snapshot it through its current decimal text. Other Number types may be
+        // mutable too, so snapshot their double value.
+        Class<?> type = value.getClass();
+        if (type == BigDecimal.class || type == BigInteger.class || type == Long.class || type == Integer.class
+                || type == Short.class || type == Byte.class || type == Double.class || type == Float.class) {
+            return value;
+        }
+        if (value instanceof BigDecimal || value instanceof BigInteger) {
+            return new BigDecimal(value.toString());
+        }
+        return Double.valueOf(value.doubleValue());
     }
 
     private static void validateProbability(Number value, String name) {
