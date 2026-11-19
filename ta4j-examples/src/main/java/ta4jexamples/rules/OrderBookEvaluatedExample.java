@@ -38,7 +38,7 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  * backtest uses zero-cost next-open bar fills, not captured best quotes: no
  * book walking, queue position, partial fills or latency is simulated.
  *
- * @since 0.28.1
+ * @since 0.29.1
  */
 public final class OrderBookEvaluatedExample {
     private static final Logger LOG = LogManager.getLogger(OrderBookEvaluatedExample.class);
@@ -95,7 +95,7 @@ public final class OrderBookEvaluatedExample {
         /**
          * Captures the selected book once; the trading record is not a liquidity input.
          *
-         * @since 0.28.1
+         * @since 0.29.1
          */
         @Override
         public LiquidityEvaluation evaluate(int index, TradingRecord tradingRecord) {
@@ -114,7 +114,7 @@ public final class OrderBookEvaluatedExample {
         /**
          * Projects only the captured result; never rereads source or trading state.
          *
-         * @since 0.28.1
+         * @since 0.29.1
          */
         @Override
         public boolean toBoolean(LiquidityEvaluation result) {
@@ -127,7 +127,7 @@ public final class OrderBookEvaluatedExample {
      * Runs an offline captured-result inspection and ordinary strategy backtest.
      *
      * @param args unused
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static void main(String[] args) {
         BarSeries series = new BaseBarSeriesBuilder().withName("captured L2 decisions").build();
