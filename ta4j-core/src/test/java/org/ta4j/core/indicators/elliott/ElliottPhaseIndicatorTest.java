@@ -8,12 +8,38 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
 class ElliottPhaseIndicatorTest {
+
+    @Test
+    void evaluatesOnlyRequestedPhasesWithoutHistoricalPrefill() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        for (int index = 0; index < 256; index++) {
+            series.barBuilder().openPrice(1).highPrice(1).lowPrice(1).closePrice(1).volume(0).add();
+        }
+        AtomicInteger calculations = new AtomicInteger();
+        ElliottPhaseIndicator indicator = new ElliottPhaseIndicator(
+                new StubSwingIndicator(series, impulseAndCorrectionSwings(series.numFactory()))) {
+            @Override
+            protected ElliottPhase calculate(final int index) {
+                calculations.incrementAndGet();
+                return super.calculate(index);
+            }
+        };
+
+        assertThat(indicator.getValue(254)).isEqualTo(ElliottPhase.CORRECTIVE_C);
+        assertThat(calculations).hasValue(1);
+        assertThat(indicator.getValue(3)).isEqualTo(ElliottPhase.WAVE3);
+        assertThat(calculations).hasValue(2);
+        assertThat(indicator.getValue(254)).isEqualTo(ElliottPhase.CORRECTIVE_C);
+        assertThat(calculations).hasValue(2);
+    }
 
     @Test
     void shouldProgressThroughImpulsePhases() {

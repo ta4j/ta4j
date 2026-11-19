@@ -59,7 +59,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
      * every retained swing point with every later one and scores each pair against
      * all retained points, so its work grows with the cube of this value.
      *
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static final int MAX_SWING_POINTS_FOR_TRENDLINE = 512;
 
@@ -68,7 +68,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
      * {@value #MAX_SWING_POINTS_FOR_TRENDLINE} swing points. Candidate geometries
      * are retained between recomputations, so this bounds their memory.
      *
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static final int MAX_CANDIDATE_PAIRS = MAX_SWING_POINTS_FOR_TRENDLINE * (MAX_SWING_POINTS_FOR_TRENDLINE - 1)
             / 2;

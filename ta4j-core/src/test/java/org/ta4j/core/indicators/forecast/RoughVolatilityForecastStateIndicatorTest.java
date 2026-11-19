@@ -279,12 +279,24 @@ public class RoughVolatilityForecastStateIndicatorTest
                 () -> RoughVolatilityForecastStateIndicator.builder(log.returns()).volOfVolWindow(1).build());
         assertThrows(IllegalArgumentException.class,
                 () -> RoughVolatilityForecastStateIndicator.builder(log.returns()).horizon(0).build());
-        assertThrows(IllegalArgumentException.class,
-                () -> RoughVolatilityForecastStateIndicator.builder(log.returns())
-                        .horizon(RoughVolatilityForecastStateIndicator.MAX_HORIZON + 1)
-                        .build());
         assertThrows(NullPointerException.class,
                 () -> RoughVolatilityForecastStateIndicator.builder(log.returns()).driftMode(null).build());
+        assertThrows(IllegalArgumentException.class,
+                () -> RoughVolatilityForecastStateIndicator.builder(log.returns())
+                        .horizon(RoughVolatilityForecastStateIndicator.MAX_HORIZON_VARIANCE_STEPS + 1)
+                        .build());
+    }
+
+    @Test
+    public void horizonAtTheMemoryBoundEmitsTheFullTermStructure() {
+        Fixture fixture = fixture(ReturnRepresentation.LOG, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        RoughVolatilityForecastState state = configured(fixture.returns(),
+                RoughVolatilityForecastStateIndicator.MAX_HORIZON_VARIANCE_STEPS).getValue(7);
+
+        assertTrue(state.isStable());
+        assertEquals(RoughVolatilityForecastStateIndicator.MAX_HORIZON_VARIANCE_STEPS,
+                state.horizonVarianceForecasts().size());
     }
 
     private RoughVolatilityForecastStateIndicator configured(ReturnIndicator returns, int horizon) {
