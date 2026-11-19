@@ -1,0 +1,113 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.core.criteria.pnl;
+
+import java.math.BigDecimal;
+import java.util.Objects;
+import java.util.Optional;
+
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.criteria.ReturnCriterion;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.ReturnRepresentationPolicy;
+import org.ta4j.core.num.Num;
+
+/**
+ * Net profit or loss of closed positions, including costs, divided by a fixed
+ * committed capital. Unlike {@link NetReturnCriterion}, the denominator does
+ * not scale with position size, and leveraged losses can exceed the capital.
+ *
+ * @since 0.29.1
+ */
+public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion implements ReturnCriterion {
+
+    private static final NetProfitLossCriterion NET_PROFIT_LOSS = new NetProfitLossCriterion();
+
+    private final BigDecimal capital;
+    private final ReturnRepresentation representation;
+
+    /**
+     * Creates a criterion using the current global default representation.
+     *
+     * @param capital positive, finite committed capital
+     * @throws NullPointerException     if capital is null
+     * @throws IllegalArgumentException if capital is not positive and finite
+     * @since 0.29.1
+     */
+    public ReturnOnCapitalCriterion(Number capital) {
+        this(capital, ReturnRepresentationPolicy.getDefaultRepresentation());
+    }
+
+    /**
+     * Creates a criterion with an explicit output representation.
+     *
+     * @param capital        positive, finite committed capital
+     * @param representation the output representation
+     * @throws NullPointerException     if either argument is null
+     * @throws IllegalArgumentException if capital is not positive and finite
+     * @since 0.29.1
+     */
+    public ReturnOnCapitalCriterion(Number capital, ReturnRepresentation representation) {
+        this.capital = new BigDecimal(Objects.requireNonNull(capital, "capital").toString());
+        if (this.capital.signum() <= 0) {
+            throw new IllegalArgumentException("Capital must be positive and finite");
+        }
+        this.representation = Objects.requireNonNull(representation, "representation");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.29.1
+     */
+    @Override
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        return Optional.of(representation);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws IllegalArgumentException if the series cannot represent the capital
+     * @since 0.29.1
+     */
+    @Override
+    public Num calculate(BarSeries series, Position position) {
+        return represent(series, NET_PROFIT_LOSS.calculate(series, position));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @throws IllegalArgumentException if the series cannot represent the capital
+     * @since 0.29.1
+     */
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return represent(series, NET_PROFIT_LOSS.calculate(series, tradingRecord));
+    }
+
+    private Num represent(BarSeries series, Num netProfit) {
+        Num denominator = series.numFactory().numOf(capital);
+        if (!Num.isFinite(denominator) || !denominator.isPositive()) {
+            throw new IllegalArgumentException(
+                    "Capital must remain positive and finite in the series' numeric context");
+        }
+        Num rate = netProfit.dividedBy(denominator);
+        return representation.toRepresentationFromRateOfReturn(rate);
+    }
+
+    /**
+     * Returns whether the first return is higher than the second.
+     *
+     * @since 0.29.1
+     */
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
+    }
+}
