@@ -33,10 +33,8 @@ import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
 /**
- * Captures one immutable L2 observation for inspection and boolean coercion.
- * Separate strategy invocations perform separate evaluations. The offline
- * backtest uses zero-cost next-open bar fills, not captured best quotes: no
- * book walking, queue position, partial fills or latency is simulated.
+ * Evaluates a rule on captured L2 order-book observations. The backtest fills
+ * at next-open bars, not at the captured quotes.
  *
  * @since 0.29.1
  */
@@ -46,17 +44,11 @@ public final class OrderBookEvaluatedExample {
     private OrderBookEvaluatedExample() {
     }
 
-    /** Immutable observations and inclusive decision thresholds, not confidence. */
     record LiquidityEvaluation(int index, Optional<OrderBook> book, boolean usable, Num spread, Num imbalance,
             Num maximumSpread, Num minimumImbalance) {
     }
 
-    /**
-     * Example-local policy: missing, stale, unsynchronized, crossed, incomplete or
-     * numerically unavailable observations project to false. Custom sources must
-     * enforce availability and freshness. Configuration serialization cannot bind
-     * external book histories; unsupported rule copies retain the original rule.
-     */
+    /** Missing, stale, crossed or incomplete books project to false. */
     static final class OrderBookLiquidityRule extends AbstractEvaluatedRule<LiquidityEvaluation> {
         private final Indicator<Optional<OrderBook>> source;
         private final int levels;
@@ -92,11 +84,6 @@ public final class OrderBookEvaluatedExample {
             return source;
         }
 
-        /**
-         * Captures the selected book once; the trading record is not a liquidity input.
-         *
-         * @since 0.29.1
-         */
         @Override
         public LiquidityEvaluation evaluate(int index, TradingRecord tradingRecord) {
             BarSeries series = source.getBarSeries();
@@ -111,11 +98,6 @@ public final class OrderBookEvaluatedExample {
                     imbalance, maximumSpread, minimumImbalance);
         }
 
-        /**
-         * Projects only the captured result; never rereads source or trading state.
-         *
-         * @since 0.29.1
-         */
         @Override
         public boolean toBoolean(LiquidityEvaluation result) {
             return result.usable() && result.spread().isLessThanOrEqual(result.maximumSpread())
