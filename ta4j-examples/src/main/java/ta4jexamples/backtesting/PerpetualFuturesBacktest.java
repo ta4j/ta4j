@@ -39,7 +39,7 @@ import org.ta4j.core.rules.StopLossRule;
  * can slip or gap beyond the modeled threshold. Funding uses closes as marks
  * and a fixed UTC-aligned schedule, not a prediction of exchange settlements.
  *
- * @since 0.28.1
+ * @since 0.29.1
  */
 public final class PerpetualFuturesBacktest {
 
@@ -57,7 +57,7 @@ public final class PerpetualFuturesBacktest {
      * Runs the bundled synthetic example without network access or credentials.
      *
      * @param args unused
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static void main(String[] args) {
         BarSeries series = createSeries(100, 104, 98, 110, 107, 115);

@@ -45,7 +45,7 @@ import org.ta4j.core.rules.FixedRule;
  * schedule. It does not model a margin account, liquidation, collateral changes
  * or exchange-specific settlement and fee conventions.
  *
- * @since 0.28.1
+ * @since 0.29.1
  */
 public final class InversePerpetualFuturesBacktest {
 
@@ -62,7 +62,7 @@ public final class InversePerpetualFuturesBacktest {
      * Runs the bundled synthetic example without network access or credentials.
      *
      * @param args unused
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static void main(String[] args) {
         BarSeries prices = PerpetualFuturesBacktest.createSeries(20_000, 21_000, 18_000, 22_000, 24_000, 25_000);
