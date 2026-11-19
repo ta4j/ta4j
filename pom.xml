@@ -56,6 +56,7 @@
     <modules>
         <module>ta4j-core</module>
         <module>ta4j-examples</module>
+        <module>ta4j-acceleration</module>
     </modules>
 
     <properties>
@@ -66,7 +67,7 @@
         <!-- Build -->
         <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
-        <ta4j.excludedTestTags>integration,analysis-demo,benchmark,requires-display,requires-headless</ta4j.excludedTestTags>
+        <ta4j.excludedTestTags>integration,analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless</ta4j.excludedTestTags>
         <!-- Bounded test JVM forks; each test class still runs sequentially inside one JVM.
              Timing-sensitive lanes (benchmark, analysis-demo) pass -Dta4j.test.forkCount=1. -->
         <ta4j.test.forkCount>4</ta4j.test.forkCount>
