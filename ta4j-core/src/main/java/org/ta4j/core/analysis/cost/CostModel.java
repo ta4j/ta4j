@@ -43,7 +43,7 @@ public interface CostModel {
      *                                  {@code finalIndex} precedes it, or the
      *                                  inclusive range length exceeds
      *                                  {@link Integer#MAX_VALUE}
-     * @since 0.28.1
+     * @since 0.29.1
      */
     default Num[] calculate(Position position, int firstIndex, int finalIndex) {
         Objects.requireNonNull(position, "position");
