@@ -430,7 +430,7 @@ public class BaseTradingRecord implements TradingRecord {
      *          A nonzero settlement advances the automatic fill index past its
      *          index, unless a later index has already been assigned.
      *
-     * @since 0.28.1
+     * @since 0.29.1
      */
     @Override
     public void recordHoldingCost(int index, Num cost) {

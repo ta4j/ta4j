@@ -246,7 +246,7 @@ public interface TradingRecord extends Serializable {
      * @throws IllegalStateException         if no lot is open
      * @throws UnsupportedOperationException if this implementation does not support
      *                                       recorded holding costs
-     * @since 0.28.1
+     * @since 0.29.1
      */
     default void recordHoldingCost(int index, Num cost) {
         throw new UnsupportedOperationException("Recorded holding costs are not supported");

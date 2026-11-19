@@ -40,7 +40,7 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  * comparison does not simulate margin calls, liquidation, or exchange rounding
  * beyond the illustrated quantity increment.
  *
- * @since 0.28.1
+ * @since 0.29.1
  */
 public final class PerpetualFuturesRecipes {
     private static final Logger LOG = LogManager.getLogger(PerpetualFuturesRecipes.class);
@@ -52,7 +52,7 @@ public final class PerpetualFuturesRecipes {
      * Runs the recipes with synthetic data, without network access.
      *
      * @param args unused
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static void main(String[] args) {
         BarSeries series = PerpetualFuturesBacktest.createSeries(100, 110, 120, 130, 140);

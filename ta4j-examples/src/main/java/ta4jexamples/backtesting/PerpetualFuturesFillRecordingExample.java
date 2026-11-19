@@ -34,7 +34,7 @@ import org.ta4j.core.num.NumFactory;
  * restart alongside the adapter's own venue identifiers and checkpoints.
  * </p>
  *
- * @since 0.28.1
+ * @since 0.29.1
  */
 public class PerpetualFuturesFillRecordingExample {
 
@@ -45,7 +45,7 @@ public class PerpetualFuturesFillRecordingExample {
      * Prints the reconciled components of the completed offline sequence.
      *
      * @param args unused
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static void main(String[] args) {
         BaseTradingRecord record = buildRecord();
