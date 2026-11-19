@@ -24,7 +24,7 @@ Follow `ta4j-core/src/test/java/AGENTS.md` for global policy; this file adds ind
 - For those round-trip tests, assert canonical descriptor equality after reconstruction and compare reconstructed
   indicator outputs against the original across representative indices.
 - Test exposed helper methods alongside numeric outputs.
-- Include missing/NaN data scenarios and plateau edge cases where applicable.
+- Include missing/NaN data scenarios and plateau edge cases where applicable; assert they return `NaN`, not that they throw.
 - For oscillator/reference-sequence checks, embed expected arrays sourced from authoritative calculators or references.
 - If factory-specific rounding differs, keep separate expected sequences per factory rather than loosening assertions.
 
