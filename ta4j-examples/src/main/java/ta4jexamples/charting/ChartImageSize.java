@@ -13,7 +13,7 @@ package ta4jexamples.charting;
  * {@value #MAX_DIMENSION} pixels on each side and at most {@value #MAX_PIXELS}
  * pixels in total.
  *
- * @since 0.28.1
+ * @since 0.29.1
  */
 public final class ChartImageSize {
 

@@ -69,7 +69,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Attempts an optimistic recomputation makes before it gives up on a series
      * whose head or history keeps changing underneath it.
      *
-     * @since 0.28.1
+     * @since 0.29.1
      */
     protected static final int MAX_SERIES_CHANGE_RETRIES = 1_000;
 
@@ -378,6 +378,16 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Dependencies are retained so full-tail invalidations propagate to this
      * indicator on head advance.
      *
+     * <p>
+     * Source changes use their absolute indices directly to invalidate the consumer
+     * cache; there is no implicit time or offset mapping. When reading different
+     * series at the same index, callers must ensure that index is available in each
+     * source and denotes corresponding observations. A
+     * {@link org.ta4j.core.BaseBarSeries} returns its first retained bar for a
+     * nonnegative index whose bar was removed; this can introduce look-ahead data.
+     * Different retained heads, capacities, or end indices do not by themselves
+     * imply incompatible coordinates, and equal ranges do not prove correspondence.
+     *
      * @param series       the backing bar series
      * @param dependencies related indicators retained so full-tail invalidations
      *                     propagate to this indicator
@@ -528,7 +538,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param attempt zero-based number of the attempt about to start
      * @throws IllegalStateException once {@link #MAX_SERIES_CHANGE_RETRIES}
      *                               attempts have been made
-     * @since 0.28.1
+     * @since 0.29.1
      */
     protected final void requireSeriesChangeRetry(int attempt) {
         if (attempt >= MAX_SERIES_CHANGE_RETRIES) {

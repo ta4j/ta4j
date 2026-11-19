@@ -266,7 +266,7 @@ public final class RuleSerialization {
      * @param descriptor trusted descriptor describing the rule
      * @return reconstructed rule
      * @throws NullPointerException if series or descriptor is null
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static Rule fromTrustedDescriptor(BarSeries series, ComponentDescriptor descriptor) {
         return DescriptorTrust.trusted(() -> fromDescriptor(series, descriptor, null));

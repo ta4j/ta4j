@@ -61,7 +61,7 @@ public class ChainLink {
      * {@link #getRule()} can tell when the copy is out of date.
      *
      * @return a value that changes whenever the rule is replaced
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public int getRuleVersion() {
         return ruleVersion;

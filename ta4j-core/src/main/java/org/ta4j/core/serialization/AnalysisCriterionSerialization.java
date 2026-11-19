@@ -137,7 +137,7 @@ public final class AnalysisCriterionSerialization {
      *
      * @param json trusted JSON payload
      * @return reconstructed criterion
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static AnalysisCriterion fromTrustedJson(String json) {
         ComponentDescriptor descriptor = ComponentSerialization.parse(json);
@@ -157,7 +157,7 @@ public final class AnalysisCriterionSerialization {
      * @return reconstructed criterion
      * @throws IllegalStateException if a resolved criterion has an unavailable
      *                               dependency
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static AnalysisCriterion fromTrustedDescriptor(ComponentDescriptor descriptor) {
         return fromDescriptor(descriptor, true);

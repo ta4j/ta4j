@@ -47,6 +47,7 @@ usage() {
 Usage: release_helpers.sh <command> [options]
 
 Commands:
+  signing-preflight
   model-preflight
   build-dossier
   build-ai-request
@@ -68,6 +69,37 @@ die() {
   echo "::error::$*" >&2
   exit 1
 }
+
+command_signing_preflight() (
+  [[ $# -eq 0 ]] || die "signing-preflight takes no arguments"
+  [[ -n "${GPG_PASSPHRASE:-}" ]] || die "OpenPGP signing preflight: GPG_PASSPHRASE is missing. Restore the signing secret; if the key is expired or unusable, renew the existing OpenPGP key and update the secret and public key. See RELEASE_PROCESS.md."
+
+  local tmpdir payload signature status fingerprint
+  tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/release-signing.XXXXXX")"
+  trap 'rm -rf "$tmpdir"' EXIT
+  trap 'exit 1' HUP INT TERM
+  payload="$tmpdir/payload"
+  signature="$tmpdir/payload.sig"
+  printf '%s\n' 'ta4j Maven signing preflight' > "$payload"
+
+  if ! printf '%s\n' "$GPG_PASSPHRASE" | gpg --batch --no-tty --yes \
+    --pinentry-mode loopback --passphrase-fd 0 --output "$signature" \
+    --detach-sign "$payload" >/dev/null 2>&1; then
+    die "OpenPGP signing preflight failed: the imported signing key is missing, expired or unusable, or GPG_PASSPHRASE is incorrect. Check the key and passphrase; renew the existing OpenPGP key if expired and update the secret and public key. See RELEASE_PROCESS.md."
+  fi
+  if ! status="$(gpg --batch --no-tty --status-fd 1 --verify "$signature" "$payload" 2>/dev/null)"; then
+    die "OpenPGP signing preflight could not verify its detached signature. Check the imported key; renew the existing OpenPGP key if expired and update the secret and public key. See RELEASE_PROCESS.md."
+  fi
+  if printf '%s\n' "$status" | grep -Eq '^\[GNUPG:\] (EXPKEYSIG|EXPSIG|REVKEYSIG|KEYEXPIRED|SIGEXPIRED)( |$)'; then
+    die "OpenPGP signing preflight found an expired or revoked key or signature. Renew the existing OpenPGP key if expired and update the secret and public key; investigate revocation. See RELEASE_PROCESS.md."
+  fi
+  fingerprint="$(printf '%s\n' "$status" | awk '$1 == "[GNUPG:]" && $2 == "VALIDSIG" { count++; fingerprint=$3 } END { if (count == 1) print fingerprint }')"
+  if [[ ! "$fingerprint" =~ ^[[:xdigit:]]+$ ]] || { [[ ${#fingerprint} -ne 40 ]] && [[ ${#fingerprint} -ne 64 ]]; }; then
+    die "OpenPGP signing preflight did not receive a valid signing fingerprint. Check the imported key and verification setup. See RELEASE_PROCESS.md."
+  fi
+  append_output "signing_fingerprint" "$fingerprint"
+  printf 'audit:signing_preflight=passed signing_fingerprint=%s\n' "$fingerprint"
+)
 
 require_value() {
   local option="$1"
@@ -1427,6 +1459,18 @@ command_artifact_manifest() {
   done
   [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Release artifact version must be major.minor.patch: $version"
 
+  # GitHub Release uses current workflow helpers against a selected tag. Read
+  # that checkout's reactor, not existing target jars or this helper's location.
+  local include_acceleration
+  include_acceleration="$(python3 - <<'PY'
+import xml.etree.ElementTree as ET
+
+root = ET.parse("pom.xml").getroot()
+modules = {(node.text or "").strip() for node in root.findall("./{*}modules/{*}module")}
+print("true" if "ta4j-acceleration" in modules else "false")
+PY
+)" || die "Unable to read release reactor modules from pom.xml"
+
   local expected_file existing_file missing_file unexpected_file
   expected_file="$(new_tmp_file)"
   existing_file="$(new_tmp_file)"
@@ -1441,10 +1485,20 @@ ta4j-examples/target/ta4j-examples-${version}.jar
 ta4j-examples/target/ta4j-examples-${version}-sources.jar
 ta4j-examples/target/ta4j-examples-${version}-javadoc.jar
 EOF
+  if [[ "$include_acceleration" == true ]]; then
+    # The default reactor publishes Java artifacts, not profile-built binaries.
+    cat >> "$expected_file" <<EOF
+ta4j-acceleration/target/ta4j-acceleration-${version}.jar
+ta4j-acceleration/target/ta4j-acceleration-${version}-sources.jar
+ta4j-acceleration/target/ta4j-acceleration-${version}-javadoc.jar
+EOF
+  fi
   while IFS= read -r file; do
     [[ -e "$file" ]] || printf '%s\n' "$file"
   done < "$expected_file" | sort > "$missing_file"
-  find . -path './*/target/*.jar' -type f | sed 's#^\./##' | sort > "$existing_file"
+  # Only direct reactor target jars are release artifacts; native builds can
+  # leave nested helper jars under target/.
+  find . -mindepth 3 -maxdepth 3 -path './*/target/*.jar' -type f | sed 's#^\./##' | sort > "$existing_file"
   grep -Fvx -f "$expected_file" "$existing_file" > "$unexpected_file" || true
 
   {
@@ -2051,6 +2105,7 @@ main() {
   fi
   shift
   case "$command" in
+    signing-preflight) command_signing_preflight "$@" ;;
     model-preflight) command_model_preflight "$@" ;;
     build-dossier) command_build_dossier "$@" ;;
     build-ai-request) command_build_ai_request "$@" ;;

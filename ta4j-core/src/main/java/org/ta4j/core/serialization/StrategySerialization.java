@@ -296,7 +296,7 @@ public final class StrategySerialization {
      * @param series bar series to attach to the strategy
      * @param json   trusted canonical or v2 JSON payload
      * @return reconstructed strategy
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static Strategy fromTrustedJson(BarSeries series, String json) {
         return fromTrustedJson(series, json, NamedAssetRegistry.defaultRegistry());
@@ -311,7 +311,7 @@ public final class StrategySerialization {
      * @param json     trusted canonical or v2 JSON payload
      * @param registry named asset registry
      * @return reconstructed strategy
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static Strategy fromTrustedJson(BarSeries series, String json, NamedAssetRegistry registry) {
         return DescriptorTrust.trusted(() -> fromJson(series, json, registry));
@@ -325,7 +325,7 @@ public final class StrategySerialization {
      * @param series     bar series to attach to the strategy
      * @param descriptor trusted descriptor describing the strategy
      * @return reconstructed strategy
-     * @since 0.28.1
+     * @since 0.29.1
      */
     public static Strategy fromTrustedDescriptor(BarSeries series, ComponentDescriptor descriptor) {
         return DescriptorTrust.trusted(() -> fromDescriptor(series, descriptor));

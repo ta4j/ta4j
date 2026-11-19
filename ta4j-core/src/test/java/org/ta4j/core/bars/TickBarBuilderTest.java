@@ -219,4 +219,10 @@ public class TickBarBuilderTest {
         assertNumEquals(101, firstSeries.getBar(0).getClosePrice());
         assertNumEquals(201, secondSeries.getBar(0).getClosePrice());
     }
+
+    @Test
+    public void constructorRejectsNonPositiveTickCount() {
+        assertThrows(IllegalArgumentException.class, () -> new TickBarBuilder(DecimalNumFactory.getInstance(), 0));
+        assertThrows(IllegalArgumentException.class, () -> new TickBarBuilder(DecimalNumFactory.getInstance(), -1));
+    }
 }

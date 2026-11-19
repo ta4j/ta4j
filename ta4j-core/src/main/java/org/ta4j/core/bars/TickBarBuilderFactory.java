@@ -3,13 +3,20 @@
  */
 package org.ta4j.core.bars;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.util.Objects;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of tick count is a documented constructor contract; subclassing remains supported.")
 public class TickBarBuilderFactory implements BarBuilderFactory {
 
     private static final long serialVersionUID = 1L;
@@ -21,7 +28,9 @@ public class TickBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param tickCount the number of ticks at which a new bar should be created
+     * @param tickCount the number of ticks at which a new bar should be created;
+     *                  must be positive
+     * @throws IllegalArgumentException if {@code tickCount} is not positive
      */
     public TickBarBuilderFactory(final int tickCount) {
         this(tickCount, false);
@@ -30,14 +39,27 @@ public class TickBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param tickCount    the number of ticks at which a new bar should be created
+     * @param tickCount    the number of ticks at which a new bar should be created;
+     *                     must be positive
      * @param realtimeBars {@code true} to build {@link BaseRealtimeBar} instances
      *
+     * @throws IllegalArgumentException if {@code tickCount} is not positive
      * @since 0.22.2
      */
     public TickBarBuilderFactory(final int tickCount, final boolean realtimeBars) {
+        if (tickCount <= 0) {
+            throw new IllegalArgumentException("tickCount must be positive");
+        }
         this.tickCount = tickCount;
         this.realtimeBars = realtimeBars;
+    }
+
+    @Serial
+    private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (tickCount <= 0) {
+            throw new InvalidObjectException("tickCount must be positive");
+        }
     }
 
     @Override
