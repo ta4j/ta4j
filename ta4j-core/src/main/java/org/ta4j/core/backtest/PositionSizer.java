@@ -4,9 +4,9 @@
 package org.ta4j.core.backtest;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import java.util.Objects;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
@@ -14,6 +14,8 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -39,10 +41,8 @@ public interface PositionSizer {
      * Returns the amount used to open a new position.
      *
      * <p>
-     * Implementations must return a positive, finite {@link Num} compatible with
-     * {@link Context#numFactory()}. Factory-created sizers validate their
-     * constructor inputs eagerly; custom implementations are responsible for
-     * honoring this contract when they are called.
+     * Returns a non-negative, finite amount from {@link Context#numFactory()}; zero
+     * skips the entry.
      * </p>
      *
      * @param context entry sizing context
@@ -50,6 +50,67 @@ public interface PositionSizer {
      * @since 0.22.9
      */
     Num amount(Context context);
+
+    /**
+     * Multiplies this sizer's amount by the supplied leverage; with
+     * {@link #balance(Number)} the balance acts as margin.
+     *
+     * @param leverage positive, finite amount multiplier
+     * @return a leveraged version of this sizer
+     * @throws NullPointerException     if leverage is null
+     * @throws IllegalArgumentException if leverage is not positive and finite
+     * @since 0.29.1
+     */
+    default PositionSizer leveraged(Number leverage) {
+        Number fixedLeverage = snapshotNumber(leverage, "leverage");
+        return context -> amount(context).multipliedBy(context.numOf(fixedLeverage));
+    }
+
+    /**
+     * Floors this sizer's amount to a multiple of the supplied quantity step. Apply
+     * it last, after decorators such as {@link #leveraged(Number)}.
+     *
+     * @param quantityStep positive, finite quantity increment
+     * @return a quantity-step-rounded version of this sizer
+     * @throws NullPointerException     if the step is null
+     * @throws IllegalArgumentException if the step is not positive and finite, or
+     *                                  the result is not exactly representable
+     * @since 0.29.1
+     */
+    default PositionSizer roundedDownTo(Number quantityStep) {
+        Number fixedStep = snapshotNumber(quantityStep, "quantityStep");
+        BigDecimal step = fixedStep instanceof BigDecimal decimal ? decimal : new BigDecimal(fixedStep.toString());
+        BigDecimal maxDoubleBoundaryGap = step.movePointLeft(9);
+        return context -> {
+            Num rawAmount = amount(context);
+            if (!Num.isFinite(rawAmount) || !rawAmount.isPositive()) {
+                return rawAmount;
+            }
+            // Num division can round across a lot boundary before floor is applied.
+            BigDecimal quantity = rawAmount.bigDecimalValue();
+            BigDecimal remainder = quantity.remainder(step);
+            if (remainder.signum() == 0) {
+                return rawAmount;
+            }
+            BigDecimal rounded = quantity.subtract(remainder);
+            if (rawAmount instanceof DoubleNum && step.subtract(remainder).compareTo(maxDoubleBoundaryGap) <= 0) {
+                BigDecimal nextBoundary = rounded.add(step);
+                // Num has no ulp operation, so compare adjacent double values directly.
+                double value = rawAmount.doubleValue();
+                double boundary = nextBoundary.doubleValue();
+                if (Double.isFinite(boundary) && boundary > value && boundary <= Math.nextUp(Math.nextUp(value))) {
+                    rounded = nextBoundary;
+                }
+            }
+            Num result = context.numOf(rounded);
+            if (result instanceof DecimalNum && (result.bigDecimalValue().compareTo(rounded) != 0
+                    || result.bigDecimalValue().compareTo(quantity) > 0)) {
+                throw new IllegalArgumentException(
+                        "Rounded amount cannot be represented by the decimal number factory");
+            }
+            return result;
+        };
+    }
 
     /**
      * Returns a position sizer that opens one unit.
