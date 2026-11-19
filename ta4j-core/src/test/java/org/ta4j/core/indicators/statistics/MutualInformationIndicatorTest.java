@@ -62,7 +62,7 @@ public class MutualInformationIndicatorTest extends AbstractIndicatorTest<Indica
     }
 
     @Test
-    public void returnsZeroWhenBinWidthUnderflows() {
+    public void returnsNaNWhenBinWidthUnderflows() {
         NumFactory doubleFactory = DoubleNumFactory.getInstance();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).withData(1, 2, 3, 4).build();
         List<Num> tiny = java.util.stream.Stream.of(0d, Double.MIN_VALUE, 0d, Double.MIN_VALUE)
@@ -72,7 +72,7 @@ public class MutualInformationIndicatorTest extends AbstractIndicatorTest<Indica
         Indicator<Num> second = new MockIndicator(series, tiny);
         MutualInformationIndicator mutualInformation = new MutualInformationIndicator(first, second, 4, 2);
 
-        assertNumEquals(0, mutualInformation.getValue(3));
+        assertTrue(mutualInformation.getValue(3).isNaN());
     }
 
     @Test
