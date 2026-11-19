@@ -12,6 +12,7 @@ import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.helper.ChainLink;
+import org.ta4j.core.rules.named.NamedRule;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -359,9 +360,35 @@ public final class RuleSerialization {
     static Class<? extends Rule> resolveRuleType(String type) {
         Class<? extends Rule> ruleType = DescriptorTrust.resolve(type, Rule.class, RULE_PACKAGE);
         if (ruleType == null) {
+            ruleType = registeredNamedRule(type);
+        }
+        if (ruleType == null) {
             throw new IllegalArgumentException("Unknown rule type: " + type);
         }
         return ruleType;
+    }
+
+    /**
+     * Returns the {@link NamedRule} type registered under the descriptor's name.
+     * Registration is an explicit opt-in by application code, like a registered
+     * {@link NamedAssetRegistry} alias, so registered named rules are restored from
+     * untrusted descriptors even when they live outside ta4j or are not public.
+     *
+     * @param type descriptor type name, simple or fully qualified
+     * @return the registered type, or {@code null} if none matches exactly
+     */
+    private static Class<? extends Rule> registeredNamedRule(String type) {
+        String simpleName = type.substring(type.lastIndexOf('.') + 1);
+        if (simpleName.isEmpty()) {
+            return null;
+        }
+        return NamedRule.lookup(simpleName)
+                .filter(candidate -> candidate.getName().equals(type) || candidate.getSimpleName().equals(type))
+                .orElse(null);
+    }
+
+    private static boolean isRegisteredNamedRule(Class<? extends Rule> ruleType) {
+        return NamedRule.class.isAssignableFrom(ruleType) && registeredNamedRule(ruleType.getName()) == ruleType;
     }
 
     private static final class DeserializationMatch {
@@ -406,7 +433,7 @@ public final class RuleSerialization {
         Constructor<?>[] constructors = ruleType.getDeclaredConstructors();
         List<Constructor<?>> orderedConstructors = new ArrayList<>(constructors.length);
         for (Constructor<?> constructor : constructors) {
-            if (DescriptorTrust.mayInvoke(constructor)) {
+            if (DescriptorTrust.mayInvoke(constructor) || isRegisteredNamedRule(ruleType)) {
                 orderedConstructors.add(constructor);
             }
         }
