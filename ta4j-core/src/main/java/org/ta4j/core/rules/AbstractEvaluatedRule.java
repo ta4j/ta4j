@@ -7,21 +7,8 @@ import org.ta4j.core.EvaluatedRule;
 import org.ta4j.core.TradingRecord;
 
 /**
- * Standard base class for {@link EvaluatedRule} implementations.
- *
- * <p>
- * Reuses {@link AbstractRule} naming and scoped trace infrastructure. The
- * boolean bridge {@link #isSatisfied(int, TradingRecord)} is final: it
- * evaluates once, projects once through {@link #toBoolean(Object)}, and traces
- * the already-computed decision once. Direct calls to
- * {@link #evaluate(int, TradingRecord)} do not emit a boolean trace event.
- *
- * <p>
- * Subclasses implement {@link #evaluate(int, TradingRecord)} and
- * {@link #toBoolean(Object)}. Constructor-backed subclasses that keep their
- * constructor arguments as fields serialize and copy through the regular
- * {@link org.ta4j.core.Rule} serialization path; evaluation results are never
- * part of the serialized configuration.
+ * Base class for {@link EvaluatedRule} implementations with a final
+ * {@code isSatisfied} bridge that evaluates, projects and traces once.
  *
  * @param <R> the evaluation result type
  * @since 0.29.1

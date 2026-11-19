@@ -53,7 +53,6 @@ class EvaluatedRuleExampleTest {
                 () -> new ConfidenceGateRule(score, 1.01, ScoreKind.CALIBRATED_PROBABILITY));
         assertThrows(IllegalArgumentException.class,
                 () -> new ConfidenceGateRule(score, -0.01, ScoreKind.CALIBRATED_PROBABILITY));
-        // Heuristic scores are not probabilities, so the [0, 1] bound does not apply.
         new ConfidenceGateRule(score, 55, ScoreKind.HEURISTIC_SCORE);
         new ConfidenceGateRule(score, 1, ScoreKind.CALIBRATED_PROBABILITY);
     }
