@@ -113,16 +113,18 @@ class PositionSizerTest {
         assertEquals("Rounded amount cannot be represented by the decimal number factory", exception.getMessage());
         assertThrows(IllegalArgumentException.class,
                 () -> PositionSizer.fixed(10).roundedDownTo(new BigDecimal("0.07")).amount(context));
-        assertEquals(factory.numOf("9.9"), PositionSizer.fixed(10).roundedDownTo(new BigDecimal("0.3")).amount(context));
+        assertEquals(factory.numOf("9.9"),
+                PositionSizer.fixed(10).roundedDownTo(new BigDecimal("0.3")).amount(context));
     }
 
     @Test
     void decimalRoundingRejectsUnrepresentableLotsAtDefaultPrecision() {
         NumFactory factory = DecimalNumFactory.getInstance();
         PositionSizer.Context context = context(factory);
-        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(new BigDecimal("10000000000000000"))
-                .roundedDownTo(new BigDecimal("0.06"))
-                .amount(context));
+        assertThrows(IllegalArgumentException.class,
+                () -> PositionSizer.fixed(new BigDecimal("10000000000000000"))
+                        .roundedDownTo(new BigDecimal("0.06"))
+                        .amount(context));
     }
 
     @Test
