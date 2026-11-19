@@ -17,27 +17,9 @@ import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.num.Num;
 
 /**
- * Net profit or loss relative to the capital committed to a strategy.
- * <p>
- * Divides the signed result of {@link NetProfitLossCriterion} by a fixed
- * capital amount, including transaction and holding costs and ignoring open
- * positions. Position results are added before division, not compounded. Unlike
- * {@link NetReturnCriterion}, the denominator is capital rather than entry
- * notional, so changing position size changes the return on capital. To include
- * an open leg and its accrued holding costs, use context-aware calculation with
- * {@link org.ta4j.core.analysis.AnalysisContext} and
- * {@link org.ta4j.core.analysis.OpenPositionHandling#MARK_TO_MARKET}.
- * <p>
- * Losses are not clamped: leveraged losses can exceed the supplied capital. For
- * example,
- * {@code new ReturnOnCapitalCriterion(1_000, ReturnRepresentation.PERCENTAGE)}
- * reports {@code -200} for a loss of {@code 2_000}. The equivalent
- * {@link ReturnRepresentation#DECIMAL} result is {@code -2}; with
- * {@link ReturnRepresentation#MULTIPLICATIVE}, it is {@code -1}
- * ({@code 1 + -2}), not a statement that exactly all capital was lost.
- * Logarithmic output follows {@link ReturnRepresentation#LOG}'s domain. Capital
- * is converted with the series' numeric context; calculation rejects a capital
- * value that this context cannot represent as positive and finite.
+ * Net profit or loss of closed positions, including costs, divided by a fixed
+ * committed capital. Unlike {@link NetReturnCriterion}, the denominator does
+ * not scale with position size, and leveraged losses can exceed the capital.
  *
  * @since 0.29.1
  */
@@ -51,8 +33,7 @@ public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion im
     /**
      * Creates a criterion using the current global default representation.
      *
-     * @param capital positive, finite committed capital; snapshotted at
-     *                construction
+     * @param capital positive, finite committed capital
      * @throws NullPointerException     if capital is null
      * @throws IllegalArgumentException if capital is not positive and finite
      * @since 0.29.1
@@ -64,8 +45,7 @@ public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion im
     /**
      * Creates a criterion with an explicit output representation.
      *
-     * @param capital        positive, finite committed capital; snapshotted without
-     *                       converting decimal values to double
+     * @param capital        positive, finite committed capital
      * @param representation the output representation
      * @throws NullPointerException     if either argument is null
      * @throws IllegalArgumentException if capital is not positive and finite
@@ -91,10 +71,8 @@ public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion im
 
     /**
      * {@inheritDoc}
-     * 
-     * @throws IllegalArgumentException if the series' numeric context converts
-     *                                  capital to zero or a non-finite value
      *
+     * @throws IllegalArgumentException if the series cannot represent the capital
      * @since 0.29.1
      */
     @Override
@@ -104,10 +82,8 @@ public final class ReturnOnCapitalCriterion extends AbstractAnalysisCriterion im
 
     /**
      * {@inheritDoc}
-     * 
-     * @throws IllegalArgumentException if the series' numeric context converts
-     *                                  capital to zero or a non-finite value
      *
+     * @throws IllegalArgumentException if the series cannot represent the capital
      * @since 0.29.1
      */
     @Override

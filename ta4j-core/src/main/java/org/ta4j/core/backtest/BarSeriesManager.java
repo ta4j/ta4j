@@ -312,11 +312,6 @@ public class BarSeriesManager {
      * Runs the provided strategy over the managed series using a dynamic entry
      * position sizer.
      *
-     * <p>
-     * A zero-sized entry amount skips the entry signal only while no position is
-     * open. Exit signals still run, and later entry signals remain eligible.
-     * </p>
-     *
      * @param strategy      strategy to execute
      * @param tradeType     the {@link TradeType} used to open the position
      * @param positionSizer dynamic entry position sizer
@@ -331,11 +326,6 @@ public class BarSeriesManager {
     /**
      * Runs the provided strategy over the managed series using a dynamic entry
      * position sizer.
-     *
-     * <p>
-     * A zero-sized entry amount skips the entry signal only while no position is
-     * open. Exit signals still run, and later entry signals remain eligible.
-     * </p>
      *
      * @param strategy      strategy to execute
      * @param positionSizer dynamic entry position sizer
@@ -352,11 +342,6 @@ public class BarSeriesManager {
      * finishIndex) using the strategy starting type and a dynamic entry position
      * sizer.
      *
-     * <p>
-     * A zero-sized entry amount skips the entry signal only while no position is
-     * open. Exit signals still run, and later entry signals remain eligible.
-     * </p>
-     *
      * @param strategy      strategy to execute
      * @param positionSizer dynamic entry position sizer
      * @param startIndex    the start index for the run (included)
@@ -372,11 +357,6 @@ public class BarSeriesManager {
     /**
      * Runs the provided strategy over the managed series (from startIndex to
      * finishIndex) using a dynamic entry position sizer.
-     *
-     * <p>
-     * A zero-sized entry amount skips the entry signal only while no position is
-     * open. Exit signals still run, and later entry signals remain eligible.
-     * </p>
      *
      * @param strategy      strategy to execute
      * @param tradeType     the {@link TradeType} used to open the position
@@ -457,11 +437,6 @@ public class BarSeriesManager {
      * Runs the provided strategy over the managed series using a dynamic entry
      * position sizer and a supplied trading record.
      *
-     * <p>
-     * A zero-sized entry amount skips the entry signal only while no position is
-     * open. Exit signals still run, and later entry signals remain eligible.
-     * </p>
-     *
      * @param strategy      strategy to execute
      * @param tradingRecord the trading record instance to mutate
      * @param positionSizer dynamic entry position sizer
@@ -477,11 +452,6 @@ public class BarSeriesManager {
      * Runs the provided strategy over the managed series (from startIndex to
      * finishIndex) using a supplied trading record and dynamic entry position
      * sizer.
-     *
-     * <p>
-     * A zero-sized entry amount skips the entry signal only while no position is
-     * open. Exit signals still run, and later entry signals remain eligible.
-     * </p>
      *
      * @param strategy      strategy to execute
      * @param tradingRecord the trading record instance to mutate
@@ -577,11 +547,6 @@ public class BarSeriesManager {
      * Executes walk-forward testing for one strategy using the provided entry trade
      * type and dynamic entry position sizer.
      *
-     * <p>
-     * A zero-sized entry amount skips the entry signal only while no position is
-     * open. Exit signals still run, and later entry signals remain eligible.
-     * </p>
-     *
      * @param strategy      strategy to execute
      * @param tradeType     trade type used to open positions
      * @param positionSizer dynamic entry position sizer
@@ -597,11 +562,6 @@ public class BarSeriesManager {
     /**
      * Executes walk-forward testing for one strategy with a dynamic entry position
      * sizer.
-     *
-     * <p>
-     * A zero-sized entry amount skips the entry signal only while no position is
-     * open. Exit signals still run, and later entry signals remain eligible.
-     * </p>
      *
      * @param strategy      strategy to execute
      * @param positionSizer dynamic entry position sizer
@@ -637,11 +597,6 @@ public class BarSeriesManager {
     /**
      * Executes walk-forward testing for one strategy with dynamic entry amount
      * provider and optional per-fold progress updates.
-     *
-     * <p>
-     * A zero-sized entry amount skips the entry signal only while no position is
-     * open. Exit signals still run, and later entry signals remain eligible.
-     * </p>
      *
      * @param strategy         strategy to execute
      * @param tradeType        trade type used to open positions

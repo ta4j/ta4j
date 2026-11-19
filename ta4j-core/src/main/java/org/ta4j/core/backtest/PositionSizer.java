@@ -41,11 +41,8 @@ public interface PositionSizer {
      * Returns the amount used to open a new position.
      *
      * <p>
-     * Implementations must return a non-negative, finite {@link Num} compatible
-     * with {@link Context#numFactory()}. Zero skips the entry without submitting an
-     * order; the run continues. Factory-created sizers validate their constructor
-     * inputs eagerly; custom implementations are responsible for honoring this
-     * contract when they are called.
+     * Returns a non-negative, finite amount from {@link Context#numFactory()}; zero
+     * skips the entry.
      * </p>
      *
      * @param context entry sizing context
@@ -55,11 +52,8 @@ public interface PositionSizer {
     Num amount(Context context);
 
     /**
-     * Multiplies this sizer's amount by the supplied leverage.
-     *
-     * <p>
-     * With {@link #balance(Number)}, the balance acts as margin. Transaction fees
-     * on the leveraged notional reduce profit; they are not reserved from margin.
+     * Multiplies this sizer's amount by the supplied leverage; with
+     * {@link #balance(Number)} the balance acts as margin.
      *
      * @param leverage positive, finite amount multiplier
      * @return a leveraged version of this sizer
@@ -73,30 +67,14 @@ public interface PositionSizer {
     }
 
     /**
-     * Floors this sizer's amount to a multiple of the supplied quantity step.
-     *
-     * <p>
-     * An amount smaller than one step becomes zero, except for the narrow
-     * {@link DoubleNum} boundary tolerance described below. Apply this decorator
-     * after every amount-changing decorator, such as {@link #leveraged(Number)}, to
-     * round the final order quantity. Later decorators may change the amount and
-     * break its alignment to the step.
-     *
-     * <p>
-     * Quantization uses decimal values before converting the result with the
-     * context's number factory. A {@code DoubleNum} amount is treated as aligned to
-     * the next boundary if it is at most two representable double values and at
-     * most one billionth of a step below that boundary. This corrects tiny
-     * floating-point drift; other values are floored. A decimal result must
-     * represent the rounded quantity exactly without exceeding the requested
-     * amount.
+     * Floors this sizer's amount to a multiple of the supplied quantity step. Apply
+     * it last, after decorators such as {@link #leveraged(Number)}.
      *
      * @param quantityStep positive, finite quantity increment
      * @return a quantity-step-rounded version of this sizer
      * @throws NullPointerException     if the step is null
      * @throws IllegalArgumentException if the step is not positive and finite, or
-     *                                  the rounded quantity cannot be represented
-     *                                  safely by the decimal number factory
+     *                                  the result is not exactly representable
      * @since 0.29.1
      */
     default PositionSizer roundedDownTo(Number quantityStep) {

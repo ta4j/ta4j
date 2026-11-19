@@ -28,16 +28,9 @@ import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.rules.StopLossRule;
 
 /**
- * Offline linear perpetual backtest: amounts are base-asset units and all
- * profits, fees, funding and capital are in the quote currency. Convert venue
- * contract counts to base units before using this recipe.
- *
- * <p>
- * The maintenance-margin stop is an approximation, not an exchange liquidation
- * engine. It ignores margin tiers, collateral haircuts and liquidation fees.
- * Current-close execution makes this small example deterministic; real stops
- * can slip or gap beyond the modeled threshold. Funding uses closes as marks
- * and a fixed UTC-aligned schedule, not a prediction of exchange settlements.
+ * Linear perpetual backtest in base-asset units with quote-currency results.
+ * The maintenance-margin stop is a close-only approximation, not a liquidation
+ * engine.
  *
  * @since 0.29.1
  */
@@ -73,16 +66,11 @@ public final class PerpetualFuturesBacktest {
     static TradingRecord run(BarSeries series, double leverage, double fundingRate) {
         ClosePriceIndicator price = new ClosePriceIndicator(series);
         double liquidationLossPercentage = 100 * (1 / leverage - MAINTENANCE_MARGIN_RATE);
-        // Close-only approximation: intrabar wicks through the level are missed,
-        // and a triggered exit still fills at that bar's close.
         Rule liquidationStop = new StopLossRule(price, liquidationLossPercentage);
         Strategy strategy = new BaseStrategy(new FixedRule(series.getBeginIndex()),
                 new FixedRule(series.getEndIndex()).or(liquidationStop));
-        // Funding is a signed holding cost; positive rates charge this long.
         FundingCostModel funding = FundingCostModel.fixedRate(series, fundingRate, Duration.ofHours(8));
         LinearTransactionCostModel fees = new LinearTransactionCostModel(FEE_RATE);
-        // Leverage scales exposure, not the capital denominator or a margin account.
-        // balance() budgets the unlevered entry fee; leveraged fees still reduce P&L.
         PositionSizer sizing = PositionSizer.balance(CAPITAL).leveraged(leverage).roundedDownTo(0.001);
         return new BarSeriesManager(series, fees, funding, new TradeOnCurrentCloseModel()).run(strategy, sizing);
     }

@@ -729,9 +729,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         CashFlow cashFlow = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET);
 
-        // Entry net price is 99. The short pays 4 at index 2 and receives
-        // 10 at index 4, so its per-asset marks are 100, 102, 102 and
-        // 101 - 3 (the 101 exit price includes the fixed exit fee).
+        // Short pays 4 at index 2, receives 10 at index 4; exit price includes the fee.
         assertNumEquals(numFactory.numOf(2d - 100d / 99d), cashFlow.getValue(1), 1e-12);
         assertNumEquals(numFactory.numOf(2d - 102d / 99d), cashFlow.getValue(2), 1e-12);
         assertNumEquals(numFactory.numOf(2d - 102d / 99d), cashFlow.getValue(3), 1e-12);
@@ -769,9 +767,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         CashFlow retained = new CashFlow(series, position);
 
-        // Borrowing accrues one unit per held bar. The window [10, 12] values
-        // the position at 90, and later marks are 89 and 88, so only in-window
-        // carry moves equity.
+        // One unit of carry per bar; only in-window carry moves equity.
         assertNumEquals(1d, retained.getValue(10));
         assertNumEquals(numFactory.numOf(89d).dividedBy(numFactory.numOf(90d)), retained.getValue(11));
         assertNumEquals(numFactory.numOf(88d).dividedBy(numFactory.numOf(90d)), retained.getValue(12));
