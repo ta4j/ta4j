@@ -145,6 +145,38 @@ Secrets and variables:
 - `github-release.yml` should run from tag push.
 - `release-health.yml` may first report snapshot publication as pending during the async handoff, then should report `OK` after it retrieves the exact timestamped core POM/JAR. Top-level `<latest>` is informational only.
 
+### 4.1 Optional native provider publication scope
+
+`ta4j-acceleration` is an optional dependency for applications, not a separate release or deployment owner. It is versioned with core and participates in the existing reactor:
+
+- `publish-release.yml` uses `-Pproduction-release` to publish the provider's ordinary main, sources, and Javadoc artifacts alongside the other modules. The strict release manifest requires these three provider JARs whenever the selected checkout declares the module in its root reactor: 10 JARs total, including the core tests JAR.
+- `github-release.yml` consumes the same exact manifest. Its workflow-support helper reads the selected release checkout's root POM, so a historical tag without the provider module still expects the original 7 JARs; stray provider outputs do not opt a module into publication.
+- `snapshot.yml` uses `-Psign-snapshots` to publish the provider's ordinary main and sources artifacts through the same deployment. Javadoc attachment is part of `production-release`, not the existing snapshot profile.
+- The exact external snapshot-consumption gate remains parent, core, and examples. Its `mavenConsumable=true` result is not proof that an optional provider or a native classifier was externally resolved, executed, or qualified.
+
+The five native classifiers are **source-built/local-install artifacts**, not currently published release or snapshot coordinates:
+
+| Classifier / Maven profile | Source-build prerequisites beyond the repository's JDK |
+| --- | --- |
+| `metal-macos-aarch64` | Apple-silicon macOS and Xcode Command Line Tools (`xcrun clang`, Foundation, Metal) |
+| `cuda-linux-x86_64` | Linux x86-64, CMake 3.28+, CUDA Toolkit 13.3+, compatible C++20/CUDA toolchain |
+| `cuda-windows-x86_64` | Windows x86-64, CMake 3.28+, CUDA Toolkit 13.3+, compatible C++20/CUDA toolchain |
+| `opencl-linux-x86_64` | Linux x86-64, CMake 3.28+, C11 compiler, OpenCL headers and loader |
+| `opencl-linux-aarch64` | Linux aarch64, CMake 3.28+, C11 compiler, OpenCL headers and loader |
+
+From a checkout matching the application's ta4j version, build and install only the profile for that host. For Apple silicon:
+
+```bash
+./mvnw -pl ta4j-acceleration -am install -Pmetal-macos-aarch64
+```
+
+Then add the [matching classifier dependency](README.md#optional-native-acceleration) at that same version. Substitute one of the other profiles on its matching platform. `package` alone creates the classifier under `target`; it does not make that dependency resolvable from another application's local Maven repository. The thin classifier contains provider classes and its matching native resource, never core or third-party dependencies. The unclassified provider JAR contains no bundled native library.
+
+No release/snapshot job activates these native profiles or collects SDK-built binaries. Strict release manifests reject unexpected direct target JARs, including local classifier builds; use a clean publication checkout rather than treating those files as release assets. A successful source build is not CUDA/OpenCL/Metal hardware or performance qualification: runtime drivers, devices, workload eligibility, and the provider's conservative checks remain separate requirements.
+
+The shipped workload qualification table is intentionally empty. Applications using `-Dta4j.acceleration.enabled=auto` therefore remain scalar even when a native classifier is installed and approximate execution is allowed. Before shipping a qualified row, record its source revision, workload shapes, and cold/warm total native-versus-scalar timings on the same host. Direct provider-SPI execution is kernel qualification evidence only: it bypasses automatic selection/fallback and does not establish automatic forecast acceleration or qualification of other platforms.
+
+
 ---
 
 ## 5. Dry-Run Runbook
@@ -285,6 +317,14 @@ The checkpoint refs are an operational journal, not evidence that deployed bytes
 
 The durable `release-pending/<version>` at S blocks later automatic preparations until a completed publication checkpoint and tag identify R. Keep these journal refs until the release has been reconciled. Do not infer release success from master containing S alone.
 
+### Expired or unusable OpenPGP signing key
+
+Non-dry-run release and snapshot jobs sign and verify a temporary payload before publication (and before the snapshot build). A failure means the imported key or passphrase needs attention; dry-runs do not exercise signing. Maven Central requires OpenPGP signatures; SSH keys used for Git signing are not a substitute.
+
+1. Inspect the failing run and the imported key's public fingerprint, signing capability and expiration. For the current publishing key, the expected fingerprint is `43C18A2E124CF2177A50A71A0C40BB6B2A100CD4`. If expired, an authorized maintainer must run `bash scripts/release/renew_signing_key.sh` from a reviewed, trusted checkout outside Actions, with GnuPG, GitHub CLI, jq and curl installed. Supply `SIGNING_FINGERPRINT`, `GPG_PRIVATE_KEY`, `GPG_PASSPHRASE`, `GITHUB_REPOSITORY` and a `GH_TOKEN` with repository Secrets write permission through a secure local environment. The helper renews the same primary key and subkeys for two years, proves the exported secret can sign and verify, uploads the renewed public key to `keys.openpgp.org`, and updates `GPG_PRIVATE_KEY`. No dispatchable administrative renewal workflow is retained: branch-controlled renewal code must not receive signing secrets or a secrets-administration token. Update `GPG_PASSPHRASE` if needed. Do not silently replace the publishing identity or print private key material or the passphrase in logs.
+2. Keep the release freeze and publication journal refs. Check the failed run and Central's deployment state: a preflight failure before `publication-start` creates no new start checkpoint or upload, but an existing start checkpoint still requires the reconciliation in section 8.6. Remove a start ref only after definitively proving Central accepted no upload, with an expected-R lease.
+3. After reconciliation, resume publication of the original version and exact R; do not prepare a new version or blindly redeploy. If the completed checkpoint already exists, follow section 8.6 to finish the tag. Run the snapshot publisher separately as needed.
+
 ### 8.7 Dry-run warnings
 
 - Missing deploy secrets in dry-run are expected warnings.
@@ -302,7 +342,7 @@ Look for these files first:
 - `response-content-failure.txt`: sanitized reason recorded when the OpenAI response is not valid JSON, is incomplete, is a refusal, or contains no `output_text` content.
 - `release-audit.json`: workflow-local release metadata.
 - `tag-resolution.txt`: resolved latest/reachable/first-parent tag state.
-- `artifact-manifest.txt`: exact jars expected for publish/GitHub Release.
+- `artifact-manifest.txt`: exact JARs expected for publish/GitHub Release from the selected reactor, including ordinary provider artifacts when declared, never an implied native-classifier publication manifest.
 - `javadoc-warnings.txt`: Javadoc warning baseline comparison from release artifact/deploy logs; new warnings beyond the tracked `scripts/release/javadoc-warning-baseline.txt` debt fail publish.
 - `.agents/logs/full-build-*.log`: release-candidate full build log.
 - `snapshot-consumption.json`: exact timestamped parent/core/examples coordinates obtained from cache-busted metadata, publisher and resolved JAR checksums, `metadataError` for a failed fresh metadata fetch, attempts, elapsed time, and `mavenConsumable` result.
