@@ -87,11 +87,22 @@ public class LinearBorrowingCostModel implements CostModel {
      * @since 0.23.1
      */
     public LinearBorrowingCostModel(double feePerPeriod, Applicability applicability) {
-        if (!Double.isFinite(feePerPeriod)) {
-            throw new IllegalArgumentException("feePerPeriod must be finite");
+        this(new Config(feePerPeriod, applicability));
+    }
+
+    private LinearBorrowingCostModel(Config config) {
+        this.feePerPeriod = config.feePerPeriod();
+        this.applicability = config.applicability();
+    }
+
+    private record Config(double feePerPeriod, Applicability applicability) {
+
+        private Config {
+            if (!Double.isFinite(feePerPeriod)) {
+                throw new IllegalArgumentException("feePerPeriod must be finite");
+            }
+            Objects.requireNonNull(applicability, "applicability must not be null");
         }
-        this.feePerPeriod = feePerPeriod;
-        this.applicability = Objects.requireNonNull(applicability, "applicability must not be null");
     }
 
     /**

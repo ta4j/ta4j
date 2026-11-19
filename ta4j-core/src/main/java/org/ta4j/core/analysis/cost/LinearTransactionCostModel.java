@@ -25,10 +25,20 @@ public class LinearTransactionCostModel implements CostModel {
      * @throws IllegalArgumentException if {@code feePerPosition} is not finite
      */
     public LinearTransactionCostModel(double feePerPosition) {
-        if (!Double.isFinite(feePerPosition)) {
-            throw new IllegalArgumentException("feePerPosition must be finite");
+        this(new Fee(feePerPosition));
+    }
+
+    private LinearTransactionCostModel(Fee fee) {
+        this.feePerPosition = fee.value();
+    }
+
+    private record Fee(double value) {
+
+        private Fee {
+            if (!Double.isFinite(value)) {
+                throw new IllegalArgumentException("feePerPosition must be finite");
+            }
         }
-        this.feePerPosition = feePerPosition;
     }
 
     /**

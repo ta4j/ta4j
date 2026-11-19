@@ -29,10 +29,20 @@ public class FixedTransactionCostModel implements CostModel {
      * @throws IllegalArgumentException if {@code feePerTrade} is not finite
      */
     public FixedTransactionCostModel(double feePerTrade) {
-        if (!Double.isFinite(feePerTrade)) {
-            throw new IllegalArgumentException("feePerTrade must be finite");
+        this(new Fee(feePerTrade));
+    }
+
+    private FixedTransactionCostModel(Fee fee) {
+        this.feePerTrade = fee.value();
+    }
+
+    private record Fee(double value) {
+
+        private Fee {
+            if (!Double.isFinite(value)) {
+                throw new IllegalArgumentException("feePerTrade must be finite");
+            }
         }
-        this.feePerTrade = feePerTrade;
     }
 
     /**

@@ -57,13 +57,17 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
      * @throws IllegalArgumentException if {@code barCount < 1}
      */
     public PeriodicalGrowthRateIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        if (barCount < 1) {
-            throw new IllegalArgumentException("barCount must be >= 1");
-        }
+        super(validatedSource(indicator, barCount));
         this.indicator = indicator;
         this.barCount = barCount;
         this.one = getBarSeries().numFactory().one();
+    }
+
+    private static Indicator<Num> validatedSource(Indicator<Num> indicator, int barCount) {
+        if (barCount < 1) {
+            throw new IllegalArgumentException("barCount must be >= 1");
+        }
+        return indicator;
     }
 
     /**
