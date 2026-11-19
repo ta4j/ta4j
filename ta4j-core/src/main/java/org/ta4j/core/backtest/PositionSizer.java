@@ -65,7 +65,7 @@ public interface PositionSizer {
      * @return a leveraged version of this sizer
      * @throws NullPointerException     if leverage is null
      * @throws IllegalArgumentException if leverage is not positive and finite
-     * @since 0.28.1
+     * @since 0.29.1
      */
     default PositionSizer leveraged(Number leverage) {
         Number fixedLeverage = snapshotNumber(leverage, "leverage");
@@ -96,7 +96,7 @@ public interface PositionSizer {
      * @throws IllegalArgumentException if the step is not positive and finite, or
      *                                  the rounded quantity cannot be represented
      *                                  safely by the decimal number factory
-     * @since 0.28.1
+     * @since 0.29.1
      */
     default PositionSizer roundedDownTo(Number quantityStep) {
         Number fixedStep = snapshotNumber(quantityStep, "quantityStep");
