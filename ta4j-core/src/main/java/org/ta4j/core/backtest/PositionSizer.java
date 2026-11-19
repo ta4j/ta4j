@@ -88,7 +88,8 @@ public interface PositionSizer {
      * the next boundary if it is at most two representable double values and at
      * most one billionth of a step below that boundary. This corrects tiny
      * floating-point drift; other values are floored. A decimal result must
-     * represent the rounded quantity exactly without exceeding the requested amount.
+     * represent the rounded quantity exactly without exceeding the requested
+     * amount.
      *
      * @param quantityStep positive, finite quantity increment
      * @return a quantity-step-rounded version of this sizer
@@ -124,10 +125,10 @@ public interface PositionSizer {
                 }
             }
             Num result = context.numOf(rounded);
-            if (result instanceof DecimalNum
-                    && (result.bigDecimalValue().compareTo(rounded) != 0
-                            || result.bigDecimalValue().compareTo(quantity) > 0)) {
-                throw new IllegalArgumentException("Rounded amount cannot be represented by the decimal number factory");
+            if (result instanceof DecimalNum && (result.bigDecimalValue().compareTo(rounded) != 0
+                    || result.bigDecimalValue().compareTo(quantity) > 0)) {
+                throw new IllegalArgumentException(
+                        "Rounded amount cannot be represented by the decimal number factory");
             }
             return result;
         };
