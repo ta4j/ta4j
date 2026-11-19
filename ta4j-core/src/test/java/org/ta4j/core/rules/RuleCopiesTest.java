@@ -4,8 +4,12 @@
 package org.ta4j.core.rules;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,11 +18,51 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.helpers.NOPLogger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseOrderBook;
+import org.ta4j.core.OrderBook;
+import org.ta4j.core.OrderBookLevel;
+import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.orderbook.OrderBookIndicator;
+import org.ta4j.core.indicators.orderbook.OrderBookSpreadIndicator;
+import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.rules.orderbook.OrderBookReadyRule;
+import org.ta4j.core.serialization.IndicatorSerializationException;
 
 class RuleCopiesTest {
 
     private final BarSeries input = new BaseBarSeriesBuilder().withName("input").build();
+
+    @Test
+    void preservesExternalBookHistoryWhenConfigurationCannotReconstructIt() {
+        Instant time = Instant.parse("2026-01-01T00:00:00Z");
+        for (int second = 0; second < 2; second++) {
+            input.barBuilder()
+                    .timePeriod(Duration.ofSeconds(1))
+                    .endTime(time.plusSeconds(second))
+                    .openPrice(100)
+                    .highPrice(100)
+                    .lowPrice(100)
+                    .closePrice(100)
+                    .volume(1)
+                    .add();
+        }
+        NumFactory factory = input.numFactory();
+        OrderBook book = new BaseOrderBook(factory,
+                new OrderBook.Metadata("venue", "instrument", "contracts", null, time, null,
+                        OrderBook.State.SYNCHRONIZED, true, true),
+                List.of(new OrderBookLevel(factory.numOf(99), factory.one())),
+                List.of(new OrderBookLevel(factory.numOf(101), factory.one())));
+        OrderBookIndicator books = new OrderBookIndicator(input, List.of(book), Duration.ZERO,
+                OrderBookIndicator.BarTime.END);
+        Rule source = new OrderBookReadyRule(books, 1)
+                .and(new UnderIndicatorRule(new OrderBookSpreadIndicator(books), factory.numOf(3)));
+        assertThrows(IndicatorSerializationException.class, source::toJson);
+        assertThrows(IndicatorSerializationException.class, source::toExpression);
+        Rule copied = RuleCopies.copy(source);
+        assertTrue(copied.isSatisfied(0, null));
+        assertFalse(copied.isSatisfied(1, null));
+    }
 
     @Test
     void findsDirectlyReferencedSeries() {

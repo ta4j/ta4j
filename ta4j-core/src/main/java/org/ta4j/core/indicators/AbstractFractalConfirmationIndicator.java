@@ -4,6 +4,8 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -25,6 +27,7 @@ abstract class AbstractFractalConfirmationIndicator extends CachedIndicator<Bool
     private final int precedingBars;
     private final int followingBars;
     private final transient int unstableBars;
+    private transient volatile Windows windows;
 
     /**
      * Constructor.
@@ -65,9 +68,64 @@ abstract class AbstractFractalConfirmationIndicator extends CachedIndicator<Bool
         if (index < getCountOfUnstableBars()) {
             return Boolean.FALSE;
         }
-        final int candidateIndex = index - followingBars;
-        return FractalDetectionHelper.isConfirmedFractal(indicator, getBarSeries(), candidateIndex, precedingBars,
-                followingBars, index, 0, direction());
+        long windowLength = (long) precedingBars + followingBars + 1;
+        if (windowLength > Integer.MAX_VALUE) {
+            return FractalDetectionHelper.isConfirmedFractal(indicator, getBarSeries(), index - followingBars,
+                    precedingBars, followingBars, index, 0, direction());
+        }
+        int candidateIndex = index - followingBars;
+        if ((long) candidateIndex - precedingBars < getBarSeries().getBeginIndex()) {
+            return Boolean.FALSE;
+        }
+        FractalDetectionHelper.Direction direction = direction();
+        if (direction == null) {
+            return Boolean.FALSE;
+        }
+        Windows active = windows(direction, (int) windowLength);
+        if (!active.nonFinite().getValue(index).isZero()) {
+            return Boolean.FALSE;
+        }
+        Num candidate = indicator.getValue(candidateIndex);
+        return direction.isCandidateDominant(candidate, active.preceding().getValue(candidateIndex - 1))
+                && direction.isCandidateDominant(candidate, active.following().getValue(index));
+    }
+
+    private Windows windows(FractalDetectionHelper.Direction direction, int windowLength) {
+        Windows current = windows;
+        if (current != null && current.direction() == direction) {
+            return current;
+        }
+        synchronized (this) {
+            current = windows;
+            if (current == null || current.direction() != direction) {
+                Indicator<Num> nonFinite = new CachedIndicator<Num>(indicator) {
+                    @Override
+                    protected Num calculate(int index) {
+                        var factory = getBarSeries().numFactory();
+                        return Num.isFinite(indicator.getValue(index)) ? factory.zero() : factory.one();
+                    }
+
+                    @Override
+                    public int getCountOfUnstableBars() {
+                        return indicator.getCountOfUnstableBars();
+                    }
+                };
+                Indicator<Num> preceding = direction == FractalDetectionHelper.Direction.HIGH
+                        ? new HighestValueIndicator(indicator, precedingBars)
+                        : new LowestValueIndicator(indicator, precedingBars);
+                Indicator<Num> following = direction == FractalDetectionHelper.Direction.HIGH
+                        ? new HighestValueIndicator(indicator, followingBars)
+                        : new LowestValueIndicator(indicator, followingBars);
+                current = new Windows(direction, preceding, following,
+                        new HighestValueIndicator(nonFinite, windowLength));
+                windows = current;
+            }
+        }
+        return current;
+    }
+
+    private record Windows(FractalDetectionHelper.Direction direction, Indicator<Num> preceding,
+            Indicator<Num> following, Indicator<Num> nonFinite) {
     }
 
     /**

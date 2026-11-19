@@ -3,15 +3,22 @@
  */
 package org.ta4j.core.bars;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of volume threshold is a documented constructor contract; subclassing remains supported.")
 public class VolumeBarBuilderFactory implements BarBuilderFactory {
 
     private static final long serialVersionUID = 1L;
@@ -24,7 +31,9 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      */
     public VolumeBarBuilderFactory(final int volumeThreshold) {
         this(volumeThreshold, false, RemainderCarryOverPolicy.NONE);
@@ -33,10 +42,12 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
      * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
      *                        instances
      *
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      * @since 0.22.2
      */
     public VolumeBarBuilderFactory(final int volumeThreshold, final boolean realtimeBars) {
@@ -46,9 +57,11 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
      * @param carryOverPolicy policy for handling side/liquidity remainder splits
      *
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      * @since 0.22.0
      */
     public VolumeBarBuilderFactory(final int volumeThreshold, final RemainderCarryOverPolicy carryOverPolicy) {
@@ -58,18 +71,34 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param volumeThreshold the threshold at which a new bar should be created;
+     *                        must be positive
      * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
      *                        instances
      * @param carryOverPolicy policy for handling side/liquidity remainder splits
      *
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not positive
      * @since 0.22.2
      */
     public VolumeBarBuilderFactory(final int volumeThreshold, final boolean realtimeBars,
             final RemainderCarryOverPolicy carryOverPolicy) {
+        if (volumeThreshold <= 0) {
+            throw new IllegalArgumentException("volumeThreshold must be positive");
+        }
         this.volumeThreshold = volumeThreshold;
         this.realtimeBars = realtimeBars;
         this.carryOverPolicy = carryOverPolicy == null ? RemainderCarryOverPolicy.NONE : carryOverPolicy;
+    }
+
+    @Serial
+    private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (volumeThreshold <= 0) {
+            throw new InvalidObjectException("volumeThreshold must be positive");
+        }
+        if (carryOverPolicy == null) {
+            throw new InvalidObjectException("carryOverPolicy must not be null");
+        }
     }
 
     @Override

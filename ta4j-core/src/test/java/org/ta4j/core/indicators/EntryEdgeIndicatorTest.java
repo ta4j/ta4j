@@ -6,14 +6,22 @@ package org.ta4j.core.indicators;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class EntryEdgeIndicatorTest {
 
@@ -74,6 +82,82 @@ public class EntryEdgeIndicatorTest {
         }
 
         assertThat(signals.getReads()).isLessThan(200);
+    }
+
+    @Test
+    public void shouldExpireOldSignalsAndRecalculateFormingBar() {
+        EntryEdgeIndicator subject = new EntryEdgeIndicator(fixedSignals(0, 2, 4), new ClosePriceIndicator(series),
+                TradeType.BUY, 2, 2);
+        for (int index = 2; index <= 7; index++) {
+            subject.getValue(index);
+        }
+
+        assertNumEquals(1.3479511143062552, subject.getValue(7));
+        series.addPrice(110);
+        assertNumEquals(-92.10999281092738, subject.getValue(7));
+    }
+
+    @Test
+    public void shouldMatchScanWhenMaturedSignalOutcomeBecomesNonFinite() {
+        for (NumFactory factory : List.of(DecimalNumFactory.getInstance(), DoubleNumFactory.getInstance())) {
+            // Exercise both a cancellation rebase and a successful rolling update.
+            for (double lastClose : new double[] { 102.72, 108 }) {
+                for (Num invalidPrice : List.of(NaN.NaN, factory.numOf(Double.MAX_VALUE))) {
+                    setPrices(factory, 100, 102, 104, 103, 105, 107, 106, lastClose);
+                    EntryEdgeIndicator subject = new EntryEdgeIndicator(fixedSignals(0, 5), series, 2, 2);
+                    for (int index = 2; index < 7; index++) {
+                        subject.getValue(index);
+                    }
+                    assertNumEquals(152.38095238095238, subject.getValue(7));
+
+                    series.addPrice(invalidPrice);
+                    assertThat(subject.getValue(7).isNaN()).isTrue();
+
+                    series.addPrice(108);
+                    assertNumEquals(152.38095238095238, subject.getValue(7));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void shouldSkipNonFiniteBaselineReturnWithoutSignal() {
+        EntryEdgeIndicator subject = new EntryEdgeIndicator(fixedSignals(0), series, 2, 2);
+        for (int index = 2; index <= 7; index++) {
+            subject.getValue(index);
+        }
+
+        series.addPrice(NaN.NaN);
+        assertNumEquals(304.76190476190476, subject.getValue(7));
+    }
+
+    @Test
+    public void shouldRecalculateAfterHistoricalPriceReplacement() {
+        EntryEdgeIndicator subject = new EntryEdgeIndicator(fixedSignals(0, 2, 4), new ClosePriceIndicator(series),
+                TradeType.BUY, 2, 2);
+        for (int index = 2; index <= 7; index++) {
+            subject.getValue(index);
+        }
+        Bar old = series.getBar(4);
+        ((BaseBarSeries) series).replaceBar(4,
+                series.barBuilder()
+                        .timePeriod(old.getTimePeriod())
+                        .endTime(old.getEndTime())
+                        .openPrice(110)
+                        .highPrice(110)
+                        .lowPrice(110)
+                        .closePrice(110)
+                        .volume(old.getVolume())
+                        .build());
+
+        assertNumEquals(241.73256649892164, subject.getValue(7));
+    }
+
+    private void setPrices(NumFactory factory, double... prices) {
+        series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+        for (double price : prices) {
+            series.barBuilder().openPrice(price).highPrice(price).lowPrice(price).closePrice(price).volume(1).add();
+        }
     }
 
     private Indicator<Boolean> fixedSignals(int... indexes) {

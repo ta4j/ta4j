@@ -103,4 +103,21 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
                 assertNumEquals(series.numFactory().numOf(80).toString(), aroonDownIndicator.getValue(i));
         }
     }
+
+    @Test
+    public void newestLowExpiresAndFormingBarCanBecomeTheLow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var indicator = new AroonDownIndicator(series, 2);
+        for (int price : new int[] { 4, 1, 1, 2, 4 }) {
+            series.barBuilder().openPrice(price).highPrice(price).lowPrice(price).closePrice(price).volume(0).add();
+            indicator.getValue(series.getEndIndex());
+        }
+        assertNumEquals(100, indicator.getValue(2));
+        assertNumEquals(50, indicator.getValue(3));
+        assertNumEquals(0, indicator.getValue(4));
+        series.addPrice(0);
+        assertNumEquals(100, indicator.getValue(4));
+        series.barBuilder().openPrice(2).highPrice(2).lowPrice(2).closePrice(2).volume(0).add();
+        assertNumEquals(50, indicator.getValue(5));
+    }
 }

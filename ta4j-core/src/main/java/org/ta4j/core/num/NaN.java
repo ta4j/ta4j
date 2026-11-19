@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.num;
 
+import java.io.InvalidObjectException;
+import java.io.Serial;
 import java.math.BigDecimal;
 import java.math.MathContext;
 
@@ -297,5 +299,15 @@ public class NaN implements Num {
     @Override
     public int hashCode() {
         return NaN.class.hashCode();
+    }
+
+    @Serial
+    private Object readResolve() {
+        return NaN;
+    }
+
+    @Serial
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("NaN class data is required");
     }
 }

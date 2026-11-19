@@ -114,6 +114,17 @@ public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void recoversSmallContributionsWhenOpposingLargeValuesCancel() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        FixedIndicator<Num> base = new FixedIndicator<>(series, numOf(1e16), numOf(1), numOf(1), numOf(-1e16),
+                numOf(1e16 + 10), numOf(0));
+        RunningTotalIndicator total = new RunningTotalIndicator(base, 4);
+
+        total.getValue(3);
+        assertNumEquals(12, total.getValue(4));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void serializationRoundTrip() {
         Indicator<Num> base = new ClosePriceIndicator(data);

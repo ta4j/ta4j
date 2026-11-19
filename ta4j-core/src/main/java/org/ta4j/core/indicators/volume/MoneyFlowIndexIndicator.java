@@ -6,10 +6,13 @@ package org.ta4j.core.indicators.volume;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -26,6 +29,8 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
     private final PreviousValueIndicator previousTypicalPrice;
     private final TypicalPriceIndicator typicalPrice;
     private final VolumeIndicator volume;
+    private final transient RunningTotalIndicator positiveTotal;
+    private final transient RunningTotalIndicator negativeTotal;
     private final int barCount;
 
     /**
@@ -42,6 +47,8 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
         this.previousTypicalPrice = new PreviousValueIndicator(this.typicalPrice);
         this.volume = new VolumeIndicator(series);
         this.barCount = barCount;
+        this.positiveTotal = new RunningTotalIndicator(moneyFlow(series, true), barCount);
+        this.negativeTotal = new RunningTotalIndicator(moneyFlow(series, false), barCount);
     }
 
     @Override
@@ -52,25 +59,30 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
         }
 
         final var numFactory = getBarSeries().numFactory();
-        Num sumOfPositiveMoneyFlowVolume = numFactory.zero();
-        Num sumOfNegativeMoneyFlowVolume = numFactory.zero();
+        Num sumOfPositiveMoneyFlowVolume;
+        Num sumOfNegativeMoneyFlowVolume;
 
         // Start from the first bar or the start of the window
         int startIndex = Math.max(0, index - barCount + 1);
-        for (int i = startIndex; i <= index; i++) {
-            Num currentTypicalPriceValue = typicalPrice.getValue(i);
-            Num previousTypicalPriceValue = previousTypicalPrice.getValue(i);
-            Num currentVolume = volume.getValue(i);
+        if (barCount > 1 && startIndex >= getBarSeries().getBeginIndex()
+                && (!(numFactory.zero() instanceof DecimalNum decimal)
+                        || decimal.getMathContext().getPrecision() >= 16)) {
+            sumOfPositiveMoneyFlowVolume = positiveTotal.getValue(index);
+            sumOfNegativeMoneyFlowVolume = negativeTotal.getValue(index);
+        } else {
+            sumOfPositiveMoneyFlowVolume = numFactory.zero();
+            sumOfNegativeMoneyFlowVolume = numFactory.zero();
+            for (int i = startIndex; i <= index; i++) {
+                Num currentTypicalPriceValue = typicalPrice.getValue(i);
+                Num previousTypicalPriceValue = previousTypicalPrice.getValue(i);
+                Num currentVolume = volume.getValue(i);
 
-            Num rawMoneyFlowValue = currentTypicalPriceValue.multipliedBy(currentVolume);
-
-            // If the typical price is increasing, we add to the positive flow
-            if (currentTypicalPriceValue.isGreaterThan(previousTypicalPriceValue)) {
-                sumOfPositiveMoneyFlowVolume = sumOfPositiveMoneyFlowVolume.plus(rawMoneyFlowValue);
-            }
-            // If the typical price is decreasing, we add to the negative flow
-            else if (currentTypicalPriceValue.isLessThan(previousTypicalPriceValue)) {
-                sumOfNegativeMoneyFlowVolume = sumOfNegativeMoneyFlowVolume.plus(rawMoneyFlowValue);
+                Num rawMoneyFlowValue = currentTypicalPriceValue.multipliedBy(currentVolume);
+                if (currentTypicalPriceValue.isGreaterThan(previousTypicalPriceValue)) {
+                    sumOfPositiveMoneyFlowVolume = sumOfPositiveMoneyFlowVolume.plus(rawMoneyFlowValue);
+                } else if (currentTypicalPriceValue.isLessThan(previousTypicalPriceValue)) {
+                    sumOfNegativeMoneyFlowVolume = sumOfNegativeMoneyFlowVolume.plus(rawMoneyFlowValue);
+                }
             }
         }
 
@@ -80,6 +92,24 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
 
         // Calculate MFI. max function is used to prevent division by zero.
         return numFactory.hundred().minus((numFactory.hundred().dividedBy((numFactory.one().plus(moneyFlowRatio)))));
+    }
+
+    private Indicator<Num> moneyFlow(BarSeries series, boolean positive) {
+        return new CachedIndicator<Num>(series) {
+            @Override
+            protected Num calculate(int index) {
+                Num current = typicalPrice.getValue(index);
+                Num previous = previousTypicalPrice.getValue(index);
+                Num raw = current.multipliedBy(volume.getValue(index));
+                boolean matches = positive ? current.isGreaterThan(previous) : current.isLessThan(previous);
+                return matches ? raw : getBarSeries().numFactory().zero();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return previousTypicalPrice.getCountOfUnstableBars();
+            }
+        };
     }
 
     @Override

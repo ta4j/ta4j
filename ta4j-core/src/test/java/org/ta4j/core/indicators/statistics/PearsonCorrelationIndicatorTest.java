@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;
@@ -10,6 +11,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -85,6 +87,107 @@ public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
         assertNumEquals(0.9799, coef.getValue(19));
     }
 
+    @Test
+    public void expirationOfLargeValuesRebuildsAllRollingSums() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        for (int sign : new int[] { 1, -1 }) {
+            Indicator<Num> large = new FixedIndicator<>(series, numOf(sign * 1e100), numOf(sign * 1e100), numOf(sign),
+                    numOf(sign * 2), numOf(sign * 3), numOf(sign * 4));
+            Indicator<Num> small = new FixedIndicator<>(series, numOf(1), numOf(1), numOf(1), numOf(2), numOf(3),
+                    numOf(4));
+            for (boolean swapped : new boolean[] { false, true }) {
+                PearsonCorrelationIndicator correlation = swapped ? new PearsonCorrelationIndicator(small, large, 3)
+                        : new PearsonCorrelationIndicator(large, small, 3);
+                assertTrue(correlation.getValue(2).isNaN());
+                assertNumEquals(numOf(-0.5 * sign), correlation.getValue(3), 1e-12);
+                assertNumEquals(numOf(sign), correlation.getValue(4), 1e-12);
+                assertNumEquals(numOf(sign), correlation.getValue(5), 1e-12);
+            }
+        }
+    }
+
+    @Test
+    public void expirationWithNonzeroRoundedResidualRebuildsTheWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        Indicator<Num> x = new FixedIndicator<>(series, numOf(1e8), numOf(1e8), numOf(6), numOf(5), numOf(4), numOf(3));
+        Indicator<Num> y = new FixedIndicator<>(series, numOf(1), numOf(1), numOf(6), numOf(5), numOf(4), numOf(3));
+        PearsonCorrelationIndicator correlation = new PearsonCorrelationIndicator(x, y, 3);
+
+        correlation.getValue(2);
+        correlation.getValue(3);
+        assertNumEquals(numFactory.one(), correlation.getValue(4), 1e-12);
+        assertNumEquals(numFactory.one(), correlation.getValue(5), 1e-12);
+    }
+
+    @Test
+    public void signedAdditionCancellationRebuildsTheWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        Indicator<Num> x = new FixedIndicator<>(series, numOf(1), numOf(1e20), numOf(-1e20), numOf(1), numOf(2));
+        Indicator<Num> y = new FixedIndicator<>(series, numOf(1), numOf(1), numOf(1), numOf(2), numOf(3));
+        PearsonCorrelationIndicator correlation = new PearsonCorrelationIndicator(x, y, 3);
+
+        assertTrue(correlation.getValue(2).isNaN());
+        Num scaled = correlation.getValue(3).multipliedBy(numOf(1e20));
+        assertNumEquals(numFactory.one().dividedBy(numOf(3).sqrt()), scaled, 1e-12);
+    }
+
+    @Test
+    public void signedProductCancellationRebuildsTheWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        Indicator<Num> x = new FixedIndicator<>(series, numOf(1), numOf(1e20), numOf(-1e20), numOf(100), numOf(99),
+                numOf(100));
+        Indicator<Num> y = new FixedIndicator<>(series, numOf(1), numOf(1), numOf(1), numOf(1), numOf(-1), numOf(0));
+        PearsonCorrelationIndicator correlation = new PearsonCorrelationIndicator(x, y, 4);
+
+        assertTrue(correlation.getValue(3).isNaN());
+        Num scaled = correlation.getValue(4).multipliedBy(numOf(1e20));
+        assertNumEquals(numOf(-394).dividedBy(numOf(96).sqrt()), scaled, 1e-12);
+    }
+
+    @Test
+    public void exactIntegerCancellationRetainsTheSequentialFastPath() {
+        int barCount = 19;
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[21]).build();
+        Num[] values = new Num[21];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = numOf(i % 2 == 0 ? 1 : -1);
+        }
+        CountingIndicator source = new CountingIndicator(series, values);
+        PearsonCorrelationIndicator correlation = new PearsonCorrelationIndicator(source, source, barCount);
+
+        correlation.getValue(18);
+        source.resetReadCount();
+        assertNumEquals(numFactory.one(), correlation.getValue(19), 1e-12);
+        assertTrue(source.readCount() <= 4, "An exact sequential update rescanned the window");
+    }
+
+    @Test
+    public void historicalReplacementAndExpirationUpdateCorrelation() {
+        var series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6)
+                .build();
+        var x = new ClosePriceIndicator(series);
+        var y = new FixedIndicator<Num>(series, numOf(1), numOf(2), numOf(3), numOf(4), numOf(5), numOf(6));
+        var correlation = new PearsonCorrelationIndicator(x, y, 3);
+        for (int i = 0; i <= 3; i++) {
+            correlation.getValue(i);
+        }
+        var old = series.getBar(1);
+        series.replaceBar(1,
+                series.barBuilder()
+                        .timePeriod(old.getTimePeriod())
+                        .endTime(old.getEndTime())
+                        .openPrice(20)
+                        .highPrice(20)
+                        .lowPrice(20)
+                        .closePrice(20)
+                        .volume(old.getVolume())
+                        .build());
+
+        assertNumEquals(-16 / Math.sqrt(364), correlation.getValue(3));
+        assertNumEquals(1, correlation.getValue(4));
+    }
+
     /**
      * Verifies that the correlation normalizes by the number of values actually
      * iterated when bar eviction leaves fewer retained bars than the requested
@@ -128,5 +231,28 @@ public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
 
         // Perfectly linear pairs (2,5), (4,10), (6,15), (8,20), (10,25) -> r = 1
         assertNumEquals(1, coef.getValue(4));
+    }
+
+    private static final class CountingIndicator extends FixedIndicator<Num> {
+
+        private int readCount;
+
+        private CountingIndicator(BarSeries series, Num... values) {
+            super(series, values);
+        }
+
+        @Override
+        public Num getValue(int index) {
+            readCount++;
+            return super.getValue(index);
+        }
+
+        private int readCount() {
+            return readCount;
+        }
+
+        private void resetReadCount() {
+            readCount = 0;
+        }
     }
 }

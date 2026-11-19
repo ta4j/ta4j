@@ -16,6 +16,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -51,6 +52,20 @@ public class CMOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         assertNumEquals(4.7619, cmo.getValue(13));
         assertNumEquals(24.1983, cmo.getValue(14));
         assertNumEquals(47.644, cmo.getValue(15));
+    }
+
+    @Test
+    public void lowPrecisionSequentialReadsMatchFreshWindow() {
+        BarSeries lowPrecision = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(2))
+                .withData(76, 6, 39, 4, 35, 61, 77, 93, 50)
+                .build();
+        ClosePriceIndicator close = new ClosePriceIndicator(lowPrecision);
+        CMOIndicator sequential = new CMOIndicator(close, 3);
+        for (int i = 2; i <= 5; i++) {
+            sequential.getValue(i);
+        }
+        assertNumEquals(100, new CMOIndicator(close, 3).getValue(6));
+        assertNumEquals(100, sequential.getValue(6));
     }
 
     @Override

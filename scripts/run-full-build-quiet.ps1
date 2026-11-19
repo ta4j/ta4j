@@ -7,11 +7,12 @@ function Show-Usage {
 Usage: scripts/run-full-build-quiet.ps1 [--validate-only] [--preflight-only] [--goals "goal..."] [--] [maven-args...]
 
 The default local invocation repairs license headers and formatting before it
-runs the repository-owned checks and Maven verify gate. Hosted CI uses
+runs the Maven verify gate. Script/action checks run separately with
+scripts/run-script-checks.sh (or --preflight-only for the Windows adapter). Hosted CI uses
 --validate-only to validate the same gate without modifying its checkout.
 Maven output is filtered and the complete log is written to .agents/logs/full-build-*.log.
 Explicit --goals invocations remain focused and skip repository preflight checks.
-The default gate and --preflight-only require Bash. On Windows, WSL is preferred
+Only --preflight-only requires Bash. On Windows, WSL is preferred
 for preflight; Git Bash is the fallback.
 
 Examples:
@@ -20,7 +21,7 @@ Examples:
   scripts/run-full-build-quiet.ps1 --preflight-only
   scripts/run-full-build-quiet.ps1 -- -pl ta4j-core
   scripts/run-full-build-quiet.ps1 --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
-  scripts/run-full-build-quiet.ps1 --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+  scripts/run-full-build-quiet.ps1 --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless
 "@
 }
 
@@ -378,7 +379,7 @@ Set-Location $repoRoot
 $isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
 
 
-if ($defaultGate -or $preflightOnly) {
+if ($preflightOnly) {
     $preflightScript = "scripts/run-full-build-quiet.sh"
     $wsl = if ($isWindowsPlatform) { Get-Command wsl.exe -ErrorAction SilentlyContinue } else { $null }
     $wslReady = $false
@@ -401,7 +402,7 @@ if ($preflightOnly) {
 }
 
 if ($defaultGate) {
-    $mavenArgs = @("-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless") + $mavenArgs
+    $mavenArgs = @("-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless") + $mavenArgs
 }
 
 $logDir = Join-Path $repoRoot ".agents/logs"

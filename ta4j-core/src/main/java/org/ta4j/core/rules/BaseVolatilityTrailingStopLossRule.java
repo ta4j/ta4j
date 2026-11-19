@@ -21,8 +21,7 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
     private final Indicator<Num> referencePrice;
     private final Indicator<Num> stopLossThreshold;
     private final int barCount;
-    private final transient HighestValueIndicator highestReferencePriceWithMaxLookback;
-    private final transient LowestValueIndicator lowestReferencePriceWithMaxLookback;
+    private final PositionPriceExtrema extrema;
 
     /**
      * Constructor.
@@ -40,8 +39,7 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
         this.referencePrice = config.referencePrice();
         this.stopLossThreshold = config.stopLossThreshold();
         this.barCount = config.barCount();
-        this.highestReferencePriceWithMaxLookback = config.highestReferencePriceWithMaxLookback();
-        this.lowestReferencePriceWithMaxLookback = config.lowestReferencePriceWithMaxLookback();
+        this.extrema = new PositionPriceExtrema(referencePrice, barCount, false);
     }
 
     private static Config validatedConfig(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold,
@@ -55,9 +53,7 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be positive");
         }
-        return new Config(referencePrice, stopLossThreshold, barCount,
-                new HighestValueIndicator(referencePrice, barCount),
-                new LowestValueIndicator(referencePrice, barCount));
+        return new Config(referencePrice, stopLossThreshold, barCount);
     }
 
     /**
@@ -105,12 +101,12 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
         boolean satisfied;
         String extremeField;
         if (buy) {
-            extremePrice = entryPrice.max(highestReferencePrice(index, lookback));
+            extremePrice = entryPrice.max(extrema.value(index, entryIndex, true));
             stopPrice = StopLossRule.stopLossPriceFromDistance(extremePrice, threshold, true);
             satisfied = currentPrice.isLessThanOrEqual(stopPrice);
             extremeField = "highestPrice";
         } else {
-            extremePrice = entryPrice.min(lowestReferencePrice(index, lookback));
+            extremePrice = entryPrice.min(extrema.value(index, entryIndex, false));
             stopPrice = StopLossRule.stopLossPriceFromDistance(extremePrice, threshold, false);
             satisfied = currentPrice.isGreaterThanOrEqual(stopPrice);
             extremeField = "lowestPrice";
@@ -143,54 +139,14 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
             return null;
         }
 
-        // stopPrice models the initial trailing stop at entry time.
-        int lookback = 1;
         if (position.getEntry().isBuy()) {
-            Num reference = entryPrice.max(highestReferencePrice(entryIndex, lookback));
+            Num reference = entryPrice.max(new HighestValueIndicator(referencePrice, 1).getValue(entryIndex));
             return StopLossRule.stopLossPriceFromDistance(reference, threshold, true);
         }
-        Num reference = entryPrice.min(lowestReferencePrice(entryIndex, lookback));
+        Num reference = entryPrice.min(new LowestValueIndicator(referencePrice, 1).getValue(entryIndex));
         return StopLossRule.stopLossPriceFromDistance(reference, threshold, false);
     }
 
-    /**
-     * Returns the highest reference price for the requested lookback.
-     *
-     * <p>
-     * The max-lookback indicator is cached and reused; shorter warm-up lookbacks
-     * are computed with a temporary indicator.
-     *
-     * @param index    current bar index
-     * @param lookback lookback window size
-     * @return highest reference price within the window
-     */
-    private Num highestReferencePrice(int index, int lookback) {
-        if (lookback == barCount) {
-            return highestReferencePriceWithMaxLookback.getValue(index);
-        }
-        return new HighestValueIndicator(referencePrice, lookback).getValue(index);
-    }
-
-    /**
-     * Returns the lowest reference price for the requested lookback.
-     *
-     * <p>
-     * The max-lookback indicator is cached and reused; shorter warm-up lookbacks
-     * are computed with a temporary indicator.
-     *
-     * @param index    current bar index
-     * @param lookback lookback window size
-     * @return lowest reference price within the window
-     */
-    private Num lowestReferencePrice(int index, int lookback) {
-        if (lookback == barCount) {
-            return lowestReferencePriceWithMaxLookback.getValue(index);
-        }
-        return new LowestValueIndicator(referencePrice, lookback).getValue(index);
-    }
-
-    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold, int barCount,
-            HighestValueIndicator highestReferencePriceWithMaxLookback,
-            LowestValueIndicator lowestReferencePriceWithMaxLookback) {
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold, int barCount) {
     }
 }

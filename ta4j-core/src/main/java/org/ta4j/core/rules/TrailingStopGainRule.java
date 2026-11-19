@@ -34,6 +34,8 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
     /** the gain-distance as percentage. */
     private final Num gainPercentage;
 
+    private final PositionPriceExtrema extrema;
+
     /**
      * Constructor.
      *
@@ -49,6 +51,7 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
         this.priceIndicator = config.priceIndicator();
         this.barCount = config.barCount();
         this.gainPercentage = config.gainPercentage();
+        this.extrema = new PositionPriceExtrema(priceIndicator, barCount);
     }
 
     private static Config validatedConfig(Indicator<Num> indicator, Num gainPercentage, int barCount) {
@@ -109,7 +112,7 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
         boolean activationReached;
         boolean satisfied;
         if (buy) {
-            extremePrice = highestValue(windowStartIndex, index);
+            extremePrice = extrema.value(index, positionIndex, true);
             if (Num.isNaNOrNull(extremePrice)) {
                 StopRuleTrace.traceTrailingGainDecision(this, index, false, true, currentPrice, entryPrice, null,
                         extremeField, extremePrice, null, lookback, "gainPercentage", gainPercentage,
@@ -121,7 +124,7 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
             stopPrice = StopGainRule.trailingStopGainPrice(extremePrice, gainPercentage, true);
             satisfied = activationReached && currentPrice.isLessThanOrEqual(stopPrice);
         } else {
-            extremePrice = lowestValue(windowStartIndex, index);
+            extremePrice = extrema.value(index, positionIndex, false);
             if (Num.isNaNOrNull(extremePrice)) {
                 StopRuleTrace.traceTrailingGainDecision(this, index, false, false, currentPrice, entryPrice, null,
                         extremeField, extremePrice, null, lookback, "gainPercentage", gainPercentage,
@@ -176,28 +179,6 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
 
     private int retainedStartIndex(int requestedStartIndex) {
         return Math.max(requestedStartIndex, priceIndicator.getBarSeries().getBeginIndex());
-    }
-
-    private Num highestValue(int startIndex, int endIndex) {
-        Num highest = null;
-        for (int index = startIndex; index <= endIndex; index++) {
-            Num candidate = priceIndicator.getValue(index);
-            if (!Num.isNaNOrNull(candidate) && (highest == null || candidate.isGreaterThan(highest))) {
-                highest = candidate;
-            }
-        }
-        return highest;
-    }
-
-    private Num lowestValue(int startIndex, int endIndex) {
-        Num lowest = null;
-        for (int index = startIndex; index <= endIndex; index++) {
-            Num candidate = priceIndicator.getValue(index);
-            if (!Num.isNaNOrNull(candidate) && (lowest == null || candidate.isLessThan(lowest))) {
-                lowest = candidate;
-            }
-        }
-        return lowest;
     }
 
     private static String traceReason(boolean satisfied, boolean activationReached, boolean buy) {

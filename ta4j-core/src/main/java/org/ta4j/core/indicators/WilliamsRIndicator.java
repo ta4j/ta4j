@@ -25,6 +25,8 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
     private final HighPriceIndicator highPriceIndicator;
     private final LowPriceIndicator lowPriceIndicator;
     private final Num multiplier;
+    private final transient HighestValueIndicator highestHigh;
+    private final transient LowestValueIndicator lowestLow;
 
     /**
      * Constructor.
@@ -48,21 +50,20 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
      */
     public WilliamsRIndicator(ClosePriceIndicator closePriceIndicator, int barCount,
             HighPriceIndicator highPriceIndicator, LowPriceIndicator lowPriceIndicator) {
-        super(closePriceIndicator);
+        super(closePriceIndicator, highPriceIndicator, lowPriceIndicator);
         this.closePriceIndicator = closePriceIndicator;
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;
         this.lowPriceIndicator = lowPriceIndicator;
         this.multiplier = getBarSeries().numFactory().numOf(-100);
+        this.highestHigh = new HighestValueIndicator(highPriceIndicator, barCount);
+        this.lowestLow = new LowestValueIndicator(lowPriceIndicator, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        HighestValueIndicator highestHigh = new HighestValueIndicator(highPriceIndicator, barCount);
-        LowestValueIndicator lowestMin = new LowestValueIndicator(lowPriceIndicator, barCount);
-
         Num highestHighPrice = highestHigh.getValue(index);
-        Num lowestLowPrice = lowestMin.getValue(index);
+        Num lowestLowPrice = lowestLow.getValue(index);
 
         return ((highestHighPrice.minus(closePriceIndicator.getValue(index)))
                 .dividedBy(highestHighPrice.minus(lowestLowPrice))).multipliedBy(multiplier);

@@ -23,6 +23,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final Indicator<Num> lowPriceIndicator;
     private final transient LowestValueIndicator lowestLowPriceIndicator;
+    private final transient AroonExtremeIndexIndicator extremeIndexIndicator;
     private final transient Num barCountNum;
 
     /**
@@ -39,6 +40,9 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
         this.barCountNum = getBarSeries().numFactory().numOf(barCount);
         // + 1 needed for last possible iteration in loop
         this.lowestLowPriceIndicator = new LowestValueIndicator(lowPriceIndicator, barCount + 1);
+        this.extremeIndexIndicator = barCount > 0 && barCount < Integer.MAX_VALUE
+                ? new AroonExtremeIndexIndicator(lowPriceIndicator, barCount, false)
+                : null;
     }
 
     /**
@@ -57,14 +61,19 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
         if (getBarSeries().getBar(index).getLowPrice().isNaN())
             return NaN;
 
-        // Getting the number of bars since the lowest close price
-        int endIndex = Math.max(0, index - barCount);
-        int nbBars = 0;
-        for (int i = index; i > endIndex; i--) {
-            if (lowPriceIndicator.getValue(i).isEqual(lowestLowPriceIndicator.getValue(index))) {
-                break;
+        int nbBars;
+        if (extremeIndexIndicator != null) {
+            int extremeIndex = extremeIndexIndicator.getValue(index);
+            nbBars = extremeIndex < 0 ? Math.min(index, barCount) : Math.min(index - extremeIndex, barCount);
+        } else {
+            int endIndex = Math.max(0, index - barCount);
+            nbBars = 0;
+            for (int i = index; i > endIndex; i--) {
+                if (lowPriceIndicator.getValue(i).isEqual(lowestLowPriceIndicator.getValue(index))) {
+                    break;
+                }
+                nbBars++;
             }
-            nbBars++;
         }
 
         // TODO is Num needed?

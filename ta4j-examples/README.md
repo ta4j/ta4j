@@ -31,6 +31,7 @@ Use these quick checks before moving to the next track:
 - `ta4jexamples.Quickstart`: prints step-by-step run stages and trade/return metrics
 - `ta4jexamples.backtesting.TradingRecordParityBacktest`: logs execution-model comparison and parity check success
 - `ta4jexamples.backtesting.TradeFillRecordingExample`: logs streamed-vs-grouped fill handling and lot-matching outcomes
+- `ta4jexamples.backtesting.OrderBookBacktest`: logs causal L2 entry signals, an unavailable gap observation, and a closed position filled at subsequent bar opens
 - `ta4jexamples.portfolio.StaticPortfolioBacktest`: logs buy-and-hold versus monthly-rebalanced summaries, each rebalance's turnover and cost, and a criteria-computed net return that matches the result's total return
 - `ta4jexamples.portfolio.PortfolioCorrelationAnalysis`: prints price, simple-return, and log-return matrices plus complete-linkage clusters for anonymous sample universes
 - `ta4jexamples.portfolio.DiversifiedPortfolioAnalysis`: writes adjusted-data correlation charts, allocation comparisons, HTML, CSV tables, and an optional external-AI response
@@ -55,9 +56,22 @@ If chart windows do not appear, you are likely in a headless environment; switch
 
 - `ta4jexamples.backtesting.TradingRecordParityBacktest`
 - `ta4jexamples.backtesting.TradeFillRecordingExample`
+- [`ta4jexamples.backtesting.OrderBookBacktest`](src/main/java/ta4jexamples/backtesting/OrderBookBacktest.java): frozen L2 history, spread/imbalance thresholds, readiness, and a price filter
 - `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest`
 - `ta4jexamples.research.RelationshipObjectiveSearchExample`
 - `ta4jexamples.backtesting.BacktestPerformanceTuningHarness`
+
+The offline order-book example selects the last observation available at each bar
+close, accepting an age of at most five seconds. Equal availability times use the
+last input observation; decreasing times are rejected. A fresh unsynchronized
+snapshot remains selected, makes readiness false and measurements NaN, and never
+falls back to an older healthy book. Keep readiness outside negation when composing
+ordinary rules. The history is immutable and caller-sampled; storage scales with
+observations times retained depth. External-history JSON/expression reconstruction
+is unsupported because a bar series alone cannot supply the book dataset.
+
+`OrderBookBacktest` uses zero-cost next-open bar fills, not captured best quotes.
+It does not simulate book walking, queue position, partial fills, or latency.
 
 Run a fixed throughput matrix and write `matrix_performance.json`:
 

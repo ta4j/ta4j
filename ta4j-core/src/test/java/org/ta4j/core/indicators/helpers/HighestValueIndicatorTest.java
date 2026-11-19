@@ -12,6 +12,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -84,6 +85,30 @@ public class HighestValueIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertNumEquals("8.0", highestValue.getValue(4));
         // index 5: [6, 4, 20] -> max = 20 (current 20 > prevMax 8)
         assertNumEquals("20.0", highestValue.getValue(5));
+    }
+
+    @Test
+    public void historicalReplacementUpdatesAndExpiresExtremum() {
+        var series = (BaseBarSeries) data;
+        var highest = new HighestValueIndicator(new ClosePriceIndicator(series), 4);
+        for (int i = 0; i <= 3; i++) {
+            highest.getValue(i);
+        }
+
+        var original = series.getBar(1);
+        series.replaceBar(1,
+                series.barBuilder()
+                        .timePeriod(original.getTimePeriod())
+                        .endTime(original.getEndTime())
+                        .openPrice(20)
+                        .highPrice(20)
+                        .lowPrice(20)
+                        .closePrice(20)
+                        .volume(original.getVolume())
+                        .build());
+
+        assertNumEquals(20, highest.getValue(4));
+        assertNumEquals(4, highest.getValue(5));
     }
 
     @Test

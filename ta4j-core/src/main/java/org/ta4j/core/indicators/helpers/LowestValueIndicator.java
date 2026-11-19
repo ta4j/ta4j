@@ -13,11 +13,14 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Returns the lowest indicator value from the bar series within the bar count.
+ * Sequential requests reuse an indexed monotonic window; changes or access
+ * patterns that invalidate its state are handled by rebuilding the window.
  */
 public class LowestValueIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
+    private final transient RollingExtrema rolling = new RollingExtrema(false);
 
     /**
      * Constructor.
@@ -33,56 +36,26 @@ public class LowestValueIndicator extends CachedIndicator<Num> {
 
     @Override
     public Num calculate(int index) {
-        Num currentVal = indicator.getValue(index);
-
         BarSeries series = indicator.getBarSeries();
-        int beginIndex = Math.max(0, series != null ? series.getBeginIndex() : 0);
-
-        if (currentVal.isNaN()) {
-            if (barCount == 1) {
-                return currentVal;
-            }
-            int end = Math.max(beginIndex, index - barCount + 1);
-            Num lowest = currentVal;
-            for (int i = index - 1; i >= end; i--) {
-                Num val = indicator.getValue(i);
-                if (!val.isNaN()) {
-                    if (lowest.isNaN() || lowest.isGreaterThan(val)) {
-                        lowest = val;
-                    }
-                }
-            }
-            return lowest;
+        var snapshot = synchronizeCacheWithSeries(series);
+        int beginIndex = Math.max(0, series.getBeginIndex());
+        Num current = indicator.getValue(index);
+        if (barCount <= 1) {
+            return current;
         }
-
-        if (index > beginIndex && isCached(index - 1)) {
-            Num lowestPrev = getValue(index - 1);
-            if (!lowestPrev.isNaN()) {
-                if (currentVal.isLessThan(lowestPrev)) {
-                    return currentVal;
-                }
-                int oldStartIndex = index - barCount;
-                if (oldStartIndex < beginIndex) {
-                    return lowestPrev;
-                }
-                Num droppedVal = indicator.getValue(oldStartIndex);
-                if (droppedVal.isNaN() || lowestPrev.isLessThan(droppedVal)) {
-                    return lowestPrev;
-                }
-            }
+        int start = Math.max(beginIndex, index - barCount + 1);
+        boolean terminal = index == snapshot.endIndex();
+        if (terminal && index > beginIndex) {
+            getValue(index - 1);
         }
-
-        int end = Math.max(beginIndex, index - barCount + 1);
-        Num lowest = currentVal;
-        for (int i = index - 1; i >= end; i--) {
-            Num val = indicator.getValue(i);
-            if (!val.isNaN()) {
-                if (lowest.isGreaterThan(val)) {
-                    lowest = val;
-                }
-            }
-        }
-        return lowest;
+        int checkpoint = rolling.index();
+        long revision = rolling.revision();
+        var changes = series.getBarSeriesChangeSnapshot(revision);
+        Num previous = terminal && checkpoint == index - 2 ? indicator.getValue(index - 1) : null;
+        Num result = rolling.advance(checkpoint, revision, changes, checkpoint >= 0 && isCached(checkpoint), index,
+                start, current, previous, terminal);
+        return result != null ? result
+                : rolling.rebuild(indicator, start, index, current, snapshot.revision(), terminal);
     }
 
     /** @return {@link #barCount} */

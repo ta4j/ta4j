@@ -135,6 +135,33 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertNumEquals(13, indicator.getValue(4));
     }
 
+    @Test
+    public void historicalReplacementAndExpirationUpdateVwap() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int price = 1; price <= 6; price++) {
+            series.barBuilder().openPrice(price).highPrice(price).lowPrice(price).closePrice(price).volume(1).add();
+        }
+        var indicator = new VWAPIndicator(series, 3);
+        for (int index = 0; index <= 3; index++) {
+            indicator.getValue(index);
+        }
+
+        var old = series.getBar(2);
+        series.replaceBar(2,
+                series.barBuilder()
+                        .timePeriod(old.getTimePeriod())
+                        .endTime(old.getEndTime())
+                        .openPrice(30)
+                        .highPrice(30)
+                        .lowPrice(30)
+                        .closePrice(30)
+                        .volume(1)
+                        .build());
+
+        assertNumEquals(13.0, indicator.getValue(4));
+        assertNumEquals(5.0, indicator.getValue(5));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

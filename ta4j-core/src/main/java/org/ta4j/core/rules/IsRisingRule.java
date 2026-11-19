@@ -24,6 +24,7 @@ public class IsRisingRule extends AbstractRule {
 
     /** The minimum required strength of the rising */
     private final double minStrength;
+    private final transient TrendStrengthIndicator trend;
 
     /**
      * Constructor for strict rising.
@@ -47,6 +48,7 @@ public class IsRisingRule extends AbstractRule {
         this.ref = ref;
         this.barCount = barCount;
         this.minStrength = minStrenght >= 1 ? 0.99 : minStrenght;
+        this.trend = ref == null || ref.getBarSeries() == null ? null : new TrendStrengthIndicator(ref, barCount, true);
     }
 
     /** This rule does not use the {@code tradingRecord}. */
@@ -55,10 +57,15 @@ public class IsRisingRule extends AbstractRule {
         var series = ref.getBarSeries();
         int beginIndex = Math.max(0, series == null ? 0 : series.getBeginIndex());
         int start = Math.max(beginIndex, index - barCount + 1);
-        int count = 0;
-        for (int i = start; i <= index; i++) {
-            if (ref.getValue(i).isGreaterThan(ref.getValue(Math.max(beginIndex, i - 1)))) {
-                count += 1;
+        int count;
+        if (trend != null && barCount > 1 && start > beginIndex) {
+            count = trend.count(index);
+        } else {
+            count = 0;
+            for (int i = start; i <= index; i++) {
+                if (ref.getValue(i).isGreaterThan(ref.getValue(Math.max(beginIndex, i - 1)))) {
+                    count += 1;
+                }
             }
         }
 

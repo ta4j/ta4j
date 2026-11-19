@@ -73,4 +73,18 @@ public class TimeSegmentedVolumeIndicatorTest extends AbstractIndicatorTest<Indi
         assertNumEquals(10, tsv.getValue(5));
         assertNumEquals(0, tsv.getValue(6));
     }
+
+    @Test
+    public void recoversSmallContributionsWhenLargeContributionLeaves() {
+        var bars = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        bars.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(0).volume(0).add();
+        for (int i = 1; i <= 10001; i++) {
+            Number volume = i == 1 ? 1_000_000_000 : i == 10001 ? 10.1 : 0.0000004;
+            bars.barBuilder().openPrice(i).closePrice(i).highPrice(i).lowPrice(i).volume(volume).add();
+        }
+        var rolling = new TimeSegmentedVolumeIndicator(bars, 10000);
+        rolling.getValue(10000);
+
+        assertNumEquals(10.1039996, rolling.getValue(10001));
+    }
 }

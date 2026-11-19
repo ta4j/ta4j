@@ -6,6 +6,10 @@ package org.ta4j.core.indicators.statistics;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -21,12 +25,21 @@ import org.ta4j.core.num.Num;
  * retained calculation values, covariance is unavailable before its full
  * retained/source stability boundary; correlation therefore remains unavailable
  * there too.
+ * </p>
+ * <p>
+ * Shared-series windows first try running sums of the sources and their
+ * product; cancellation, overflow or undefined values fall back to the anchored
+ * co-moment calculation.
+ * </p>
  */
 public class CovarianceIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator1;
     private final Indicator<Num> indicator2;
     private final int barCount;
+    private final transient SMAIndicator sma1;
+    private final transient SMAIndicator sma2;
+    private final transient RunningTotalIndicator productTotal;
 
     /**
      * Constructor for indicators backed by a shared bar series.
@@ -42,6 +55,19 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
         this.barCount = Math.max(1, barCount);
+        this.sma1 = new SMAIndicator(indicator1, this.barCount);
+        this.sma2 = new SMAIndicator(indicator2, this.barCount);
+        this.productTotal = new RunningTotalIndicator(new CachedIndicator<Num>(series, indicator1, indicator2) {
+            @Override
+            protected Num calculate(int index) {
+                return indicator1.getValue(index).multipliedBy(indicator2.getValue(index));
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return Math.max(indicator1.getCountOfUnstableBars(), indicator2.getCountOfUnstableBars());
+            }
+        }, this.barCount);
     }
 
     /**
@@ -64,6 +90,10 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
         }
         final int startIndex = (int) Math.max(Math.max(0L, retainedBegin), (long) index - barCount + 1L);
         final int numberOfObservations = index - startIndex + 1;
+        Num runningResult = calculateFromRunningSums(index, numberOfObservations);
+        if (runningResult != null) {
+            return runningResult;
+        }
         Num firstAnchor = indicator1.getValue(startIndex);
         Num secondAnchor = indicator2.getValue(startIndex);
         if (!Num.isFinite(firstAnchor) || !Num.isFinite(secondAnchor)) {
@@ -97,6 +127,29 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
                     .plus(firstDifference.multipliedBy(secondOffset.minus(secondAverageOffset)));
         }
         return coDeviationTotal.dividedBy(getBarSeries().numFactory().numOf(numberOfObservations));
+    }
+
+    private Num calculateFromRunningSums(int index, int numberOfObservations) {
+        Num zero = getBarSeries().numFactory().zero();
+        if (barCount <= 1 || !IndicatorUtils.isSameSeries(indicator1.getBarSeries(), getBarSeries())
+                || !IndicatorUtils.isSameSeries(indicator2.getBarSeries(), getBarSeries())
+                || (zero instanceof DecimalNum decimal && decimal.getMathContext().getPrecision() < 16)) {
+            return null;
+        }
+        try {
+            Num meanProduct = productTotal.getValue(index)
+                    .dividedBy(getBarSeries().numFactory().numOf(numberOfObservations));
+            Num productMeans = sma1.getValue(index).multipliedBy(sma2.getValue(index));
+            Num result = meanProduct.minus(productMeans);
+            Num scale = meanProduct.abs().max(productMeans.abs());
+            if (Num.isFinite(result) && Num.isFinite(scale)
+                    && result.abs().isGreaterThan(scale.dividedBy(getBarSeries().numFactory().numOf(100000000)))) {
+                return result;
+            }
+        } catch (ArithmeticException ignored) {
+            // Use the anchored calculation when raw products overflow.
+        }
+        return null;
     }
 
     private Num calculateWithoutAnchors(int startIndex, int index) {

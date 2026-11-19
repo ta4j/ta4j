@@ -22,6 +22,7 @@ public class IsHighestRule extends AbstractRule {
 
     /** The barCount. */
     private final int barCount;
+    private final transient HighestValueIndicator highest;
 
     /**
      * Constructor.
@@ -32,12 +33,12 @@ public class IsHighestRule extends AbstractRule {
     public IsHighestRule(Indicator<Num> ref, int barCount) {
         this.ref = ref;
         this.barCount = barCount;
+        this.highest = new HighestValueIndicator(ref, barCount);
     }
 
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        HighestValueIndicator highest = new HighestValueIndicator(ref, barCount);
         Num highestVal = highest.getValue(index);
         Num refVal = ref.getValue(index);
 
