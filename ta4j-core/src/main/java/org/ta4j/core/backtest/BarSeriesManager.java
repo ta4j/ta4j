@@ -715,6 +715,7 @@ public class BarSeriesManager {
                     }
                 }
             }
+
             tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord, runSeries);
             return tradingRecord;
         }

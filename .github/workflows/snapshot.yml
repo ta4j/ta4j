@@ -173,6 +173,14 @@ jobs:
           gpgconf --launch gpg-agent 2>/dev/null || true
           echo "gpg.conf and gpg-agent.conf created"
 
+      - name: Preflight OpenPGP signing
+        id: signing_preflight
+        if: steps.dry_run.outputs.dryRun != 'true'
+        shell: bash
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: bash scripts/release/release_helpers.sh signing-preflight
+
       - name: Dry-run mode notice
         if: steps.dry_run.outputs.dryRun == 'true'
         run: |
@@ -231,10 +239,15 @@ jobs:
           RESOLVED_CORE_SHA256: ${{ steps.consumption.outputs.resolved_core_sha256 }}
           PUBLISHER_EXAMPLES_SHA256: ${{ steps.consumption.outputs.publisher_examples_sha256 }}
           RESOLVED_EXAMPLES_SHA256: ${{ steps.consumption.outputs.resolved_examples_sha256 }}
+          SIGNING_FINGERPRINT: ${{ steps.signing_preflight.outputs.signing_fingerprint }}
+          SIGNING_PREFLIGHT_OUTCOME: ${{ steps.signing_preflight.outcome }}
         run: |
           if [ "${DRY_RUN:-false}" = "true" ]; then
             mutation_plan="would configure publishing secrets, deploy the snapshot, and verify exact external Maven consumption"
             rerun_guidance="rerun snapshot.yml with dryRun=false, or let the master push/publish handoff path run"
+          elif [ "${SIGNING_PREFLIGHT_OUTCOME:-}" = "failure" ]; then
+            mutation_plan="OpenPGP signing preflight failed before the snapshot build and deployment"
+            rerun_guidance="inspect the preflight diagnostic and fix the OpenPGP key or passphrase before rerunning"
           else
             if [ "${MAVEN_CONSUMABLE:-false}" = "true" ]; then
               mutation_plan="completed snapshot deployment and exact external Maven consumption verification"
@@ -261,6 +274,7 @@ jobs:
             "resolvedCoreSha256": "${RESOLVED_CORE_SHA256:-}",
             "publisherExamplesSha256": "${PUBLISHER_EXAMPLES_SHA256:-}",
             "resolvedExamplesSha256": "${RESOLVED_EXAMPLES_SHA256:-}",
+            "signingFingerprint": "${SIGNING_FINGERPRINT:-}",
             "mutationPlan": "${mutation_plan}",
             "rerunGuidance": "${rerun_guidance}",
             "runUrl": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
@@ -279,6 +293,7 @@ jobs:
             echo "- resolved core: ${RESOLVED_CORE_VERSION:-none}"
             echo "- resolved examples: ${RESOLVED_EXAMPLES_VERSION:-none}"
             echo "- propagation: ${CONSUMPTION_ATTEMPTS:-0} attempt(s), ${CONSUMPTION_ELAPSED_SECONDS:-0}s"
+            echo "- OpenPGP signing fingerprint: ${SIGNING_FINGERPRINT:-not checked}"
             echo "- mutation plan: ${mutation_plan}"
             echo "- rerun guidance: ${rerun_guidance}"
           } >> "$GITHUB_STEP_SUMMARY"

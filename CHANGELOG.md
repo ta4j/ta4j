@@ -2,15 +2,33 @@
 
 ### Added
 
+- **Rebuild rules from short labels (`CF-336`)**: Register a `NamedRule` subclass once and recreate it with `NamedRule.fromLabel(series, "RsiThresholdRule_BELOW_14_30")`; `NamedStrategy.fromLabel` does the same for named strategies. A named rule's label is fixed, so renaming it throws `UnsupportedOperationException`. Subclasses call `super(TheirClass.class, parameters...)`; conflicting simple names fail fast rather than resolving by classpath order. `ta4j-examples` ships `RsiThresholdRule` and `ClosePriceCrossedMovingAverageRule` as reference implementations.
+- **Acceleration accuracy is fixed per indicator (`CF-336`)**: A `KernelIndicator` captures `ta4j.acceleration.approximateTolerance` when it is created and exposes it as `approximateTolerance()`. Its provider batches always use that contract, so cached values never mix approximate and exact results after the property changes.
+- **Optional GPU providers in `ta4j-acceleration` (`CF-336`)**: Optional reactor module versioned with `ta4j-core`, with thin source-built platform-classifier JARs for Metal on Apple silicon, CUDA on Windows/Linux x86-64, and OpenCL on Linux x86-64/aarch64. Java applications can build and locally install a matching classifier with its Maven profile or supply a trusted native-library path; release and snapshot workflows publish the ordinary provider artifact, not platform classifiers. No workload/device rows are qualified yet, so `-Dta4j.acceleration.enabled=auto` currently keeps every forecast scalar, even with an approximate tolerance. Direct provider-SPI kernel runs bypass automatic selection/fallback and do not establish automatic offload or a speedup. Applications, including the standalone CLI, opt in by adding the dependency; `ServiceLoader` finds the providers in `org.ta4j.acceleration`. The module adds two settings to core's: `ta4j.acceleration.<metal|cuda|opencl>.library` points at a trusted native library, and `ta4j.acceleration.nativeDir` moves extraction out of `~/.ta4j/native`. Providers chunk work to fit core's `ta4j.acceleration.maxDeviceBytes`.
+- **Say when a provider is unmeasured (`CF-336`)**: automatic acceleration reports `DiagnosticCode.NOT_QUALIFIED`, instead of `CPU_FASTER`, when a provider supports a workload but has no measured cost for it on the device (it predicts `Long.MAX_VALUE`). The workload still stays on the CPU.
 - **Composable position sizing**: Scale balance, Kelly or custom sizing for leveraged exposure with `PositionSizer#leveraged`, then floor quantities to venue lot sizes or whole shares with `roundedDownTo`. Decimal parameters retain their precision, tiny floating-point drift near a lot boundary no longer drops an intended lot, and unrepresentable decimal lot quantities are rejected rather than silently misaligned.
-
 - **Funding-aware position results**: `FundingCostModel` applies historical settlement rates and mark prices through the existing holding-cost API. Model long payments and short credits, use UTC-aligned fixed schedules across gaps or larger bars, and evaluate funded positions with the existing profit and equity curves. `CostModel.calculate(position, firstIndex, finalIndex)` supplies cumulative indexed costs with a default fallback; funding builds those marks in one uncached pass. Separate rate and mark series must use compatible numeric types.
+
+### Fixed
+
+- **Keep rejected named-component scans out of lookups**: Classes discovered in a package are committed only after the entire package passes simple-name conflict checks. A failed scan leaves existing registrations and successful packages intact, and retries cannot resolve an arbitrary conflicting class.
+- **Explicit CSV loading policies**: `CsvFileBarSeriesDataSource` retains permissive malformed-row handling by default and offers `loadCsvSeriesStrict` for applications that must reject partial input.
+- **Locale-independent walk-forward calibration metrics**: `WalkForwardTuner` now updates case-insensitive Brier, log-loss and calibration-error metric names consistently across system locales, including Turkish. Its calibration-metric benchmark exercises the same production path.
+- **Native-provider validation and qualification handoffs (`CF-336`)**: Native requests reject fractional, nonfinite, out-of-range, or output-vector-overflowing dimensions before native initialization. Metal rejects variances that underflow or overflow FP32 and compiles kernels with safe, precise math. Configured CUDA/OpenCL hardware validation fails on initialization or self-test errors instead of skipping. Release manifests include ordinary provider artifacts without promising hosted classifiers. OpenCL validation handles large device inventories and architecture-matched containers; CUDA preflight fails on native tool errors.
+- **Maven signing preflight**: release and snapshot publishing sign and verify a temporary payload with the imported OpenPGP key before publication, failing early on unusable or expired keys and passphrases. A maintainer-run helper renews the existing signing identity without replacing its fingerprint or exposing administrative secrets to a branch-dispatch workflow.
+- **Settlement-timed, size-aware equity**: `CumulativePnL` scales gains and losses by position amount, changing `MaximumAbsoluteDrawdownCriterion` and `Drawdown` results for non-unit positions, while `CashFlow` and `Returns` apply holding costs per asset. Mark-to-market curves charge each settlement only when accrued, preserving paid or received funding and retained-window valuation bases without spreading future costs into earlier bars.
+
+### Changed
+
+- **Depleted and sub-lot accounts keep backtesting**: A dynamic `PositionSizer` result of zero now skips the entry and continues instead of aborting the run. Fixed-amount overloads and exit sizing are unchanged.
+
+## 0.29.0 (2026-11-16)
+
+### Added
 
 - **Causal L2 strategy signals**: `OrderBookIndicator` joins frozen order-book histories to explicit bar-open or bar-close decisions with inclusive freshness limits and stable arrival-order ties. Retained bounds and the decision timestamp are captured atomically on concurrent series. Spread, midpoint, depth and imbalance indicators compose with existing threshold rules; `OrderBookReadyRule` guards unavailable or incomplete books. The offline `OrderBookBacktest` demonstrates ordinary strategies with next-open bar fills, not simulated L2 execution. External-history configuration serialization fails explicitly rather than silently dropping its dataset.
 
 ### Fixed
-
-- **Settlement-timed, size-aware equity**: `CumulativePnL` scales gains and losses by position amount, changing `MaximumAbsoluteDrawdownCriterion` and `Drawdown` results for non-unit positions, while `CashFlow` and `Returns` apply holding costs per asset. Mark-to-market curves charge each settlement only when accrued, preserving paid or received funding and retained-window valuation bases without spreading future costs into earlier bars.
 
 - **Branch-first automatic release preparation**: the existing opt-in direct-release switch now validates exact release and next-snapshot commits before an atomic master promotion. Bound validation receipts, shared lifecycle serialization and publication checkpoints reject stale candidates and blind Maven redeploys; tags continue to identify the release commit. The switch remains off until separately activated, and the scheduler cadence is unchanged. Preserve the CF-756 / PR #1721 protection against publishing PR-only release trees after squash or rebase merges.
 - **Release merge barrier and scoped verification**: automatic releases retain the existing merge freeze through validation, promotion and publication, blocking both PR head and test-merge statuses without changing protection settings. Script/action fixtures now have a standalone gate and run only for relevant changes; ordinary Maven builds no longer execute them. The required CI aggregate checks every selected lane and the live freeze. Publication controllers use a sibling checkout so historical recovery builds scan only their candidate source.
@@ -21,8 +39,6 @@
 
 
 ### Changed
-
-- **Depleted and sub-lot accounts keep backtesting**: A dynamic `PositionSizer` result of zero now skips the entry and continues instead of aborting the run. Fixed-amount overloads and exit sizing are unchanged.
 
 - **Elliott phase cache type**: `ElliottPhaseIndicator` now extends `CachedIndicator<ElliottPhase>` instead of `RecursiveCachedIndicator<ElliottPhase>`. Callers declaring the old supertype must use `CachedIndicator<ElliottPhase>` or `Indicator<ElliottPhase>`; constructors and calculated results are unchanged.
 - **Faster rolling indicators and rules**: sequential extrema, weighted averages, variance, correlation, regression, volume aggregates and trailing-stop calculations reuse guarded window state instead of repeatedly scanning the full lookback. Historical edits, bounded-series changes, non-finite inputs and numerically sensitive cases, including low-precision decimal totals, reconstruct from the existing calculation when reuse is unsafe.
