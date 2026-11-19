@@ -21,18 +21,6 @@ import org.ta4j.core.num.NumFactory;
  * {@code n - 1}) for rolling windows. Use {@link #ofPopulation(Indicator, int)}
  * (or the {@link SampleType} constructor) when population variance is required.
  * </p>
- * <p>
- * Warm-up and partial retained windows preserve legacy calculation values. The
- * unstable-bar count is relative to the retained begin and requires a full
- * window of stable source values; it does not suppress partial-window
- * calculations. In contrast, {@link CovarianceIndicator} returns an unavailable
- * value for incomplete retained windows, so correlation remains unavailable
- * until the full window is stable.
- * </p>
- * <p>
- * Sequential requests reuse centered rolling moments when the series state and
- * numeric precision permit; other requests use the window calculation.
- * </p>
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 

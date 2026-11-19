@@ -113,8 +113,6 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         assertNumEquals(expected, new CovarianceIndicator(large, small, 2).getValue(1));
         assertNumEquals(expected, new CovarianceIndicator(small, large, 2).getValue(1));
 
-        // Dividing the tiny source before multiplication would underflow for
-        // DoubleNum even though its covariance with the large source is finite.
         small = new FixedIndicator<>(series, numFactory.numOf(-Double.MIN_VALUE), numFactory.numOf(Double.MIN_VALUE));
         Num expectedTiny = numFactory.numOf(1e308).multipliedBy(numFactory.numOf(Double.MIN_VALUE));
         assertNumEquals(1, new CovarianceIndicator(large, small, 2).getValue(1).dividedBy(expectedTiny));
@@ -165,9 +163,7 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
         var covar = new CovarianceIndicator(new ClosePriceIndicator(pruned), new VolumeIndicator(pruned, 1), 6);
 
-        // Four retained pairs are insufficient for the six-bar window.
         assertThat(covar.getValue(7).isNaN()).isTrue();
-        // Five pairs remain unavailable; the complete window starts at index nine.
         assertThat(covar.getValue(8).isNaN()).isTrue();
         assertThat(covar.getCountOfUnstableBars()).isEqualTo(5);
         // Window [4..9]: sum of products = 13.5 over 6 observations

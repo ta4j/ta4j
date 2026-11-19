@@ -16,20 +16,8 @@ import org.ta4j.core.num.Num;
 /**
  * Covariance indicator.
  * <p>
- * Zero-origin warm-up retains legacy partial-window calculations. After either
- * source loses history, incomplete retained windows return {@link NaN#NaN}. The
- * absolute availability boundary includes both sources and their retained begin
- * indexes; the public unstable-bar count remains relative to the retained
- * begin. Undefined source values return {@link NaN#NaN}, including singleton
- * windows. Unlike {@link VarianceIndicator}, which preserves legacy partial
- * retained calculation values, covariance is unavailable before its full
- * retained/source stability boundary; correlation therefore remains unavailable
- * there too.
- * </p>
- * <p>
- * Shared-series windows first try running sums of the sources and their
- * product; cancellation, overflow or undefined values fall back to the anchored
- * co-moment calculation.
+ * Returns {@link NaN#NaN} for incomplete retained windows and undefined source
+ * values.
  * </p>
  */
 public class CovarianceIndicator extends CachedIndicator<Num> {
@@ -103,9 +91,6 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
         Num secondAverageOffset = getBarSeries().numFactory().zero();
         Num coDeviationTotal = getBarSeries().numFactory().zero();
         int observations = 1;
-        // The online co-moment uses the same retained window as variance, reads
-        // each source once on the ordinary path, and avoids unrelated SMA warm-up
-        // and terminal loops. Overflow retries the same window without anchors.
         for (long i = (long) startIndex + 1L; i <= (long) index; i++) {
             Num firstValue = indicator1.getValue((int) i);
             Num secondValue = indicator2.getValue((int) i);
@@ -147,7 +132,6 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
                 return result;
             }
         } catch (ArithmeticException ignored) {
-            // Use the anchored calculation when raw products overflow.
         }
         return null;
     }
@@ -165,8 +149,7 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
             }
             observations++;
             Num count = getBarSeries().numFactory().numOf(observations);
-            // Divide before subtracting: opposite finite extremes can have an
-            // unrepresentable difference but a representable population covariance.
+            // Divide first: the difference of opposite extremes can overflow.
             Num firstDifference = firstValue.minus(firstMean);
             Num secondDifference = secondValue.minus(secondMean);
             boolean firstFinite = Num.isFinite(firstDifference);
@@ -177,8 +160,7 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
                     : secondValue.dividedBy(count).minus(secondMean.dividedBy(count));
             Num previousWeight = getBarSeries().numFactory().numOf(observations - 1).dividedBy(count);
             Num contribution;
-            // Scale the larger difference first so a tiny opposite source does
-            // not underflow before the two differences are multiplied.
+            // Scale the larger difference first to avoid underflow.
             if (secondFinite && (!firstFinite || firstDifference.abs().isGreaterThanOrEqual(secondDifference.abs()))) {
                 contribution = firstMeanChange.multipliedBy(secondDifference).multipliedBy(previousWeight);
             } else if (firstFinite) {

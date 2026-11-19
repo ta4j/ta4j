@@ -142,10 +142,8 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
 
         ClosePriceIndicator close = new ClosePriceIndicator(pruned);
         VolumeIndicator volume = new VolumeIndicator(pruned, 1);
-        // Window [4..8] has only five retained observations; a six-bar window is
-        // unavailable until index 9, so population and sample correlation are NaN.
+        // A six-bar window is unavailable until index 9.
         assertThat(new CorrelationCoefficientIndicator(close, volume, 6).getValue(8).isNaN()).isTrue();
-        // Sample correlation uses the same full-window availability boundary
         assertThat(CorrelationCoefficientIndicator.ofSample(close, volume, 6).getValue(8).isNaN()).isTrue();
         // Window [4..9]: covariance = 2.25, variances = 17.5/6 and 113.5/6 -> 0.3029
         assertNumEquals(0.3029, new CorrelationCoefficientIndicator(close, volume, 6).getValue(9));

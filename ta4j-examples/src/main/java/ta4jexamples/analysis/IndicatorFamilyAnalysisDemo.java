@@ -56,12 +56,8 @@ import org.ta4j.core.num.Num;
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 /**
- * Demonstrates indicator-family analysis over an ossified S&P 500 weekly data
- * set.
- * <p>
- * The demo builds a deliberately mixed indicator catalog, runs the same catalog
- * through several similarity thresholds, and logs how broad groupings at lower
- * thresholds split into tighter near-duplicate families at higher thresholds.
+ * Shows indicator families splitting as the similarity threshold rises, on
+ * weekly S&amp;P 500 data.
  *
  * @since 0.29.1
  */

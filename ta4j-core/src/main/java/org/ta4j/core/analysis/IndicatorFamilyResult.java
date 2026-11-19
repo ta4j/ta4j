@@ -33,8 +33,6 @@ public final class IndicatorFamilyResult {
     }
 
     /**
-     * Threshold enforced for every internal family pair.
-     * 
      * @return threshold enforced for every internal family pair.
      * @since 0.29.1
      */
@@ -43,13 +41,8 @@ public final class IndicatorFamilyResult {
     }
 
     /**
-     * First logical index where all pair metrics are stable; may exceed the
-     * retained end.
-     * 
-     * @return first logical index where all pair metrics are stable; may exceed the
-     *         retained end. Boundaries beyond the integer index range are reported
-     *         as {@link Integer#MAX_VALUE}, while their pair measurements remain
-     *         unavailable.
+     * @return first index where all pair metrics are stable, capped at
+     *         {@link Integer#MAX_VALUE}
      * @since 0.29.1
      */
     public int stableIndex() {
@@ -57,8 +50,6 @@ public final class IndicatorFamilyResult {
     }
 
     /**
-     * Indicator-to-family mapping.
-     * 
      * @return indicator-to-family mapping.
      * @since 0.29.1
      */
@@ -67,8 +58,6 @@ public final class IndicatorFamilyResult {
     }
 
     /**
-     * Families in canonical order.
-     * 
      * @return families in canonical order.
      * @since 0.29.1
      */
@@ -77,8 +66,6 @@ public final class IndicatorFamilyResult {
     }
 
     /**
-     * Pairs in canonical name order, including unavailable measurements.
-     * 
      * @return pairs in canonical name order, including unavailable measurements.
      * @since 0.29.1
      */
@@ -107,8 +94,9 @@ public final class IndicatorFamilyResult {
     }
 
     /**
-     * One immutable family, constructed only by the analysis producer. @since
-     * 0.26.1
+     * One family of similar indicators.
+     *
+     * @since 0.29.1
      */
     public static final class Family {
         private final String familyId;
@@ -127,8 +115,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Deterministic family identifier.
-         * 
          * @return deterministic family identifier.
          * @since 0.29.1
          */
@@ -137,8 +123,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Members in canonical name order.
-         * 
          * @return members in canonical name order.
          * @since 0.29.1
          */
@@ -147,8 +131,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Member with strongest mean internal score; canonical name breaks ties.
-         * 
          * @return member with strongest mean internal score; canonical name breaks
          *         ties.
          * @since 0.29.1
@@ -158,8 +140,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Mean internal pair score; one for singletons.
-         * 
          * @return mean internal pair score; one for singletons.
          * @since 0.29.1
          */
@@ -168,8 +148,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Weakest internal pair score, at least the threshold; one for singletons.
-         * 
          * @return weakest internal pair score, at least the threshold; one for
          *         singletons.
          * @since 0.29.1
@@ -202,8 +180,9 @@ public final class IndicatorFamilyResult {
     }
 
     /**
-     * One immutable pair measurement, constructed only by the analysis
-     * producer. @since 0.29.1
+     * One pair measurement.
+     *
+     * @since 0.29.1
      */
     public static final class PairSimilarity {
         private final String firstIndicatorName;
@@ -229,8 +208,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * First canonical pair name.
-         * 
          * @return first canonical pair name.
          * @since 0.29.1
          */
@@ -239,8 +216,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Second canonical pair name.
-         * 
          * @return second canonical pair name.
          * @since 0.29.1
          */
@@ -249,8 +224,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Mean absolute score in [0, 1], or NaN when sampleCount is zero.
-         * 
          * @return mean absolute score in [0, 1], or NaN when sampleCount is zero.
          * @since 0.29.1
          */
@@ -259,8 +232,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Mean signed score, or NaN when unavailable.
-         * 
          * @return mean signed score, or NaN when unavailable.
          * @since 0.29.1
          */
@@ -269,8 +240,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Latest valid signed score, or NaN when unavailable.
-         * 
          * @return latest valid signed score, or NaN when unavailable.
          * @since 0.29.1
          */
@@ -279,8 +248,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Number of valid observed scores.
-         * 
          * @return number of valid observed scores.
          * @since 0.29.1
          */
@@ -289,8 +256,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Minimum observed signed score, or NaN when unavailable.
-         * 
          * @return minimum observed signed score, or NaN when unavailable.
          * @since 0.29.1
          */
@@ -299,8 +264,6 @@ public final class IndicatorFamilyResult {
         }
 
         /**
-         * Maximum observed signed score, or NaN when unavailable.
-         * 
          * @return maximum observed signed score, or NaN when unavailable.
          * @since 0.29.1
          */

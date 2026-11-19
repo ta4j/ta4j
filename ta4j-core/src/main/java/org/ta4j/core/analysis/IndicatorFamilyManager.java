@@ -25,22 +25,9 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Groups indicators by similarity over a single {@link BarSeries}.
- * <p>
- * Callers provide already-instantiated indicators and stable display names. The
- * manager compares each pair with an absolute population correlation score and
- * uses deterministic complete-link clustering: every pair inside a family must
- * have a defined average absolute similarity at or above the threshold. Names
- * are sorted by their natural String order; ties use that canonical order. The
- * default constructor uses a 120-bar rolling correlation window; use
- * {@link #IndicatorFamilyManager(BarSeries, int)} when shorter or longer
- * windows better match the analysis horizon.
- * <p>
- * Custom metric factories may be supplied when a different signed similarity
- * stream is more appropriate. The returned metric indicator must use the same
- * {@link BarSeries} and must return values in {@code [-1, 1]}; invalid values
- * are skipped. Unstable-bar counts remain relative to the retained begin; the
- * manager translates them to absolute eligibility indexes before sampling.
+ * Groups indicators into families by complete-link clustering of their mean
+ * absolute rolling correlation (or a custom similarity metric in
+ * {@code [-1, 1]}) over one {@link BarSeries}.
  *
  * @since 0.29.1
  */
@@ -48,9 +35,7 @@ public final class IndicatorFamilyManager
         implements AnalysisRunner<Map<String, Indicator<Num>>, IndicatorFamilyResult> {
 
     /**
-     * Maximum admitted pair count (128 indicators). Work is rejected before catalog
-     * copying or metric construction when this budget is exceeded. History length
-     * and metric cost remain the caller's responsibility.
+     * Maximum admitted pair count (128 indicators).
      *
      * @since 0.29.1
      */
@@ -115,11 +100,8 @@ public final class IndicatorFamilyManager
     }
 
     /**
-     * Constructor using the default population-correlation metric with opt-in
-     * bounded pair-level parallelism.
-     * <p>
-     * Use this only when the supplied indicators and their {@link BarSeries} are
-     * safe for concurrent reads. A value of {@code 1} forces sequential execution.
+     * Constructor with bounded parallelism; the indicators must be safe for
+     * concurrent reads.
      *
      * @param barSeries         bar series shared by every indicator passed to
      *                          {@link #analyze(Map)}
@@ -139,12 +121,8 @@ public final class IndicatorFamilyManager
     }
 
     /**
-     * Constructor using a caller-provided pairwise similarity metric with opt-in
-     * bounded pair-level parallelism.
-     * <p>
-     * Use parallelism only when the supplied indicators, metric factory, and
-     * {@link BarSeries} are safe for concurrent reads. A value of {@code 1} forces
-     * sequential execution.
+     * Constructor with a custom metric and bounded parallelism; the indicators and
+     * metric must be safe for concurrent reads.
      *
      * @param barSeries               bar series shared by every indicator passed to
      *                                {@link #analyze(Map)}
@@ -389,8 +367,6 @@ public final class IndicatorFamilyManager
 
         long sourceBoundary = Math.max(stableBoundary(pairRequest.leftIndicator()),
                 stableBoundary(pairRequest.rightIndicator()));
-        // Keep the built-in full-window boundary exact even when its public int
-        // unstable count saturates. Custom metrics declare their own relative count.
         long windowBoundary = sourceBoundary + Math.max(0L, (long) correlationWindow - 1L);
         long boundary = Math.max(windowBoundary, stableBoundary(similarityMetric));
         IndicatorFamilyResult.PairSimilarity pairSimilarity = estimatePairSimilarity(pairRequest, similarityMetric,
@@ -453,8 +429,7 @@ public final class IndicatorFamilyManager
         for (int index = 0; index < indicatorNames.size(); index++) {
             grouped.add(new ArrayList<>(List.of(index)));
         }
-        // Merge the strongest complete link. Equal scores retain the first
-        // canonical family pair encountered, independent of input map order.
+        // Ties keep the first canonical pair, independent of map order.
         while (true) {
             int bestLeft = -1;
             int bestRight = -1;

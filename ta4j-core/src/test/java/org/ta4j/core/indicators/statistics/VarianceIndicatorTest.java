@@ -157,11 +157,9 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
                 .build();
         var variance = new VarianceIndicator(new ClosePriceIndicator(pruned), 6);
 
-        // Preserve the released partial-window values even before stability.
         assertNumEquals(0, variance.getValue(4));
         // Window [4..7] = {5,6,7,8}: sample variance = 5 / 3.
         assertNumEquals(5.0 / 3, variance.getValue(7));
-        // Last unstable index: five observations give sample variance = 10 / 4.
         assertNumEquals(2.5, variance.getValue(8));
         assertThat(variance.getCountOfUnstableBars()).isEqualTo(5);
         assertNumEquals(3.5, variance.getValue(9));
@@ -238,7 +236,6 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         assertThat(metric.getCountOfUnstableBars()).isEqualTo(2);
         assertNumEquals(0, metric.getValue(0));
         assertNumEquals(0, metric.getValue(2));
-        // Last unstable index has the legacy two-observation population value.
         assertNumEquals(0.25, metric.getValue(3));
         assertNumEquals(2.0 / 3, metric.getValue(4));
     }
@@ -314,7 +311,6 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         };
         VarianceIndicator metric = VarianceIndicator.ofPopulation(source, 3);
         assertThat(metric.getCountOfUnstableBars()).isEqualTo(6);
-        // Available numeric source values do not override the stability metadata.
         assertNumEquals(2.0 / 3, metric.getValue(5));
         assertNumEquals(2.0 / 3, metric.getValue(6));
     }
