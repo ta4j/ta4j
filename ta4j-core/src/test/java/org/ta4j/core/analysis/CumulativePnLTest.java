@@ -305,9 +305,7 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
         CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
 
-        // Borrowing accrues 4/3 per bar. The window [2, 3] values the position
-        // at 120 less the 8/3 accrued by index 2; its first level is zero and
-        // the next level adds the 10 price move less one period of carry.
+        // Carry of 4/3 per bar; the window basis already includes 8/3.
         Num averageCost = numFactory.numOf(4d).dividedBy(numFactory.numOf(3));
         assertNumEquals(numFactory.zero(), pnl.getValue(2), 1e-12);
         Num expectedNext = numFactory.numOf(10d).minus(averageCost);
@@ -327,7 +325,6 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         CumulativePnL markToMarket = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET);
         CumulativePnL realized = new CumulativePnL(series, record, EquityCurveMode.REALIZED);
 
-        // Borrowing accrues one unit on the 100 entry value per held bar.
         assertNumEquals(-1, markToMarket.getValue(1));
         assertNumEquals(-2, markToMarket.getValue(2));
         assertNumEquals(-3, markToMarket.getValue(3));
@@ -349,8 +346,7 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
         CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
 
-        // Borrowing accrues one unit per bar. In the window [2, 4], the marks
-        // therefore keep accumulating carry (-1, then -2) from the window basis.
+        // One unit of carry per bar, measured from the window basis.
         assertEquals(2, rolling.getBeginIndex());
         assertNumEquals(numFactory.zero(), pnl.getValue(2), 1e-12);
         assertNumEquals(numFactory.numOf(-1d), pnl.getValue(3), 1e-12);

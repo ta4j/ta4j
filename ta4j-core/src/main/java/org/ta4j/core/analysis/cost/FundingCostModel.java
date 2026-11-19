@@ -21,37 +21,11 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Funding settlements on base-asset amounts at historical mark prices. Positive
- * rates charge longs and credit shorts; negative rates reverse that direction.
- * Positive costs are paid and negative costs are received.
- *
- * <p>
- * Each bar in {@code (entryIndex, min(exitIndex, finalIndex)]} contributes
- * {@code rate * mark * entryAmount}, with the sign reversed for shorts. Reads
- * are restricted to the indicators' retained series bounds. A NaN rate means no
- * settlement; a zero rate does not read the mark. No results are cached, so
- * historical corrections and moving series are reflected on the next call. The
- * retained bounds and published history revision are checked after indicator
- * evaluation, outside all series read scopes. A concurrent eviction or
- * correction fails explicitly instead of returning settlements from mixed
- * histories.
- *
- * <p>
- * The window assumes fills at bar close; use
- * {@link org.ta4j.core.backtest.TradeOnCurrentCloseModel}. The default
- * {@code BarSeriesManager} execution model fills at the next bar's open and
- * does not satisfy this convention. This model does not infer intrabar
- * execution phases; next-open callers must adapt settlement alignment
- * explicitly.
- *
- * <p>
- * {@link #equals(CostModel)} compares indicator instances, not their values or
- * scheduling parameters. Separately constructed fixed-rate models therefore
- * differ through that overload. {@link Object#equals(Object)} and
- * {@link Object#hashCode()} retain object identity, including in hash-based
- * collections such as {@link java.util.HashSet}.
- *
- * @see org.ta4j.core.backtest.TradeOnCurrentCloseModel
+ * Funding settlements at historical mark prices. Each bar in
+ * {@code (entryIndex, min(exitIndex, finalIndex)]} costs
+ * {@code rate * mark * entryAmount}, negated for shorts; positive costs are
+ * paid. A NaN rate means no settlement. Assumes close fills, so pair it with
+ * {@link org.ta4j.core.backtest.TradeOnCurrentCloseModel}.
  *
  * @since 0.29.1
  */
@@ -91,14 +65,12 @@ public final class FundingCostModel implements CostModel {
     }
 
     /**
-     * Creates UTC epoch-aligned fixed-rate funding, using close prices as marks. A
-     * bar's rate is multiplied by the number of interval boundaries in
-     * {@code (previousBarEnd, barEnd]}; the first retained bar uses its own begin
-     * time. Gaps and bars spanning multiple settlements are counted in full.
+     * Creates fixed-rate funding settled on UTC epoch-aligned interval boundaries,
+     * using close prices as marks.
      *
      * @param series          the price and scheduling series
      * @param ratePerInterval finite rate per settlement, possibly negative
-     * @param interval        positive settlement interval (for example eight hours)
+     * @param interval        positive settlement interval
      * @return the holding cost model
      * @throws NullPointerException     if any argument is null
      * @throws IllegalArgumentException if the rate is non-finite or the interval is
@@ -150,8 +122,7 @@ public final class FundingCostModel implements CostModel {
     }
 
     /**
-     * Calculates funding through the supplied index, capped at the actual exit.
-     * Empty positions and empty windows have zero cost.
+     * Calculates funding through the supplied index, capped at the exit.
      *
      * @throws NullPointerException            if the position is null
      * @throws ConcurrentModificationException if retained input history changes
@@ -191,30 +162,8 @@ public final class FundingCostModel implements CostModel {
     }
 
     /**
-     * Calculates cumulative funding at every index in the inclusive range, with
-     * offset zero corresponding to {@code firstIndex}. Each value sums the
-     * settlements after entry through that index, scaled by entry amount and signed
-     * by side. Costs before entry are zero. A closed position is treated as open
-     * before its exit and as closed at and after its exit; the exit bar is included
-     * and later settlements are excluded. An empty position repeats its indexed
-     * result at {@code firstIndex}.
+     * Single-pass override of {@link CostModel#calculate(Position, int, int)}.
      *
-     * <p>
-     * Only indices retained by both input series contribute. Settlements before the
-     * requested range are included when retained, and each retained rate and
-     * applicable mark is read at most once. Rates that are zero or NaN do not read
-     * a mark; a NaN mark for a nonzero rate propagates. There is no persistent
-     * cache.
-     *
-     * @param position   the position to evaluate
-     * @param firstIndex the first observation index, inclusive
-     * @param finalIndex the last observation index, inclusive
-     * @return cumulative funding costs ordered by observation index
-     * @throws NullPointerException            if {@code position} is null
-     * @throws IllegalArgumentException        if {@code firstIndex} is negative,
-     *                                         {@code finalIndex} precedes it, or
-     *                                         the inclusive range length exceeds
-     *                                         {@link Integer#MAX_VALUE}
      * @throws ConcurrentModificationException if retained input history changes
      *                                         during indicator evaluation
      * @since 0.29.1
@@ -276,7 +225,6 @@ public final class FundingCostModel implements CostModel {
         return costs;
     }
 
-    /** Returns null when there is no settlement and the mark need not be read. */
     private Num settlement(int index) {
         Num rate = fundingRate.getValue(index);
         return rate.isNaN() || rate.isZero() ? null : rate.multipliedBy(markPrice.getValue(index));
@@ -341,7 +289,6 @@ public final class FundingCostModel implements CostModel {
                         - Math.floorDiv(start.getEpochSecond(), interval.getSeconds());
                 return rate.multipliedBy(series.numFactory().numOf(count));
             }
-            // BigInteger preserves nanosecond alignment without epoch/count overflow.
             BigInteger count = settlementNumber(end).subtract(settlementNumber(start));
             return rate.multipliedBy(series.numFactory().numOf(count));
         }
