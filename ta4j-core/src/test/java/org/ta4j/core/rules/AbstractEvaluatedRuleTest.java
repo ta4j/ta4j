@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.EvaluatedRule;
+import org.ta4j.core.EvaluatedRule.JoinedResult;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
@@ -188,6 +190,69 @@ public class AbstractEvaluatedRuleTest {
         assertThrows(RuleSerializationException.class, rule::toJson);
         assertSame(rule, RuleCopies.copy(rule));
         assertTrue(rule.isSatisfied(2));
+    }
+
+    @Test
+    public void typedJoinTracesOnlyItsCapturedDecisionAndHonorsEnclosingScope() {
+        ThresholdGateRule left = new ThresholdGateRule(close, 3);
+        ThresholdGateRule right = new ThresholdGateRule(close, 4);
+        left.setName("Left gate");
+        right.setName("Right gate");
+        EvaluatedRule<JoinedResult<List<Gate>>> joined = left.and(right, List::of);
+        joined.setName("Joined gate");
+        assertEquals("Joined gate", joined.getName());
+        assertEquals("Joined gate", joined.toString());
+        traceLogger.clear();
+
+        JoinedResult<List<Gate>> snapshot = joined.evaluate(4);
+        assertTrue(joined.toBoolean(snapshot));
+        assertFalse(traceLogger.getLogOutput().contains("#isSatisfied"));
+
+        assertTrue(joined.isSatisfiedWithTraceMode(4, null, Rule.TraceMode.VERBOSE));
+        String output = traceLogger.getLogOutput();
+        assertEquals(1, occurrences(output, "Joined gate#isSatisfied"));
+        assertFalse(output.contains("Left gate#isSatisfied"));
+        assertFalse(output.contains("Right gate#isSatisfied"));
+        assertEquals(2, left.evaluations.get());
+        assertEquals(2, left.coercions.get());
+        assertEquals(2, right.evaluations.get());
+        assertEquals(2, right.coercions.get());
+
+        Rule parent = BooleanRule.TRUE.and(joined);
+        parent.setName("Parent");
+        traceLogger.clear();
+        assertTrue(parent.isSatisfiedWithTraceMode(4, null, Rule.TraceMode.SUMMARY));
+        output = traceLogger.getLogOutput();
+        assertEquals(1, occurrences(output, "Parent#isSatisfied"));
+        assertFalse(output.contains("Joined gate#isSatisfied"));
+
+        traceLogger.clear();
+        assertTrue(parent.isSatisfiedWithTraceMode(4, null, Rule.TraceMode.VERBOSE));
+        output = traceLogger.getLogOutput();
+        assertEquals(1, occurrences(output, "Parent#isSatisfied"));
+        assertEquals(1, occurrences(output, "Joined gate#isSatisfied"));
+        assertFalse(output.contains("Left gate#isSatisfied"));
+        assertFalse(output.contains("Right gate#isSatisfied"));
+        assertEquals(4, left.evaluations.get());
+        assertEquals(4, right.evaluations.get());
+    }
+
+    @Test
+    public void callbackJoinsRejectPersistenceDirectlyAndNestedAndKeepCopyFallback() {
+        ThresholdGateRule left = new ThresholdGateRule(close, 3);
+        ThresholdGateRule right = new ThresholdGateRule(close, 4);
+        EvaluatedRule<JoinedResult<List<Gate>>> joined = left.or(right, List::of);
+        Rule parent = BooleanRule.TRUE.and(joined);
+
+        assertFalse(RuleSerialization.isSerializationSupported(joined));
+        for (Rule rule : List.of(joined, parent)) {
+            assertThrows(RuleSerializationException.class, rule::toDescriptor);
+            assertThrows(RuleSerializationException.class, rule::toJson);
+            assertThrows(RuleSerializationException.class, rule::toExpression);
+        }
+        assertSame(joined, RuleCopies.copy(joined));
+        assertTrue(joined.isSatisfied(2));
+        assertFalse(joined.isSatisfied(1));
     }
 
     private static int occurrences(String text, String token) {
