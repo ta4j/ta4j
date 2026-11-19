@@ -53,7 +53,8 @@ abstract class BaseVolatilityStopGainRule extends AbstractRule implements StopGa
         Num entryPrice = position.getEntry().getNetPrice();
         Num currentPrice = referencePrice.getValue(index);
         Num threshold = stopGainThreshold.getValue(index);
-        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)) {
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)
+                || threshold.isNegative()) {
             StopRuleTrace.traceUnavailable(this, index, "nanInput");
             return false;
         }
@@ -78,7 +79,7 @@ abstract class BaseVolatilityStopGainRule extends AbstractRule implements StopGa
             return null;
         }
         Num threshold = stopGainThreshold.getValue(position.getEntry().getIndex());
-        if (Num.isNaNOrNull(threshold)) {
+        if (Num.isNaNOrNull(threshold) || threshold.isNegative()) {
             return null;
         }
         return StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, position.getEntry().isBuy());

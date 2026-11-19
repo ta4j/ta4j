@@ -86,11 +86,10 @@ import org.ta4j.core.num.Num;
  * needs more than {@value EventSynchronizationSupport#MAX_MATCHING_CELLS} cells
  * — that is, {@code (predicted events + 1) * (reference events + 1) > 8
  * million} — throws {@link IllegalArgumentException} from
- * {@link #getResult(int)} (and therefore from {@link #getValue(int)}), as does
- * a source whose cached event history would exceed the same limit. Sparse event
- * streams stay far below this bound; a dense stream that fires on most bars
- * inside a large window can exceed it, so callers must be prepared for the
- * exception or keep windows sparse enough.
+ * {@link #getResult(int)}, as does a source whose cached event history would
+ * exceed the same limit; {@link #getValue(int)} returns {@code NaN} instead.
+ * Sparse event streams stay far below this bound; a dense stream that fires on
+ * most bars inside a large window can exceed it.
  *
  * <p>
  * Both event caches are invalidated from the series'
@@ -215,7 +214,11 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      */
     @Override
     protected Num calculate(int index) {
-        return getResult(index).f1Score();
+        try {
+            return getResult(index).f1Score();
+        } catch (IllegalArgumentException matcherCapacityExceeded) {
+            return NaN.NaN;
+        }
     }
 
     /**

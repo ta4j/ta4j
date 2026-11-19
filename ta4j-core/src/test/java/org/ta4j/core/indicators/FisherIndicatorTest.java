@@ -9,6 +9,7 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 import java.util.List;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;
@@ -187,6 +188,20 @@ public class FisherIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertNumEquals(0.8324807235379169, fisher.getValue(13));
         assertNumEquals(0.5026313552592737, fisher.getValue(14));
         assertNumEquals(0.06492516204615063, fisher.getValue(15));
+    }
+
+    @Test
+    public void flatPricesAreNaNWithoutThrowing() {
+        BarSeries flat = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        Instant now = Instant.now();
+        for (int i = 12; i > 0; i--) {
+            flat.barBuilder().endTime(now.minusSeconds(i)).openPrice(5).closePrice(5).highPrice(5).lowPrice(5).add();
+        }
+        var fisher = new FisherIndicator(flat);
+
+        for (int i = 1; i <= flat.getEndIndex(); i++) {
+            assertTrue(fisher.getValue(i).isNaN());
+        }
     }
 
     @Override

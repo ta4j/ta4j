@@ -5,6 +5,7 @@ package org.ta4j.core.analysis.cost;
 
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -21,8 +22,12 @@ public class LinearTransactionCostModel implements CostModel {
      *
      * @param feePerPosition the feePerPosition coefficient (e.g. 0.005 for 0.5% per
      *                       {@link Trade trade})
+     * @throws IllegalArgumentException if {@code feePerPosition} is not finite
      */
     public LinearTransactionCostModel(double feePerPosition) {
+        if (!Double.isFinite(feePerPosition)) {
+            throw new IllegalArgumentException("feePerPosition must be finite");
+        }
         this.feePerPosition = feePerPosition;
     }
 
@@ -39,7 +44,7 @@ public class LinearTransactionCostModel implements CostModel {
 
     @Override
     public Num calculate(Position position) {
-        Num totalPositionCost = null;
+        Num totalPositionCost = NaN.NaN;
         Trade entryTrade = position.getEntry();
         if (entryTrade != null) {
             // transaction costs of the entry trade

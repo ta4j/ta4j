@@ -669,6 +669,37 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void denseWindowBeyondMatcherCapacityIsNaN() {
+        int windowSize = 3_000;
+        BarSeries series = series(1);
+        BaseBarSeries proxy = new BaseBarSeries(series.getName(), series.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return 0;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return windowSize - 1;
+            }
+        };
+        Indicator<Boolean> always = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return true;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(always, always, windowSize, 0, 0);
+        assertThrows(IllegalArgumentException.class, () -> indicator.getResult(windowSize - 1));
+        assertTrue(indicator.getValue(windowSize - 1).isNaN());
+    }
+
+    @Test
     public void windowWiderThanHalfTheMatcherCapacityStillBoundsTheCache() {
         // The eviction cap keeps this scenario cheap (the catch-up scan is
         // bounded well below the array ceiling), so it runs for both numeric

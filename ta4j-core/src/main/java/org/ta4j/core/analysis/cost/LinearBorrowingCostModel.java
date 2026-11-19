@@ -7,6 +7,7 @@ import java.util.Objects;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -71,6 +72,7 @@ public class LinearBorrowingCostModel implements CostModel {
      * short positions only.
      *
      * @param feePerPeriod the coefficient (e.g. 0.0001 for 1bp per period)
+     * @throws IllegalArgumentException if {@code feePerPeriod} is not finite
      */
     public LinearBorrowingCostModel(double feePerPeriod) {
         this(feePerPeriod, Applicability.SHORT_ONLY);
@@ -81,9 +83,13 @@ public class LinearBorrowingCostModel implements CostModel {
      *
      * @param feePerPeriod  the coefficient (e.g. 0.0001 for 1bp per period)
      * @param applicability which position sides incur borrowing costs
+     * @throws IllegalArgumentException if {@code feePerPeriod} is not finite
      * @since 0.23.1
      */
     public LinearBorrowingCostModel(double feePerPeriod, Applicability applicability) {
+        if (!Double.isFinite(feePerPeriod)) {
+            throw new IllegalArgumentException("feePerPeriod must be finite");
+        }
         this.feePerPeriod = feePerPeriod;
         this.applicability = Objects.requireNonNull(applicability, "applicability must not be null");
     }
@@ -106,7 +112,7 @@ public class LinearBorrowingCostModel implements CostModel {
             throw new IllegalArgumentException(
                     "Position is not closed. Final index of observation needs to be provided.");
         }
-        return calculate(position, position.getExit().getIndex());
+        return position.isNew() ? NaN.NaN : calculate(position, position.getExit().getIndex());
     }
 
     /**
@@ -115,10 +121,13 @@ public class LinearBorrowingCostModel implements CostModel {
     @Override
     public Num calculate(Position position, int currentIndex) {
         Trade entryTrade = position.getEntry();
+        if (entryTrade == null) {
+            return NaN.NaN;
+        }
         Trade exitTrade = position.getExit();
-        Num borrowingCost = position.getEntry().getNetPrice().getNumFactory().zero();
+        Num borrowingCost = entryTrade.getNetPrice().getNumFactory().zero();
 
-        if (entryTrade != null && entryTrade.getAmount() != null && appliesTo(entryTrade.getType())) {
+        if (entryTrade.getAmount() != null && appliesTo(entryTrade.getType())) {
             int tradingPeriods = 0;
             if (position.isClosed()) {
                 tradingPeriods = exitTrade.getIndex() - entryTrade.getIndex();

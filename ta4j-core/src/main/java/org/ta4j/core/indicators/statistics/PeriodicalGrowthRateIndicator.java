@@ -54,9 +54,13 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
      *
      * @param indicator the indicator
      * @param barCount  the time frame
+     * @throws IllegalArgumentException if {@code barCount < 1}
      */
     public PeriodicalGrowthRateIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
+        if (barCount < 1) {
+            throw new IllegalArgumentException("barCount must be >= 1");
+        }
         this.indicator = indicator;
         this.barCount = barCount;
         this.one = getBarSeries().numFactory().one();

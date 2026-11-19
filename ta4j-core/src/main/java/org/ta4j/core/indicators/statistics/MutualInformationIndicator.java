@@ -135,11 +135,11 @@ public class MutualInformationIndicator extends CachedIndicator<Num> {
                 minimum = minimum.min(values[i]);
                 maximum = maximum.max(values[i]);
             }
-            if (minimum.compareTo(maximum) == 0) {
+            Num width = maximum.minus(minimum).dividedBy(minimum.getNumFactory().numOf(binCount));
+            if (minimum.compareTo(maximum) == 0 || !Num.isFinite(width) || width.isZero()) {
                 return new BinMapper(minimum, minimum.getNumFactory().zero(), binCount, true);
             }
-            return new BinMapper(minimum, maximum.minus(minimum).dividedBy(minimum.getNumFactory().numOf(binCount)),
-                    binCount, false);
+            return new BinMapper(minimum, width, binCount, false);
         }
 
         int bin(Num value) {
