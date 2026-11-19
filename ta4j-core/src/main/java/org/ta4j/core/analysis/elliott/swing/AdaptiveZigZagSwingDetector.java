@@ -40,8 +40,9 @@ import org.ta4j.core.num.Num;
  * scopes.
  *
  * <p>
- * Queries retry until the before/after history observations agree; continuous
- * mutation can prevent a query from completing.
+ * Queries retry until the before/after history observations agree, at most
+ * eight times; a query against a series that keeps changing throws
+ * {@link IllegalStateException}.
  *
  * @since 0.22.2
  */
@@ -75,7 +76,7 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
             return new AdaptiveZigZagSwingDetector(config).detect(series, index, degree);
         }
         try {
-            while (true) {
+            for (int attempt = 1;; attempt++) {
                 final boolean changed = series.withReadLock(() -> {
                     final boolean historyChanged = cachedIndicator != null && cachedSeries.get() == series
                             && observedHistory.hasChangedIn(series, false);
@@ -124,6 +125,7 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
                 if (!changedDuringEvaluation) {
                     throw evaluationFailure;
                 }
+                SwingHistorySnapshot.requireAnotherAttempt(attempt, evaluationFailure);
             }
         } finally {
             detectionLock.unlock();

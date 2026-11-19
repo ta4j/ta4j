@@ -186,4 +186,17 @@ public class KinematicKalmanPriceForecastIndicatorTest extends AbstractIndicator
     private BarSeries series(double... values) {
         return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(values).build();
     }
+
+    @Test
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public void rejectsStateIndicatorsOfAnotherStateType() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        EwmaReturnForecastStateIndicator returnStates = new EwmaReturnForecastStateIndicator(
+                new org.ta4j.core.indicators.helpers.LogReturnIndicator(series));
+        org.ta4j.core.indicators.forecast.state.ForecastStateIndicator widened = returnStates;
+
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> new KinematicKalmanPriceForecastIndicator(widened));
+        assertTrue(failure.getMessage().contains("KinematicKalmanForecastState"));
+    }
 }

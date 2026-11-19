@@ -16,6 +16,8 @@ import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -28,6 +30,29 @@ class ElliottScenarioGeneratorTest {
     void setUp() {
         numFactory = DecimalNumFactory.getInstance();
         generator = new ElliottScenarioGenerator(numFactory);
+    }
+
+    @Test
+    void pruneDropsNaNConfidenceInsteadOfRankingItFirst() {
+        NumFactory doubles = DoubleNumFactory.getInstance();
+        ElliottScenarioGenerator doubleGenerator = new ElliottScenarioGenerator(doubles, 0.1, 10);
+        Num nan = DoubleNum.valueOf(Double.NaN);
+        Num valid = doubles.numOf(0.8);
+        ElliottScenario poisoned = ElliottScenario.builder()
+                .id("nan")
+                .currentPhase(ElliottPhase.WAVE3)
+                .confidence(new ElliottConfidence(nan, valid, valid, valid, valid, valid, "nan"))
+                .type(ScenarioType.IMPULSE)
+                .build();
+        ElliottScenario genuine = ElliottScenario.builder()
+                .id("valid")
+                .currentPhase(ElliottPhase.WAVE3)
+                .confidence(new ElliottConfidence(valid, valid, valid, valid, valid, valid, "valid"))
+                .type(ScenarioType.IMPULSE)
+                .build();
+
+        assertThat(doubleGenerator.prune(List.of(poisoned, genuine))).extracting(ElliottScenario::id)
+                .containsExactly("valid");
     }
 
     @Test

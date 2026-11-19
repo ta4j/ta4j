@@ -56,6 +56,18 @@ class LPPLResidualIndicatorTest {
     }
 
     @Test
+    void exactTrajectoryResidualIsZeroInsteadOfSaturatingOnRoundingNoise() {
+        BarSeries series = LPPLTestFixtures.syntheticSeries(-0.03);
+        LPPLResidualIndicator indicator = new LPPLResidualIndicator(series, LPPLTestFixtures.compactProfile());
+
+        LPPLFit fit = indicator.getFitIndicator().getValue(LPPLTestFixtures.WINDOW);
+
+        assertThat(fit.maxAbsResidual()).isLessThan(1e-10);
+        assertThat(fit.normalizedResidual()).isZero();
+        assertThat(indicator.getValue(LPPLTestFixtures.WINDOW).doubleValue()).isZero();
+    }
+
+    @Test
     void returnsNaNForWarmupAndUnqualifiedFits() {
         BarSeries series = LPPLTestFixtures.syntheticSeries(-0.03, 0.08);
         LPPLCalibrationProfile impossible = LPPLTestFixtures.compactProfile().withOptimizerSettings(1, 0.99);

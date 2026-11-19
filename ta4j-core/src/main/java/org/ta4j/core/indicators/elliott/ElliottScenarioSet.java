@@ -76,11 +76,12 @@ public final class ElliottScenarioSet {
         return (a, b) -> {
             final Num aScore = a.confidenceScore();
             final Num bScore = b.confidenceScore();
-            if (Num.isNaNOrNull(aScore)) {
-                return 1;
-            }
-            if (Num.isNaNOrNull(bScore)) {
-                return -1;
+            final boolean aMissing = Num.isNaNOrNull(aScore);
+            final boolean bMissing = Num.isNaNOrNull(bScore);
+            // NaN and missing scores rank last and tie with each other, which
+            // keeps the comparator a total order.
+            if (aMissing || bMissing) {
+                return Boolean.compare(aMissing, bMissing);
             }
             return bScore.compareTo(aScore);
         };

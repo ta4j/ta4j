@@ -269,7 +269,7 @@ public final class ElliottScenarioGenerator {
             final ElliottConfidence confidence = applyStructurePenalty(breakdown.confidence(), structureScore,
                     "Impulse structure score " + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
 
-            if (confidence.overall().isLessThan(minConfidenceNum)) {
+            if (belowMinimumConfidence(confidence.overall())) {
                 continue;
             }
 
@@ -352,7 +352,7 @@ public final class ElliottScenarioGenerator {
                     ScenarioType.CORRECTIVE_ZIGZAG);
             final ElliottConfidence confidence = breakdown.confidence();
 
-            if (confidence.overall().isLessThan(minConfidenceNum)) {
+            if (belowMinimumConfidence(confidence.overall())) {
                 continue;
             }
 
@@ -413,7 +413,7 @@ public final class ElliottScenarioGenerator {
                     ScenarioType.CORRECTIVE_FLAT);
             final ElliottConfidence confidence = breakdown.confidence();
 
-            if (confidence.overall().isLessThan(minConfidenceNum)) {
+            if (belowMinimumConfidence(confidence.overall())) {
                 continue;
             }
 
@@ -464,7 +464,7 @@ public final class ElliottScenarioGenerator {
             final ElliottConfidence confidence = applyStructurePenalty(breakdown.confidence(), structureScore,
                     "Triangle structure score " + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
 
-            if (confidence.overall().isLessThan(minConfidenceNum)) {
+            if (belowMinimumConfidence(confidence.overall())) {
                 continue;
             }
 
@@ -515,7 +515,7 @@ public final class ElliottScenarioGenerator {
             final ElliottConfidence confidence = applyStructurePenalty(breakdown.confidence(), structureScore,
                     "Complex corrective score " + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
 
-            if (confidence.overall().isLessThan(minConfidenceNum)) {
+            if (belowMinimumConfidence(confidence.overall())) {
                 continue;
             }
 
@@ -937,7 +937,7 @@ public final class ElliottScenarioGenerator {
                     "Anchor-first impulse decomposition score "
                             + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
 
-            if (confidence.overall().isLessThan(minConfidenceNum)) {
+            if (belowMinimumConfidence(confidence.overall())) {
                 continue;
             }
 
@@ -999,7 +999,7 @@ public final class ElliottScenarioGenerator {
                     "Anchor-first corrective decomposition score "
                             + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
 
-            if (confidence.overall().isLessThan(minConfidenceNum)) {
+            if (belowMinimumConfidence(confidence.overall())) {
                 continue;
             }
 
@@ -1359,12 +1359,13 @@ public final class ElliottScenarioGenerator {
         return targets;
     }
 
-    private List<ElliottScenario> prune(final List<ElliottScenario> candidates) {
+    // Package-private for tests.
+    List<ElliottScenario> prune(final List<ElliottScenario> candidates) {
         if (maxScenarios <= 0) {
             return List.of();
         }
         final List<ElliottScenario> sorted = candidates.stream()
-                .filter(s -> s.confidenceScore().isGreaterThanOrEqual(minConfidenceNum))
+                .filter(s -> !belowMinimumConfidence(s.confidenceScore()))
                 .sorted(pruningPriorityComparator())
                 .toList();
         if (sorted.size() <= maxScenarios) {
@@ -1422,8 +1423,17 @@ public final class ElliottScenarioGenerator {
         }
     }
 
+    /**
+     * Rejects scores below the minimum, and NaN scores: a {@code DoubleNum} NaN
+     * compares above every finite value, so it would otherwise pass the minimum and
+     * outrank every valid scenario.
+     */
+    private boolean belowMinimumConfidence(final Num score) {
+        return Num.isNaNOrNull(score) || score.isLessThan(minConfidenceNum);
+    }
+
     private Comparator<ElliottScenario> pruningPriorityComparator() {
-        return Comparator.comparing(ElliottScenario::confidenceScore, Comparator.reverseOrder())
+        return ElliottScenarioSet.byConfidenceDescending()
                 .thenComparing(Comparator.comparing(ElliottScenario::expectsCompletion).reversed())
                 .thenComparing(Comparator.comparingInt(ElliottScenario::waveCount).reversed())
                 .thenComparing(Comparator.comparingInt(this::scenarioSpan).reversed())

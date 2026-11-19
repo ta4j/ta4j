@@ -246,10 +246,7 @@ final class CandleThresholdSupport {
      *                                  supported range
      */
     static CandleThresholdSupport forSeries(BarSeries series, int averagePeriod) {
-        Objects.requireNonNull(series, "series must not be null");
-        if (averagePeriod < 1) {
-            throw new IllegalArgumentException("averagePeriod must be at least 1, but was: " + averagePeriod);
-        }
+        validateSeriesAndAveragePeriod(series, averagePeriod);
         synchronized (INTERNED_SUPPORTS) {
             Map<Integer, WeakReference<CandleThresholdSupport>> byPeriod = INTERNED_SUPPORTS.get(series);
             if (byPeriod == null) {
@@ -304,11 +301,12 @@ final class CandleThresholdSupport {
     static final int DEFAULT_AVERAGE_PERIOD = 5;
 
     /**
-     * Maximum supported average period. Two is subtracted from
-     * {@link Integer#MAX_VALUE} so that the warm-up arithmetic of every pattern
-     * indicator, which adds up to two bars, cannot overflow.
+     * Maximum supported average period. Boundary rechecks and the overflow-safe
+     * baseline fallback revisit the whole window for a bar, so the window size
+     * bounds their per-bar work; it also keeps the warm-up arithmetic of every
+     * pattern indicator, which adds up to two bars, far from overflow.
      */
-    static final int MAX_AVERAGE_PERIOD = Integer.MAX_VALUE - 2;
+    static final int MAX_AVERAGE_PERIOD = 1_000;
 
     /** Factor against the prior average body for {@link #isLongBody(int)}. */
     static final double LONG_BODY_FACTOR = 1.0;

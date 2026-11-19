@@ -270,6 +270,19 @@ public class BaseBarSeries implements BarSeries {
      * @return a new list of bars with tick from startIndex (inclusive) to endIndex
      *         (exclusive)
      */
+    /**
+     * Exclusive end offset into the retained bar list for a subseries request,
+     * computed in {@code long} so a series ending at {@link Integer#MAX_VALUE} does
+     * not wrap {@code endIndex + 1} negative.
+     */
+    static int retainedEndOffset(final int startOffset, final int endIndex, final int removedBarsCount,
+            final int seriesEndIndex, final int retainedSize) {
+        final long requestedEnd = (long) endIndex - removedBarsCount;
+        final long seriesEnd = (long) seriesEndIndex + 1L - removedBarsCount;
+        final long end = Math.min(Math.min(requestedEnd, seriesEnd), retainedSize);
+        return (int) Math.max(Math.max(0L, startOffset), end);
+    }
+
     private static List<Bar> cut(final List<Bar> bars, final int startIndex, final int endIndex) {
         return new ArrayList<>(bars.subList(startIndex, endIndex));
     }
@@ -308,8 +321,8 @@ public class BaseBarSeries implements BarSeries {
         if (!this.bars.isEmpty()) {
             var removedBarsCount = getRemovedBarsCount();
             var start = retainedStartIndex - removedBarsCount;
-            var end = Math.min(endIndex - removedBarsCount, this.getEndIndex() + 1);
-            return builder.withBars(cut(this.bars, start, end)).build();
+            var end = retainedEndOffset(start, endIndex, removedBarsCount, this.getEndIndex(), this.bars.size());
+            return builder.withBars(cut(this.bars, Math.min(start, end), end)).build();
         }
         return builder.build();
     }

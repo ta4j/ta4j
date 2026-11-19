@@ -38,6 +38,12 @@ public final class DecimalNum implements Num {
      * an exact one.
      */
     private static final int POW_GUARD_DIGITS = 10;
+    /**
+     * Largest exact power, in decimal digits, computed for a number with unlimited
+     * precision. An exact power grows by about {@code digits(x) * n} digits, so a
+     * compact exponent could otherwise allocate gigabytes.
+     */
+    static final long MAX_EXACT_POWER_DIGITS = 100_000L;
     private static final AtomicReference<MathContext> DEFAULT_MATH_CONTEXT = new AtomicReference<>(
             new MathContext(DEFAULT_PRECISION, DEFAULT_ROUNDING_MODE));
 
@@ -461,8 +467,27 @@ public final class DecimalNum implements Num {
      */
     @Override
     public Num pow(final int n) {
+        if (this.mathContext.getPrecision() == 0) {
+            return new DecimalNum(exactPow(n), this.mathContext);
+        }
         final BigDecimal result = this.delegate.pow(n, this.mathContext);
         return new DecimalNum(result, this.mathContext);
+    }
+
+    /**
+     * Computes {@code this^n} for unlimited precision: positive powers stay exact
+     * up to {@link #MAX_EXACT_POWER_DIGITS} digits, negative powers are rounded to
+     * {@link #DEFAULT_PRECISION} because {@code 1/x^k} need not terminate.
+     */
+    private BigDecimal exactPow(final int n) {
+        if (n < 0) {
+            return this.delegate.pow(n, new MathContext(DEFAULT_PRECISION, this.mathContext.getRoundingMode()));
+        }
+        if (n > 1 && (long) this.delegate.precision() * n > MAX_EXACT_POWER_DIGITS) {
+            throw new ArithmeticException("Exact power would exceed " + MAX_EXACT_POWER_DIGITS
+                    + " digits; use a finite MathContext precision");
+        }
+        return this.delegate.pow(n);
     }
 
     /**
@@ -670,7 +695,15 @@ public final class DecimalNum implements Num {
 
     @Override
     public int hashCode() {
-        return this.delegate.stripTrailingZeros().hashCode();
+        try {
+            return this.delegate.stripTrailingZeros().hashCode();
+        } catch (ArithmeticException scaleOverflow) {
+            // The stripped scale would fall below Integer.MIN_VALUE, so no equal value
+            // has a representable stripped form either; hash the normalized parts.
+            final BigDecimal strippedUnscaled = new BigDecimal(this.delegate.unscaledValue()).stripTrailingZeros();
+            final long scale = (long) this.delegate.scale() + strippedUnscaled.scale();
+            return 31 * strippedUnscaled.unscaledValue().hashCode() + Long.hashCode(scale);
+        }
     }
 
     /**
@@ -766,12 +799,9 @@ public final class DecimalNum implements Num {
         final int precision = this.mathContext.getPrecision();
         final BigDecimal xpowa;
         if (precision == 0) {
-            // Unlimited precision: BigDecimal.pow rejects negative exponents without a
-            // finite context, so use the exact positive power and, for negative
-            // exponents, a reciprocal at DEFAULT_PRECISION (1/x^k need not terminate).
-            xpowa = aInt >= 0 ? this.delegate.pow(aInt)
-                    : BigDecimal.ONE.divide(this.delegate.pow(Math.negateExact(aInt)),
-                            new MathContext(DEFAULT_PRECISION, this.mathContext.getRoundingMode()));
+            // Unlimited precision: exact positive powers are size-capped and negative
+            // powers round to DEFAULT_PRECISION (1/x^k need not terminate).
+            xpowa = exactPow(aInt);
         } else {
             xpowa = this.delegate.pow(aInt,
                     new MathContext(precision + POW_GUARD_DIGITS, this.mathContext.getRoundingMode()));

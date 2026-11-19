@@ -382,4 +382,47 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         assertSame(numFactory.getClass(), aggregated.getFirst().getVolume().getNumFactory().getClass());
     }
 
+    private List<Bar> barsOf(Duration period, int count) {
+        var bars = new LinkedList<Bar>();
+        var end = Instant.parse("2019-06-12T04:01:00Z");
+        for (int i = 0; i < count; i++) {
+            bars.add(new MockBarBuilder(numFactory).timePeriod(period)
+                    .endTime(end.plus(period.multipliedBy(i)))
+                    .openPrice(1d)
+                    .closePrice(2d)
+                    .highPrice(3d)
+                    .lowPrice(0d)
+                    .amount(1d)
+                    .volume(1d)
+                    .trades(1)
+                    .build());
+        }
+        return bars;
+    }
+
+    @Test
+    void aggregatesSubSecondBars() {
+        List<Bar> bars = barsOf(Duration.ofMillis(250), 8);
+
+        List<Bar> aggregated = new DurationBarAggregator(Duration.ofSeconds(1)).aggregate(bars);
+
+        assertEquals(2, aggregated.size());
+        assertNumEquals(4d, aggregated.getFirst().getVolume());
+    }
+
+    @Test
+    void rejectsTargetPeriodThatIsNotAWholeMultipleOfSubSecondBars() {
+        List<Bar> bars = barsOf(Duration.ofMillis(300), 4);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new DurationBarAggregator(Duration.ofSeconds(1)).aggregate(bars));
+    }
+
+    @Test
+    void rejectsNonPositivePeriods() {
+        assertThrows(IllegalArgumentException.class, () -> new DurationBarAggregator(Duration.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> new DurationBarAggregator(Duration.ofSeconds(-1)));
+        assertThrows(IllegalArgumentException.class, () -> new DurationBarAggregator(null));
+    }
+
 }

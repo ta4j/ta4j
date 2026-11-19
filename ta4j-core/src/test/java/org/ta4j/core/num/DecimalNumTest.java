@@ -539,4 +539,42 @@ public class DecimalNumTest {
         assertNumEquals("22026.46579480673", result);
     }
 
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    public void unlimitedPrecisionPowersAreBoundedInSize() {
+        final DecimalNum two = DecimalNum.valueOf(BigDecimal.valueOf(2), MathContext.UNLIMITED);
+
+        assertThrows(ArithmeticException.class, () -> two.pow(999_999_999));
+        assertThrows(ArithmeticException.class,
+                () -> two.pow(DecimalNum.valueOf(BigDecimal.valueOf(999_999_999), MathContext.UNLIMITED)));
+        assertNumEquals("1024", two.pow(10));
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    public void unlimitedPrecisionNegativePowersRoundInsteadOfExpanding() {
+        final DecimalNum two = DecimalNum.valueOf(BigDecimal.valueOf(2), MathContext.UNLIMITED);
+
+        final Num tiny = two.pow(-999_999_999);
+        final Num viaNum = two.pow(DecimalNum.valueOf(BigDecimal.valueOf(-999_999_999), MathContext.UNLIMITED));
+
+        assertTrue(tiny.isPositive());
+        assertEquals(tiny, viaNum);
+        assertNumEquals("0.25", two.pow(-2));
+    }
+
+    @Test
+    public void hashCodeHandlesScalesWhoseStrippedFormOverflows() {
+        final DecimalNum huge = DecimalNum.valueOf(new BigDecimal(java.math.BigInteger.TEN, Integer.MIN_VALUE),
+                MathContext.UNLIMITED);
+        final DecimalNum same = DecimalNum.valueOf(new BigDecimal(java.math.BigInteger.valueOf(100), Integer.MIN_VALUE),
+                MathContext.UNLIMITED);
+        final DecimalNum sameShifted = DecimalNum.valueOf(
+                new BigDecimal(java.math.BigInteger.valueOf(1000), Integer.MIN_VALUE + 1), MathContext.UNLIMITED);
+
+        assertNotEquals(huge.hashCode(), same.hashCode());
+        assertEquals(same, sameShifted);
+        assertEquals(same.hashCode(), sameShifted.hashCode());
+    }
+
 }

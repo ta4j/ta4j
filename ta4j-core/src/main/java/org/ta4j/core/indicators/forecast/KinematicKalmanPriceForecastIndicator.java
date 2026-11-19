@@ -65,12 +65,47 @@ public final class KinematicKalmanPriceForecastIndicator extends CachedIndicator
      */
     public KinematicKalmanPriceForecastIndicator(ForecastStateIndicator<KinematicKalmanForecastState> stateIndicator,
             int horizon) {
-        super(Objects.requireNonNull(stateIndicator, "stateIndicator must not be null"));
+        super(requireKinematicStates(stateIndicator));
         if (horizon < 1) {
             throw new IllegalArgumentException("horizon must be > 0");
         }
         this.stateIndicator = stateIndicator;
         this.horizon = horizon;
+    }
+
+    /**
+     * Generic erasure lets descriptor reconstruction pass any forecast-state
+     * indicator here; reject one whose declared state type is not kinematic instead
+     * of failing later with a {@link ClassCastException}.
+     */
+    private static ForecastStateIndicator<KinematicKalmanForecastState> requireKinematicStates(
+            ForecastStateIndicator<KinematicKalmanForecastState> stateIndicator) {
+        Objects.requireNonNull(stateIndicator, "stateIndicator must not be null");
+        Class<?> stateType = declaredStateType(stateIndicator.getClass());
+        if (stateType != null && !KinematicKalmanForecastState.class.isAssignableFrom(stateType)) {
+            throw new IllegalArgumentException(
+                    "stateIndicator must produce KinematicKalmanForecastState but produces " + stateType.getName());
+        }
+        return stateIndicator;
+    }
+
+    /**
+     * @return the concrete state class a type declares for
+     *         {@link ForecastStateIndicator}, or {@code null} when it is not
+     *         declared with a concrete class
+     */
+    static Class<?> declaredStateType(Class<?> type) {
+        for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
+            for (java.lang.reflect.Type declared : current.getGenericInterfaces()) {
+                if (declared instanceof java.lang.reflect.ParameterizedType parameterized
+                        && parameterized.getRawType() instanceof Class<?> raw
+                        && ForecastStateIndicator.class.isAssignableFrom(raw)
+                        && parameterized.getActualTypeArguments()[0] instanceof Class<?> stateType) {
+                    return stateType;
+                }
+            }
+        }
+        return null;
     }
 
     @Override

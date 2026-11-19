@@ -791,4 +791,29 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             }
         }
     }
+
+    @Test
+    @org.junit.jupiter.api.Timeout(value = 30, unit = TimeUnit.SECONDS)
+    public void headThatNeverSettlesFailsInsteadOfSpinningForever() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
+        // Simulates a writer that prunes between every pair of reads: the begin
+        // index alternates, so no computation ever sees a stable head.
+        BarSeries churning = (BarSeries) java.lang.reflect.Proxy.newProxyInstance(BarSeries.class.getClassLoader(),
+                new Class<?>[] { BarSeries.class }, (proxy, method, arguments) -> {
+                    if (method.getName().equals("getBeginIndex")) {
+                        return reads.getAndIncrement() % 2;
+                    }
+                    try {
+                        return method.invoke(source, arguments);
+                    } catch (java.lang.reflect.InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                });
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(churning), 2);
+
+        IllegalStateException failure = org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> ema.getValue(3));
+        assertThat(failure).hasMessageContaining("kept changing");
+    }
 }
