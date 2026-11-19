@@ -95,7 +95,8 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     @Override
     @SuppressFBWarnings(value = "AT_STALE_THREAD_WRITE_OF_PRIMITIVE", justification = "Rolling aggregate state is read and written only while holding rollingLock.")
     protected Num calculate(int index) {
-        final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);
+        final int startIndex = (int) Math.max(Math.max(0L, getBarSeries().getBeginIndex()),
+                (long) index - barCount + 1L);
         final int numberOfObservations = index - startIndex + 1;
         NumFactory numFactory = getBarSeries().numFactory();
         var series = getBarSeries();
@@ -127,8 +128,8 @@ public class VarianceIndicator extends CachedIndicator<Num> {
         Num averageOffset = numFactory.zero();
         Num squaredDeviationTotal = numFactory.zero();
         int observationCount = 1;
-        for (int i = startIndex + 1; i <= index; i++) {
-            Num offset = indicator.getValue(i).minus(anchor);
+        for (long i = (long) startIndex + 1L; i <= (long) index; i++) {
+            Num offset = indicator.getValue((int) i).minus(anchor);
             observationCount++;
             Num difference = offset.minus(averageOffset);
             averageOffset = averageOffset.plus(difference.dividedBy(numFactory.numOf(observationCount)));
@@ -219,7 +220,8 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return indicator.getCountOfUnstableBars() + barCount - 1;
+        long unstableBars = (long) indicator.getCountOfUnstableBars() + barCount - 1L;
+        return CorrelationWindowSupport.clampUnstableBars(unstableBars);
     }
 
     @Override

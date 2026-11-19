@@ -10,10 +10,15 @@ import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
  * Covariance indicator.
+ * <p>
+ * Returns {@link NaN#NaN} for incomplete retained windows and undefined source
+ * values.
+ * </p>
  */
 public class CovarianceIndicator extends CachedIndicator<Num> {
 
@@ -37,9 +42,9 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
         super(series, indicator1, indicator2);
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
-        this.barCount = barCount;
-        this.sma1 = new SMAIndicator(indicator1, barCount);
-        this.sma2 = new SMAIndicator(indicator2, barCount);
+        this.barCount = Math.max(1, barCount);
+        this.sma1 = new SMAIndicator(indicator1, this.barCount);
+        this.sma2 = new SMAIndicator(indicator2, this.barCount);
         this.productTotal = new RunningTotalIndicator(new CachedIndicator<Num>(series, indicator1, indicator2) {
             @Override
             protected Num calculate(int index) {
@@ -50,7 +55,7 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
             public int getCountOfUnstableBars() {
                 return Math.max(indicator1.getCountOfUnstableBars(), indicator2.getCountOfUnstableBars());
             }
-        }, barCount);
+        }, this.barCount);
     }
 
     /**
@@ -66,41 +71,122 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);
+        int retainedBegin = Math.max(getBarSeries().getBeginIndex(),
+                Math.max(indicator1.getBarSeries().getBeginIndex(), indicator2.getBarSeries().getBeginIndex()));
+        if (retainedBegin > 0 && index < stableBoundary()) {
+            return NaN.NaN;
+        }
+        final int startIndex = (int) Math.max(Math.max(0L, retainedBegin), (long) index - barCount + 1L);
         final int numberOfObservations = index - startIndex + 1;
-        Num covariance = getBarSeries().numFactory().zero();
-        Num average1 = sma1.getValue(index);
-        Num average2 = sma2.getValue(index);
-        if (barCount > 1 && numberOfObservations > 0
-                && IndicatorUtils.isSameSeries(indicator1.getBarSeries(), getBarSeries())
-                && IndicatorUtils.isSameSeries(indicator2.getBarSeries(), getBarSeries())
-                && (!(covariance instanceof DecimalNum decimal) || decimal.getMathContext().getPrecision() >= 16)) {
-            try {
-                Num meanProduct = productTotal.getValue(index)
-                        .dividedBy(getBarSeries().numFactory().numOf(numberOfObservations));
-                Num productMeans = average1.multipliedBy(average2);
-                Num result = meanProduct.minus(productMeans);
-                Num scale = meanProduct.abs().max(productMeans.abs());
-                if (Num.isFinite(result) && Num.isFinite(scale)
-                        && result.abs().isGreaterThan(scale.dividedBy(getBarSeries().numFactory().numOf(100000000)))) {
-                    return result;
-                }
-            } catch (ArithmeticException ignored) {
-                // Preserve the centered calculation when raw products overflow.
+        Num runningResult = calculateFromRunningSums(index, numberOfObservations);
+        if (runningResult != null) {
+            return runningResult;
+        }
+        Num firstAnchor = indicator1.getValue(startIndex);
+        Num secondAnchor = indicator2.getValue(startIndex);
+        if (!Num.isFinite(firstAnchor) || !Num.isFinite(secondAnchor)) {
+            return NaN.NaN;
+        }
+        Num firstAverageOffset = getBarSeries().numFactory().zero();
+        Num secondAverageOffset = getBarSeries().numFactory().zero();
+        Num coDeviationTotal = getBarSeries().numFactory().zero();
+        int observations = 1;
+        for (long i = (long) startIndex + 1L; i <= (long) index; i++) {
+            Num firstValue = indicator1.getValue((int) i);
+            Num secondValue = indicator2.getValue((int) i);
+            if (!Num.isFinite(firstValue) || !Num.isFinite(secondValue)) {
+                return NaN.NaN;
             }
+            Num firstOffset = firstValue.minus(firstAnchor);
+            Num secondOffset = secondValue.minus(secondAnchor);
+            if (!Num.isFinite(firstOffset) || !Num.isFinite(secondOffset)) {
+                return calculateWithoutAnchors(startIndex, index);
+            }
+            observations++;
+            Num firstDifference = firstOffset.minus(firstAverageOffset);
+            Num secondDifference = secondOffset.minus(secondAverageOffset);
+            Num count = getBarSeries().numFactory().numOf(observations);
+            firstAverageOffset = firstAverageOffset.plus(firstDifference.dividedBy(count));
+            secondAverageOffset = secondAverageOffset.plus(secondDifference.dividedBy(count));
+            coDeviationTotal = coDeviationTotal
+                    .plus(firstDifference.multipliedBy(secondOffset.minus(secondAverageOffset)));
         }
-        for (int i = startIndex; i <= index; i++) {
-            Num mul = indicator1.getValue(i).minus(average1).multipliedBy(indicator2.getValue(i).minus(average2));
-            covariance = covariance.plus(mul);
+        return coDeviationTotal.dividedBy(getBarSeries().numFactory().numOf(numberOfObservations));
+    }
+
+    private Num calculateFromRunningSums(int index, int numberOfObservations) {
+        Num zero = getBarSeries().numFactory().zero();
+        if (barCount <= 1 || !IndicatorUtils.isSameSeries(indicator1.getBarSeries(), getBarSeries())
+                || !IndicatorUtils.isSameSeries(indicator2.getBarSeries(), getBarSeries())
+                || (zero instanceof DecimalNum decimal && decimal.getMathContext().getPrecision() < 16)) {
+            return null;
         }
-        covariance = covariance.dividedBy(getBarSeries().numFactory().numOf(numberOfObservations));
+        try {
+            Num meanProduct = productTotal.getValue(index)
+                    .dividedBy(getBarSeries().numFactory().numOf(numberOfObservations));
+            Num productMeans = sma1.getValue(index).multipliedBy(sma2.getValue(index));
+            Num result = meanProduct.minus(productMeans);
+            Num scale = meanProduct.abs().max(productMeans.abs());
+            if (Num.isFinite(result) && Num.isFinite(scale)
+                    && result.abs().isGreaterThan(scale.dividedBy(getBarSeries().numFactory().numOf(100000000)))) {
+                return result;
+            }
+        } catch (ArithmeticException ignored) {
+        }
+        return null;
+    }
+
+    private Num calculateWithoutAnchors(int startIndex, int index) {
+        Num firstMean = indicator1.getValue(startIndex);
+        Num secondMean = indicator2.getValue(startIndex);
+        Num covariance = getBarSeries().numFactory().zero();
+        int observations = 1;
+        for (long i = (long) startIndex + 1L; i <= (long) index; i++) {
+            Num firstValue = indicator1.getValue((int) i);
+            Num secondValue = indicator2.getValue((int) i);
+            if (!Num.isFinite(firstValue) || !Num.isFinite(secondValue)) {
+                return NaN.NaN;
+            }
+            observations++;
+            Num count = getBarSeries().numFactory().numOf(observations);
+            // Divide first: the difference of opposite extremes can overflow.
+            Num firstDifference = firstValue.minus(firstMean);
+            Num secondDifference = secondValue.minus(secondMean);
+            boolean firstFinite = Num.isFinite(firstDifference);
+            boolean secondFinite = Num.isFinite(secondDifference);
+            Num firstMeanChange = firstFinite ? firstDifference.dividedBy(count)
+                    : firstValue.dividedBy(count).minus(firstMean.dividedBy(count));
+            Num secondMeanChange = secondFinite ? secondDifference.dividedBy(count)
+                    : secondValue.dividedBy(count).minus(secondMean.dividedBy(count));
+            Num previousWeight = getBarSeries().numFactory().numOf(observations - 1).dividedBy(count);
+            Num contribution;
+            // Scale the larger difference first to avoid underflow.
+            if (secondFinite && (!firstFinite || firstDifference.abs().isGreaterThanOrEqual(secondDifference.abs()))) {
+                contribution = firstMeanChange.multipliedBy(secondDifference).multipliedBy(previousWeight);
+            } else if (firstFinite) {
+                contribution = firstDifference.multipliedBy(secondMeanChange).multipliedBy(previousWeight);
+            } else {
+                contribution = firstMeanChange.multipliedBy(secondMeanChange)
+                        .multipliedBy(getBarSeries().numFactory().numOf(observations - 1));
+            }
+            firstMean = firstMean.plus(firstMeanChange);
+            secondMean = secondMean.plus(secondMeanChange);
+            covariance = covariance.multipliedBy(previousWeight).plus(contribution);
+        }
         return covariance;
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        int baseUnstableBars = Math.max(indicator1.getCountOfUnstableBars(), indicator2.getCountOfUnstableBars());
-        return baseUnstableBars + barCount - 1;
+        return CorrelationWindowSupport.unstableBars(barCount, indicator1, indicator2);
+    }
+
+    private long stableBoundary() {
+        long firstStart = Math.max(0L, indicator1.getBarSeries().getBeginIndex()) + indicator1.getCountOfUnstableBars();
+        long secondStart = Math.max(0L, indicator2.getBarSeries().getBeginIndex())
+                + indicator2.getCountOfUnstableBars();
+        long retainedStart = Math.max(Math.max(firstStart, secondStart), getBarSeries().getBeginIndex());
+        return retainedStart + (long) barCount - 1L;
     }
 
     @Override
