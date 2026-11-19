@@ -163,9 +163,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         Returns returns = new Returns(rolling, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
 
-        // Borrowing accrues one unit per held bar. The window [2, 4] starts
-        // with value 98; the next marks are 97 and 96, so the returns reflect
-        // one additional unit of carry at each mark.
+        // One unit of carry per bar from a window basis of 98.
         assertEquals(2, rolling.getBeginIndex());
         assertTrue(returns.getValue(2).isNaN());
         assertNumEquals(numFactory.numOf(97d).dividedBy(numFactory.numOf(98d)).minus(numFactory.one()),
@@ -192,9 +190,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
 
-        // At retained index 2 the position has paid 4, so its per-asset
-        // basis is 98. There is no settlement at 3; at 4 it receives 10,
-        // leaving a net credit of 6 and a final per-asset mark of 103.
+        // Paid 4 by index 2 (basis 98), then receives 10 at index 4.
         assertEquals(2, series.getBeginIndex());
         assertTrue(returns.getValue(2).isNaN());
         assertNumEquals(numFactory.zero(), returns.getValue(3), 1e-12);

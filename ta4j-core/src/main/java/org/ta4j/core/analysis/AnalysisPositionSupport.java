@@ -124,10 +124,7 @@ final class AnalysisPositionSupport {
      */
     private static final int MAX_MATERIALIZE_ATTEMPTS = 8;
 
-    /**
-     * Builds a curve over a captured window from bar data and precomputed holding
-     * costs, without invoking a cost model in the curve builder's read scope.
-     */
+    /** Builds a curve from bars and precomputed holding costs. */
     @FunctionalInterface
     interface CurveBuilder<T> {
 
@@ -136,8 +133,7 @@ final class AnalysisPositionSupport {
          *
          * @param window       the captured window
          * @param positions    the positions to analyse
-         * @param holdingCosts each analysed position's indexed holding costs, keyed by
-         *                     identity
+         * @param holdingCosts holding costs keyed by position identity
          * @return the built curve
          */
         T build(Window window, List<Position> positions, Map<Position, PricedPosition> holdingCosts);
@@ -259,10 +255,6 @@ final class AnalysisPositionSupport {
         }
     }
 
-    /**
-     * A position's total holding costs and the pre-window bars they were read from.
-     * Indexed costs are materialization-local, not a persistent cache.
-     */
     record PricedPosition(Num holdingCost, int firstIndex, Num[] indexedHoldingCosts, BarWindowSnapshot costBars) {
 
         Num holdingCostAt(int index) {
@@ -315,11 +307,7 @@ final class AnalysisPositionSupport {
         return priceHoldingCosts(curve, position, endIndex, window, costBars);
     }
 
-    /**
-     * Prices each mark outside the series read lock. The indexed-cost API lets
-     * settlement models supply all cumulative marks in one pass while preserving
-     * the generic fallback for existing models.
-     */
+    /** Runs outside the series read lock. */
     private static PricedPosition priceHoldingCosts(PerformanceIndicator curve, Position position, int endIndex,
             Window window, BarWindowSnapshot costBars) {
         if (curve.getEquityCurveMode() != EquityCurveMode.MARK_TO_MARKET || endIndex < window.beginIndex()
