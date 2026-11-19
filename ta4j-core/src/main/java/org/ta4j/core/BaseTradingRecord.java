@@ -426,9 +426,9 @@ public class BaseTradingRecord implements TradingRecord {
      *
      * @apiNote Recorded costs are added to the configured holding cost model's
      *          costs. When live settlements are authoritative, configure a
-     *          {@link ZeroCostModel} to avoid double counting.
-     *          A nonzero settlement advances the automatic fill index past its
-     *          index, unless a later index has already been assigned.
+     *          {@link ZeroCostModel} to avoid double counting. A nonzero settlement
+     *          advances the automatic fill index past its index, unless a later
+     *          index has already been assigned.
      *
      * @since 0.29.1
      */
@@ -1162,7 +1162,8 @@ public class BaseTradingRecord implements TradingRecord {
             }
             int previousIndex = -1;
             for (IndexedHoldingCost cost : costs) {
-                if (cost == null || cost.index() <= previousIndex || cost.cost() == null || !Num.isFinite(cost.cost())) {
+                if (cost == null || cost.index() <= previousIndex || cost.cost() == null
+                        || !Num.isFinite(cost.cost())) {
                     throw new InvalidObjectException("Recorded holding costs must be finite and ordered by index");
                 }
                 previousIndex = cost.index();

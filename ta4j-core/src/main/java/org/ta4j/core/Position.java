@@ -77,7 +77,9 @@ public class Position implements Serializable {
     /** The cost model for holding the asset */
     private final transient CostModel holdingCostModel;
 
-    /** Recorded holding costs retained independently of the transient modeled costs. */
+    /**
+     * Recorded holding costs retained independently of the transient modeled costs.
+     */
     private final RecordedHoldingCostModel recordedHoldingCostModel;
 
     /** Constructor with {@link #startingType} = BUY. */
@@ -551,8 +553,8 @@ public class Position implements Serializable {
 
     /**
      * @return the holding cost model while live; after deserialization, a model
-     *         containing retained recorded allocations with zero modeled cost, or
-     *         a zero-cost model if no allocations were retained
+     *         containing retained recorded allocations with zero modeled cost, or a
+     *         zero-cost model if no allocations were retained
      *
      * @since 0.22.2
      */

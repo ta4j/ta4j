@@ -817,7 +817,8 @@ public class PositionTest {
     }
 
     /**
-     * Matches the Position fields written before recorded allocations were retained.
+     * Matches the Position fields written before recorded allocations were
+     * retained.
      */
     private static final class LegacySerializedPositionState implements Serializable {
         @Serial
