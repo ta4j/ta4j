@@ -21,6 +21,13 @@ import org.ta4j.core.num.Num;
  * touch proximity is configurable (percentage, absolute, or tick-size). The
  * currently selected segment can be retrieved via {@link #getCurrentSegment()}
  * for charting/diagnostics.
+ * <p>
+ * Unless built with {@code causal = true}, the indicator is end-anchored: every
+ * index of the window reports the line fitted at the series end, so earlier
+ * values use swing highs confirmed later and all values change as bars arrive.
+ * For backtests and signals use {@link #causal(RecentSwingIndicator, int)},
+ * whose value at each index is fitted from the bars up to that index only (see
+ * {@link AbstractTrendLineIndicator}).
  *
  * @see <a href="https://www.investopedia.com/trading/trendlines/">Investopedia:
  *      Trendlines</a>
@@ -254,6 +261,60 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
                 outsideCountWeight, averageDeviationWeight, anchorRecencyWeight,
                 ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum), maxSwingPointsForTrendline,
                 maxCandidatePairs);
+    }
+
+    /**
+     * Deserialization-friendly constructor that accepts explicit scoring weights,
+     * tolerance parameters, and search caps as strings/primitives, and selects
+     * end-anchored or causal evaluation.
+     *
+     * @param swingHighIndicator         the swing-high indicator to use
+     * @param barCount                   number of bars to look back when selecting
+     *                                   swing points
+     * @param touchCountWeight           weight for swing point touch count
+     * @param touchesExtremeWeight       weight for extreme point inclusion
+     * @param outsideCountWeight         weight for minimizing outside swings
+     * @param averageDeviationWeight     weight for minimizing average deviation
+     * @param anchorRecencyWeight        weight for anchor point recency
+     * @param toleranceMode              tolerance mode as string (PERCENTAGE,
+     *                                   ABSOLUTE, or TICK_SIZE)
+     * @param toleranceValue             tolerance value
+     * @param toleranceMinimum           minimum absolute tolerance
+     * @param maxSwingPointsForTrendline maximum number of swing points to consider
+     * @param maxCandidatePairs          maximum number of candidate pairs to
+     *                                   evaluate
+     * @param causal                     {@code true} to fit each index from the
+     *                                   bars up to that index only
+     * @since 0.29.1
+     */
+    public TrendLineResistanceIndicator(RecentSwingIndicator swingHighIndicator, int barCount, double touchCountWeight,
+            double touchesExtremeWeight, double outsideCountWeight, double averageDeviationWeight,
+            double anchorRecencyWeight, String toleranceMode, double toleranceValue, double toleranceMinimum,
+            int maxSwingPointsForTrendline, int maxCandidatePairs, boolean causal) {
+        super(swingHighIndicator, barCount, TrendLineSide.RESISTANCE, touchCountWeight, touchesExtremeWeight,
+                outsideCountWeight, averageDeviationWeight, anchorRecencyWeight,
+                ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum), maxSwingPointsForTrendline,
+                maxCandidatePairs, causal);
+    }
+
+    /**
+     * Builds a causal resistance trend line with default scoring weights, tolerance
+     * and search caps. The value at each index is the line fitted over the
+     * {@code barCount} bars ending at that index from the swing highs confirmed by
+     * then, so it never changes when later bars arrive.
+     *
+     * @param swingHighIndicator the swing-high indicator to use
+     * @param barCount           number of bars in each index's look-back window
+     * @return causal resistance trend line
+     * @since 0.29.1
+     */
+    public static TrendLineResistanceIndicator causal(RecentSwingIndicator swingHighIndicator, int barCount) {
+        final ScoringWeights weights = ScoringWeights.defaultWeights();
+        final ToleranceSettings tolerance = ToleranceSettings.defaultSettings();
+        return new TrendLineResistanceIndicator(swingHighIndicator, barCount, weights.touchCountWeight,
+                weights.touchesExtremeWeight, weights.outsideCountWeight, weights.averageDeviationWeight,
+                weights.anchorRecencyWeight, tolerance.mode.name(), tolerance.value, tolerance.minimumAbsolute,
+                DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE, DEFAULT_MAX_CANDIDATE_PAIRS, true);
     }
 
     /**
