@@ -46,11 +46,16 @@ import static org.ta4j.core.num.NaN.NaN;
  * Like other windowed indicators, a causal indicator counts its window in
  * {@link #getCountOfUnstableBars()}: the swing source's unstable bars plus
  * {@code barCount - 1}, because a value reads the window's bars and the bars
- * that confirm its swings. Earlier indices fit the shorter window that exists.
- * On a bounded series, when the head advances, values within that many bars of
- * the new first retained bar are recomputed from the retained bars on the next
- * read, so a value never depends on whether it was read before older bars were
- * removed; later values keep their cached fits.
+ * that confirm its swings. As with
+ * {@link org.ta4j.core.indicators.averages.SMAIndicator}, earlier indices are
+ * not {@code NaN}: they fit the shorter window that exists, so a strategy that
+ * must not act on them uses that count as its unstable bars. On a bounded
+ * series, when the head advances, values within that many bars of the new first
+ * retained bar are recomputed from the retained bars on the next read, so the
+ * line behind a value never depends on whether it was read before older bars
+ * were removed; later values keep their cached fits. Line coordinates are
+ * measured from the first retained bar, so a value computed after the head
+ * advanced can differ from a cached one in its last digits.
  * <p>
  * The current segment and tolerance settings can be inspected via
  * {@link #getCurrentSegment()} and {@link #getToleranceSettings()}. By default,

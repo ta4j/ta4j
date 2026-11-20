@@ -323,7 +323,8 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      * Builds a causal support trend line with default scoring weights, tolerance
      * and search caps. The value at each index is the line fitted over the
      * {@code barCount} bars ending at that index from the swing lows confirmed by
-     * then, so it never changes when later bars arrive.
+     * then, so it does not change when later bars arrive unless a bounded series
+     * removes bars it was fitted from.
      *
      * @param swingLowIndicator the swing-low indicator to use
      * @param barCount          number of bars in each index's look-back window

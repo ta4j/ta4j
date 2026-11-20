@@ -301,7 +301,8 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      * Builds a causal resistance trend line with default scoring weights, tolerance
      * and search caps. The value at each index is the line fitted over the
      * {@code barCount} bars ending at that index from the swing highs confirmed by
-     * then, so it never changes when later bars arrive.
+     * then, so it does not change when later bars arrive unless a bounded series
+     * removes bars it was fitted from.
      *
      * @param swingHighIndicator the swing-high indicator to use
      * @param barCount           number of bars in each index's look-back window
