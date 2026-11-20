@@ -43,6 +43,15 @@ import static org.ta4j.core.num.NaN.NaN;
  * each scored against all of them), where the end-anchored indicator searches
  * once per series end.
  * <p>
+ * Like other windowed indicators, a causal indicator counts its window in
+ * {@link #getCountOfUnstableBars()}: the swing source's unstable bars plus
+ * {@code barCount - 1}, because a value reads the window's bars and the bars
+ * that confirm its swings. Earlier indices fit the shorter window that exists.
+ * On a bounded series, when the head advances, values within that many bars of
+ * the new first retained bar are recomputed from the retained bars on the next
+ * read, so a value never depends on whether it was read before older bars were
+ * removed; later values keep their cached fits.
+ * <p>
  * The current segment and tolerance settings can be inspected via
  * {@link #getCurrentSegment()} and {@link #getToleranceSettings()}. By default,
  * searches are capped to the most recent
@@ -220,9 +229,19 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             int maxSwingPointsForTrendline, int maxCandidatePairs, boolean causal) {
     }
 
+    /**
+     * Returns the swing source's unstable bars, plus {@code barCount - 1} for a
+     * causal indicator, whose value at an index reads the whole window ending
+     * there. The head-advance cache floor uses this count, so on a bounded series a
+     * causal value whose window reached removed bars is recomputed from the
+     * retained bars.
+     *
+     * @return the number of unstable bars
+     */
     @Override
     public int getCountOfUnstableBars() {
-        return swingIndicator.getCountOfUnstableBars();
+        final int swingUnstableBars = swingIndicator.getCountOfUnstableBars();
+        return causal ? (int) Math.min(Integer.MAX_VALUE, (long) swingUnstableBars + barCount - 1) : swingUnstableBars;
     }
 
     @Override

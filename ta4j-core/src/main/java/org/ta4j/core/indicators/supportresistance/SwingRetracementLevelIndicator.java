@@ -39,8 +39,9 @@ import org.ta4j.core.num.NumFactory;
  * only swings confirmed by bar {@code i}; values therefore do not change when
  * later bars arrive, and each bar costs two cached swing reads plus constant
  * arithmetic. The value is {@code NaN} until both a swing high and a swing low
- * have been confirmed, and before {@link #getCountOfUnstableBars()}, which is
- * the larger unstable-bar count of the two swing indicators.
+ * have been confirmed, before {@link #getCountOfUnstableBars()}, which is the
+ * larger unstable-bar count of the two swing indicators, and whenever either
+ * swing price is not finite, such as an infinite {@code DoubleNum} price.
  *
  * <p>
  * Example, the 61.8% level between the latest seven-bar fractal swings:
@@ -135,7 +136,8 @@ public class SwingRetracementLevelIndicator extends CachedIndicator<Num> {
         }
         final Num high = swingHighIndicator.getValue(index);
         final Num low = swingLowIndicator.getValue(index);
-        if (Num.isNaNOrNull(high) || Num.isNaNOrNull(low)) {
+        // NaN checks alone accept an infinite primitive-backed price.
+        if (!Num.isFinite(high) || !Num.isFinite(low)) {
             return NaN;
         }
         return low.plus(ratio.multipliedBy(high.minus(low)));

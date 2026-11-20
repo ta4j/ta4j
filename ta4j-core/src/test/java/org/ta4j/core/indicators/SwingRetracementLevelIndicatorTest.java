@@ -17,6 +17,7 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.SwingRetracementLevelIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -122,6 +123,40 @@ public class SwingRetracementLevelIndicatorTest extends AbstractIndicatorTest<In
         assertThrows(NullPointerException.class, () -> new SwingRetracementLevelIndicator(null, lows, 0.5));
         assertThrows(IllegalArgumentException.class,
                 () -> new SwingRetracementLevelIndicator(highs, new RecentFractalSwingLowIndicator(other, 1), 0.5));
+    }
+
+    @Test
+    public void nonFiniteSwingPricesGiveNaN() {
+        // ta4j's swing sources reject non-finite prices, but a custom swing source on a
+        // primitive-backed factory can report one: the level must be NaN, not infinite.
+        NumFactory doubles = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubles).build();
+        for (int i = 0; i < HIGHS.length; i++) {
+            addBar(series, HIGHS[i], LOWS[i]);
+        }
+        RecentSwingIndicator highs = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), 1, 1, 0);
+        RecentSwingIndicator lows = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), 1, 1, 0);
+        RecentSwingIndicator infiniteHighs = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), 1, 1,
+                0) {
+            @Override
+            public Num getValue(int index) {
+                Num value = super.getValue(index);
+                return value.isNaN() ? value : doubles.numOf(Double.POSITIVE_INFINITY);
+            }
+        };
+        RecentSwingIndicator infiniteLows = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), 1, 1, 0) {
+            @Override
+            public Num getValue(int index) {
+                Num value = super.getValue(index);
+                return value.isNaN() ? value : doubles.numOf(Double.NEGATIVE_INFINITY);
+            }
+        };
+
+        // Both swings are confirmed at 4: the finite pair gives (13 + 8) / 2.
+        assertThat(new SwingRetracementLevelIndicator(highs, lows, 0.5).getValue(4).doubleValue()).isEqualTo(10.5d);
+        assertThat(Double.isInfinite(infiniteHighs.getValue(4).doubleValue())).isTrue();
+        assertThat(new SwingRetracementLevelIndicator(infiniteHighs, lows, 0.5).getValue(4).isNaN()).isTrue();
+        assertThat(new SwingRetracementLevelIndicator(highs, infiniteLows, 0.5).getValue(4).isNaN()).isTrue();
     }
 
     @Test

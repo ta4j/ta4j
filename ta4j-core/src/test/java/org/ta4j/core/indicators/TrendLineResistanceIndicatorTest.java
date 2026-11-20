@@ -451,6 +451,30 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         }
     }
 
+    @Test
+    public void causalValuesOnABoundedSeriesMatchAFreshIndicatorAfterTheHeadAdvances() {
+        final BarSeries series = seriesFromHighs(1, 12, 1, 10, 1, 1, 1, 1, 1, 1);
+        series.setMaximumBarCount(10);
+        final TrendLineResistanceIndicator cached = TrendLineResistanceIndicator
+                .causal(new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), 1, 1, 0), 8);
+        // Index 0 confirms the swing high at 1, so swings 1 and 3 give a line at 8.
+        assertThat(cached.getValue(8).isNaN()).isFalse();
+
+        series.barBuilder().openPrice(1).closePrice(1).highPrice(1).lowPrice(0).add();
+
+        // Without index 0 the swing high at 1 is unconfirmed. Every retained value
+        // must equal a fresh indicator's, whether or not it was read before.
+        assertThat(series.getBeginIndex()).isEqualTo(1);
+        final TrendLineResistanceIndicator fresh = TrendLineResistanceIndicator
+                .causal(new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), 1, 1, 0), 8);
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertSameValue(i, cached.getValue(i), fresh.getValue(i));
+        }
+        assertThat(cached.getValue(8).isNaN()).isTrue();
+        // The causal window counts as unstable: 2 swing bars plus 7 more.
+        assertThat(cached.getCountOfUnstableBars()).isEqualTo(9);
+    }
+
     private BarSeries seriesFromHighs(double... highs) {
         final var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         final var series = builder.build();
