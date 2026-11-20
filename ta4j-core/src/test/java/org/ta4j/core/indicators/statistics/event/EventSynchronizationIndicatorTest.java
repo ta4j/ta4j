@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.ConcurrentModificationException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -1104,7 +1105,8 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // Exhaustion must surface as an exception rather than a cached
         // unavailable result: a cached NaN would survive later revisions that
         // never touch this window.
-        IllegalStateException exhausted = assertThrows(IllegalStateException.class, () -> indicator.getResult(11));
+        ConcurrentModificationException exhausted = assertThrows(ConcurrentModificationException.class,
+                () -> indicator.getResult(11));
         assertTrue(exhausted.getMessage().contains("retry budget exhausted"));
         // The window must actually have been scanned (the stub mutated on
         // every read); a vacuous outer-domain rejection would leave reads 0.

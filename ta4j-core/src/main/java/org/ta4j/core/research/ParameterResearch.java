@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.research;
 
+import java.util.ConcurrentModificationException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -509,13 +510,14 @@ public final class ParameterResearch {
          * Runs the search and returns the final report.
          *
          * @return final research report
-         * @throws IllegalStateException    if required configuration is missing, the
-         *                                  series is empty, or the dataset changed
-         *                                  during the run
-         * @throws IllegalArgumentException if the holdout window leaves no training
-         *                                  bar, the topK holdout reservation leaves no
-         *                                  training evaluation budget, or the selected
-         *                                  engine rejects a declared domain
+         * @throws IllegalStateException           if required configuration is missing
+         *                                         or the series is empty
+         * @throws ConcurrentModificationException if the dataset changed during the run
+         * @throws IllegalArgumentException        if the holdout window leaves no
+         *                                         training bar, the topK holdout
+         *                                         reservation leaves no training
+         *                                         evaluation budget, or the selected
+         *                                         engine rejects a declared domain
          * @since 0.24.2
          */
         private ParameterResearchReport runInternal() {
@@ -1319,13 +1321,14 @@ public final class ParameterResearch {
          * Runs the search and returns the final report.
          *
          * @return final research report
-         * @throws IllegalStateException    if required configuration is missing, the
-         *                                  series is empty, or the dataset changed
-         *                                  during the run
-         * @throws IllegalArgumentException if the holdout window leaves no training
-         *                                  bar, the topK holdout reservation leaves no
-         *                                  training evaluation budget, or the selected
-         *                                  engine rejects a declared domain
+         * @throws IllegalStateException           if required configuration is missing
+         *                                         or the series is empty
+         * @throws ConcurrentModificationException if the dataset changed during the run
+         * @throws IllegalArgumentException        if the holdout window leaves no
+         *                                         training bar, the topK holdout
+         *                                         reservation leaves no training
+         *                                         evaluation budget, or the selected
+         *                                         engine rejects a declared domain
          * @since 0.24.2
          */
         public ParameterResearchReport run() {
@@ -2896,12 +2899,12 @@ public final class ParameterResearch {
                 || snapshot.endIndex() != series.getEndIndex() || snapshot.barCount() != series.getBarCount()
                 || snapshot.barHistoryRevision() != series.getBarHistoryRevision()
                 || snapshot.maxBarCount() != series.getMaximumBarCount()) {
-            throw new IllegalStateException("dataset changed during research: expected name='" + snapshot.name()
-                    + "' beginIndex=" + snapshot.beginIndex() + " endIndex=" + snapshot.endIndex() + " barCount="
-                    + snapshot.barCount() + " barHistoryRevision=" + snapshot.barHistoryRevision() + " maxBarCount="
-                    + snapshot.maxBarCount() + ", but observed name='" + series.getName() + "' beginIndex="
-                    + series.getBeginIndex() + " endIndex=" + series.getEndIndex() + " barCount=" + series.getBarCount()
-                    + " barHistoryRevision=" + series.getBarHistoryRevision() + " maxBarCount="
+            throw new ConcurrentModificationException("dataset changed during research: expected name='"
+                    + snapshot.name() + "' beginIndex=" + snapshot.beginIndex() + " endIndex=" + snapshot.endIndex()
+                    + " barCount=" + snapshot.barCount() + " barHistoryRevision=" + snapshot.barHistoryRevision()
+                    + " maxBarCount=" + snapshot.maxBarCount() + ", but observed name='" + series.getName()
+                    + "' beginIndex=" + series.getBeginIndex() + " endIndex=" + series.getEndIndex() + " barCount="
+                    + series.getBarCount() + " barHistoryRevision=" + series.getBarHistoryRevision() + " maxBarCount="
                     + series.getMaximumBarCount());
         }
     }

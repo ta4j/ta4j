@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.ConcurrentModificationException;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -152,8 +153,8 @@ final class AnalysisPositionSupport {
      * curve is built under a last short read scope while every captured bar value
      * is verified. A changed or evicted window is captured again.
      *
-     * @throws IllegalStateException if the window was evicted or changed during
-     *                               every attempt
+     * @throws ConcurrentModificationException if the window was evicted or changed
+     *                                         during every attempt
      */
     static <T> T materialize(PerformanceIndicator curve, BarSeries series, TradingRecord record, int startIndex,
             int requestedFinal, boolean useRecordEnd, boolean useSeriesEnd, boolean padToSeriesEnd,
@@ -195,7 +196,7 @@ final class AnalysisPositionSupport {
                 return built;
             }
         }
-        throw new IllegalStateException(
+        throw new ConcurrentModificationException(
                 "Bar series '" + series.getName() + "' evicted or changed the analysis window during each of "
                         + MAX_MATERIALIZE_ATTEMPTS + " attempts; retry once retention is stable");
     }
@@ -236,8 +237,9 @@ final class AnalysisPositionSupport {
      *               was read from
      * @param values the curve's values, replaced only by a verified update
      * @param update the bar-only update, applied to the staged values
-     * @throws IllegalStateException if a captured bar was evicted, replaced or
-     *                               updated since the curve was materialized
+     * @throws ConcurrentModificationException if a captured bar was evicted,
+     *                                         replaced or updated since the curve
+     *                                         was materialized
      */
     static void updateCapturedCurve(BarSeries series, Window window, PricedPosition priced, OffsetNumBuffer values,
             Consumer<OffsetNumBuffer> update) {
@@ -254,7 +256,7 @@ final class AnalysisPositionSupport {
             return true;
         });
         if (!applied) {
-            throw new IllegalStateException("Bar series '" + series.getName()
+            throw new ConcurrentModificationException("Bar series '" + series.getName()
                     + "' changed inside this curve's window since it was materialized; build a new curve to "
                     + "analyse the changed bars");
         }

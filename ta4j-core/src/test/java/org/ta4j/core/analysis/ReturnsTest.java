@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.ConcurrentModificationException;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -700,7 +701,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         // The curve holds values from the captured bars; pricing a new position
         // from the replaced bar would mix two bar histories.
-        assertThrows(IllegalStateException.class, () -> curve.calculatePosition(later, 2));
+        assertThrows(ConcurrentModificationException.class, () -> curve.calculatePosition(later, 2));
     }
 
     @Test
@@ -753,7 +754,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         Returns curve = new Returns(race.series(), race.emptyRecord(), ReturnRepresentation.DECIMAL);
         List<Num> before = curve.getValues();
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(ConcurrentModificationException.class,
                 () -> curve.calculatePosition(race.position(), PreWindowCostRace.WINDOW_END));
 
         assertEquals(before, curve.getValues());

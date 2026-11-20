@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.ConcurrentModificationException;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -142,7 +143,7 @@ public final class ExcessReturns {
                 return;
             }
         }
-        throw new IllegalStateException(
+        throw new ConcurrentModificationException(
                 "Bar series '" + series.getName() + "' evicted or changed the analysis window during each of "
                         + MAX_CAPTURE_ATTEMPTS + " attempts; retry once retention is stable");
     }
