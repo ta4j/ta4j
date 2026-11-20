@@ -142,6 +142,22 @@ public class NamedAssetRegistryTest {
     }
 
     @Test
+    public void finiteNumberArgumentsRejectExponentsThatExpandToHugePlainText() {
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
+
+        IllegalArgumentException large = assertThrows(IllegalArgumentException.class,
+                () -> registry.toDescriptor(NamedAssetKind.RULE, "Over(ClosePrice,1e999999999)"));
+        IllegalArgumentException tiny = assertThrows(IllegalArgumentException.class,
+                () -> registry.toDescriptor(NamedAssetKind.RULE, "StopLoss(1e-999999999%)"));
+
+        assertThat(large).hasMessageContaining("plain digits");
+        assertThat(tiny).hasMessageContaining("plain digits");
+        String limit = "1e" + (NamedAssetRegistry.MAX_PLAIN_NUMBER_DIGITS - 1);
+        assertThat(registry.toDescriptor(NamedAssetKind.RULE, "StopLoss(" + limit + ")").getParameters())
+                .containsEntry("lossPercentage", new BigDecimal(limit).toPlainString());
+    }
+
+    @Test
     public void splitTopLevelIgnoresNestedExpressionCommas() {
         NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
 

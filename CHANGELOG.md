@@ -1,5 +1,10 @@
 ## Unreleased
 
+### Breaking
+
+- **Untrusted analysis-criterion JSON only restores ta4j criteria (`CF-756`)**: `AnalysisCriterion.fromJson(...)`, `AnalysisCriterionSerialization.fromJson(...)` and `fromDescriptor(...)` now reject fully qualified class names outside the `org.ta4j.core.criteria` package tree before the class is loaded, initialized or constructed. Shorthand expressions still build any criterion type produced by an alias registered in the supplied `NamedAssetRegistry`. To restore custom criteria from data you control, call the new `AnalysisCriterionSerialization.fromTrustedJson(...)` or `fromTrustedDescriptor(...)`.
+- **Resource limits on descriptor-reachable parameters (`CF-756`)**: settings that previously allowed unbounded CPU or memory now fail fast with `IllegalArgumentException`. LPPL profiles accept at most 100,000 grid points, 10,000 optimizer evaluations and 100,000,000 model evaluations per fit; `RWIHighIndicator` and `RWILowIndicator` accept `barCount` up to 1,000; Monte Carlo forecasts accept at most 10,000 horizon bars, 1,000,000 paths and 1,000,000,000 path steps; `OnlineChangePointForecastStateIndicator` accepts `maximumRunLength` up to 10,000; trend-line indicators accept at most 512 swing points and 130,816 candidate pairs; and shorthand numeric arguments may expand to at most 1,000 plain digits. Defaults are unchanged and stay well inside every limit.
+
 ### Added
 
 - **Rebuild rules from short labels (`CF-336`)**: Register a `NamedRule` subclass once and recreate it with `NamedRule.fromLabel(series, "RsiThresholdRule_BELOW_14_30")`; `NamedStrategy.fromLabel` does the same for named strategies. A named rule's label is fixed, so renaming it throws `UnsupportedOperationException`. Subclasses call `super(TheirClass.class, parameters...)`; conflicting simple names fail fast rather than resolving by classpath order. `ta4j-examples` ships `RsiThresholdRule` and `ClosePriceCrossedMovingAverageRule` as reference implementations.
@@ -16,6 +21,7 @@
 - **Locale-independent walk-forward calibration metrics**: `WalkForwardTuner` now updates case-insensitive Brier, log-loss and calibration-error metric names consistently across system locales, including Turkish. Its calibration-metric benchmark exercises the same production path.
 - **Native-provider validation and qualification handoffs (`CF-336`)**: Native requests reject fractional, nonfinite, out-of-range, or output-vector-overflowing dimensions before native initialization. Metal rejects variances that underflow or overflow FP32 and compiles kernels with safe, precise math. Configured CUDA/OpenCL hardware validation fails on initialization or self-test errors instead of skipping. Release manifests include ordinary provider artifacts without promising hosted classifiers. OpenCL validation handles large device inventories and architecture-matched containers; CUDA preflight fails on native tool errors.
 - **Maven signing preflight**: release and snapshot publishing sign and verify a temporary payload with the imported OpenPGP key before publication, failing early on unusable or expired keys and passphrases. A maintainer-run helper renews the existing signing identity without replacing its fingerprint or exposing administrative secrets to a branch-dispatch workflow.
+- **Lower memory and CPU on long histories (`CF-756`)**: detector-backed recent-swing pairs no longer cache a full pivot list for every scanned bar, `MutualInformationIndicator` stores only occupied bins instead of a `binCount²` matrix, RWI indicators share one true-range source across their ATR helpers, and `ElliottScenarioGenerator` is linear rather than quadratic in the number of swings with unchanged results.
 
 ## 0.29.0 (2026-11-16)
 

@@ -41,6 +41,19 @@ public class MutualInformationIndicatorTest extends AbstractIndicatorTest<Indica
     }
 
     @Test
+    public void largeBinCountsStoreOnlyOccupiedBins() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        Indicator<Num> first = indicator(series, 1, 2, 3, 4, 5);
+        Indicator<Num> second = indicator(series, 5, 3, 1, 4, 2);
+
+        // A dense histogram would need Integer.MAX_VALUE^2 joint cells here.
+        MutualInformationIndicator mutualInformation = new MutualInformationIndicator(first, second, 5,
+                Integer.MAX_VALUE);
+
+        assertNumEquals(numOf(Math.log(5.0)), mutualInformation.getValue(4), 1.0e-12);
+    }
+
+    @Test
     public void returnsZeroForIndependentBinarySamples() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 0, 1, 1).build();
         Indicator<Num> first = indicator(series, 0, 0, 1, 1);

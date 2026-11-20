@@ -142,7 +142,7 @@ final class MissingDependencyFixture implements AutoCloseable {
 
         public static Object deserializeCriterion() {
             return AnalysisCriterionSerialization
-                    .fromDescriptor(ComponentDescriptor.typeOnly(BrokenCriterion.class.getName()));
+                    .fromTrustedDescriptor(ComponentDescriptor.typeOnly(BrokenCriterion.class.getName()));
         }
 
         public static Object deserializeStrategy() {

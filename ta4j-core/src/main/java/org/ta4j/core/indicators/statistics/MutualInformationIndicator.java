@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
@@ -80,31 +84,36 @@ public class MutualInformationIndicator extends CachedIndicator<Num> {
             return numFactory.zero();
         }
 
-        int[] jointCounts = new int[binCount * binCount];
-        int[] firstCounts = new int[binCount];
-        int[] secondCounts = new int[binCount];
+        // Only occupied bins are stored, so memory and work follow the sample count
+        // rather than binCount^2. Ascending joint keys keep the row-major summation
+        // order of a dense histogram.
+        Map<Long, Integer> jointCounts = new HashMap<>();
+        Map<Integer, Integer> firstCounts = new HashMap<>();
+        Map<Integer, Integer> secondCounts = new HashMap<>();
         for (int i = 0; i < window.sampleCount(); i++) {
             int firstBin = firstMapper.bin(window.firstValues()[i]);
             int secondBin = secondMapper.bin(window.secondValues()[i]);
-            jointCounts[(firstBin * binCount) + secondBin]++;
-            firstCounts[firstBin]++;
-            secondCounts[secondBin]++;
+            jointCounts.merge((long) firstBin * binCount + secondBin, 1, Integer::sum);
+            firstCounts.merge(firstBin, 1, Integer::sum);
+            secondCounts.merge(secondBin, 1, Integer::sum);
         }
+        long[] occupiedJointBins = new long[jointCounts.size()];
+        int occupiedIndex = 0;
+        for (long jointBin : jointCounts.keySet()) {
+            occupiedJointBins[occupiedIndex++] = jointBin;
+        }
+        Arrays.sort(occupiedJointBins);
 
         Num sampleCount = numFactory.numOf(window.sampleCount());
         Num mutualInformation = numFactory.zero();
-        for (int firstBin = 0; firstBin < binCount; firstBin++) {
-            for (int secondBin = 0; secondBin < binCount; secondBin++) {
-                int jointCount = jointCounts[(firstBin * binCount) + secondBin];
-                if (jointCount == 0) {
-                    continue;
-                }
-                Num jointProbability = numFactory.numOf(jointCount).dividedBy(sampleCount);
-                Num firstProbability = numFactory.numOf(firstCounts[firstBin]).dividedBy(sampleCount);
-                Num secondProbability = numFactory.numOf(secondCounts[secondBin]).dividedBy(sampleCount);
-                Num ratio = jointProbability.dividedBy(firstProbability.multipliedBy(secondProbability));
-                mutualInformation = mutualInformation.plus(jointProbability.multipliedBy(ratio.log()));
-            }
+        for (long jointBin : occupiedJointBins) {
+            int firstBin = (int) (jointBin / binCount);
+            int secondBin = (int) (jointBin % binCount);
+            Num jointProbability = numFactory.numOf(jointCounts.get(jointBin)).dividedBy(sampleCount);
+            Num firstProbability = numFactory.numOf(firstCounts.get(firstBin)).dividedBy(sampleCount);
+            Num secondProbability = numFactory.numOf(secondCounts.get(secondBin)).dividedBy(sampleCount);
+            Num ratio = jointProbability.dividedBy(firstProbability.multipliedBy(secondProbability));
+            mutualInformation = mutualInformation.plus(jointProbability.multipliedBy(ratio.log()));
         }
         return Num.isFinite(mutualInformation) ? mutualInformation : NaN.NaN;
     }

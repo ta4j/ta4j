@@ -14,11 +14,22 @@ import java.util.Objects;
  * that needs tuning. The fit window ends one bar before the value being
  * evaluated, so every result is usable without look-ahead.
  *
+ * <p>
+ * Every fit costs roughly {@code (grid points + maxEvaluations) * window} model
+ * evaluations, where the grid holds one point per searched critical offset,
+ * exponent and frequency. Profiles are rejected when the grid exceeds 100,000
+ * points, the optimizer budget exceeds 10,000 evaluations, or the combined work
+ * exceeds 100,000,000 model evaluations per fitted bar. The defaults use well
+ * under 1% of that budget.
+ *
  * @since 0.23.1
  */
 public final class LPPLCalibrationProfile {
 
     static final int MINIMUM_WINDOW = 5;
+    static final int MAX_GRID_POINTS = 100_000;
+    static final int MAX_EVALUATIONS = 10_000;
+    static final long MAX_FIT_WORK = 100_000_000L;
 
     private final int window;
     private final double minM;
@@ -62,6 +73,21 @@ public final class LPPLCalibrationProfile {
         }
         if (!Double.isFinite(minRSquared) || minRSquared < 0 || minRSquared > 1) {
             throw new IllegalArgumentException("minRSquared must be between 0 and 1");
+        }
+        if (maxEvaluations > MAX_EVALUATIONS) {
+            throw new IllegalArgumentException("maxEvaluations must be at most " + MAX_EVALUATIONS);
+        }
+        long criticalSteps = ((long) maxCriticalOffset - minCriticalOffset) / criticalOffsetStep + 1L;
+        // Bounding each axis first keeps the products below inside long range.
+        if (criticalSteps > MAX_GRID_POINTS || mSteps > MAX_GRID_POINTS || omegaSteps > MAX_GRID_POINTS
+                || criticalSteps * mSteps * omegaSteps > MAX_GRID_POINTS) {
+            throw new IllegalArgumentException("grid search must have at most " + MAX_GRID_POINTS
+                    + " points (critical offsets x mSteps x omegaSteps)");
+        }
+        long gridPoints = criticalSteps * mSteps * omegaSteps;
+        if ((gridPoints + maxEvaluations) * window > MAX_FIT_WORK) {
+            throw new IllegalArgumentException("(grid points + maxEvaluations) * window must be at most " + MAX_FIT_WORK
+                    + " model evaluations per fit");
         }
         this.window = window;
         this.minM = minM;
