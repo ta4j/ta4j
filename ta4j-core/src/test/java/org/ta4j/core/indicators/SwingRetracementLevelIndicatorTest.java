@@ -109,6 +109,32 @@ public class SwingRetracementLevelIndicatorTest extends AbstractIndicatorTest<In
     }
 
     @Test
+    public void valuesOnABoundedSeriesMatchAFreshIndicatorAfterTheHeadAdvances() {
+        BarSeries series = series(new double[] { 10, 13, 11, 11, 11, 11, 11, 11, 11, 11 },
+                new double[] { 9, 10, 9, 8, 9, 9, 9, 9, 9, 9 });
+        series.setMaximumBarCount(10);
+        SwingRetracementLevelIndicator cached = new SwingRetracementLevelIndicator(
+                new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), 1, 1, 0),
+                new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), 1, 1, 0), 0.5);
+        // Index 0 confirms the swing high at 1, so with the swing low at 3
+        // the level at 8 is (13 + 8) / 2.
+        assertThat(cached.getValue(8)).isEqualByComparingTo(numOf(10.5));
+
+        addBar(series, 11, 9);
+
+        // Without index 0 no swing high is confirmed. Every retained value must
+        // equal a fresh indicator's, whether or not it was read before.
+        assertThat(series.getBeginIndex()).isEqualTo(1);
+        SwingRetracementLevelIndicator fresh = new SwingRetracementLevelIndicator(
+                new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), 1, 1, 0),
+                new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), 1, 1, 0), 0.5);
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertSameValue(i, cached.getValue(i), fresh.getValue(i));
+        }
+        assertThat(cached.getValue(8).isNaN()).isTrue();
+    }
+
+    @Test
     public void rejectsInvalidArguments() {
         BarSeries series = series(HIGHS, LOWS);
         RecentSwingIndicator highs = new RecentFractalSwingHighIndicator(series, 1);

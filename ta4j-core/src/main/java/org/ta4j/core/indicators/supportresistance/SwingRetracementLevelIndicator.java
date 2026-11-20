@@ -44,6 +44,12 @@ import org.ta4j.core.num.NumFactory;
  * swing price is not finite, such as an infinite {@code DoubleNum} price.
  *
  * <p>
+ * On a bounded series, values can change when the head advances: the latest
+ * swing can depend on bars older than that count, and the swing indicators drop
+ * a swing once its bars are removed. This indicator then discards its cached
+ * levels and computes each one again from the swings its sources still report.
+ *
+ * <p>
  * Example, the 61.8% level between the latest seven-bar fractal swings:
  *
  * <pre>{@code
@@ -141,6 +147,18 @@ public class SwingRetracementLevelIndicator extends CachedIndicator<Num> {
             return NaN;
         }
         return low.plus(ratio.multipliedBy(high.minus(low)));
+    }
+
+    /**
+     * A level comes from the latest swings, which the swing indicators of a bounded
+     * series drop once their bars are removed, so no cached level survives a head
+     * advance.
+     *
+     * @return {@code true}
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
     @Override
