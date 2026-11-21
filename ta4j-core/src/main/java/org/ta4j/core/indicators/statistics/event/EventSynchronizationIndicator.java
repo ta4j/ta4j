@@ -256,7 +256,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
         Num value;
         try {
             value = super.getValue(index);
-        } catch (IllegalStateException brokenInvariant) {
+        } catch (EventSynchronizationSupport.MatcherInvariantException brokenInvariant) {
             throw brokenInvariant;
         } catch (RuntimeException uncachedFailure) {
             // Retries exhausted or a source failed; the cache stored nothing,

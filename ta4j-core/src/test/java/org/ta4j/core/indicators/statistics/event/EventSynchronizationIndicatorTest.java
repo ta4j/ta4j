@@ -698,6 +698,33 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void sourceInvariantFailureIsUncachedNaNButSurfacesInDiagnostics() {
+        BarSeries series = series();
+        Indicator<Boolean> stable = events(series, 0, 8, 11);
+        AtomicInteger failures = new AtomicInteger(2);
+        Indicator<Boolean> flaky = new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                if (index == 10 && failures.getAndDecrement() > 0) {
+                    throw new IllegalStateException("source invariant");
+                }
+                return stable.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(flaky, stable, 5, 1, 1);
+        Num expected = indicator(stable, stable, 5, 1, 1).getValue(12);
+
+        assertThrows(IllegalStateException.class, () -> indicator.getResult(12));
+        assertTrue(indicator.getValue(12).isNaN());
+        assertNumEquals(expected, indicator.getValue(12));
+    }
+
+    @Test
     public void denseWindowBeyondMatcherCapacityIsNaN() {
         int windowSize = 3_000;
         BarSeries series = series(1);
@@ -824,7 +851,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
             }
         };
         EventSynchronizationIndicator failing = indicator(predicted, reference, 5, 0, 0);
-        assertThrows(IllegalStateException.class, () -> failing.getValue(15));
+        assertTrue(failing.getValue(15).isNaN());
         Result afterRetry = failing.getResult(15);
 
         EventSynchronizationIndicator clean = indicator(predicted,

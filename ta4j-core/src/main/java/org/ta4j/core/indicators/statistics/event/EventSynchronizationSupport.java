@@ -332,6 +332,14 @@ final class EventSynchronizationSupport {
         }
     }
 
+    static final class MatcherInvariantException extends IllegalStateException {
+        private static final long serialVersionUID = 1L;
+
+        MatcherInvariantException(String message) {
+            super(message);
+        }
+    }
+
     /**
      * Enforces the baseline matcher's reserved-cell budget for a window holding
      * {@code predictedCount} by {@code referenceCount} events.
@@ -448,8 +456,8 @@ final class EventSynchronizationSupport {
                 // The DP invariant guarantees an optimal-feasible first pair
                 // whenever the target has at least one pair; a violation would
                 // silently understate the match counts, so fail loudly.
-                throw new IllegalStateException("matcher invariant violated: no optimal-feasible pair at (" + i + ", "
-                        + j + ") with " + targetPairs + " pairs remaining");
+                throw new MatcherInvariantException("matcher invariant violated: no optimal-feasible pair at (" + i
+                        + ", " + j + ") with " + targetPairs + " pairs remaining");
             }
         }
         return matches;
