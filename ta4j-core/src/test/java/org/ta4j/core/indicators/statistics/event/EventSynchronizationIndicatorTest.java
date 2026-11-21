@@ -671,7 +671,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
-    public void transientSourceFailureReturnsUncachedNaN() {
+    public void transientSourceFailureIsNotCached() {
         BarSeries series = series();
         Indicator<Boolean> stable = events(series, 0, 8, 11);
         AtomicInteger failures = new AtomicInteger(1);
@@ -692,36 +692,9 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         EventSynchronizationIndicator indicator = indicator(flaky, stable, 5, 1, 1);
         Num expected = indicator(stable, stable, 5, 1, 1).getValue(12);
 
-        assertTrue(indicator.getValue(12).isNaN());
+        assertThrows(IllegalArgumentException.class, () -> indicator.getValue(12));
         assertNumEquals(expected, indicator.getValue(12));
         assertFalse(expected.isNaN());
-    }
-
-    @Test
-    public void sourceInvariantFailureIsUncachedNaNButSurfacesInDiagnostics() {
-        BarSeries series = series();
-        Indicator<Boolean> stable = events(series, 0, 8, 11);
-        AtomicInteger failures = new AtomicInteger(2);
-        Indicator<Boolean> flaky = new AbstractIndicator<Boolean>(series) {
-            @Override
-            public Boolean getValue(int index) {
-                if (index == 10 && failures.getAndDecrement() > 0) {
-                    throw new IllegalStateException("source invariant");
-                }
-                return stable.getValue(index);
-            }
-
-            @Override
-            public int getCountOfUnstableBars() {
-                return 0;
-            }
-        };
-        EventSynchronizationIndicator indicator = indicator(flaky, stable, 5, 1, 1);
-        Num expected = indicator(stable, stable, 5, 1, 1).getValue(12);
-
-        assertThrows(IllegalStateException.class, () -> indicator.getResult(12));
-        assertTrue(indicator.getValue(12).isNaN());
-        assertNumEquals(expected, indicator.getValue(12));
     }
 
     @Test
@@ -851,7 +824,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
             }
         };
         EventSynchronizationIndicator failing = indicator(predicted, reference, 5, 0, 0);
-        assertTrue(failing.getValue(15).isNaN());
+        assertThrows(IllegalStateException.class, () -> failing.getValue(15));
         Result afterRetry = failing.getResult(15);
 
         EventSynchronizationIndicator clean = indicator(predicted,
@@ -1142,7 +1115,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
-    public void exhaustedRetriesReturnUncachedNaNFromGetValue() {
+    public void exhaustedRetriesThrowWithoutCachingFromGetValue() {
         BaseBarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
                 .withMaxBarCount(8)
@@ -1165,7 +1138,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         Indicator<Boolean> reference = events(rolling, 0, 10);
         EventSynchronizationIndicator indicator = indicator(predicted, reference, 4, 0, 0);
 
-        assertTrue(indicator.getValue(10).isNaN());
+        assertThrows(ConcurrentModificationException.class, () -> indicator.getValue(10));
         mutate.set(false);
         Num expected = indicator(events(rolling, 0, 10), reference, 4, 0, 0).getValue(10);
         assertFalse(expected.isNaN());

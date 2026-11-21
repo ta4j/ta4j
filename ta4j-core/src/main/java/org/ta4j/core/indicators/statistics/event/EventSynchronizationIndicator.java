@@ -228,8 +228,10 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      *         {@code [index - barCount + 1, index]}, {@code NaN} when the index
      *         lies outside the series' current {@code [getBeginIndex(),
      *         getEndIndex()]} domain or the window reaches below the sources'
-     *         anchored stability boundary, or uncached {@code NaN} when the sources
-     *         change on every retry or a source throws
+     *         anchored stability boundary
+     * @throws ConcurrentModificationException when the sources change on every
+     *                                         retry; nothing is cached, so a later
+     *                                         call recomputes
      * @since 0.24.2
      */
     @Override
@@ -253,16 +255,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
             // so the cached scalar must not contradict it.
             return NaN.NaN;
         }
-        Num value;
-        try {
-            value = super.getValue(index);
-        } catch (EventSynchronizationSupport.MatcherInvariantException brokenInvariant) {
-            throw brokenInvariant;
-        } catch (RuntimeException uncachedFailure) {
-            // Retries exhausted or a source failed; the cache stored nothing,
-            // so a later call recomputes.
-            return NaN.NaN;
-        }
+        Num value = super.getValue(index);
         // Revalidate against fresh state: a rolling ConcurrentBarSeries may
         // prune index between the checks above and the inherited cache read,
         // which maps the pruned request onto the first retained bar's cached
