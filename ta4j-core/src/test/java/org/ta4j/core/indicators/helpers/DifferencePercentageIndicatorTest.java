@@ -80,7 +80,27 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
-    public void failedReplayDoesNotEraseAConcurrentNotificationUpdate() throws Exception {
+    public void replayResultDoesNotEraseAConcurrentNotificationUpdate() throws Exception {
+        ConcurrentReplay run = replayAcrossConcurrentSetter(true);
+
+        assertThat(run.replayResult().isNaN()).isTrue();
+        assertThat(run.indicator().getValue(4).doubleValue()).isCloseTo(0.9709, within(1e-3));
+    }
+
+    @Test
+    public void staleReplayIsRetriedInsteadOfCached() throws Exception {
+        ConcurrentReplay run = replayAcrossConcurrentSetter(false);
+
+        assertThat(run.replayResult().doubleValue()).isCloseTo(0.9709, within(1e-3));
+        assertThat(run.indicator().getValue(4).doubleValue()).isCloseTo(0.9709, within(1e-3));
+    }
+
+    private record ConcurrentReplay(DifferencePercentageIndicator indicator, Num replayResult) {
+    }
+
+    // Pauses the replay of index 4 at bar 0 while setLastNotification(3) commits
+    // 103 from the test thread, then releases bar 0 as a transient or real read.
+    private ConcurrentReplay replayAcrossConcurrentSetter(boolean transientRead) throws Exception {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 101, 102, 103, 104)
                 .build();
@@ -98,8 +118,10 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
-                    markResultTransient();
-                    return NaN.NaN;
+                    if (transientRead) {
+                        markResultTransient();
+                        return NaN.NaN;
+                    }
                 }
                 return close.getValue(index);
             }
@@ -123,8 +145,8 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
             }
         };
         DifferencePercentageIndicator indicator = new DifferencePercentageIndicator(source, numOf(10));
-        AtomicReference<Num> failedReplay = new AtomicReference<>();
-        Thread replay = new Thread(() -> failedReplay.set(indicator.getValue(4)));
+        AtomicReference<Num> replayResult = new AtomicReference<>();
+        Thread replay = new Thread(() -> replayResult.set(indicator.getValue(4)));
         replayThread.set(replay);
 
         replay.start();
@@ -134,7 +156,6 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
         replay.join(10_000);
         replayThread.set(null);
 
-        assertThat(failedReplay.get().isNaN()).isTrue();
-        assertThat(indicator.getValue(4).doubleValue()).isCloseTo(0.9709, within(1e-3));
+        return new ConcurrentReplay(indicator, replayResult.get());
     }
 }

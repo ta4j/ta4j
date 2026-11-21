@@ -61,6 +61,7 @@ import static org.ta4j.core.num.NaN.NaN;
 public class PercentageChangeIndicator extends CachedIndicator<Num> {
 
     private static final Indicator<?>[] NO_ADDITIONAL_SOURCES = new Indicator<?>[0];
+    private static final int MAX_REPLAY_ATTEMPTS = 3;
 
     private final Indicator<Num> indicator;
     private final Indicator<Num> previousIndicator;
@@ -211,28 +212,29 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
         // If threshold tracking is enabled, calculate all previous values to get
         // the correct last notification value for this index
         if (!percentageThreshold.isZero()) {
-            Num notification;
-            long version;
-            synchronized (notificationLock) {
-                notification = lastNotification;
-                version = notificationVersion;
-            }
-            try {
-                for (int i = beginIndex; i < index; i++) {
-                    notification = nextNotification(notification, i);
+            for (int attempt = 0; attempt < MAX_REPLAY_ATTEMPTS; attempt++) {
+                Num notification;
+                long version;
+                synchronized (notificationLock) {
+                    notification = lastNotification;
+                    version = notificationVersion;
                 }
-            } catch (TransientValueException transientRead) {
-                markResultTransient();
-                return NaN;
+                try {
+                    for (int i = beginIndex; i < index; i++) {
+                        notification = nextNotification(notification, i);
+                    }
+                } catch (TransientValueException transientRead) {
+                    markResultTransient();
+                    return NaN;
+                }
+                if (publishNotification(notification, version)) {
+                    return notification == null ? NaN : fractionToPercentage(currentValue.dividedBy(notification));
+                }
             }
-            publishNotification(notification, version);
-
-            if (notification == null) {
-                return NaN;
-            }
-
-            Num changeFraction = currentValue.dividedBy(notification);
-            return fractionToPercentage(changeFraction);
+            // Every replay lost to an overlapping one; a stale result must not be
+            // cached.
+            markResultTransient();
+            return NaN;
         }
 
         // Simple case: compare with previous bar
@@ -251,12 +253,14 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
 
     // Overlapping replays stage state locally and publish only if no other
     // replay landed since their snapshot; a failed replay publishes nothing.
-    private void publishNotification(Num notification, long version) {
+    private boolean publishNotification(Num notification, long version) {
         synchronized (notificationLock) {
-            if (notificationVersion == version) {
-                lastNotification = notification;
-                notificationVersion++;
+            if (notificationVersion != version) {
+                return false;
             }
+            lastNotification = notification;
+            notificationVersion++;
+            return true;
         }
     }
 

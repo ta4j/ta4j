@@ -44,6 +44,8 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final Num percentageThreshold;
+    private static final int MAX_REPLAY_ATTEMPTS = 3;
+
     private final transient Object notificationLock = new Object();
     private Num lastNotification;
     private transient long notificationVersion;
@@ -103,28 +105,28 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        Num notification;
-        long version;
-        synchronized (notificationLock) {
-            notification = lastNotification;
-            version = notificationVersion;
-        }
-        try {
-            for (int i = beginIndex; i < index; i++) {
-                notification = nextNotification(notification, i);
+        for (int attempt = 0; attempt < MAX_REPLAY_ATTEMPTS; attempt++) {
+            Num notification;
+            long version;
+            synchronized (notificationLock) {
+                notification = lastNotification;
+                version = notificationVersion;
             }
-        } catch (TransientValueException transientRead) {
-            markResultTransient();
-            return NaN.NaN;
+            try {
+                for (int i = beginIndex; i < index; i++) {
+                    notification = nextNotification(notification, i);
+                }
+            } catch (TransientValueException transientRead) {
+                markResultTransient();
+                return NaN.NaN;
+            }
+            if (publishNotification(notification, version)) {
+                return notification == null ? NaN.NaN : fractionToPercentage(value.dividedBy(notification));
+            }
         }
-        publishNotification(notification, version);
-
-        if (notification == null) {
-            return NaN.NaN;
-        }
-
-        Num changeFraction = value.dividedBy(notification);
-        return fractionToPercentage(changeFraction);
+        // Every replay lost to a concurrent update; a stale result must not be cached.
+        markResultTransient();
+        return NaN.NaN;
     }
 
     public void setLastNotification(int index) {
