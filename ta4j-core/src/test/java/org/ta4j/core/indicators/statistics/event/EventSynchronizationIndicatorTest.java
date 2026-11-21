@@ -671,7 +671,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
-    public void transientSourceFailureIsNotCachedAsNaN() {
+    public void transientSourceFailureReturnsUncachedNaN() {
         BarSeries series = series();
         Indicator<Boolean> stable = events(series, 0, 8, 11);
         AtomicInteger failures = new AtomicInteger(1);
@@ -692,7 +692,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         EventSynchronizationIndicator indicator = indicator(flaky, stable, 5, 1, 1);
         Num expected = indicator(stable, stable, 5, 1, 1).getValue(12);
 
-        assertThrows(IllegalArgumentException.class, () -> indicator.getValue(12));
+        assertTrue(indicator.getValue(12).isNaN());
         assertNumEquals(expected, indicator.getValue(12));
         assertFalse(expected.isNaN());
     }
