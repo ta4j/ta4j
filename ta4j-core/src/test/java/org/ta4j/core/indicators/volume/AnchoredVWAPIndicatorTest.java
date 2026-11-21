@@ -220,20 +220,47 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
-    public void transientAnchorSignalIsNotCommittedToTheAnchorCache() {
+    public void transientAnchorSignalIsUncachedNaN() {
+        BarSeries prices = unitVolumeSeries(10, 20, 30, 40);
+        AtomicBoolean signalFailing = new AtomicBoolean(true);
+        var anchored = new AnchoredVWAPIndicator(new ClosePriceIndicator(prices), new VolumeIndicator(prices),
+                anchorSignal(prices, 1, signalFailing), 0);
+
+        assertThat(anchored.getValue(2).isNaN()).isTrue();
+        signalFailing.set(false);
+
+        assertNumEquals(25, anchored.getValue(2));
+        assertThat(anchored.getAnchorIndex(2)).isEqualTo(1);
+    }
+
+    @Test
+    public void falseAnchorSignalKeepsTheDefaultAnchor() {
+        BarSeries prices = unitVolumeSeries(10, 20, 30, 40);
+        var anchored = new AnchoredVWAPIndicator(new ClosePriceIndicator(prices), new VolumeIndicator(prices),
+                anchorSignal(prices, -1, new AtomicBoolean(false)), 0);
+
+        assertNumEquals(20, anchored.getValue(2));
+        assertThat(anchored.getAnchorIndex(2)).isEqualTo(0);
+    }
+
+    private BarSeries unitVolumeSeries(double... closes) {
         BarSeries prices = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        for (double close : new double[] { 10, 20, 30, 40 }) {
+        for (double close : closes) {
             prices.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(1).add();
         }
-        AtomicBoolean signalFailing = new AtomicBoolean(true);
-        CachedIndicator<Boolean> anchorAtOne = new CachedIndicator<>(prices) {
+        return prices;
+    }
+
+    private static CachedIndicator<Boolean> anchorSignal(BarSeries prices, int anchorIndex,
+            AtomicBoolean signalFailing) {
+        return new CachedIndicator<>(prices) {
             @Override
             protected Boolean calculate(int index) {
-                if (index == 1 && signalFailing.get()) {
+                if (index == anchorIndex && signalFailing.get()) {
                     markResultTransient();
                     return false;
                 }
-                return index == 1;
+                return index == anchorIndex;
             }
 
             @Override
@@ -241,13 +268,5 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 return 0;
             }
         };
-        var anchored = new AnchoredVWAPIndicator(new ClosePriceIndicator(prices), new VolumeIndicator(prices),
-                anchorAtOne, 0);
-
-        assertNumEquals(20, anchored.getValue(2));
-        signalFailing.set(false);
-
-        assertNumEquals(25, anchored.getValue(2));
-        assertThat(anchored.getAnchorIndex(2)).isEqualTo(1);
     }
 }
