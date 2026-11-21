@@ -35,6 +35,7 @@ import org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator.R
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
@@ -671,7 +672,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
-    public void transientSourceFailureIsNotCached() {
+    public void transientSourceFailureIsUncachedNaN() {
         BarSeries series = series();
         Indicator<Boolean> stable = events(series, 0, 8, 11);
         AtomicInteger failures = new AtomicInteger(1);
@@ -692,9 +693,36 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         EventSynchronizationIndicator indicator = indicator(flaky, stable, 5, 1, 1);
         Num expected = indicator(stable, stable, 5, 1, 1).getValue(12);
 
-        assertThrows(IllegalArgumentException.class, () -> indicator.getValue(12));
+        assertTrue(indicator.getValue(12).isNaN());
         assertNumEquals(expected, indicator.getValue(12));
         assertFalse(expected.isNaN());
+    }
+
+    @Test
+    public void transientSourceFailureIsNotCachedByWrappingIndicators() {
+        BarSeries series = series();
+        Indicator<Boolean> stable = events(series, 0, 8, 11);
+        AtomicInteger failures = new AtomicInteger(1);
+        Indicator<Boolean> flaky = new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                if (index == 10 && failures.getAndDecrement() > 0) {
+                    throw new IllegalStateException("transient source failure");
+                }
+                return stable.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        SMAIndicator sma = new SMAIndicator(indicator(flaky, stable, 5, 1, 1), 1);
+        Num expected = new SMAIndicator(indicator(stable, stable, 5, 1, 1), 1).getValue(12);
+
+        assertTrue(sma.getValue(12).isNaN());
+        assertFalse(expected.isNaN());
+        assertNumEquals(expected, sma.getValue(12));
     }
 
     @Test
@@ -824,7 +852,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
             }
         };
         EventSynchronizationIndicator failing = indicator(predicted, reference, 5, 0, 0);
-        assertThrows(IllegalStateException.class, () -> failing.getValue(15));
+        assertTrue(failing.getValue(15).isNaN());
         Result afterRetry = failing.getResult(15);
 
         EventSynchronizationIndicator clean = indicator(predicted,
@@ -1115,7 +1143,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
-    public void exhaustedRetriesThrowWithoutCachingFromGetValue() {
+    public void exhaustedRetriesAreNaNThatNoWrapperCaches() {
         BaseBarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
                 .withMaxBarCount(8)
@@ -1138,11 +1166,14 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         Indicator<Boolean> reference = events(rolling, 0, 10);
         EventSynchronizationIndicator indicator = indicator(predicted, reference, 4, 0, 0);
 
-        assertThrows(ConcurrentModificationException.class, () -> indicator.getValue(10));
+        SMAIndicator sma = new SMAIndicator(indicator, 1);
+
+        assertTrue(sma.getValue(10).isNaN());
         mutate.set(false);
         Num expected = indicator(events(rolling, 0, 10), reference, 4, 0, 0).getValue(10);
         assertFalse(expected.isNaN());
         assertNumEquals(expected, indicator.getValue(10));
+        assertNumEquals(expected, sma.getValue(10));
     }
 
     @Test

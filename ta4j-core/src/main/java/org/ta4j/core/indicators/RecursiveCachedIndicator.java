@@ -114,6 +114,15 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     @Override
     public T getValue(int index) {
+        TransientScope scope = enterTransientScope();
+        try {
+            return getValueWithPrefill(index);
+        } finally {
+            exitTransientScope(scope);
+        }
+    }
+
+    private T getValueWithPrefill(int index) {
         BarSeries series = getBarSeries();
         if (series != null) {
             BarSeriesChangeSnapshot snapshot = synchronizeCacheWithSeries(series);
@@ -177,7 +186,15 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
         try {
             // Use the cache's prefillUntil to compute values iteratively
             // under a single write lock
-            getCache().prefillUntil(startIndex, targetIndex, this::calculate);
+            int from = startIndex;
+            while (from < targetIndex) {
+                try {
+                    getCache().prefillUntil(from, targetIndex, this::calculateTracked);
+                    break;
+                } catch (TransientResult transientResult) {
+                    from = transientResult.index + 1;
+                }
+            }
 
             // Ensure highestResultIndex reflects the cache without regressing if
             // another thread advanced it further (e.g., last-bar caching).

@@ -219,6 +219,11 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
             return getResult(index).f1Score();
         } catch (EventSynchronizationSupport.MatcherCapacityException matcherCapacityExceeded) {
             return NaN.NaN;
+        } catch (EventSynchronizationSupport.MatcherInvariantException brokenInvariant) {
+            throw brokenInvariant;
+        } catch (RuntimeException retriesExhaustedOrSourceFailed) {
+            markResultTransient();
+            return NaN.NaN;
         }
     }
 
@@ -228,10 +233,8 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      *         {@code [index - barCount + 1, index]}, {@code NaN} when the index
      *         lies outside the series' current {@code [getBeginIndex(),
      *         getEndIndex()]} domain or the window reaches below the sources'
-     *         anchored stability boundary
-     * @throws ConcurrentModificationException when the sources change on every
-     *                                         retry; nothing is cached, so a later
-     *                                         call recomputes
+     *         anchored stability boundary, or a {@code NaN} that no cache keeps
+     *         when the sources change on every retry or a source throws
      * @since 0.24.2
      */
     @Override
