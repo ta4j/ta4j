@@ -19,6 +19,7 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ToleranceSettings;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.ScoringWeights;
+import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.TrendLineSegment;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -576,6 +577,94 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(updatedSegment.secondIndex).isEqualTo(5);
         assertThat(updatedValue).isEqualByComparingTo(expectedUpdated);
         assertThat(updatedValue).isNotEqualByComparingTo(initialValue);
+    }
+
+    @Test
+    public void causalValuesEqualLiveBarByBarValues() {
+        final double[] lows = { 12, 10, 11, 9, 13, 11, 14, 10, 15, 12, 16, 11, 17, 13, 18, 12, 16, 14, 19, 13 };
+        final BarSeries full = seriesFromLows(lows);
+        final TrendLineSupportIndicator causalFull = TrendLineSupportIndicator
+                .causal(new RecentFractalSwingLowIndicator(new LowPriceIndicator(full), 1, 1, 0), 8);
+        final TrendLineSupportIndicator endAnchoredFull = new TrendLineSupportIndicator(full, 1, 8);
+
+        final BarSeries live = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        final TrendLineSupportIndicator causalLive = TrendLineSupportIndicator
+                .causal(new RecentFractalSwingLowIndicator(new LowPriceIndicator(live), 1, 1, 0), 8);
+        final TrendLineSupportIndicator endAnchoredLive = new TrendLineSupportIndicator(live, 1, 8);
+        final List<Num> liveValues = new ArrayList<>();
+        for (double low : lows) {
+            live.barBuilder().openPrice(low).closePrice(low).highPrice(low + 2d).lowPrice(low).add();
+            final int end = live.getEndIndex();
+            final Num value = causalLive.getValue(end);
+            // At the last bar both modes fit the same window.
+            assertSameValue(end, value, endAnchoredLive.getValue(end));
+            final TrendLineSegment causalSegment = causalLive.getCurrentSegment();
+            final TrendLineSegment endAnchoredSegment = endAnchoredLive.getCurrentSegment();
+            assertThat(causalSegment == null).isEqualTo(endAnchoredSegment == null);
+            if (causalSegment != null) {
+                assertThat(causalSegment.firstIndex).isEqualTo(endAnchoredSegment.firstIndex);
+                assertThat(causalSegment.secondIndex).isEqualTo(endAnchoredSegment.secondIndex);
+            }
+            liveValues.add(value);
+        }
+
+        int defined = 0;
+        int lookAhead = 0;
+        for (int i = full.getBeginIndex(); i <= full.getEndIndex(); i++) {
+            final Num expected = causalFull.getValue(i);
+            assertSameValue(i, liveValues.get(i), expected);
+            assertSameValue(i, causalLive.getValue(i), expected);
+            final Num endAnchored = endAnchoredFull.getValue(i);
+            if (!expected.isNaN()) {
+                defined++;
+                if (!endAnchored.isNaN() && !endAnchored.isEqual(expected)) {
+                    lookAhead++;
+                }
+            }
+        }
+        assertThat(defined).isGreaterThan(10);
+        // The end-anchored line projects later swing lows onto earlier indexes.
+        assertThat(lookAhead).isPositive();
+        assertThat(causalFull.getValue(full.getBeginIndex() - 1).isNaN()).isTrue();
+        assertThat(causalFull.getValue(full.getEndIndex() + 1).isNaN()).isTrue();
+
+        assertThat(causalFull.isCausal()).isTrue();
+        assertThat(endAnchoredFull.isCausal()).isFalse();
+        assertThat(causalFull.toDescriptor().getParameters()).containsEntry("causal", true);
+        assertThat(endAnchoredFull.toDescriptor().getParameters()).doesNotContainKey("causal");
+        IndicatorSerializationRoundTripTestSupport.assertIndicatorRoundTrips(full, causalFull, 3, 9, 19);
+    }
+
+    private static void assertSameValue(int index, Num actual, Num expected) {
+        if (expected.isNaN()) {
+            assertThat(actual.isNaN()).as("index %s", index).isTrue();
+        } else {
+            assertThat(actual).as("index %s", index).isEqualByComparingTo(expected);
+        }
+    }
+
+    @Test
+    public void causalValuesOnABoundedSeriesMatchAFreshIndicatorAfterTheHeadAdvances() {
+        final BarSeries series = seriesFromLows(12, 1, 12, 3, 12, 12, 12, 12, 12, 12);
+        series.setMaximumBarCount(10);
+        final TrendLineSupportIndicator cached = TrendLineSupportIndicator
+                .causal(new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), 1, 1, 0), 8);
+        // Index 0 confirms the swing low at 1, so swings 1 and 3 give a line at 8.
+        assertThat(cached.getValue(8).isNaN()).isFalse();
+
+        series.barBuilder().openPrice(12).closePrice(12).highPrice(14).lowPrice(12).add();
+
+        // Without index 0 the swing low at 1 is unconfirmed. Every retained value
+        // must equal a fresh indicator's, whether or not it was read before.
+        assertThat(series.getBeginIndex()).isEqualTo(1);
+        final TrendLineSupportIndicator fresh = TrendLineSupportIndicator
+                .causal(new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), 1, 1, 0), 8);
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertSameValue(i, cached.getValue(i), fresh.getValue(i));
+        }
+        assertThat(cached.getValue(8).isNaN()).isTrue();
+        // The causal window counts as unstable: 2 swing bars plus 7 more.
+        assertThat(cached.getCountOfUnstableBars()).isEqualTo(9);
     }
 
     private BarSeries seriesFromLows(double... lows) {

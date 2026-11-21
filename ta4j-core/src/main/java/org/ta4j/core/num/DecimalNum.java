@@ -6,6 +6,10 @@ package org.ta4j.core.num;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -784,6 +788,22 @@ public final class DecimalNum implements Num {
         // use PrecisionNum.multiply(PrecisionNum)
         final BigDecimal result = xpowa.multiply(BigDecimal.valueOf(xpowb));
         return new DecimalNum(result.toString(), this.mathContext);
+    }
+
+    @Serial
+    private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (this.delegate == null) {
+            throw new InvalidObjectException("Delegate BigDecimal must not be null");
+        }
+        if (this.mathContext == null) {
+            throw new InvalidObjectException("MathContext must not be null");
+        }
+    }
+
+    @Serial
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("DecimalNum class data is required");
     }
 
 }
