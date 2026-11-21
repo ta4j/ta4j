@@ -309,7 +309,7 @@ final class EventSynchronizationSupport {
                 // count + 1 cells, so a single stream must stay at or below the
                 // cap minus one events.
                 if ((long) size + 2 > MAX_MATCHING_CELLS) {
-                    throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
+                    throw new MatcherCapacityException("event count exceeds the baseline matcher capacity of "
                             + (MAX_MATCHING_CELLS / 1_000_000L) + " million cells (~128 MB of alignment arrays)");
                 }
                 if (size == events.length) {
@@ -324,6 +324,14 @@ final class EventSynchronizationSupport {
         return size == events.length ? events : Arrays.copyOf(events, size);
     }
 
+    static final class MatcherCapacityException extends IllegalArgumentException {
+        private static final long serialVersionUID = 1L;
+
+        MatcherCapacityException(String message) {
+            super(message);
+        }
+    }
+
     /**
      * Enforces the baseline matcher's reserved-cell budget for a window holding
      * {@code predictedCount} by {@code referenceCount} events.
@@ -336,7 +344,7 @@ final class EventSynchronizationSupport {
     static void validateMatcherCapacity(int predictedCount, int referenceCount) {
         long cells = (long) (predictedCount + 1) * (referenceCount + 1);
         if (cells > MAX_MATCHING_CELLS) {
-            throw new IllegalArgumentException("event counts " + predictedCount + " x " + referenceCount
+            throw new MatcherCapacityException("event counts " + predictedCount + " x " + referenceCount
                     + " exceed the baseline matcher " + "capacity of " + (MAX_MATCHING_CELLS / 1_000_000L)
                     + " million cells (~128 MB of alignment " + "arrays)");
         }

@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.ConcurrentModificationException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -669,6 +670,64 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void transientSourceFailureIsNotCachedAsNaN() {
+        BarSeries series = series();
+        Indicator<Boolean> stable = events(series, 0, 8, 11);
+        AtomicInteger failures = new AtomicInteger(1);
+        Indicator<Boolean> flaky = new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                if (index == 10 && failures.getAndDecrement() > 0) {
+                    throw new IllegalArgumentException("transient source failure");
+                }
+                return stable.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(flaky, stable, 5, 1, 1);
+        Num expected = indicator(stable, stable, 5, 1, 1).getValue(12);
+
+        assertThrows(IllegalArgumentException.class, () -> indicator.getValue(12));
+        assertNumEquals(expected, indicator.getValue(12));
+        assertFalse(expected.isNaN());
+    }
+
+    @Test
+    public void denseWindowBeyondMatcherCapacityIsNaN() {
+        int windowSize = 3_000;
+        BarSeries series = series(1);
+        BaseBarSeries proxy = new BaseBarSeries(series.getName(), series.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return 0;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return windowSize - 1;
+            }
+        };
+        Indicator<Boolean> always = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return true;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(always, always, windowSize, 0, 0);
+        assertThrows(IllegalArgumentException.class, () -> indicator.getResult(windowSize - 1));
+        assertTrue(indicator.getValue(windowSize - 1).isNaN());
+    }
+
+    @Test
     public void windowWiderThanHalfTheMatcherCapacityStillBoundsTheCache() {
         // The eviction cap keeps this scenario cheap (the catch-up scan is
         // bounded well below the array ceiling), so it runs for both numeric
@@ -1046,7 +1105,8 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // Exhaustion must surface as an exception rather than a cached
         // unavailable result: a cached NaN would survive later revisions that
         // never touch this window.
-        IllegalStateException exhausted = assertThrows(IllegalStateException.class, () -> indicator.getResult(11));
+        ConcurrentModificationException exhausted = assertThrows(ConcurrentModificationException.class,
+                () -> indicator.getResult(11));
         assertTrue(exhausted.getMessage().contains("retry budget exhausted"));
         // The window must actually have been scanned (the stub mutated on
         // every read); a vacuous outer-domain rejection would leave reads 0.

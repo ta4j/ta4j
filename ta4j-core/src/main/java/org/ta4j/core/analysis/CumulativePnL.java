@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.ConcurrentModificationException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -172,8 +173,9 @@ public final class CumulativePnL implements PerformanceIndicator {
      *
      * @param position   the position
      * @param finalIndex the final index to calculate up to
-     * @throws IllegalStateException if a bar this curve was materialized from was
-     *                               evicted, replaced or updated since
+     * @throws ConcurrentModificationException if a bar this curve was materialized
+     *                                         from was evicted, replaced or updated
+     *                                         since
      * @since 0.22.2
      */
     @Override

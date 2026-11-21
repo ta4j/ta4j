@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.ConcurrentModificationException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -1152,7 +1153,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         // The curve holds values from the captured bars; pricing a new position
         // from the replaced bar would mix two bar histories.
-        assertThrows(IllegalStateException.class, () -> cashFlow.calculatePosition(later, 2));
+        assertThrows(ConcurrentModificationException.class, () -> cashFlow.calculatePosition(later, 2));
     }
 
     @Test
@@ -1255,7 +1256,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         // Applying the position would price its mark from the changed close
         // against a holding cost priced from the old one.
-        assertThrows(IllegalStateException.class, () -> cashFlow.calculatePosition(open, 2));
+        assertThrows(ConcurrentModificationException.class, () -> cashFlow.calculatePosition(open, 2));
         assertEquals(before, cashFlow.stream().toList());
     }
 
@@ -1552,7 +1553,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 PreWindowCostRace.WINDOW_END, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
         List<Num> before = curve.stream().toList();
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(ConcurrentModificationException.class,
                 () -> curve.calculatePosition(race.position(), PreWindowCostRace.WINDOW_END));
 
         assertEquals(before, curve.stream().toList());

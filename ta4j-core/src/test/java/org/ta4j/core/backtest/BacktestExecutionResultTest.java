@@ -29,6 +29,7 @@ import org.ta4j.core.reports.BaseTradingStatement;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
 
+import java.util.ConcurrentModificationException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -236,7 +237,7 @@ public class BacktestExecutionResultTest {
         BarSeries replacedBaseline = BacktestExecutionResult.snapshot(replaced);
         replaced.addBar(nextBar(replaced, 31d), true);
 
-        IllegalStateException replacement = assertThrows(IllegalStateException.class,
+        ConcurrentModificationException replacement = assertThrows(ConcurrentModificationException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(replaced, replacedBaseline));
         assertTrue(replacement.getMessage().contains("window [0, 2]"), replacement.getMessage());
         assertTrue(replacement.getMessage().contains("bar 2 was replaced or updated"), replacement.getMessage());
@@ -245,7 +246,7 @@ public class BacktestExecutionResultTest {
         BarSeries updatedBaseline = BacktestExecutionResult.snapshot(updated);
         updated.addPrice(numFactory.numOf(35));
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(ConcurrentModificationException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(updated, updatedBaseline));
     }
 
@@ -261,7 +262,7 @@ public class BacktestExecutionResultTest {
         BacktestExecutionResult.verifyUnchanged(trailing, trailingBaseline);
 
         trailing.getBar(1).addPrice(numFactory.numOf(25));
-        IllegalStateException change = assertThrows(IllegalStateException.class,
+        ConcurrentModificationException change = assertThrows(ConcurrentModificationException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(trailing, trailingBaseline));
         assertTrue(change.getMessage().contains("bar 1 was replaced or updated"), change.getMessage());
     }
@@ -275,7 +276,7 @@ public class BacktestExecutionResultTest {
         // leading bar could mask an in-window change that was reverted since.
         leading.getBar(0).addPrice(numFactory.numOf(15));
 
-        IllegalStateException change = assertThrows(IllegalStateException.class,
+        ConcurrentModificationException change = assertThrows(ConcurrentModificationException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(leading, baseline));
         assertTrue(change.getMessage().contains("bar 0 before the window changed"), change.getMessage());
     }
@@ -296,7 +297,7 @@ public class BacktestExecutionResultTest {
         BarSeries baseline = BacktestExecutionResult.snapshot(source);
         source.addBar(nextBar(source, 40d));
 
-        IllegalStateException eviction = assertThrows(IllegalStateException.class,
+        ConcurrentModificationException eviction = assertThrows(ConcurrentModificationException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(source, baseline));
         assertTrue(eviction.getMessage().contains("bars before index 1 were evicted"), eviction.getMessage());
     }
@@ -317,7 +318,7 @@ public class BacktestExecutionResultTest {
         BacktestExecutionResult.verifyUnchanged(untracked, baseline);
         untracked.getBar(1).addPrice(numFactory.numOf(25));
 
-        IllegalStateException change = assertThrows(IllegalStateException.class,
+        ConcurrentModificationException change = assertThrows(ConcurrentModificationException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(untracked, baseline));
         assertTrue(change.getMessage().contains("bar 1 was replaced or updated"), change.getMessage());
     }
@@ -336,7 +337,7 @@ public class BacktestExecutionResultTest {
         series.getBar(1).addPrice(numFactory.numOf(25));
 
         assertEquals(revision, series.getBarHistoryRevision(), "custom bars cannot publish their mutation");
-        IllegalStateException change = assertThrows(IllegalStateException.class,
+        ConcurrentModificationException change = assertThrows(ConcurrentModificationException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(series, baseline));
         assertTrue(change.getMessage().contains("bar 1 was replaced or updated"), change.getMessage());
     }
@@ -360,7 +361,7 @@ public class BacktestExecutionResultTest {
         series.getBar(1).addPrice(numFactory.numOf(25));
 
         assertEquals(pinnedRevision[0], series.getBarHistoryRevision());
-        IllegalStateException change = assertThrows(IllegalStateException.class,
+        ConcurrentModificationException change = assertThrows(ConcurrentModificationException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(series, baseline));
         assertTrue(change.getMessage().contains("bar 1 was replaced or updated"), change.getMessage());
     }

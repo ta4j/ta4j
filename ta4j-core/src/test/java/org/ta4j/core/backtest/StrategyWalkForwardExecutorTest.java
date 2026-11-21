@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ConcurrentModificationException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -109,7 +110,7 @@ public class StrategyWalkForwardExecutorTest {
                     return new AnchoredExpandingWalkForwardSplitter().split(target, config);
                 });
 
-        IllegalStateException failure = assertThrows(IllegalStateException.class,
+        ConcurrentModificationException failure = assertThrows(ConcurrentModificationException.class,
                 () -> executor.execute(new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE), Trade.TradeType.BUY,
                         numFactory.one(), walkForwardConfig(), null));
 

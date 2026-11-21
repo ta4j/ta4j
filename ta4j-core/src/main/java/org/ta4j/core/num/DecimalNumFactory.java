@@ -84,6 +84,9 @@ public class DecimalNumFactory implements NumFactory {
 
     @Override
     public Num numOf(final Number number) {
+        if ((number instanceof Double || number instanceof Float) && !Double.isFinite(number.doubleValue())) {
+            return NaN.NaN;
+        }
         return numOf(number.toString());
     }
 

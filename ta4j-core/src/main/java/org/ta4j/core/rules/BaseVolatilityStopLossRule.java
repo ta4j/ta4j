@@ -71,7 +71,8 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
         Num entryPrice = position.getEntry().getNetPrice();
         Num currentPrice = referencePrice.getValue(index);
         Num threshold = stopLossThreshold.getValue(index);
-        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)) {
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)
+                || threshold.isNegative()) {
             StopRuleTrace.traceUnavailable(this, index, "nanInput");
             return false;
         }
@@ -103,7 +104,7 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
             return null;
         }
         Num threshold = stopLossThreshold.getValue(position.getEntry().getIndex());
-        if (Num.isNaNOrNull(threshold)) {
+        if (Num.isNaNOrNull(threshold) || threshold.isNegative()) {
             return null;
         }
         // stopPrice models the initial stop at entry time, so threshold is read at

@@ -10,6 +10,7 @@ import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -188,6 +189,9 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         Num value = intermediateValue.getValue(index);
+        if (!Num.isFinite(value)) {
+            return NaN.NaN;
+        }
 
         if (value.isGreaterThan(numFactory.numOf(VALUE_MAX))) {
             value = numFactory.numOf(VALUE_MAX);
@@ -197,7 +201,8 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
         // Fisher = gamma * Log((1 + Value) / (1 - Value)) + delta * priorFisher
         Num term1 = numFactory.numOf((Math.log(one.plus(value).dividedBy(one.minus(value)).doubleValue())));
-        Num term2 = getValue(index - 1);
+        Num previous = getValue(index - 1);
+        Num term2 = previous.isNaN() ? numFactory.zero() : previous;
         return gammaNum.multipliedBy(term1).plus(deltaNum.multipliedBy(term2));
     }
 
