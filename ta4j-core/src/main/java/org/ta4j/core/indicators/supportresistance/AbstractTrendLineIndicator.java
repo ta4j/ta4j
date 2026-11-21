@@ -265,8 +265,18 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (index < windowStart) {
             return NaN;
         }
-        ensureGeometries(windowStart, endIndex);
-        ensureCandidate(windowStart, endIndex);
+        try {
+            readNonTransient(windowEnd -> {
+                ensureGeometries(windowStart, windowEnd);
+                ensureCandidate(windowStart, windowEnd);
+                return windowEnd;
+            }, endIndex);
+        } catch (TransientValueException transientRead) {
+            cachedGeometries = List.of();
+            cachedWindowSwings = List.of();
+            cachedSegment = null;
+            return NaN;
+        }
         return super.getValue(index);
     }
 

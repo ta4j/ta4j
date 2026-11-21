@@ -21,6 +21,40 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 - For DTO/model carrier types, prefer immutable shapes: `record` first, then public final fields, then mutable getter/setter models only when required.
 - For component metadata JSON, use helpers from `org.ta4j.core.serialization` (`ComponentDescriptor`, `ComponentSerialization`) instead of hand-rolled structures.
 
+## Calculation-time failure contract (MUST)
+
+Constructors, factories, builders and deserialization validate eagerly and throw. Once a component is built,
+evaluating it never throws for anything the data can cause.
+
+- `Indicator#getValue` / `calculate`: return `NaN.NaN` when the data defines no value: warm-up, NaN or
+  infinite inputs, zero denominators, missing or degenerate history, numerical underflow or overflow. Non-`Num`
+  indicators return their documented undefined value (`false`, `Optional.empty()`, an `unstable(...)` state),
+  never `null`.
+- Pruned bars are not an error: an index below `getBeginIndex()` re-anchors to the first retained bar or value,
+  as `BaseBarSeries#getBar` and `CachedIndicator#getValue` do.
+- `Rule#isSatisfied`: `false` when an input is NaN or undefined.
+- `AnalysisCriterion`, `CostModel`, `PositionRiskModel`, and `Position` / `TradingRecord` profit, cost and
+  return getters: the documented neutral value for empty input (for example zero with no positions), otherwise
+  `NaN` when the result is undefined.
+
+Calculation-time throws are allowed only for:
+
+1. Caller-contract violations the caller can check before calling, declared with `@throws`: null arguments, a
+   negative index or one beyond `getEndIndex()`, an invalid index range, an open position passed to an API that
+   requires a closed one.
+2. Broken library invariants, which are bugs rather than data (`IllegalStateException`).
+3. History that changed during the calculation so no consistent snapshot could be read: retry a bounded number
+   of times, then throw `ConcurrentModificationException`, never another exception type. This applies to
+   criteria, cost models, analysis curves and backtest or research runs. `Indicator#calculate` instead calls
+   `CachedIndicator.markResultTransient()` and returns `NaN`: neither it nor any cached indicator built on it
+   stores the value, so a later read recomputes. A transient source failure is handled the same way. State kept
+   besides the cache (running sums, scan frontiers, per-index side maps) must not absorb a transient value: check
+   `isResultTransient()` or read through `readNonTransient(...)` before committing it.
+
+Test for a new case: if the same inputs would always produce it, it is data and returns `NaN`; if the caller
+could have prevented it by checking its arguments, throw; if a retry could succeed, it is case 3. A cached `NaN`
+must be a deterministic function of the data, because callers and caches treat it as a final answer.
+
 ## Core surface-area gate (MUST)
 
 - New top-level classes in `org.ta4j.core` are a last resort.

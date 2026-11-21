@@ -44,7 +44,11 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final Num percentageThreshold;
+    private static final int MAX_REPLAY_ATTEMPTS = 3;
+
+    private final transient Object notificationLock = new Object();
     private Num lastNotification;
+    private transient long notificationVersion;
 
     /**
      * Constructor to get the percentage difference from the previous value.
@@ -82,7 +86,10 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     @Override
     protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        lastNotification = null;
+        synchronized (notificationLock) {
+            lastNotification = null;
+            notificationVersion++;
+        }
         return super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
     }
 
@@ -98,35 +105,75 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        // calculate all the previous values to get the correct
-        // last notification value for this index
-        for (int i = getBarSeries().getBeginIndex(); i < index; i++) {
-            setLastNotification(i);
+        for (int attempt = 0; attempt < MAX_REPLAY_ATTEMPTS; attempt++) {
+            Num notification;
+            long version;
+            synchronized (notificationLock) {
+                notification = lastNotification;
+                version = notificationVersion;
+            }
+            try {
+                for (int i = beginIndex; i < index; i++) {
+                    notification = nextNotification(notification, i);
+                }
+            } catch (TransientValueException transientRead) {
+                markResultTransient();
+                return NaN.NaN;
+            }
+            if (publishNotification(notification, version)) {
+                return notification == null ? NaN.NaN : fractionToPercentage(value.dividedBy(notification));
+            }
         }
-
-        if (lastNotification == null) {
-            return NaN.NaN;
-        }
-
-        Num changeFraction = value.dividedBy(lastNotification);
-        return fractionToPercentage(changeFraction);
+        // Every replay lost to a concurrent update; a stale result must not be cached.
+        markResultTransient();
+        return NaN.NaN;
     }
 
     public void setLastNotification(int index) {
-        Num value = indicator.getValue((index));
-        if (value.isNaN() || value.isZero()) {
-            return;
+        while (true) {
+            Num notification;
+            long version;
+            synchronized (notificationLock) {
+                notification = lastNotification;
+                version = notificationVersion;
+            }
+            try {
+                notification = nextNotification(notification, index);
+            } catch (TransientValueException transientRead) {
+                return;
+            }
+            if (publishNotification(notification, version)) {
+                return;
+            }
         }
-        if (lastNotification == null) {
-            lastNotification = value;
+    }
+
+    // Replays stage state locally and publish only if no other update landed
+    // since their snapshot, so neither a failed nor a stale replay can erase one.
+    private boolean publishNotification(Num notification, long version) {
+        synchronized (notificationLock) {
+            if (notificationVersion != version) {
+                return false;
+            }
+            lastNotification = notification;
+            notificationVersion++;
+            return true;
+        }
+    }
+
+    private Num nextNotification(Num notification, int index) {
+        Num value = readNonTransient(indicator::getValue, index);
+        if (value.isNaN() || value.isZero()) {
+            return notification;
+        }
+        if (notification == null) {
+            notification = value;
         }
 
-        Num changeFraction = value.dividedBy(lastNotification);
+        Num changeFraction = value.dividedBy(notification);
         Num changePercentage = fractionToPercentage(changeFraction);
 
-        if (changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)) {
-            lastNotification = value;
-        }
+        return changePercentage.abs().isGreaterThanOrEqual(percentageThreshold) ? value : notification;
     }
 
     @Override

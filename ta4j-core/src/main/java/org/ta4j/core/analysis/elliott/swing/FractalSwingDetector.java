@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis.elliott.swing;
 
+import java.util.ConcurrentModificationException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -308,7 +309,8 @@ public final class FractalSwingDetector implements SwingDetector {
          * between discards the replay and retries it against the newer history. Appends
          * alone keep the replay, exactly as they do between queries.
          *
-         * @throws IllegalStateException if the history changed during every attempt
+         * @throws ConcurrentModificationException if the history changed during every
+         *                                         attempt
          */
         private void replayCoherentlyTo(final int index) {
             boolean historyChanged = seriesHistoryChanged();
@@ -336,8 +338,9 @@ public final class FractalSwingDetector implements SwingDetector {
                     if (!historyChanged) {
                         throw evaluationFailure;
                     }
-                    throw new IllegalStateException("Series history changed during each of " + MAX_REPLAY_ATTEMPTS
-                            + " swing detection attempts; retry once the series is stable", evaluationFailure);
+                    throw new ConcurrentModificationException("Series history changed during each of "
+                            + MAX_REPLAY_ATTEMPTS + " swing detection attempts; retry once the series is stable",
+                            evaluationFailure);
                 }
             }
         }

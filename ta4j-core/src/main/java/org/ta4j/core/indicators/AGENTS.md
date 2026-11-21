@@ -40,7 +40,8 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 
 ## Numerical safety
 
-- Guard against zero-volume and undefined inputs; return `NaN.NaN` for undefined results.
+- Guard against zero-volume and undefined inputs; return `NaN.NaN` for undefined results and never throw from
+  `getValue` / `calculate` (see the calculation-time failure contract in `org/ta4j/core/AGENTS.md`).
 - `Indicator<Num>` calculations should preserve `Num` through rolling windows, comparisons, accumulation, and return conversion. Limit `doubleValue()` to explicit `DoubleNum` validation, external interop, or unavoidable primitive-only math.
 - Validate both `Num.isNaN()` and raw `Double`/`Float` delegate NaN or infinity where relevant because primitive-backed factories can surface non-finite values.
 - Finite-value checks must not reject finite `DecimalNum` values just because their primitive `double` representation overflows.

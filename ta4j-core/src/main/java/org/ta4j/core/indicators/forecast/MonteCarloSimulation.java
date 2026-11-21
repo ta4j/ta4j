@@ -110,7 +110,11 @@ final class MonteCarloSimulation {
             }
             terminalValues.add(terminalValue);
         }
-        return Forecast.ofSamples(index, settings.horizon(), terminalValues, settings.quantileProbabilities());
+        try {
+            return Forecast.ofSamples(index, settings.horizon(), terminalValues, settings.quantileProbabilities());
+        } catch (IllegalArgumentException | ArithmeticException unrepresentable) {
+            return Forecast.unstable(index, settings.horizon());
+        }
     }
 
     int getCountOfUnstableBars() {

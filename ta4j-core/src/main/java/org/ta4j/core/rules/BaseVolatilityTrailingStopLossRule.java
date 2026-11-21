@@ -88,7 +88,8 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
         Num entryPrice = position.getEntry().getNetPrice();
         Num currentPrice = referencePrice.getValue(index);
         Num threshold = stopLossThreshold.getValue(index);
-        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)) {
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)
+                || threshold.isNegative()) {
             StopRuleTrace.traceUnavailable(this, index, "nanInput");
             return false;
         }
@@ -135,7 +136,7 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
             return null;
         }
         Num threshold = stopLossThreshold.getValue(entryIndex);
-        if (Num.isNaNOrNull(threshold)) {
+        if (Num.isNaNOrNull(threshold) || threshold.isNegative()) {
             return null;
         }
 

@@ -341,6 +341,9 @@ public class Position implements Serializable {
      * @return the profit or loss of the position
      */
     public Num getProfit() {
+        if (entry == null) {
+            return NaN;
+        }
         if (isOpened()) {
             return zero();
         } else {
@@ -359,6 +362,9 @@ public class Position implements Serializable {
      * @return the profit or loss of the position
      */
     public Num getProfit(int finalIndex, Num finalPrice) {
+        if (entry == null) {
+            return NaN;
+        }
         Num grossProfit = getGrossProfit(finalPrice);
         Num tradingCost = getPositionCost(finalIndex);
         return grossProfit.minus(tradingCost);
@@ -371,6 +377,9 @@ public class Position implements Serializable {
      * @return the gross profit of the position
      */
     public Num getGrossProfit() {
+        if (entry == null) {
+            return NaN;
+        }
         if (isOpened()) {
             return zero();
         } else {
@@ -387,6 +396,9 @@ public class Position implements Serializable {
      * @return the profit or loss of the position
      */
     public Num getGrossProfit(Num finalPrice) {
+        if (entry == null) {
+            return NaN;
+        }
         Num grossProfit;
         if (isOpened()) {
             grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
@@ -409,6 +421,9 @@ public class Position implements Serializable {
      * @see #getGrossReturn(Num)
      */
     public Num getGrossReturn() {
+        if (entry == null) {
+            return NaN;
+        }
         if (isOpened()) {
             return zero();
         } else {
@@ -426,6 +441,9 @@ public class Position implements Serializable {
      * @see #getGrossReturn(Num, Num)
      */
     public Num getGrossReturn(Num finalPrice) {
+        if (entry == null) {
+            return NaN;
+        }
         return getGrossReturn(getEntry().getPricePerAsset(), finalPrice);
     }
 

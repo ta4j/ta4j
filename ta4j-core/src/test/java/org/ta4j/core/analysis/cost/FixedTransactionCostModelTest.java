@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -23,6 +24,14 @@ public class FixedTransactionCostModelTest {
     private static final Num PRICE = DoubleNum.valueOf(100);
 
     private static final Num AMOUNT = DoubleNum.valueOf(5);
+
+    @Test
+    public void rejectsNonFiniteFeeAndReturnsNaNForNewPosition() {
+        assertThrows(IllegalArgumentException.class, () -> new FixedTransactionCostModel(Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> new FixedTransactionCostModel(Double.POSITIVE_INFINITY));
+        assertTrue(new FixedTransactionCostModel(0.01).calculate(new Position()).isNaN());
+        assertTrue(new FixedTransactionCostModel(0.01).calculate(new Position(), 3).isNaN());
+    }
 
     @Test
     public void calculatePerPositionWhenPositionIsOpen() {

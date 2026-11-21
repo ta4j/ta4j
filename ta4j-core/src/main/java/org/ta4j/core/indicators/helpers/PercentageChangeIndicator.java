@@ -61,11 +61,14 @@ import static org.ta4j.core.num.NaN.NaN;
 public class PercentageChangeIndicator extends CachedIndicator<Num> {
 
     private static final Indicator<?>[] NO_ADDITIONAL_SOURCES = new Indicator<?>[0];
+    private static final int MAX_REPLAY_ATTEMPTS = 3;
 
     private final Indicator<Num> indicator;
     private final Indicator<Num> previousIndicator;
     private final Num percentageThreshold;
+    private final transient Object notificationLock = new Object();
     private Num lastNotification;
+    private transient long notificationVersion;
 
     /**
      * Constructor to calculate percentage change from the previous value.
@@ -209,16 +212,29 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
         // If threshold tracking is enabled, calculate all previous values to get
         // the correct last notification value for this index
         if (!percentageThreshold.isZero()) {
-            for (int i = beginIndex; i < index; i++) {
-                setLastNotification(i);
+            for (int attempt = 0; attempt < MAX_REPLAY_ATTEMPTS; attempt++) {
+                Num notification;
+                long version;
+                synchronized (notificationLock) {
+                    notification = lastNotification;
+                    version = notificationVersion;
+                }
+                try {
+                    for (int i = beginIndex; i < index; i++) {
+                        notification = nextNotification(notification, i);
+                    }
+                } catch (TransientValueException transientRead) {
+                    markResultTransient();
+                    return NaN;
+                }
+                if (publishNotification(notification, version)) {
+                    return notification == null ? NaN : fractionToPercentage(currentValue.dividedBy(notification));
+                }
             }
-
-            if (lastNotification == null) {
-                return NaN;
-            }
-
-            Num changeFraction = currentValue.dividedBy(lastNotification);
-            return fractionToPercentage(changeFraction);
+            // Every replay lost to an overlapping one; a stale result must not be
+            // cached.
+            markResultTransient();
+            return NaN;
         }
 
         // Simple case: compare with previous bar
@@ -235,29 +251,30 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
         return calculateRateOfReturnPercentage(currentValue, previousValue);
     }
 
-    /**
-     * Updates the last notification value when threshold tracking is enabled. This
-     * method is called during calculation to track when the threshold was last
-     * exceeded.
-     *
-     * @param index the index to check
-     */
-    private void setLastNotification(int index) {
-        Num value = indicator.getValue(index);
+    // Overlapping replays stage state locally and publish only if no other
+    // replay landed since their snapshot; a failed replay publishes nothing.
+    private boolean publishNotification(Num notification, long version) {
+        synchronized (notificationLock) {
+            if (notificationVersion != version) {
+                return false;
+            }
+            lastNotification = notification;
+            notificationVersion++;
+            return true;
+        }
+    }
+
+    private Num nextNotification(Num notification, int index) {
+        Num value = readNonTransient(indicator::getValue, index);
         if (Num.isNaNOrNull(value) || value.isZero()) {
-            return;
+            return notification;
         }
-        if (lastNotification == null) {
-            lastNotification = value;
-            return;
+        if (notification == null) {
+            return value;
         }
 
-        Num changeFraction = value.dividedBy(lastNotification);
-        Num changePercentage = fractionToPercentage(changeFraction);
-
-        if (changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)) {
-            lastNotification = value;
-        }
+        Num changePercentage = fractionToPercentage(value.dividedBy(notification));
+        return changePercentage.abs().isGreaterThanOrEqual(percentageThreshold) ? value : notification;
     }
 
     /**

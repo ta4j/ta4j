@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
@@ -11,6 +12,8 @@ import java.time.Instant;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.indicators.CachedIndicator;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TraceTestLogger;
@@ -265,5 +268,35 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
         Indicator<?> reconstructed = Indicator.fromJson(series, json);
         assertThat(reconstructed).isInstanceOf(PercentageChangeIndicator.class);
         assertThat(reconstructed.toDescriptor()).isEqualTo(descriptor);
+    }
+
+    @Test
+    public void transientHistoricalReadDoesNotAdvanceTheNotificationState() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 115, 120, 105, 110)
+                .build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        AtomicBoolean sourceFailing = new AtomicBoolean(true);
+        CachedIndicator<Num> flaky = new CachedIndicator<>(series) {
+            @Override
+            protected Num calculate(int index) {
+                if (index == 1 && sourceFailing.get()) {
+                    markResultTransient();
+                    return NaN.NaN;
+                }
+                return close.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        PercentageChangeIndicator indicator = new PercentageChangeIndicator(flaky, numOf(10));
+
+        assertThat(indicator.getValue(4).isNaN()).isTrue();
+        sourceFailing.set(false);
+
+        assertThat(indicator.getValue(4).doubleValue()).isCloseTo(-4.3478, within(1e-3));
     }
 }

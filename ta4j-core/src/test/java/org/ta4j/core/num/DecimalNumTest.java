@@ -135,12 +135,24 @@ public class DecimalNumTest {
     }
 
     @Test
-    public void testPowOverflowExponent() {
-        assertThrows(ArithmeticException.class, () -> {
-            final Num x = DecimalNum.valueOf("2");
-            final Num n = DecimalNum.valueOf(SUPER_PRECISION_LARGE_STRING);
-            assertNumEquals("1", x.pow(n));
-        });
+    public void testPowOverflowExponentReturnsNaN() {
+        final Num two = DecimalNum.valueOf("2");
+        assertTrue(two.pow(DecimalNum.valueOf(SUPER_PRECISION_LARGE_STRING)).isNaN());
+        assertTrue(two.pow(1_000_000_000).isNaN());
+        assertTrue(DecimalNum.valueOf("0").pow(-1).isNaN());
+    }
+
+    @Test
+    public void testRemainderByZeroReturnsNaN() {
+        assertTrue(DecimalNum.valueOf("5").remainder(DecimalNum.valueOf("0")).isNaN());
+    }
+
+    @Test
+    public void testFactoryNumOfNonFiniteReturnsNaN() {
+        NumFactory factory = DecimalNumFactory.getInstance();
+        assertTrue(factory.numOf(Double.NaN).isNaN());
+        assertTrue(factory.numOf(Double.POSITIVE_INFINITY).isNaN());
+        assertTrue(factory.numOf(Float.NEGATIVE_INFINITY).isNaN());
     }
 
     @Test

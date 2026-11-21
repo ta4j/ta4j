@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ConcurrentModificationException;
 import java.time.Duration;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
@@ -287,8 +288,8 @@ public class BacktestExecutorTest {
         Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         BacktestExecutor executor = new BacktestExecutor(series);
 
-        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
-                Trade.TradeType.BUY, completed -> series.getLastBar().addPrice(numOf(99))));
+        assertThrows(ConcurrentModificationException.class, () -> executor.executeWithRuntimeReport(List.of(strategy),
+                numOf(1), Trade.TradeType.BUY, completed -> series.getLastBar().addPrice(numOf(99))));
 
     }
 
@@ -298,8 +299,8 @@ public class BacktestExecutorTest {
         Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         BacktestExecutor executor = new BacktestExecutor(series);
 
-        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
-                Trade.TradeType.BUY, completed -> series.setMaximumBarCount(2)));
+        assertThrows(ConcurrentModificationException.class, () -> executor.executeWithRuntimeReport(List.of(strategy),
+                numOf(1), Trade.TradeType.BUY, completed -> series.setMaximumBarCount(2)));
     }
 
     @Test
@@ -402,7 +403,7 @@ public class BacktestExecutorTest {
         Strategy other = new BaseStrategy(new FixedRule(0), new FixedRule(2));
         BacktestExecutor executor = new BacktestExecutor(series);
 
-        IllegalStateException failure = assertThrows(IllegalStateException.class,
+        ConcurrentModificationException failure = assertThrows(ConcurrentModificationException.class,
                 () -> executor.executeAndKeepTopK(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY,
                         new NumberOfBarsCriterion(), 2, null));
 
@@ -973,8 +974,9 @@ public class BacktestExecutorTest {
         Strategy mutating = new BaseStrategy(contractEndAtFirstBar, new FixedRule());
         Strategy stable = new BaseStrategy(new FixedRule(), new FixedRule());
 
-        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> new BacktestExecutor(series)
-                .executeWithRuntimeReport(List.of(mutating, stable), numOf(1), Trade.TradeType.BUY, 1));
+        ConcurrentModificationException failure = assertThrows(ConcurrentModificationException.class,
+                () -> new BacktestExecutor(series).executeWithRuntimeReport(List.of(mutating, stable), numOf(1),
+                        Trade.TradeType.BUY, 1));
 
         assertTrue(failure.getMessage().contains("end moved"), failure.getMessage());
     }
@@ -994,8 +996,9 @@ public class BacktestExecutorTest {
         Strategy mutating = new BaseStrategy(advanceBeginAtFirstBar, new FixedRule());
         Strategy stable = new BaseStrategy(new FixedRule(), new FixedRule());
 
-        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> new BacktestExecutor(series)
-                .executeWithRuntimeReport(List.of(mutating, stable), numOf(1), Trade.TradeType.BUY, 1));
+        ConcurrentModificationException failure = assertThrows(ConcurrentModificationException.class,
+                () -> new BacktestExecutor(series).executeWithRuntimeReport(List.of(mutating, stable), numOf(1),
+                        Trade.TradeType.BUY, 1));
 
         assertTrue(failure.getMessage().contains("begin moved"), failure.getMessage());
     }

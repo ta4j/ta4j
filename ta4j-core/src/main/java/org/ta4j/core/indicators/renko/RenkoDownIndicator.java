@@ -72,13 +72,20 @@ public class RenkoDownIndicator extends CachedIndicator<Boolean> {
         if (brickCount < 1) {
             throw new IllegalArgumentException("brickCount must be at least 1");
         }
-        return new Config(validatedPriceIndicator, new RenkoCounter(validatedPriceIndicator, resolvedPointSize),
+        return new Config(validatedPriceIndicator,
+                new RenkoCounter(validatedPriceIndicator,
+                        index -> readNonTransient(validatedPriceIndicator::getValue, index), resolvedPointSize),
                 brickCount);
     }
 
     @Override
     protected Boolean calculate(int index) {
-        return counter.stateAt(index).getConsecutiveDown() >= brickCount;
+        try {
+            return counter.stateAt(index).getConsecutiveDown() >= brickCount;
+        } catch (TransientValueException transientRead) {
+            markResultTransient();
+            return false;
+        }
     }
 
     @Override
