@@ -100,8 +100,13 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
         // calculate all the previous values to get the correct
         // last notification value for this index
+        Num committed = lastNotification;
         for (int i = getBarSeries().getBeginIndex(); i < index; i++) {
-            setLastNotification(i);
+            if (!updateLastNotification(i)) {
+                lastNotification = committed;
+                markResultTransient();
+                return NaN.NaN;
+            }
         }
 
         if (lastNotification == null) {
@@ -113,14 +118,18 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     }
 
     public void setLastNotification(int index) {
+        updateLastNotification(index);
+    }
+
+    private boolean updateLastNotification(int index) {
         Num value;
         try {
             value = readNonTransient(indicator::getValue, index);
         } catch (TransientValueException transientRead) {
-            return;
+            return false;
         }
         if (value.isNaN() || value.isZero()) {
-            return;
+            return true;
         }
         if (lastNotification == null) {
             lastNotification = value;
@@ -132,6 +141,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
         if (changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)) {
             lastNotification = value;
         }
+        return true;
     }
 
     @Override

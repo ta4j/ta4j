@@ -209,8 +209,13 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
         // If threshold tracking is enabled, calculate all previous values to get
         // the correct last notification value for this index
         if (!percentageThreshold.isZero()) {
+            Num committed = lastNotification;
             for (int i = beginIndex; i < index; i++) {
-                setLastNotification(i);
+                if (!setLastNotification(i)) {
+                    lastNotification = committed;
+                    markResultTransient();
+                    return NaN;
+                }
             }
 
             if (lastNotification == null) {
@@ -241,20 +246,21 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
      * exceeded.
      *
      * @param index the index to check
+     * @return {@code false} when the value at {@code index} was transient
      */
-    private void setLastNotification(int index) {
+    private boolean setLastNotification(int index) {
         Num value;
         try {
             value = readNonTransient(indicator::getValue, index);
         } catch (TransientValueException transientRead) {
-            return;
+            return false;
         }
         if (Num.isNaNOrNull(value) || value.isZero()) {
-            return;
+            return true;
         }
         if (lastNotification == null) {
             lastNotification = value;
-            return;
+            return true;
         }
 
         Num changeFraction = value.dividedBy(lastNotification);
@@ -263,6 +269,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
         if (changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)) {
             lastNotification = value;
         }
+        return true;
     }
 
     /**
