@@ -10,8 +10,12 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.indicators.CachedIndicator;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CountDownLatch;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.StochasticIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -73,5 +77,64 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
         sourceFailing.set(false);
 
         assertThat(indicator.getValue(4).doubleValue()).isCloseTo(-4.3478, within(1e-3));
+    }
+
+    @Test
+    public void failedReplayDoesNotEraseAConcurrentNotificationUpdate() throws Exception {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 101, 102, 103, 104)
+                .build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        CountDownLatch replayPaused = new CountDownLatch(1);
+        CountDownLatch setterDone = new CountDownLatch(1);
+        AtomicReference<Thread> replayThread = new AtomicReference<>();
+        CachedIndicator<Num> pausingFirstBar = new CachedIndicator<>(series) {
+            @Override
+            protected Num calculate(int index) {
+                if (Thread.currentThread() == replayThread.get()) {
+                    replayPaused.countDown();
+                    try {
+                        setterDone.await(10, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    markResultTransient();
+                    return NaN.NaN;
+                }
+                return close.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        // Only bar 0 goes through the paused cache, so the setter's read is not
+        // blocked behind it.
+        Indicator<Num> source = new AbstractIndicator<>(series) {
+            @Override
+            public Num getValue(int index) {
+                return index == 0 ? pausingFirstBar.getValue(index) : close.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        DifferencePercentageIndicator indicator = new DifferencePercentageIndicator(source, numOf(10));
+        AtomicReference<Num> failedReplay = new AtomicReference<>();
+        Thread replay = new Thread(() -> failedReplay.set(indicator.getValue(4)));
+        replayThread.set(replay);
+
+        replay.start();
+        assertThat(replayPaused.await(10, TimeUnit.SECONDS)).isTrue();
+        indicator.setLastNotification(3);
+        setterDone.countDown();
+        replay.join(10_000);
+        replayThread.set(null);
+
+        assertThat(failedReplay.get().isNaN()).isTrue();
+        assertThat(indicator.getValue(4).doubleValue()).isCloseTo(0.9709, within(1e-3));
     }
 }
