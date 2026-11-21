@@ -47,7 +47,9 @@ Calculation-time throws are allowed only for:
    of times, then throw `ConcurrentModificationException`, never another exception type. This applies to
    criteria, cost models, analysis curves and backtest or research runs. `Indicator#calculate` instead calls
    `CachedIndicator.markResultTransient()` and returns `NaN`: neither it nor any cached indicator built on it
-   stores the value, so a later read recomputes. A transient source failure is handled the same way.
+   stores the value, so a later read recomputes. A transient source failure is handled the same way. State kept
+   besides the cache (running sums, scan frontiers, per-index side maps) must not absorb a transient value: check
+   `isResultTransient()` or read through `readNonTransient(...)` before committing it.
 
 Test for a new case: if the same inputs would always produce it, it is data and returns `NaN`; if the caller
 could have prevented it by checking its arguments, throw; if a retry could succeed, it is case 3. A cached `NaN`

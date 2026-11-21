@@ -113,7 +113,12 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     }
 
     public void setLastNotification(int index) {
-        Num value = indicator.getValue((index));
+        Num value;
+        try {
+            value = readNonTransient(indicator::getValue, index);
+        } catch (TransientValueException transientRead) {
+            return;
+        }
         if (value.isNaN() || value.isZero()) {
             return;
         }

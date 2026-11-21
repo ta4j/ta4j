@@ -243,7 +243,12 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
      * @param index the index to check
      */
     private void setLastNotification(int index) {
-        Num value = indicator.getValue(index);
+        Num value;
+        try {
+            value = readNonTransient(indicator::getValue, index);
+        } catch (TransientValueException transientRead) {
+            return;
+        }
         if (Num.isNaNOrNull(value) || value.isZero()) {
             return;
         }

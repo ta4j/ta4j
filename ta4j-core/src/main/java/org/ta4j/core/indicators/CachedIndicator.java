@@ -1634,6 +1634,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
+     * Whether the calculation running on this thread has read a transient value
+     * (see {@link #markResultTransient()}).
+     *
+     * <p>
+     * Indicators that keep state besides this cache, such as running sums or scan
+     * frontiers, must not commit it while this returns {@code true}: the value they
+     * would commit is not a final answer. A spurious {@code true} only costs a
+     * recomputation.
+     *
+     * @return {@code true} when a transient value was read during this calculation
+     * @since 0.29.1
+     */
+    protected static boolean isResultTransient() {
+        return TRANSIENT_SCOPE.get().tainted;
+    }
+
+    /**
      * Performs {@code read} and returns its result, or throws when the read
      * produced a value marked with {@link #markResultTransient()}.
      *
@@ -1693,6 +1710,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         private int depth;
         private boolean tainted;
         private Map<CachedIndicator<?>, Map<Integer, Object>> values;
+        // Entries in creation order; depths never decrease along the list because
+        // deeper entries are dropped when their read returns. Dropping by depth
+        // rather than at depth zero keeps a frame lost to a StackOverflowError
+        // from pinning stale values on this thread.
+        private final ArrayList<TransientEntry> entries = new ArrayList<>();
 
         private Map<Integer, Object> valuesOf(CachedIndicator<?> indicator) {
             return values == null ? null : values.get(indicator);
@@ -1703,7 +1725,22 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 values = new IdentityHashMap<>();
             }
             values.computeIfAbsent(indicator, ignored -> new HashMap<>()).put(index, value);
+            entries.add(new TransientEntry(indicator, index, depth));
         }
+
+        private void dropDeeperThan(int keptDepth) {
+            for (int i = entries.size() - 1; i >= 0 && entries.get(i).depth() > keptDepth; i--) {
+                TransientEntry entry = entries.remove(i);
+                Map<Integer, Object> indicatorValues = values.get(entry.indicator());
+                indicatorValues.remove(entry.index());
+                if (indicatorValues.isEmpty()) {
+                    values.remove(entry.indicator());
+                }
+            }
+        }
+    }
+
+    private record TransientEntry(CachedIndicator<?> indicator, int index, int depth) {
     }
 
     /**
@@ -1731,9 +1768,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     static void exitTransientScope(TransientScope scope) {
-        if (--scope.depth == 0) {
+        int depth = --scope.depth;
+        if (!scope.entries.isEmpty()) {
+            scope.dropDeeperThan(depth);
+        }
+        if (depth <= 0) {
+            scope.depth = 0;
             scope.tainted = false;
-            scope.values = null;
         }
     }
 

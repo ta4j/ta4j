@@ -447,6 +447,14 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void transientValuesRecoverAfterAStackOverflowOnTheSameThread() {
+        LegacyReentrantIndicator legacy = new LegacyReentrantIndicator(series, TARGET_INDEX);
+        assertThrows(StackOverflowError.class, () -> legacy.getValue(TARGET_INDEX));
+
+        longRecursiveChainOverTransientSourceRecoversWithoutOverflow();
+    }
+
+    @Test
     public void longRecursiveChainOverTransientSourceRecoversWithoutOverflow() {
         int bars = 20_000;
         BarSeries series = transientSeries(bars);
