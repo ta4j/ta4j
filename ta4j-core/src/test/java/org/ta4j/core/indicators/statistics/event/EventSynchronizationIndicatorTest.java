@@ -699,6 +699,34 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void transientFalseEventIsNotCommittedToTheScan() {
+        BarSeries series = series();
+        Indicator<Boolean> stable = events(series, 0, 8, 10, 11);
+        AtomicInteger transientReads = new AtomicInteger(1);
+        CachedIndicator<Boolean> flaky = new CachedIndicator<Boolean>(series) {
+            @Override
+            protected Boolean calculate(int index) {
+                if (index == 10 && transientReads.getAndDecrement() > 0) {
+                    markResultTransient();
+                    return false;
+                }
+                return stable.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(flaky, stable, 5, 1, 1);
+        Num expected = indicator(stable, stable, 5, 1, 1).getValue(12);
+
+        assertTrue(indicator.getValue(12).isNaN());
+        assertFalse(expected.isNaN());
+        assertNumEquals(expected, indicator.getValue(12));
+    }
+
+    @Test
     public void transientSourceFailureIsNotCachedByWrappingIndicators() {
         BarSeries series = series();
         Indicator<Boolean> stable = events(series, 0, 8, 11);

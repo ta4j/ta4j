@@ -847,7 +847,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
         }
 
         private void appendEvent(int index, EventSignal signal) {
-            if (signal.isEvent(index)) {
+            if (readNonTransient(signal::isEvent, index)) {
                 // Enforce the reserved-cell budget on every append, not only
                 // when resizing: after the final clamped growth the array still
                 // has room for one more element, which would otherwise slip

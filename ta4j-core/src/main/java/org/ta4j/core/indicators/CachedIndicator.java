@@ -1633,6 +1633,55 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         TRANSIENT_SCOPE.get().tainted = true;
     }
 
+    /**
+     * Performs {@code read} and returns its result, or throws when the read
+     * produced a value marked with {@link #markResultTransient()}.
+     *
+     * <p>
+     * Use when a result is committed to state other than this cache, such as an
+     * incremental scan frontier, so a transient value is never recorded there.
+     *
+     * @param read  the read to perform, typically a source indicator lookup
+     * @param index the bar index passed to {@code read}
+     * @param <V>   the value type
+     * @return the value read
+     * @throws TransientValueException when the value read was transient
+     * @since 0.29.1
+     */
+    protected static <V> V readNonTransient(IntFunction<V> read, int index) {
+        TransientScope scope = enterTransientScope();
+        boolean outerTainted = scope.tainted;
+        scope.tainted = false;
+        V value;
+        boolean tainted;
+        try {
+            value = read.apply(index);
+        } finally {
+            tainted = scope.tainted;
+            scope.tainted = outerTainted || tainted;
+            exitTransientScope(scope);
+        }
+        if (tainted) {
+            throw new TransientValueException(index);
+        }
+        return value;
+    }
+
+    /**
+     * Thrown by {@link #readNonTransient(IntFunction, int)} when the value read was
+     * transient. A later read at the same index may succeed.
+     *
+     * @since 0.29.1
+     */
+    public static final class TransientValueException extends RuntimeException {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        TransientValueException(int index) {
+            super("transient value at index " + index);
+        }
+    }
+
     private static final ThreadLocal<TransientScope> TRANSIENT_SCOPE = ThreadLocal.withInitial(TransientScope::new);
 
     /**
