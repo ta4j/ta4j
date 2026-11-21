@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.renko;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.IntFunction;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -19,12 +20,23 @@ import org.ta4j.core.num.Num;
 final class RenkoCounter {
 
     private final Indicator<Num> priceIndicator;
+    private final IntFunction<Num> priceReader;
     private final Num pointSize;
     private final Map<Integer, RenkoState> cache = new HashMap<>();
     private transient BarSeries.BarSeriesChangeSnapshot observedSnapshot;
 
     RenkoCounter(Indicator<Num> priceIndicator, Num pointSize) {
+        this(priceIndicator, priceIndicator::getValue, pointSize);
+    }
+
+    /**
+     * @param priceReader reads prices for brick state; owning indicators pass a
+     *                    reader that throws on a transient value so that no state
+     *                    built from it is cached
+     */
+    RenkoCounter(Indicator<Num> priceIndicator, IntFunction<Num> priceReader, Num pointSize) {
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator must not be null");
+        this.priceReader = Objects.requireNonNull(priceReader, "priceReader must not be null");
         this.pointSize = Objects.requireNonNull(pointSize, "pointSize must not be null");
     }
 
@@ -87,7 +99,7 @@ final class RenkoCounter {
         final BarSeries series = priceIndicator.getBarSeries();
         final int firstIndex = series == null ? 0 : series.getBeginIndex();
         if (index <= firstIndex) {
-            var initial = new RenkoState(priceIndicator.getValue(index), 0, 0);
+            var initial = new RenkoState(priceReader.apply(index), 0, 0);
             if (!isFormingBar(index)) {
                 cache.put(index, initial);
             }
@@ -106,14 +118,14 @@ final class RenkoCounter {
 
         if (startIndex < 0) {
             startIndex = firstIndex;
-            state = new RenkoState(priceIndicator.getValue(firstIndex), 0, 0);
+            state = new RenkoState(priceReader.apply(firstIndex), 0, 0);
             if (!isFormingBar(firstIndex)) {
                 cache.put(firstIndex, state);
             }
         }
 
         for (int i = startIndex + 1; i <= index; i++) {
-            var price = priceIndicator.getValue(i);
+            var price = priceReader.apply(i);
             state = state.advance(price, pointSize);
             if (i != index && !isFormingBar(i)) {
                 cache.put(i, state);
