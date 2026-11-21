@@ -3,9 +3,16 @@
  */
 package org.ta4j.core.num;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.math.MathContext;
 
 public class DecimalNumFactory implements NumFactory {
+
+    @Serial
+    private static final long serialVersionUID = -9178833530374200385L;
 
     private final MathContext mathContext;
     private final DecimalNum minusOne;
@@ -83,6 +90,23 @@ public class DecimalNumFactory implements NumFactory {
     @Override
     public Num numOf(final String number) {
         return DecimalNum.valueOf(number, this.mathContext);
+    }
+
+    @Serial
+    private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (this.mathContext == null) {
+            throw new InvalidObjectException("MathContext must not be null");
+        }
+        if (this.minusOne == null || this.zero == null || this.one == null || this.two == null || this.three == null
+                || this.hundred == null || this.thousand == null) {
+            throw new InvalidObjectException("Cached DecimalNum constants must not be null");
+        }
+    }
+
+    @Serial
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("DecimalNumFactory class data is required");
     }
 
 }
