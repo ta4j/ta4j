@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -415,5 +416,47 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
         public int getCountOfUnstableBars() {
             return 0;
         }
+    }
+
+    private BarSeries transientSeries(int barCount) {
+        double[] data = new double[barCount];
+        for (int i = 0; i < barCount; i++) {
+            data[i] = i + 1;
+        }
+        return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+    }
+
+    private static final class RunningSum extends RecursiveCachedIndicator<Num> {
+        private final Indicator<Num> source;
+
+        private RunningSum(Indicator<Num> source) {
+            super(source);
+            this.source = source;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            Num value = source.getValue(index);
+            return index == 0 ? value : getValue(index - 1).plus(value);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    @Test
+    public void longRecursiveChainOverTransientSourceRecoversWithoutOverflow() {
+        int bars = 20_000;
+        BarSeries series = transientSeries(bars);
+        CachedIndicatorTest.TransientFlakySource source = new CachedIndicatorTest.TransientFlakySource(series, 100, 1,
+                true);
+        RunningSum sum = new RunningSum(source);
+        Num expected = new RunningSum(new ClosePriceIndicator(series)).getValue(bars - 1);
+
+        assertTrue(sum.getValue(bars - 1).isNaN());
+        assertNumEquals(expected, sum.getValue(bars - 1));
+        assertNumEquals(new RunningSum(new ClosePriceIndicator(series)).getValue(99), sum.getValue(99));
     }
 }
