@@ -19,6 +19,8 @@ import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.indicators.CachedIndicator;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -217,4 +219,35 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 .of(serializationFixture(series, new AnchoredVWAPIndicator(close, volume, 5), stableIndexes(series)));
     }
 
+    @Test
+    public void transientAnchorSignalIsNotCommittedToTheAnchorCache() {
+        BarSeries prices = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (double close : new double[] { 10, 20, 30, 40 }) {
+            prices.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(1).add();
+        }
+        AtomicBoolean signalFailing = new AtomicBoolean(true);
+        CachedIndicator<Boolean> anchorAtOne = new CachedIndicator<>(prices) {
+            @Override
+            protected Boolean calculate(int index) {
+                if (index == 1 && signalFailing.get()) {
+                    markResultTransient();
+                    return false;
+                }
+                return index == 1;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        var anchored = new AnchoredVWAPIndicator(new ClosePriceIndicator(prices), new VolumeIndicator(prices),
+                anchorAtOne, 0);
+
+        assertNumEquals(20, anchored.getValue(2));
+        signalFailing.set(false);
+
+        assertNumEquals(25, anchored.getValue(2));
+        assertThat(anchored.getAnchorIndex(2)).isEqualTo(1);
+    }
 }
