@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.DoubleStream;
 
@@ -1111,6 +1112,37 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // The window must actually have been scanned (the stub mutated on
         // every read); a vacuous outer-domain rejection would leave reads 0.
         assertTrue(reads.get() > 2);
+    }
+
+    @Test
+    public void exhaustedRetriesReturnUncachedNaNFromGetValue() {
+        BaseBarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+                .withMaxBarCount(8)
+                .build();
+        AtomicBoolean mutate = new AtomicBoolean(true);
+        Indicator<Boolean> predicted = new AbstractIndicator<Boolean>(rolling) {
+            @Override
+            public Boolean getValue(int index) {
+                if (mutate.get()) {
+                    rolling.replaceBar(rolling.getEndIndex(), rolling.getBar(rolling.getEndIndex()));
+                }
+                return index == 10;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 2;
+            }
+        };
+        Indicator<Boolean> reference = events(rolling, 0, 10);
+        EventSynchronizationIndicator indicator = indicator(predicted, reference, 4, 0, 0);
+
+        assertTrue(indicator.getValue(10).isNaN());
+        mutate.set(false);
+        Num expected = indicator(events(rolling, 0, 10), reference, 4, 0, 0).getValue(10);
+        assertFalse(expected.isNaN());
+        assertNumEquals(expected, indicator.getValue(10));
     }
 
     @Test

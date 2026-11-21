@@ -44,12 +44,13 @@ Calculation-time throws are allowed only for:
    requires a closed one.
 2. Broken library invariants, which are bugs rather than data (`IllegalStateException`).
 3. History that changed during the calculation so no consistent snapshot could be read: retry a bounded number
-   of times, then throw `ConcurrentModificationException`. Never return or cache `NaN` for this, and never use
-   another exception type for it. Backtest and research runs that detect a changed dataset throw it too.
+   of times, then throw `ConcurrentModificationException`, never another exception type. This applies to
+   criteria, cost models, analysis curves and backtest or research runs. `Indicator#getValue` instead catches
+   it after it has unwound the cache and returns an uncached `NaN`, so a later call at that index recomputes.
 
 Test for a new case: if the same inputs would always produce it, it is data and returns `NaN`; if the caller
-could have prevented it by checking its arguments, throw; if a retry could succeed, it is case 3. `NaN` must be
-a deterministic function of the data, because callers and caches treat it as a final answer.
+could have prevented it by checking its arguments, throw; if a retry could succeed, it is case 3. A cached `NaN`
+must be a deterministic function of the data, because callers and caches treat it as a final answer.
 
 ## Core surface-area gate (MUST)
 
