@@ -858,6 +858,20 @@ public class CachedBufferTest {
     }
 
     @Test
+    void backwardJumpPastCapacityStartsAtTheInsertedBar() {
+        CachedBuffer<Integer> buffer = CachedBuffer.of(5);
+        buffer.put(100, 1000);
+        buffer.put(101, 1001);
+
+        buffer.put(10, 2000);
+
+        assertEquals(Integer.valueOf(2000), buffer.get(10));
+        assertEquals(10, buffer.getHighestResultIndex());
+        assertNull(buffer.get(100));
+        assertNull(buffer.get(101));
+    }
+
+    @Test
     public void testOptimisticReadWithBufferGrowth() throws InterruptedException {
         // Test that optimistic reads work correctly when the buffer grows.
         // This verifies that using localBuffer.length (not capacity) for slot

@@ -681,6 +681,9 @@ class CachedBuffer<T> {
             long requestedRangeSize = (long) highestResultIndex - index + 1L;
             int newHighestIndex = requestedRangeSize > maximumCapacity ? index + maximumCapacity - 1
                     : highestResultIndex;
+            if (newHighestIndex < previousFirstIndex) {
+                newHighestIndex = index;
+            }
             int requiredSize = newHighestIndex - index + 1;
             ensureCapacity(requiredSize);
             clearRange(index + 1, Math.min(previousFirstIndex - 1, newHighestIndex));
