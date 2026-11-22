@@ -20,7 +20,9 @@ import java.util.List;
  *
  * <p>
  * For aggregate entries composed of multiple fills, only fills at or before the
- * evaluated index contribute to the cost basis.
+ * evaluated index contribute to the cost basis. When all fills are visible,
+ * the configured transaction-cost model's total is used; for a partial window,
+ * the recorded fees of the visible fills are summed.
  * </p>
  *
  * @since 0.22.2
@@ -56,21 +58,40 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         }
         Trade entry = position.getEntry();
 
-        List<TradeFill> relevantFills = entry.getFills()
-                .stream().filter(e -> e.index() >= 0 && e.index() <= finalIndex)
+        List<TradeFill> fills;
+        try {
+            fills = entry.getFills();
+        } catch (RuntimeException e) {
+            fills = null;
+        }
+
+        if (fills == null) {
+            return fullWindowCostBasis(series, entry, factory);
+        }
+
+        List<TradeFill> visibleFills = fills.stream()
+                .filter(f -> f.index() >= 0 && f.index() <= finalIndex)
                 .toList();
-        if (relevantFills.isEmpty()) {
+        if (visibleFills.isEmpty()) {
             return factory.zero();
         }
 
+        if (visibleFills.size() == fills.size()) {
+            return fullWindowCostBasis(series, entry, factory);
+        }
+
         Num entryCost = factory.zero();
-        for (TradeFill fill : relevantFills) {
-            Num price = fill.price().isNaN()
-                    && fill.index() >= series.getBeginIndex()
-                    && fill.index() <= series.getEndIndex()
-                    ? series.getBar(fill.index()).getClosePrice()
-                    : fill.price();
-            entryCost = entryCost.plus(toSeriesNum(factory, price.multipliedBy(fill.amount()).plus(fill.fee())));
+        try {
+            for (TradeFill fill : visibleFills) {
+                Num price = fill.price().isNaN()
+                        && fill.index() >= series.getBeginIndex()
+                        && fill.index() <= series.getEndIndex()
+                        ? series.getBar(fill.index()).getClosePrice()
+                        : fill.price();
+                entryCost = entryCost.plus(toSeriesNum(factory, price.multipliedBy(fill.amount()).plus(fill.fee())));
+            }
+        } catch (RuntimeException e) {
+            return NaN.NaN;
         }
         return toSeriesNum(factory, entryCost);
     }
@@ -95,5 +116,11 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
             return NaN.NaN;
         }
         return factory.numOf(value.getDelegate());
+    }
+
+    private Num fullWindowCostBasis(BarSeries series, Trade entry, NumFactory factory) {
+        Num entryPrice = entry.getPricePerAsset(series);
+        Num entryCost = entryPrice.multipliedBy(entry.getAmount()).plus(entry.getCost());
+        return toSeriesNum(factory, entryCost);
     }
 }

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria;
 
+import java.math.MathContext;
 import java.time.Instant;
 import java.util.List;
 
@@ -17,6 +18,7 @@ import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -131,6 +133,58 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
 
         assertNumEquals(numFactory.hundred(), earlySeriesCriteriaResult);
         assertNumEquals(numFactory.numOf(300), fullSeriesCriteriaResult);
+    }
+
+    @Test
+    public void fullWindowUnlimitedPrecisionDoesNotThrow() {
+        NumFactory factory = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
+        var series = new MockBarSeriesBuilder().withNumFactory(factory).withData(100, 100, 100, 100, 100, 200).build();
+        var costModel = new FixedTransactionCostModel(1.0);
+        var entry = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(0, factory.hundred(), factory.one()),
+                new TradeFill(5, factory.numOf(200), factory.one())), costModel);
+        var position = new Position(entry, costModel, new ZeroCostModel());
+        var criterion = new OpenPositionCostBasisCriterion();
+
+        Num result = criterion.calculate(series, position);
+
+        assertNumEquals(factory.numOf(301), result);
+    }
+
+    @Test
+    public void partialWindowUsesRecordedFeesOfVisibleFills() {
+        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries(
+                "partial", numFactory, 0, 100d, 100d, 100d, 100d, 100d, 200d);
+        var entry = Trade.fromFills(TradeType.BUY, List.of(
+                        new TradeFill(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.one(),
+                                ExecutionSide.BUY, null, null),
+                        new TradeFill(5, Instant.EPOCH, numFactory.numOf(200), numFactory.one(), numFactory.numOf(2),
+                                ExecutionSide.BUY, null, null)),
+                RecordedTradeCostModel.INSTANCE);
+        var position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        var criterion = getCriterion();
+
+        Num result = criterion.calculate(constrained, position);
+
+        assertNumEquals(numFactory.numOf(101), result);
+    }
+
+    @Test
+    public void partialWindowWithModeledCostUsesRecordedFillFees() {
+        var costModel = new ZeroCostModel();
+        var entry = Trade.fromFills(TradeType.BUY, List.of(
+                        new TradeFill(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.one(),
+                                ExecutionSide.BUY, null, null),
+                        new TradeFill(5, Instant.EPOCH, numFactory.numOf(200), numFactory.one(),
+                                numFactory.numOf(2), ExecutionSide.BUY, null, null)),
+                costModel);
+        var position = new Position(entry, costModel, new ZeroCostModel());
+        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("partial", numFactory, 0,
+                100d, 100d, 100d, 100d, 100d, 200d);
+        var criterion = getCriterion();
+
+        Num result = criterion.calculate(constrained, position);
+
+        assertNumEquals(numFactory.numOf(101), result);
     }
 
     private BaseTradingRecord openLotsAcrossLogicalEnd() {
