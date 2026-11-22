@@ -24,6 +24,7 @@
 - **Distinguish undefined calculations from valid returns**: `PercentageChangeIndicator` rejects underflowed growth factors without moving the threshold baseline. `PeriodicalGrowthRateIndicator` counts bars exactly, updates earlier values once their period completes, and returns `NaN` from `getTotalReturn()` for undefined complete periods or aggregate underflow or overflow.
 - **Clearer nested rule reconstruction failures**: unexpected runtime failures are no longer reported as a missing compatible constructor when restoring nested components, including a `ChainRule` link.
 - **Keep named asset descriptors compact**: Very large or small thresholds retain scientific notation instead of expanding into strings of zeros. Invalid exponents report the argument location.
+- **Open position cost basis excludes future aggregate entry fills**: `OpenPositionCostBasisCriterion` now sums only entry fills visible at the logical series end, so an aggregate entry with later fills no longer inflates the cost basis when evaluated on an earlier series window.
 
 ## 0.29.0 (2026-11-16)
 

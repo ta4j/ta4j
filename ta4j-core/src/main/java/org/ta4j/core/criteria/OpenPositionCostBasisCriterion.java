@@ -3,13 +3,12 @@
  */
 package org.ta4j.core.criteria;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.*;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+
+import java.util.List;
 
 /**
  * Analysis criterion that returns the cost basis of the open position.
@@ -17,6 +16,11 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * This returns the current open position's entry value plus entry transaction
  * cost. Returns zero when no open position exists.
+ * </p>
+ *
+ * <p>
+ * For aggregate entries composed of multiple fills, only fills at or before the
+ * evaluated index contribute to the cost basis.
  * </p>
  *
  * @since 0.22.2
@@ -51,8 +55,23 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
             return factory.zero();
         }
         Trade entry = position.getEntry();
-        Num entryPrice = entry.getPricePerAsset(series);
-        Num entryCost = entryPrice.multipliedBy(entry.getAmount()).plus(entry.getCost());
+
+        List<TradeFill> relevantFills = entry.getFills()
+                .stream().filter(e -> e.index() >= 0 && e.index() <= finalIndex)
+                .toList();
+        if (relevantFills.isEmpty()) {
+            return factory.zero();
+        }
+
+        Num entryCost = factory.zero();
+        for (TradeFill fill : relevantFills) {
+            Num price = fill.price().isNaN()
+                    && fill.index() >= series.getBeginIndex()
+                    && fill.index() <= series.getEndIndex()
+                    ? series.getBar(fill.index()).getClosePrice()
+                    : fill.price();
+            entryCost = entryCost.plus(toSeriesNum(factory, price.multipliedBy(fill.amount()).plus(fill.fee())));
+        }
         return toSeriesNum(factory, entryCost);
     }
 

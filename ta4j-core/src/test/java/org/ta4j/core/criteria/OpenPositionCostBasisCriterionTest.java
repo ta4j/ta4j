@@ -4,20 +4,17 @@
 package org.ta4j.core.criteria;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.ConstrainedSeriesSupport;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.BaseTrade;
-import org.ta4j.core.ExecutionMatchPolicy;
-import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.*;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -116,6 +113,24 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
 
         assertTrue(record.getPositions().isEmpty());
         assertNumEquals(numFactory.hundred(), getCriterion().calculate(series, record));
+    }
+
+    @Test
+    public void aggregateEntrySpotRideAlongIncludesOnlyFillsAtLogicalEnd() {
+        var earlySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
+        var fullSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 200)
+                .build();
+        var entry = Trade.fromFills(TradeType.BUY, List.of(
+                new TradeFill(0, numFactory.hundred(), numFactory.one()),
+                new TradeFill(5, numFactory.numOf(200), numFactory.one())), RecordedTradeCostModel.INSTANCE);
+        var position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        var criterion = getCriterion();
+        var earlySeriesCriteriaResult = criterion.calculate(earlySeries, position);
+        var fullSeriesCriteriaResult = criterion.calculate(fullSeries, position);
+
+        assertNumEquals(numFactory.hundred(), earlySeriesCriteriaResult);
+        assertNumEquals(numFactory.numOf(300), fullSeriesCriteriaResult);
     }
 
     private BaseTradingRecord openLotsAcrossLogicalEnd() {
