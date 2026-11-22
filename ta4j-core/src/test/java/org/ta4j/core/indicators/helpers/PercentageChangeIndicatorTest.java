@@ -4,11 +4,13 @@
 package org.ta4j.core.indicators.helpers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,7 +19,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
@@ -100,6 +104,148 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
                     .multipliedBy(numFactory.hundred());
             assertNumEquals(expectedPercentage, priceChangePercentage.getValue(i));
         }
+    }
+
+    @Test
+    public void supportsEachReturnRepresentationAndPreservesLegacyPercentage() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 99).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        assertNumEquals(10, new PercentageChangeIndicator(close).getValue(1));
+        for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+            PercentageChangeIndicator change = new PercentageChangeIndicator(close, representation);
+            double expectedGain = switch (representation) {
+            case PERCENTAGE -> 10;
+            case DECIMAL -> 0.1;
+            case MULTIPLICATIVE -> 1.1;
+            case LOG -> Math.log(1.1);
+            };
+            double expectedLoss = switch (representation) {
+            case PERCENTAGE -> -10;
+            case DECIMAL -> -0.1;
+            case MULTIPLICATIVE -> 0.9;
+            case LOG -> Math.log(0.9);
+            };
+            assertThat(change.getValue(0).isNaN()).isTrue();
+            assertThat(change.getValue(1).doubleValue()).isCloseTo(expectedGain, within(1e-12));
+            assertThat(change.getValue(2).doubleValue()).isCloseTo(expectedLoss, within(1e-12));
+        }
+    }
+
+    @Test
+    public void logReturnUsesThePriceRatioAndRejectsNonPositiveRatios() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1e18, 1, -1).build();
+        PercentageChangeIndicator change = new PercentageChangeIndicator(new ClosePriceIndicator(series),
+                ReturnRepresentation.LOG);
+        assertThat(Num.isFinite(change.getValue(1))).isTrue();
+        assertThat(change.getValue(1).isNegative()).isTrue();
+        assertThat(change.getValue(2).isNaN()).isTrue();
+    }
+
+    @Test
+    public void explicitRepresentationWorksWithPreviousSourceAndPercentageThreshold() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        int[] closes = { 100, 101, 103, 110, 111 };
+        for (int i = 0; i < closes.length; i++) {
+            series.barBuilder().openPrice(100).closePrice(closes[i]).add();
+        }
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        OpenPriceIndicator open = new OpenPriceIndicator(series);
+        for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+            PercentageChangeIndicator previous = new PercentageChangeIndicator(close, open, 0, representation);
+            PercentageChangeIndicator previousNum = new PercentageChangeIndicator(close, open, numOf(0),
+                    representation);
+            PercentageChangeIndicator threshold = new PercentageChangeIndicator(close, 5, representation);
+            double expected = switch (representation) {
+            case PERCENTAGE -> 10;
+            case DECIMAL -> 0.1;
+            case MULTIPLICATIVE -> 1.1;
+            case LOG -> Math.log(1.1);
+            };
+            assertThat(previous.getValue(3).doubleValue()).isCloseTo(expected, within(1e-12));
+            assertThat(previousNum.getValue(3).doubleValue()).isCloseTo(expected, within(1e-12));
+            assertThat(threshold.getValue(1).doubleValue()).isCloseTo(switch (representation) {
+            case PERCENTAGE -> 1;
+            case DECIMAL -> 0.01;
+            case MULTIPLICATIVE -> 1.01;
+            case LOG -> Math.log(1.01);
+            }, within(1e-12));
+            assertThat(threshold.getValue(2).doubleValue()).isCloseTo(switch (representation) {
+            case PERCENTAGE -> 3;
+            case DECIMAL -> 0.03;
+            case MULTIPLICATIVE -> 1.03;
+            case LOG -> Math.log(1.03);
+            }, within(1e-12));
+            assertThat(threshold.getValue(3).doubleValue()).isCloseTo(expected, within(1e-12));
+            assertThat(new PercentageChangeIndicator(close, numOf(5), representation).getValue(3).doubleValue())
+                    .isCloseTo(expected, within(1e-12));
+            double afterThreshold = switch (representation) {
+            case PERCENTAGE -> 100.0 / 110;
+            case DECIMAL -> 1.0 / 110;
+            case MULTIPLICATIVE -> 111.0 / 110;
+            case LOG -> Math.log(111.0 / 110);
+            };
+            assertThat(threshold.getValue(4).doubleValue()).isCloseTo(afterThreshold, within(1e-12));
+        }
+    }
+
+    @Test
+    public void rejectsNullReturnRepresentation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        assertThatNullPointerException()
+                .isThrownBy(() -> new PercentageChangeIndicator(close, (ReturnRepresentation) null));
+    }
+
+    @Test
+    public void decimalThresholdReturnKeepsSmallChangesBeforeDivision() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100.000000000001)
+                .build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Num expected = close.getValue(1).minus(close.getValue(0)).dividedBy(close.getValue(0));
+        PercentageChangeIndicator change = new PercentageChangeIndicator(close, 10, ReturnRepresentation.DECIMAL);
+        assertNumEquals(expected, change.getValue(1));
+    }
+
+    @Test
+    public void defaultPercentageStillUsesTheProtectedCalculationHook() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+        PercentageChangeIndicator overridden = new PercentageChangeIndicator(new ClosePriceIndicator(series)) {
+            @Override
+            protected Num calculateRateOfReturnPercentage(Num currentValue, Num previousValue) {
+                return numFactory.numOf(42);
+            }
+        };
+        assertNumEquals(42, overridden.getValue(1));
+    }
+
+    @Test
+    public void representationsAndReplayStateRoundTripWithoutBreakingLegacyDescriptors() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int value : new int[] { 100, 101, 102, 103 }) {
+            series.barBuilder().openPrice(100).closePrice(value).add();
+        }
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        OpenPriceIndicator open = new OpenPriceIndicator(series);
+        for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+            PercentageChangeIndicator threshold = new PercentageChangeIndicator(close, 10, representation);
+            threshold.getValue(1);
+            assertThat(threshold.toDescriptor().getParameters()).doesNotContainKey("lastNotification");
+            IndicatorSerializationRoundTripTestSupport.assertIndicatorRoundTrips(series, threshold, 2, 3);
+            PercentageChangeIndicator previous = new PercentageChangeIndicator(close, open, 0, representation);
+            IndicatorSerializationRoundTripTestSupport.assertIndicatorRoundTrips(series, previous, 1, 2, 3);
+        }
+
+        ComponentDescriptor descriptor = new PercentageChangeIndicator(close).toDescriptor();
+        var legacyParameters = new LinkedHashMap<>(descriptor.getParameters());
+        legacyParameters.remove("returnRepresentation");
+        var legacy = ComponentDescriptor.builder()
+                .withType(descriptor.getType())
+                .withLabel(descriptor.getLabel())
+                .withParameters(legacyParameters);
+        descriptor.getComponents().forEach(legacy::addComponent);
+        Indicator<?> restored = Indicator.fromJson(series, ComponentSerialization.toJson(legacy.build()));
+        assertThat(((Num) restored.getValue(1)).doubleValue()).isCloseTo(1, within(1e-12));
     }
 
     @Test

@@ -38,6 +38,7 @@ public final class NamedAssetRegistry {
     private static final Pattern JSON_NUMBER_LITERAL = Pattern
             .compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
     private static final Pattern JSON_INTEGER_LITERAL = Pattern.compile("-?(?:0|[1-9]\\d*)");
+    private static final int MAX_PLAIN_NUMBER_SCALE = 1024;
     private static final AtomicReference<NamedAssetRegistry> DEFAULT_REGISTRY = new AtomicReference<>();
 
     private final Map<NamedAssetKind, Map<String, Binding>> bindings;
@@ -888,7 +889,8 @@ public final class NamedAssetRegistry {
          * Reads a finite JSON-style number as text.
          *
          * @param index argument index
-         * @return normalized number text
+         * @return normalized number text, in scientific notation when needed to avoid
+         *         expanding a large exponent
          * @since 0.23.1
          */
         public String finiteNumberText(int index) {
@@ -1226,9 +1228,10 @@ public final class NamedAssetRegistry {
             throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed);
         }
         try {
-            BigDecimal decimal = new BigDecimal(trimmed);
-            return decimal.stripTrailingZeros().toPlainString();
-        } catch (NumberFormatException ex) {
+            BigDecimal decimal = new BigDecimal(trimmed).stripTrailingZeros();
+            return Math.abs((long) decimal.scale()) <= MAX_PLAIN_NUMBER_SCALE ? decimal.toPlainString()
+                    : decimal.toString();
+        } catch (NumberFormatException | ArithmeticException ex) {
             throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed, ex);
         }
     }

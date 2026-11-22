@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -16,6 +18,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.NonFiniteBar;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -69,6 +72,21 @@ public class AroonUpIndicatorTest {
         assertNumEquals(100, arronUp.getValue(6));
         assertNumEquals(0, arronUp.getValue(5));
 
+    }
+
+    @Test
+    public void fractionalAroonValuesPreserveDecimalFactoryPrecision() {
+        MathContext context = new MathContext(40);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(context)).build();
+        int[] highs = { 15, 20, 14, 13 };
+        int[] lows = { 10, 1, 11, 12 };
+        for (int i = 0; i < highs.length; i++) {
+            series.barBuilder().openPrice(12).highPrice(highs[i]).lowPrice(lows[i]).closePrice(12).volume(0).add();
+        }
+        BigDecimal expected = BigDecimal.ONE.divide(BigDecimal.valueOf(3), context)
+                .multiply(BigDecimal.valueOf(100), context);
+        assertEquals(0, expected.compareTo(new AroonUpIndicator(series, 3).getValue(3).bigDecimalValue()));
+        assertEquals(0, expected.compareTo(new AroonDownIndicator(series, 3).getValue(3).bigDecimalValue()));
     }
 
     @Test

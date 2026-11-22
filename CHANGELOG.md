@@ -8,6 +8,7 @@
 - **Say when a provider is unmeasured (`CF-336`)**: automatic acceleration reports `DiagnosticCode.NOT_QUALIFIED`, instead of `CPU_FASTER`, when a provider supports a workload but has no measured cost for it on the device (it predicts `Long.MAX_VALUE`). The workload still stays on the CPU.
 - **Swing retracement levels**: `SwingRetracementLevelIndicator(swingHigh, swingLow, ratio)` returns the level at a fixed fraction between the latest confirmed swing low and swing high (for example `0.382`, `0.5` or `0.618`). It reads only swings confirmed by each bar, so its values never change when later bars arrive.
 - **Causal trend lines**: `TrendLineSupportIndicator.causal(swings, barCount)` and `TrendLineResistanceIndicator.causal(swings, barCount)` fit each index from the bars up to that index only, so values suit backtests and signals and equal what a live series reported bar by bar. The default indicators stay end-anchored (every index reports the line fitted at the series end, using later swings) and are now documented as such; `isCausal()` and a `causal` descriptor parameter tell the two apart.
+- **Choose how to express indicator returns**: `PercentageChangeIndicator` accepts `ReturnRepresentation` for percentage, decimal, multiplicative, or log output. Existing constructors still return percentages; notification thresholds stay in percentage points.
 
 ### Fixed
 
@@ -18,6 +19,9 @@
 - **Native-provider validation and qualification handoffs (`CF-336`)**: Native requests reject fractional, nonfinite, out-of-range, or output-vector-overflowing dimensions before native initialization. Metal rejects variances that underflow or overflow FP32 and compiles kernels with safe, precise math. Configured CUDA/OpenCL hardware validation fails on initialization or self-test errors instead of skipping. Release manifests include ordinary provider artifacts without promising hosted classifiers. OpenCL validation handles large device inventories and architecture-matched containers; CUDA preflight fails on native tool errors.
 - **Maven signing preflight**: release and snapshot publishing sign and verify a temporary payload with the imported OpenPGP key before publication, failing early on unusable or expired keys and passphrases. A maintainer-run helper renews the existing signing identity without replacing its fingerprint or exposing administrative secrets to a branch-dispatch workflow.
 - **Safer saved decimal numbers**: Java deserialization of `DecimalNum` and `DecimalNumFactory` rejects missing values, math contexts, cached constants or class data with `InvalidObjectException`. `DecimalNumFactory` pins its existing serial version UID, so previously saved factories still load.
+- **Accurate growth-rate timeframes**: `PeriodicalGrowthRateIndicator` identifies complete periods without rounding bar counts, even with low-precision decimal arithmetic.
+- **Clearer nested rule reconstruction failures**: unexpected runtime failures are no longer reported as a missing compatible constructor when restoring nested components.
+- **Keep named asset descriptors compact**: Very large or small thresholds retain scientific notation instead of expanding into strings of zeros. Invalid exponents report the argument location.
 
 ## 0.29.0 (2026-11-16)
 

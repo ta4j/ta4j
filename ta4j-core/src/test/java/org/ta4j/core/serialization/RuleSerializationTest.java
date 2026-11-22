@@ -970,6 +970,45 @@ public class RuleSerializationTest {
         assertThat(((OverloadedIndicatorRule) restored).getConstructorUsed()).isEqualTo("generic");
     }
 
+    @Test
+    public void nestedConstructorMatchingRetainsCompatibilityForUnknownRule() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("AndRule")
+                .addComponent(ComponentDescriptor.typeOnly("MissingRule"))
+                .addComponent(ComponentDescriptor.builder()
+                        .withType("BooleanRule")
+                        .withParameters(Map.of("satisfied", true))
+                        .build())
+                .build();
+
+        RuleSerializationException exception = assertThrows(RuleSerializationException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessageContaining("No compatible constructor");
+    }
+
+    @Test
+    public void nestedConstructorMatchingPropagatesUnexpectedRuleFailure() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("AndRule")
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(BrokenRenameRule.class.getName())
+                        .withParameters(Map.of("__customName", "custom"))
+                        .build())
+                .addComponent(ComponentDescriptor.builder()
+                        .withType("BooleanRule")
+                        .withParameters(Map.of("satisfied", true))
+                        .build())
+                .build();
+
+        NullPointerException exception = assertThrows(NullPointerException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessage("failed to restore rule name");
+    }
+
     private static final AtomicInteger STATIC_INITIALIZER_PROBE_RUNS = new AtomicInteger();
 
     /** Not a rule or enum; descriptor resolution must never initialize it. */
@@ -980,6 +1019,19 @@ public class RuleSerializationTest {
         }
 
         private StaticInitializerProbe() {
+        }
+    }
+
+    private static final class BrokenRenameRule extends AbstractRule {
+
+        @Override
+        public void setName(String name) {
+            throw new NullPointerException("failed to restore rule name");
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            return false;
         }
     }
 

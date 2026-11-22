@@ -899,7 +899,8 @@ public final class RuleSerialization {
                 // 2. Strategy-level components via the parent chain
                 return RuleSerialization.fromDescriptor(context.series, component, context);
             }
-        } catch (Exception e) {
+        } catch (RuleSerializationException | IndicatorSerializationException | IllegalArgumentException
+                | IllegalStateException e) {
             if (isLinkageFailure(e)) {
                 throw e;
             }

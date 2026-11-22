@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.math.MathContext;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BaseStrategy;
@@ -17,6 +19,7 @@ import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
@@ -63,6 +66,41 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
         assertNumEquals(0.0220, gri.getValue(24));
         assertEquals(gri.getValue(25), NaN);
         assertEquals(gri.getValue(26), NaN);
+    }
+
+    @Test
+    public void completeTimeframesUseExactIntegerBoundariesAtLowDecimalPrecision() {
+        var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(1))
+                .withData(100, 100, 100, 100, 100, 100, 100, 100)
+                .build();
+        var growth = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(series), 3);
+
+        assertNumEquals(0, growth.getValue(5));
+        assertEquals(NaN, growth.getValue(6));
+        assertEquals(NaN, growth.getValue(7));
+    }
+
+    @Test
+    public void supportsNonDecimalNumericFactories() {
+        var series = new MockBarSeriesBuilder().withNumFactory(SinglePrecisionNumFactory.getInstance())
+                .withData(100, 100, 100, 100, 100, 100, 100, 100)
+                .build();
+        var growth = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(series), 3);
+
+        assertNumEquals(0, growth.getValue(5));
+        assertEquals(NaN, growth.getValue(6));
+    }
+
+    @Test
+    public void unlimitedDecimalPrecisionHandlesRepeatingFractions() {
+        var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(MathContext.UNLIMITED))
+                .withData(100, 100, 100, 100, 100, 100, 100, 100, 200, 100, 100, 100, 100, 100, 100, 100, 100, 100)
+                .build();
+        var growth = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(series), 5);
+
+        assertNumEquals(numOf(Math.pow(2, 5.0 / 3) - 1), growth.getValue(8), 1e-12);
+        // Three complete timeframes require a non-terminating 1/3 exponent.
+        assertNumEquals(1, growth.getTotalReturn());
     }
 
     @Test

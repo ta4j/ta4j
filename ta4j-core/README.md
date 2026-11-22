@@ -48,6 +48,19 @@ it cannot recover evicted observations. A source that explicitly resets after a
 head advance also resets the composition. Standalone `StochasticIndicator`
 keeps its existing retained-window reset behavior.
 
+## Choose a return representation
+
+`new PercentageChangeIndicator(close)` reports percentage points. Pass
+`ReturnRepresentation.DECIMAL`, `MULTIPLICATIVE`, or `LOG` to select a decimal
+return, growth factor, or natural log return instead. For a move from 100 to
+110, these outputs are `10`, `0.10`, `1.10`, and `ln(1.10)`, respectively.
+Threshold-based constructors still take percentage points regardless of the
+output format; `PercentRankIndicator` still reports a rank from 0 to 100.
+
+`PeriodicalGrowthRateIndicator` counts complete periods in bars, independently
+of the series' numeric precision. Values in incomplete trailing periods are
+`NaN`.
+
 ## Trace rule decisions
 
 - To answer "why did this fire?" or "why did this not fire?", enable SLF4J `TRACE` on the relevant `Rule` or `Strategy` logger and run the normal `isSatisfied(...)`, `shouldEnter(...)`, or `shouldExit(...)` call.

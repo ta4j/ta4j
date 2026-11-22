@@ -71,6 +71,18 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     }
 
     @Test
+    public void floorAndCeilingHandleSignedValuesAndNaN() {
+        assertNumEquals(1, numOf(1.9).floor());
+        assertNumEquals(2, numOf(1.1).ceil());
+        assertNumEquals(-2, numOf(-1.1).floor());
+        assertNumEquals(-1, numOf(-1.9).ceil());
+        assertNumEquals(0, numOf(0).floor());
+        assertNumEquals(-2, numOf(-2).ceil());
+        assertTrue(NaN.floor().isNaN());
+        assertTrue(NaN.ceil().isNaN());
+    }
+
+    @Test
     public void testStringNumFail() {
         assertThrows(AssertionError.class, () -> {
             assertNumEquals("1.234", numOf(4.321));

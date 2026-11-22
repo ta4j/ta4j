@@ -5,8 +5,11 @@ package org.ta4j.core.indicators.statistics;
 
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.math.MathContext;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -95,38 +98,44 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
             }
         }
 
-        return totalProduct.pow(one.dividedBy(getBarSeries().numFactory().numOf(completeTimeFrames)));
+        return totalProduct.pow(divide(one, getBarSeries().numFactory().numOf(completeTimeFrames)));
     }
 
     @Override
     protected Num calculate(int index) {
-
+        // Keep the source progressing even when this index has no growth value.
         Num currentValue = indicator.getValue(index);
-
-        int helpPartialTimeframe = index % barCount;
-        // TODO: implement Num.floor()
-        final var numFactory = getBarSeries().numFactory();
-        Num helpFullTimeframes = numFactory.numOf(Math.floor(numFactory.numOf(indicator.getBarSeries().getBarCount())
-                .dividedBy(numFactory.numOf(barCount))
-                .doubleValue()));
-        Num helpIndexTimeframes = numFactory.numOf(index).dividedBy(numFactory.numOf(barCount));
-
-        Num helpPartialTimeframeHeld = numFactory.numOf(helpPartialTimeframe).dividedBy(numFactory.numOf(barCount));
-        Num partialTimeframeHeld = (helpPartialTimeframeHeld.isZero()) ? one : helpPartialTimeframeHeld;
-
-        // Avoid calculations of returns:
-        // a.) if index number is below timeframe
-        // e.g. timeframe = 365, index = 5 => no calculation
-        // b.) if at the end of a series incomplete timeframes would remain
-        Num timeframedReturn = NaN;
-        if ((index >= barCount) /* (a) */ && (helpIndexTimeframes.isLessThan(helpFullTimeframes)) /* (b) */) {
-            Num movingValue = indicator.getValue(index - barCount);
-            Num movingSimpleReturn = (currentValue.minus(movingValue)).dividedBy(movingValue);
-
-            timeframedReturn = one.plus(movingSimpleReturn).pow(one.dividedBy(partialTimeframeHeld)).minus(one);
+        int completeTimeframes = indicator.getBarSeries().getBarCount() / barCount;
+        // Do not calculate before the first timeframe or in an incomplete trailing one.
+        // Both quantities describe discrete bars and must not be rounded as Num values.
+        if (index < barCount || index / barCount >= completeTimeframes) {
+            return NaN;
         }
 
-        return timeframedReturn;
+        Num movingValue = indicator.getValue(index - barCount);
+        Num movingSimpleReturn = divide(currentValue.minus(movingValue), movingValue);
+        int partialTimeframe = index % barCount;
+        Num exponent = partialTimeframe == 0 ? one
+                : divide(getBarSeries().numFactory().numOf(barCount),
+                        getBarSeries().numFactory().numOf(partialTimeframe));
+        return one.plus(movingSimpleReturn).pow(exponent).minus(one);
+    }
+
+    private static Num divide(Num numerator, Num denominator) {
+        try {
+            return numerator.dividedBy(denominator);
+        } catch (ArithmeticException ex) {
+            if (numerator instanceof DecimalNum dividend && denominator instanceof DecimalNum divisor
+                    && dividend.getMathContext().getPrecision() == 0 && divisor.getMathContext().getPrecision() == 0) {
+                // Unlimited precision cannot represent repeating quotients. Like DecimalNum's
+                // other transcendental operations, use the default precision when necessary.
+                MathContext context = new MathContext(DecimalNum.getDefaultMathContext().getPrecision(),
+                        dividend.getMathContext().getRoundingMode());
+                return DecimalNum.valueOf(dividend.getDelegate(), context)
+                        .dividedBy(DecimalNum.valueOf(divisor.getDelegate(), context));
+            }
+            throw ex;
+        }
     }
 
     @Override
