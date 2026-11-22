@@ -42,9 +42,10 @@ import static org.ta4j.core.num.NaN.NaN;
  * multiplicative factor, or a logarithmic return. For a change from 100 to 110
  * these are respectively 0.1, 1.1, and ln(1.1), rather than 10. Non-finite
  * source values or arithmetic that cannot represent a return produce
- * {@code NaN}. An unrepresentable threshold comparison keeps the previous
- * notification as the baseline. Decimal logarithms use the configured
- * precision, or the default decimal precision when it is unlimited. With
+ * {@code NaN}, including a multiplicative factor that underflows to zero. An
+ * unrepresentable threshold comparison keeps the previous notification as the
+ * baseline. Decimal logarithms use the configured precision, or the default
+ * decimal precision when it is unlimited. With
  * {@link RoundingMode#UNNECESSARY}, only an exactly representable logarithm is
  * returned.
  *
@@ -338,7 +339,10 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
             case PERCENTAGE -> thresholdBased ? fractionToPercentage(currentValue.dividedBy(baseline))
                     : calculateRateOfReturnPercentage(currentValue, baseline);
             case DECIMAL -> currentValue.minus(baseline).dividedBy(baseline);
-            case MULTIPLICATIVE -> currentValue.dividedBy(baseline);
+            case MULTIPLICATIVE -> {
+                Num factor = currentValue.dividedBy(baseline);
+                yield factor.isZero() ? NaN : factor;
+            }
             case LOG -> calculateLogReturn(currentValue.dividedBy(baseline));
             };
             return Num.isFinite(result) ? result : NaN;

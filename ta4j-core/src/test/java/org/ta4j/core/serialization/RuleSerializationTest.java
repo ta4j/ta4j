@@ -549,6 +549,28 @@ public class RuleSerializationTest {
     }
 
     @Test
+    public void deserializeChainRulePropagatesUnexpectedChainLinkRuleFailure() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        ComponentDescriptor brokenRule = ComponentDescriptor.builder()
+                .withType(BrokenRenameRule.class.getName())
+                .withParameters(Map.of("__customName", "custom"))
+                .build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("ChainRule")
+                .addComponent(ComponentDescriptor.builder()
+                        .withType("FixedRule")
+                        .withParameters(Map.of("indexes", List.of(1)))
+                        .build())
+                .withParameters(Map.of("chainLinks", List.of(Map.of("rule", brokenRule))))
+                .build();
+
+        NullPointerException exception = assertThrows(NullPointerException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessage("failed to restore rule name");
+    }
+
+    @Test
     public void serializeAndRebuildEnumVarargs() {
         var series = new MockBarSeriesBuilder().build();
         series.barBuilder().endTime(Instant.parse("2024-01-01T12:00:00Z")).add(); // Monday

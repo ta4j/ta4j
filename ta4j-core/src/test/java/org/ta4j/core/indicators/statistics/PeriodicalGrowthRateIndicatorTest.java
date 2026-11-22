@@ -12,6 +12,7 @@ import java.math.RoundingMode;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
@@ -75,7 +76,7 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void completeTimeframesUseExactIntegerBoundariesAtLowDecimalPrecision() {
-        var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(1))
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(1))
                 .withData(100, 100, 100, 100, 100, 100, 100, 100)
                 .build();
         var growth = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(series), 3);
@@ -90,7 +91,7 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void incompleteTimeframeIsRecomputedThroughDownstreamCacheAfterAppend() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 100, 100, 100, 100, 100, 100, 100)
                 .build();
         int[] warmupCalculations = { 0 };
@@ -129,7 +130,7 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void supportsNonDecimalNumericFactories() {
-        var series = new MockBarSeriesBuilder().withNumFactory(SinglePrecisionNumFactory.getInstance())
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(SinglePrecisionNumFactory.getInstance())
                 .withData(100, 100, 100, 100, 100, 100, 100, 100)
                 .build();
         var growth = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(series), 3);
@@ -140,7 +141,8 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void unlimitedDecimalPrecisionHandlesRepeatingFractions() {
-        var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(MathContext.UNLIMITED))
+        BarSeries series = new MockBarSeriesBuilder()
+                .withNumFactory(DecimalNumFactory.getInstance(MathContext.UNLIMITED))
                 .withData(100, 100, 100, 100, 100, 100, 100, 100, 200, 100, 100, 100, 100, 100, 100, 100, 100, 100)
                 .build();
         var growth = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(series), 5);
@@ -153,25 +155,39 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void strictRoundingDoesNotThrowOnRepeatingReturns() {
         for (int precision : new int[] { 0, 10 }) {
-            var factory = DecimalNumFactory.getInstance(new MathContext(precision, RoundingMode.UNNECESSARY));
-            var series = new MockBarSeriesBuilder().withNumFactory(factory).withData(3, 4, 4, 6).build();
+            NumFactory factory = DecimalNumFactory.getInstance(new MathContext(precision, RoundingMode.UNNECESSARY));
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(3, 4, 4, 6, 6).build();
             var growth = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(series), 2);
 
             assertEquals(NaN, growth.getValue(2));
             assertNumEquals(1.25, growth.getValue(3));
+            assertEquals(NaN, growth.getTotalReturn());
         }
     }
 
     @Test
     public void nonFinitePricesAreUndefinedAtEitherEndOfAPeriod() {
-        var factory = DoubleNumFactory.getInstance();
-        var series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1, 1, 1, 1).build();
+        DoubleNumFactory factory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1, 1, 1, 1).build();
         Num infinity = DoubleNum.valueOf(Double.POSITIVE_INFINITY);
         var prices = new FixedIndicator<Num>(series, infinity, factory.hundred(), factory.hundred(), infinity);
         var growth = new PeriodicalGrowthRateIndicator(prices, 2);
 
         assertEquals(NaN, growth.getValue(2));
         assertEquals(NaN, growth.getValue(3));
+    }
+
+    @Test
+    public void totalReturnIsUndefinedWhenCompleteReturnsOverflowInAggregate() {
+        double growthFactor = 0x1.0p600;
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(1 / growthFactor, 1, 1, 1, growthFactor, 1, 1)
+                .build();
+        var growth = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(series), 2);
+
+        assertNumEquals(growthFactor, growth.getValue(2));
+        assertNumEquals(growthFactor, growth.getValue(4));
+        assertEquals(NaN, growth.getTotalReturn());
     }
 
     @Test

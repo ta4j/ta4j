@@ -87,29 +87,27 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
      * US) and "end of day"-bars you will get the 'Annualized Total Return'. Only
      * complete barCounts are taken into the calculation.
      *
-     * @return the annualized total return, or {@code NaN} if the aggregate cannot
-     *         be represented
+     * @return the annualized total return, or {@code NaN} if a complete period is
+     *         undefined or the aggregate cannot be represented
      */
     public Num getTotalReturn() {
 
         Num totalProduct = one;
         int completeTimeFrames = (getBarSeries().getBarCount() / barCount);
 
-        for (int i = 1; i <= completeTimeFrames; i++) {
-            int index = i * barCount;
-            Num currentReturn = getValue(index);
-
-            if (currentReturn != NaN) {
-                try {
-                    totalProduct = totalProduct.multipliedBy(currentReturn.plus(one));
-                } catch (ArithmeticException ex) {
+        try {
+            for (int i = 1; i < completeTimeFrames; i++) {
+                Num currentReturn = getValue(i * barCount);
+                if (!Num.isFinite(currentReturn)) {
+                    return NaN;
+                }
+                totalProduct = totalProduct.multipliedBy(currentReturn.plus(one));
+                if (!Num.isFinite(totalProduct)) {
                     return NaN;
                 }
             }
-        }
-
-        try {
-            return totalProduct.pow(divide(one, getBarSeries().numFactory().numOf(completeTimeFrames)));
+            Num result = totalProduct.pow(divide(one, getBarSeries().numFactory().numOf(completeTimeFrames)));
+            return Num.isFinite(result) ? result : NaN;
         } catch (ArithmeticException ex) {
             return NaN;
         }

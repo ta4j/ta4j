@@ -200,7 +200,8 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
 
     @Test
     public void unlimitedPrecisionReturnsNaNWhenAnExactReturnIsNotRepresentable() {
-        var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(MathContext.UNLIMITED))
+        BarSeries series = new MockBarSeriesBuilder()
+                .withNumFactory(DecimalNumFactory.getInstance(MathContext.UNLIMITED))
                 .withData(3, 4, 6)
                 .build();
         var close = new ClosePriceIndicator(series);
@@ -300,8 +301,8 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
 
     @Test
     public void nonFinitePricesProduceNaNAndCannotBecomeThresholdBaselines() {
-        var factory = DoubleNumFactory.getInstance();
-        var series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1, 1, 1).build();
+        DoubleNumFactory factory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1, 1, 1).build();
         for (double infinity : new double[] { Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY }) {
             var prices = new FixedIndicator<Num>(series, factory.hundred(), DoubleNum.valueOf(infinity),
                     factory.numOf(110));
@@ -312,6 +313,17 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
             assertThat(threshold.getValue(1).isNaN()).isTrue();
             assertNumEquals(1.1, threshold.getValue(2));
         }
+    }
+
+    @Test
+    public void multiplicativeReturnIsUndefinedWhenFactorUnderflows() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(1e200, 1e-200)
+                .build();
+        var change = new PercentageChangeIndicator(new ClosePriceIndicator(series),
+                ReturnRepresentation.MULTIPLICATIVE);
+
+        assertThat(change.getValue(1).isNaN()).isTrue();
     }
 
     @Test

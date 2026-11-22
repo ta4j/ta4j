@@ -58,15 +58,17 @@ Logarithmic returns use bounded working precision when an unlimited decimal
 context permits rounding.
 Threshold-based constructors still take percentage points regardless of the
 output format. Non-finite inputs or returns that the configured arithmetic
-cannot represent yield `NaN`. Neither non-finite prices nor unrepresentable
-threshold comparisons replace the baseline. `PercentRankIndicator` still
-reports a rank from 0 to 100.
+cannot represent yield `NaN`, including a growth factor that underflows to
+zero. Neither non-finite prices nor unrepresentable threshold comparisons
+replace the baseline. `PercentRankIndicator` still reports a rank from 0 to 100.
 
 `PeriodicalGrowthRateIndicator` counts complete periods in bars, independently
 of the series' numeric precision. Incomplete trailing periods, non-finite
 prices, and unsupported rounding operations yield `NaN`.
 When more bars complete a period, rereading its earlier values reflects
 the completed period.
+`getTotalReturn()` excludes incomplete trailing periods but returns `NaN` if
+a complete period or the aggregate is undefined.
 
 ## Trace rule decisions
 

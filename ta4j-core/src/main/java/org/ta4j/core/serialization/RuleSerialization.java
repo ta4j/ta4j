@@ -923,6 +923,17 @@ public final class RuleSerialization {
             return null;
         }
 
+        if (paramType.equals(ChainLink[].class)) {
+            try {
+                return deserializeChainLinks(value, context);
+            } catch (RuleSerializationException | IndicatorSerializationException | IllegalStateException e) {
+                if (isUnrecoverableComponentFailure(e)) {
+                    throw e;
+                }
+                return null;
+            }
+        }
+
         try {
             // Handle BarSeries (shouldn't happen here, but just in case)
             if (paramType.equals(BarSeries.class)) {
@@ -966,15 +977,8 @@ public final class RuleSerialization {
                     return context.resolveNumberArray(paramName, paramType);
                 } else if (componentType.isEnum()) {
                     return context.resolveEnumArray(paramName, componentType);
-                } else if (componentType.equals(ChainLink.class)) {
-                    return deserializeChainLinks(value, context);
                 }
             }
-        } catch (IllegalArgumentException e) {
-            if (paramType.isArray() && paramType.getComponentType().equals(ChainLink.class)) {
-                throw e;
-            }
-            return null; // Can't resolve, try next match
         } catch (Exception e) {
             if (isUnrecoverableComponentFailure(e)) {
                 throw e;
