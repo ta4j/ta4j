@@ -74,6 +74,18 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void forwardReadAfterDisjointBackwardReadRebuildsTheRecurrence() {
+        BarSeries longSeries = transientSeries(5_300);
+        RunningSum sum = new RunningSum(new ClosePriceIndicator(longSeries));
+        assertNumEquals(5_201.0 * 5_202 / 2, sum.getValue(5_200));
+        // Model the cache's capacity ceiling without millions of input bars.
+        sum.getCache().synchronize(0, 128, -1);
+
+        assertNumEquals(1, sum.getValue(0));
+        assertNumEquals(5_001.0 * 5_002 / 2, sum.getValue(5_000));
+    }
+
+    @Test
     public void iterativePrefillComputesValuesCorrectly() {
         // Create a simple recursive indicator that adds previous value
         double[] data = new double[300];

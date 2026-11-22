@@ -84,6 +84,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     private static final Indicator<?>[] NO_SOURCES = new Indicator<?>[0];
 
+    private static final DependencyObservation[] NO_OBSERVATIONS = new DependencyObservation[0];
+
     /**
      * Per-thread source traversal context. It preserves virtual cache-floor
      * overrides while nested base cached indicators share their visited set.
@@ -700,6 +702,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * snapshot, returning one observation per dependency.
      */
     private DependencyObservation[] observeDependencySeries() {
+        if (observedDependencySeries.length == 0) {
+            return NO_OBSERVATIONS;
+        }
         DependencyObservation[] observations = new DependencyObservation[observedDependencySeries.length];
         for (int i = 0; i < observedDependencySeries.length; i++) {
             observations[i] = DependencyObservation.of(observedDependencySeries[i]);

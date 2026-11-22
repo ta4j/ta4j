@@ -90,6 +90,12 @@ An actual zero growth factor remains zero.
 - Precision-first workflows: `DecimalNum`
 - Throughput-first workflows with accepted floating-point tradeoffs: `DoubleNum`
 
+## Combine numeric signals
+
+Use `BinaryOperationIndicator` for same-series arithmetic. The deprecated `CombineIndicator` also requires a shared backing series; matching index ranges on independent series are not sufficient.
+
+Historical indicator reads can evict newer cached values. A backward jump past the cache capacity restarts the cache at the requested bar; read forward when evaluating consecutive bars.
+
 ## Choose the right correlation metric
 
 All rolling correlation indicators live under
