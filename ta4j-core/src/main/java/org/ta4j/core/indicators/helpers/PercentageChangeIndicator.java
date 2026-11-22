@@ -336,19 +336,21 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
     private Num calculateReturn(Num currentValue, Num baseline, boolean thresholdBased) {
         try {
             Num result = switch (returnRepresentation) {
-            case PERCENTAGE -> thresholdBased ? fractionToPercentage(currentValue.dividedBy(baseline))
+            case PERCENTAGE -> thresholdBased ? fractionToPercentage(multiplicativeReturn(currentValue, baseline))
                     : calculateRateOfReturnPercentage(currentValue, baseline);
             case DECIMAL -> currentValue.minus(baseline).dividedBy(baseline);
-            case MULTIPLICATIVE -> {
-                Num factor = currentValue.dividedBy(baseline);
-                yield factor.isZero() ? NaN : factor;
-            }
-            case LOG -> calculateLogReturn(currentValue.dividedBy(baseline));
+            case MULTIPLICATIVE -> multiplicativeReturn(currentValue, baseline);
+            case LOG -> calculateLogReturn(multiplicativeReturn(currentValue, baseline));
             };
             return Num.isFinite(result) ? result : NaN;
         } catch (ArithmeticException ex) {
             return NaN;
         }
+    }
+
+    private static Num multiplicativeReturn(Num value, Num baseline) {
+        Num factor = value.dividedBy(baseline);
+        return factor.isZero() ? NaN : factor;
     }
 
     private Num calculateLogReturn(Num ratio) {
@@ -430,7 +432,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
         }
 
         try {
-            Num changePercentage = fractionToPercentage(value.dividedBy(notification));
+            Num changePercentage = fractionToPercentage(multiplicativeReturn(value, notification));
             return Num.isFinite(changePercentage) && changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)
                     ? value
                     : notification;

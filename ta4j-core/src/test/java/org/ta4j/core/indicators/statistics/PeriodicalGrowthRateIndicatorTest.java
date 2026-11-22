@@ -191,6 +191,22 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void totalReturnDistinguishesAggregateUnderflowFromZeroGrowthFactor() {
+        double[] prices = new double[23];
+        for (int i = 0; i < prices.length; i++) {
+            prices[i] = Math.scalb(1.0, 1000 - 50 * i);
+        }
+        NumFactory factory = DoubleNumFactory.getInstance();
+        BarSeries tinyFactors = new MockBarSeriesBuilder().withNumFactory(factory).withData(prices).build();
+        BarSeries zeroFactor = new MockBarSeriesBuilder().withNumFactory(factory).withData(100, 0).build();
+        var underflows = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(tinyFactors), 1);
+        var goesToZero = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(zeroFactor), 1);
+
+        assertEquals(NaN, underflows.getTotalReturn());
+        assertNumEquals(0, goesToZero.getTotalReturn());
+    }
+
+    @Test
     public void testStrategies() {
 
         var gri = new PeriodicalGrowthRateIndicator(this.closePrice, 5);

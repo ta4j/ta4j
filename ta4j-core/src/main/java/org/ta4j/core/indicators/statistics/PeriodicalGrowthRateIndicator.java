@@ -101,10 +101,12 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
                 if (!Num.isFinite(currentReturn)) {
                     return NaN;
                 }
-                totalProduct = totalProduct.multipliedBy(currentReturn.plus(one));
-                if (!Num.isFinite(totalProduct)) {
+                Num factor = currentReturn.plus(one);
+                Num product = totalProduct.multipliedBy(factor);
+                if (!Num.isFinite(product) || (product.isZero() && !totalProduct.isZero() && !factor.isZero())) {
                     return NaN;
                 }
+                totalProduct = product;
             }
             Num result = totalProduct.pow(divide(one, getBarSeries().numFactory().numOf(completeTimeFrames)));
             return Num.isFinite(result) ? result : NaN;

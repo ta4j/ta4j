@@ -67,8 +67,9 @@ of the series' numeric precision. Incomplete trailing periods, non-finite
 prices, and unsupported rounding operations yield `NaN`.
 When more bars complete a period, rereading its earlier values reflects
 the completed period.
-`getTotalReturn()` excludes incomplete trailing periods but returns `NaN` if
-a complete period or the aggregate is undefined.
+`getTotalReturn()` excludes incomplete trailing periods. It returns `NaN`
+if a complete period is undefined or the aggregate underflows or overflows.
+An actual zero growth factor remains zero.
 
 ## Trace rule decisions
 

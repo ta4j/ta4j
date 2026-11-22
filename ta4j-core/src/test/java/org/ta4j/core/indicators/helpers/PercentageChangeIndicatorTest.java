@@ -318,12 +318,18 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
     @Test
     public void multiplicativeReturnIsUndefinedWhenFactorUnderflows() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(1e200, 1e-200)
+                .withData(1e200, 1e-200, 0, 1e-199, 1.1e200)
                 .build();
         var change = new PercentageChangeIndicator(new ClosePriceIndicator(series),
                 ReturnRepresentation.MULTIPLICATIVE);
+        var threshold = new PercentageChangeIndicator(new ClosePriceIndicator(series), 5,
+                ReturnRepresentation.MULTIPLICATIVE);
 
         assertThat(change.getValue(1).isNaN()).isTrue();
+        assertThat(threshold.getValue(1).isNaN()).isTrue();
+        assertThat(threshold.getValue(2).isNaN()).isTrue();
+        assertThat(threshold.getValue(3).isNaN()).isTrue();
+        assertNumEquals(1.1, threshold.getValue(4));
     }
 
     @Test
