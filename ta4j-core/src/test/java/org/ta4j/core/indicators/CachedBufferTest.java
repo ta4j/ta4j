@@ -350,24 +350,23 @@ public class CachedBufferTest {
 
         assertFalse(buffer.isCached(20));
         assertTrue(buffer.isCached(50));
-        assertEquals(11, buffer.firstMissingIndex(10, 40));
+        assertEquals(11, buffer.recursivePrefillStart(10, 20));
 
         // A prefill starting inside the hole must fill it, not jump past the
         // reported highest index and skip the gap. Only the range at or above
-        // the requested start index is filled: the caller routes the gap below
-        // it through firstMissingIndex, as getValue does.
+        // the requested start index is filled.
         buffer.prefillUntil(15, 40, i -> i);
 
         assertTrue(buffer.isCached(20));
         assertEquals(Integer.valueOf(20), buffer.get(20));
         assertTrue(buffer.isCached(39));
         assertEquals(Integer.valueOf(50), buffer.get(50));
-        assertEquals(11, buffer.firstMissingIndex(10, 73));
+        assertEquals(11, buffer.recursivePrefillStart(10, 14));
 
         // A prefill rooted at the first missing index completes the whole hole.
         buffer.prefillUntil(11, 40, i -> i);
 
-        assertEquals(-1, buffer.firstMissingIndex(10, 73));
+        assertEquals(14, buffer.recursivePrefillStart(10, 14));
     }
 
     @Test

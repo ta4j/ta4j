@@ -367,30 +367,32 @@ class CachedBuffer<T> {
     }
 
     /**
-     * Finds the first index without a computed value inside the represented range.
-     * A backward read can truncate the retained tail and leave the reported
-     * {@code [firstCachedIndex, highestResultIndex]} range non-contiguous; callers
-     * must fill such holes from the first missing index.
+     * Finds where a recursive calculation must resume. A backward read can both
+     * lower the cache's upper bound and leave uncomputed holes inside the
+     * represented range.
      *
-     * @param fromIndex first index to inspect (inclusive)
-     * @param toIndex   last index to inspect (inclusive)
-     * @return the first index without a computed value, or {@code -1} when the
-     *         inspected range is fully computed
+     * @param firstRetainedIndex the first available series index
+     * @param targetIndex        the requested series index
+     * @return the first index to prefill, or {@code targetIndex} for a cache hit
      */
-    int firstMissingIndex(int fromIndex, int toIndex) {
+    int recursivePrefillStart(int firstRetainedIndex, int targetIndex) {
         lock.readLock().lock();
         try {
-            int from = firstCachedIndex < 0 ? fromIndex : Math.max(fromIndex, firstCachedIndex);
-            int to = Math.min(toIndex, highestResultIndex);
-            for (int i = from; i <= to; i++) {
+            if (targetIndex < firstCachedIndex) {
+                return firstRetainedIndex;
+            }
+            if (targetIndex > highestResultIndex) {
+                return Math.max(firstRetainedIndex, highestResultIndex + 1);
+            }
+            if (readAtUnlocked(targetIndex) != NOT_COMPUTED) {
+                return targetIndex;
+            }
+            for (int i = Math.max(firstRetainedIndex, firstCachedIndex); i < targetIndex; i++) {
                 if (readAtUnlocked(i) == NOT_COMPUTED) {
                     return i;
                 }
-                if (i == to) {
-                    break;
-                }
             }
-            return -1;
+            return targetIndex;
         } finally {
             lock.readLock().unlock();
         }

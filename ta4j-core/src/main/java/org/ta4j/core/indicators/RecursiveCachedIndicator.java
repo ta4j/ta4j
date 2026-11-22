@@ -128,28 +128,8 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
             BarSeriesChangeSnapshot snapshot = synchronizeCacheWithSeries(series);
             final int seriesEndIndex = snapshot.endIndex();
             if (index <= seriesEndIndex) {
-                // We are not after the end of the series
-                final int removedBarsCount = snapshot.removedThroughIndex() + 1;
-                final int firstCachedIndex = getCache().getFirstCachedIndex();
-                // A head advance can retain a later cache tail while evicting its
-                // lower recursive base range. That tail is not a usable predecessor
-                // for a read below it; rebuild the missing prefix from the first
-                // retained bar instead of recursively walking back to it.
-                int startIndex = firstCachedIndex > index ? removedBarsCount
-                        : Math.max(removedBarsCount, highestResultIndex);
-                if (startIndex > index && !getCache().isCached(index)) {
-                    // A backward read truncated the retained tail and left an
-                    // uncomputed hole inside the represented range. Prefill from
-                    // the first missing index so the recursive walk across the
-                    // gap stays iterative instead of overflowing the stack.
-                    int firstMissing = getCache().firstMissingIndex(firstCachedIndex, index);
-                    if (firstMissing >= 0) {
-                        startIndex = firstMissing;
-                    }
-                }
-                if (startIndex < 0) {
-                    startIndex = Math.max(0, removedBarsCount);
-                }
+                int firstRetainedIndex = snapshot.removedThroughIndex() + 1;
+                int startIndex = getCache().recursivePrefillStart(firstRetainedIndex, index);
                 if (index - startIndex > RECURSION_THRESHOLD) {
                     prefillMissingValues(startIndex, index);
                 }
