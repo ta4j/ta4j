@@ -55,11 +55,14 @@ keeps its existing retained-window reset behavior.
 return, growth factor, or natural log return instead. For a move from 100 to
 110, these outputs are `10`, `0.10`, `1.10`, and `ln(1.10)`, respectively.
 Threshold-based constructors still take percentage points regardless of the
-output format; `PercentRankIndicator` still reports a rank from 0 to 100.
+output format. Non-finite inputs or returns that the configured arithmetic
+cannot represent yield `NaN`. Neither non-finite prices nor unrepresentable
+threshold comparisons replace the baseline. `PercentRankIndicator` still
+reports a rank from 0 to 100.
 
 `PeriodicalGrowthRateIndicator` counts complete periods in bars, independently
-of the series' numeric precision. Values in incomplete trailing periods are
-`NaN`.
+of the series' numeric precision. Incomplete trailing periods, non-finite
+prices, and unsupported rounding operations yield `NaN`.
 
 ## Trace rule decisions
 

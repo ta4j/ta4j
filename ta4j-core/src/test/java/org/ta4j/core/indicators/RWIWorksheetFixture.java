@@ -78,7 +78,12 @@ final class RWIWorksheetFixture {
                         if (field.startsWith("=")) {
                             cell.setCellFormula(field.substring(1));
                         } else {
-                            cell.setCellValue(Double.parseDouble(field));
+                            try {
+                                cell.setCellValue(Double.parseDouble(field));
+                            } catch (NumberFormatException ex) {
+                                throw new IllegalStateException("Invalid RWI worksheet value at row "
+                                        + (row.getRowNum() + 1) + ", column " + (column + 1) + ": " + field, ex);
+                            }
                         }
                     }
                 }

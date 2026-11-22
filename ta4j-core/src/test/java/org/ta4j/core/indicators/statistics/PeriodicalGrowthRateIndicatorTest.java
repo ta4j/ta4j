@@ -8,6 +8,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.math.MathContext;
+import java.math.RoundingMode;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,8 +19,11 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
@@ -101,6 +105,30 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
         assertNumEquals(numOf(Math.pow(2, 5.0 / 3) - 1), growth.getValue(8), 1e-12);
         // Three complete timeframes require a non-terminating 1/3 exponent.
         assertNumEquals(1, growth.getTotalReturn());
+    }
+
+    @Test
+    public void strictRoundingDoesNotThrowOnRepeatingReturns() {
+        for (int precision : new int[] { 0, 10 }) {
+            var factory = DecimalNumFactory.getInstance(new MathContext(precision, RoundingMode.UNNECESSARY));
+            var series = new MockBarSeriesBuilder().withNumFactory(factory).withData(3, 4, 4, 6).build();
+            var growth = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(series), 2);
+
+            assertEquals(NaN, growth.getValue(2));
+            assertNumEquals(1.25, growth.getValue(3));
+        }
+    }
+
+    @Test
+    public void nonFinitePricesAreUndefinedAtEitherEndOfAPeriod() {
+        var factory = DoubleNumFactory.getInstance();
+        var series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1, 1, 1, 1).build();
+        Num infinity = DoubleNum.valueOf(Double.POSITIVE_INFINITY);
+        var prices = new FixedIndicator<Num>(series, infinity, factory.hundred(), factory.hundred(), infinity);
+        var growth = new PeriodicalGrowthRateIndicator(prices, 2);
+
+        assertEquals(NaN, growth.getValue(2));
+        assertEquals(NaN, growth.getValue(3));
     }
 
     @Test

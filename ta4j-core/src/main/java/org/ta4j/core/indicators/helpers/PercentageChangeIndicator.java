@@ -36,7 +36,10 @@ import static org.ta4j.core.num.NaN.NaN;
  * independently of the global return representation policy. Constructors
  * accepting a {@link ReturnRepresentation} can instead return a decimal rate, a
  * multiplicative factor, or a logarithmic return. For a change from 100 to 110
- * these are respectively 0.1, 1.1, and ln(1.1), rather than 10.
+ * these are respectively 0.1, 1.1, and ln(1.1), rather than 10. Non-finite
+ * source values or arithmetic that cannot represent a return produce
+ * {@code NaN}. An unrepresentable threshold comparison keeps the previous
+ * notification as the baseline.
  *
  * <p>
  * <strong>Optional features:</strong>
@@ -274,7 +277,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
-        if (Num.isNaNOrNull(currentValue) || currentValue.isZero()) {
+        if (!Num.isFinite(currentValue) || currentValue.isZero()) {
             return NaN;
         }
 
@@ -300,14 +303,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
                     if (notification == null) {
                         return NaN;
                     }
-                    if (returnRepresentation == ReturnRepresentation.PERCENTAGE) {
-                        return fractionToPercentage(currentValue.dividedBy(notification));
-                    }
-                    Num result = returnRepresentation == ReturnRepresentation.DECIMAL
-                            ? currentValue.minus(notification).dividedBy(notification)
-                            : returnRepresentation
-                                    .toRepresentationFromTotalReturn(currentValue.dividedBy(notification));
-                    return Num.isFinite(result) ? result : NaN;
+                    return calculateReturn(currentValue, notification, true);
                 }
             }
             // Every replay lost to an overlapping one; a stale result must not be
@@ -322,18 +318,26 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
             previousValue = sourceForPrevious.getValue(index - 1);
         }
 
-        // Check for NaN or zero previous value (division by zero)
-        if (Num.isNaNOrNull(previousValue) || previousValue.isZero()) {
+        if (!Num.isFinite(previousValue) || previousValue.isZero()) {
             return NaN;
         }
 
-        if (returnRepresentation == ReturnRepresentation.PERCENTAGE) {
-            return calculateRateOfReturnPercentage(currentValue, previousValue);
+        return calculateReturn(currentValue, previousValue, false);
+    }
+
+    private Num calculateReturn(Num currentValue, Num baseline, boolean thresholdBased) {
+        try {
+            Num result = switch (returnRepresentation) {
+            case PERCENTAGE -> thresholdBased ? fractionToPercentage(currentValue.dividedBy(baseline))
+                    : calculateRateOfReturnPercentage(currentValue, baseline);
+            case DECIMAL -> currentValue.minus(baseline).dividedBy(baseline);
+            case MULTIPLICATIVE, LOG ->
+                returnRepresentation.toRepresentationFromTotalReturn(currentValue.dividedBy(baseline));
+            };
+            return Num.isFinite(result) ? result : NaN;
+        } catch (ArithmeticException ex) {
+            return NaN;
         }
-        Num result = returnRepresentation == ReturnRepresentation.DECIMAL
-                ? currentValue.minus(previousValue).dividedBy(previousValue)
-                : returnRepresentation.toRepresentationFromTotalReturn(currentValue.dividedBy(previousValue));
-        return Num.isFinite(result) ? result : NaN;
     }
 
     // Overlapping replays stage state locally and publish only if no other
@@ -351,15 +355,21 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
 
     private Num nextNotification(Num notification, int index) {
         Num value = readNonTransient(indicator::getValue, index);
-        if (Num.isNaNOrNull(value) || value.isZero()) {
+        if (!Num.isFinite(value) || value.isZero()) {
             return notification;
         }
         if (notification == null) {
             return value;
         }
 
-        Num changePercentage = fractionToPercentage(value.dividedBy(notification));
-        return changePercentage.abs().isGreaterThanOrEqual(percentageThreshold) ? value : notification;
+        try {
+            Num changePercentage = fractionToPercentage(value.dividedBy(notification));
+            return Num.isFinite(changePercentage) && changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)
+                    ? value
+                    : notification;
+        } catch (ArithmeticException ex) {
+            return notification;
+        }
     }
 
     /**

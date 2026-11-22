@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.statistics;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.math.MathContext;
+import java.math.RoundingMode;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -30,7 +31,12 @@ import org.ta4j.core.num.Num;
  * full year is reached - NaN values for incomplete timeframes, e.g. timeframe
  * is a year and your timeseries contains data for 11,3 years, than no values
  * are calculated for the remaining 0,3 years - the method 'getTotalReturn'
- * calculates the total return over all returns of the corresponding timeframes
+ * calculates the total return over all returns of the corresponding timeframes.
+ *
+ * <p>
+ * Non-finite source values and results that cannot be represented under the
+ * configured rounding policy yield {@code NaN}. With unlimited precision that
+ * permits rounding, repeating quotients use the default decimal precision.
  *
  * <p>
  * Further readings:
@@ -79,8 +85,8 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
      * US) and "end of day"-bars you will get the 'Annualized Total Return'. Only
      * complete barCounts are taken into the calculation.
      *
-     * @return the total return from the calculated results of the method
-     *         'calculate'
+     * @return the annualized total return, or {@code NaN} if the aggregate cannot
+     *         be represented
      */
     public Num getTotalReturn() {
 
@@ -91,14 +97,20 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
             int index = i * barCount;
             Num currentReturn = getValue(index);
 
-            // Skip NaN at the end of a series
             if (currentReturn != NaN) {
-                currentReturn = currentReturn.plus(one);
-                totalProduct = totalProduct.multipliedBy(currentReturn);
+                try {
+                    totalProduct = totalProduct.multipliedBy(currentReturn.plus(one));
+                } catch (ArithmeticException ex) {
+                    return NaN;
+                }
             }
         }
 
-        return totalProduct.pow(divide(one, getBarSeries().numFactory().numOf(completeTimeFrames)));
+        try {
+            return totalProduct.pow(divide(one, getBarSeries().numFactory().numOf(completeTimeFrames)));
+        } catch (ArithmeticException ex) {
+            return NaN;
+        }
     }
 
     @Override
@@ -113,12 +125,20 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         }
 
         Num movingValue = indicator.getValue(index - barCount);
-        Num movingSimpleReturn = divide(currentValue.minus(movingValue), movingValue);
-        int partialTimeframe = index % barCount;
-        Num exponent = partialTimeframe == 0 ? one
-                : divide(getBarSeries().numFactory().numOf(barCount),
-                        getBarSeries().numFactory().numOf(partialTimeframe));
-        return one.plus(movingSimpleReturn).pow(exponent).minus(one);
+        if (!Num.isFinite(currentValue) || !Num.isFinite(movingValue)) {
+            return NaN;
+        }
+        try {
+            Num movingSimpleReturn = divide(currentValue.minus(movingValue), movingValue);
+            int partialTimeframe = index % barCount;
+            Num exponent = partialTimeframe == 0 ? one
+                    : divide(getBarSeries().numFactory().numOf(barCount),
+                            getBarSeries().numFactory().numOf(partialTimeframe));
+            Num result = one.plus(movingSimpleReturn).pow(exponent).minus(one);
+            return Num.isFinite(result) ? result : NaN;
+        } catch (ArithmeticException ex) {
+            return NaN;
+        }
     }
 
     private static Num divide(Num numerator, Num denominator) {
@@ -126,7 +146,9 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
             return numerator.dividedBy(denominator);
         } catch (ArithmeticException ex) {
             if (numerator instanceof DecimalNum dividend && denominator instanceof DecimalNum divisor
-                    && dividend.getMathContext().getPrecision() == 0 && divisor.getMathContext().getPrecision() == 0) {
+                    && dividend.getMathContext().getPrecision() == 0 && divisor.getMathContext().getPrecision() == 0
+                    && dividend.getMathContext().getRoundingMode() != RoundingMode.UNNECESSARY
+                    && divisor.getMathContext().getRoundingMode() != RoundingMode.UNNECESSARY) {
                 // Unlimited precision cannot represent repeating quotients. Like DecimalNum's
                 // other transcendental operations, use the default precision when necessary.
                 MathContext context = new MathContext(DecimalNum.getDefaultMathContext().getPrecision(),

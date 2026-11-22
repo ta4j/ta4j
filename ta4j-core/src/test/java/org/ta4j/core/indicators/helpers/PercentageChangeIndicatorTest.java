@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.math.MathContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -27,6 +28,9 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.OpenPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -185,6 +189,45 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
             case LOG -> Math.log(111.0 / 110);
             };
             assertThat(threshold.getValue(4).doubleValue()).isCloseTo(afterThreshold, within(1e-12));
+        }
+    }
+
+    @Test
+    public void unlimitedPrecisionReturnsNaNWhenAnExactReturnIsNotRepresentable() {
+        var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(MathContext.UNLIMITED))
+                .withData(3, 4, 6)
+                .build();
+        var close = new ClosePriceIndicator(series);
+        for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+            assertThat(new PercentageChangeIndicator(close, representation).getValue(1).isNaN()).isTrue();
+            assertThat(new PercentageChangeIndicator(close, 10, representation).getValue(1).isNaN()).isTrue();
+        }
+        assertNumEquals(100, new PercentageChangeIndicator(close, 10).getValue(2));
+    }
+
+    @Test
+    public void unlimitedPrecisionReturnsNaNWhenLogarithmRequiresRounding() {
+        var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(MathContext.UNLIMITED))
+                .withData(100, 110)
+                .build();
+        var close = new ClosePriceIndicator(series);
+        assertThat(new PercentageChangeIndicator(close, ReturnRepresentation.LOG).getValue(1).isNaN()).isTrue();
+        assertThat(new PercentageChangeIndicator(close, 5, ReturnRepresentation.LOG).getValue(1).isNaN()).isTrue();
+    }
+
+    @Test
+    public void nonFinitePricesProduceNaNAndCannotBecomeThresholdBaselines() {
+        var factory = DoubleNumFactory.getInstance();
+        var series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1, 1, 1).build();
+        for (double infinity : new double[] { Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY }) {
+            var prices = new FixedIndicator<Num>(series, factory.hundred(), DoubleNum.valueOf(infinity),
+                    factory.numOf(110));
+            var adjacent = new PercentageChangeIndicator(prices, ReturnRepresentation.MULTIPLICATIVE);
+            var threshold = new PercentageChangeIndicator(prices, 5, ReturnRepresentation.MULTIPLICATIVE);
+            assertThat(adjacent.getValue(1).isNaN()).isTrue();
+            assertThat(adjacent.getValue(2).isNaN()).isTrue();
+            assertThat(threshold.getValue(1).isNaN()).isTrue();
+            assertNumEquals(1.1, threshold.getValue(2));
         }
     }
 
