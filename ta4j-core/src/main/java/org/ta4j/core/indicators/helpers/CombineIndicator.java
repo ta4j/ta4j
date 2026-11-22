@@ -3,12 +3,13 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.util.Objects;
+import java.util.function.BinaryOperator;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.Num;
-
-import java.util.function.BinaryOperator;
-import java.util.function.Function;
 
 /**
  * Combine indicator.
@@ -28,19 +29,24 @@ public class CombineIndicator extends CachedIndicator<Num> {
     private final BinaryOperator<Num> combineFunction;
 
     /**
-     * Constructor.
+     * Combines two indicators backed by the same bar series and its numeric
+     * factory.
      *
      * @param indicatorLeft  the indicator for the left hand side of the calculation
      * @param indicatorRight the indicator for the right hand side of the
      *                       calculation
-     * @param combination    a {@link Function} describing the combination function
-     *                       to combine the values of the indicators
+     * @param combination    a {@link BinaryOperator} describing the combination to
+     *                       combine the values of the indicators
+     * @throws NullPointerException     if an indicator, its series, or the operator
+     *                                  is null
+     * @throws IllegalArgumentException if the indicators refer to different bar
+     *                                  series
      */
     @Deprecated
     public CombineIndicator(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight,
             BinaryOperator<Num> combination) {
-        // TODO check both indicators use the same series/num function
-        super(indicatorLeft, indicatorRight);
+        Objects.requireNonNull(combination, "combination");
+        super(IndicatorUtils.requireSameSeries(indicatorLeft, indicatorRight), indicatorLeft, indicatorRight);
         this.indicatorLeft = indicatorLeft;
         this.indicatorRight = indicatorRight;
         this.combineFunction = combination;
@@ -52,7 +58,6 @@ public class CombineIndicator extends CachedIndicator<Num> {
         return combineFunction.apply(indicatorLeft.getValue(index), indicatorRight.getValue(index));
     }
 
-    /** @return {@code 0} */
     @Override
     @Deprecated
     public int getCountOfUnstableBars() {

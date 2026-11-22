@@ -89,9 +89,9 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   floor and are recomputed like any windowed indicator: the floor retains
   a cached suffix while evicting the band below it, and a read inside the
   evicted band is served by iteratively prefilling from the first missing
-  index (`RecursiveCachedIndicator` routes the read through
-  `CachedBuffer.firstMissingIndex`), so only the gap is recomputed and no
-  floor override is needed. Do not override
+  index. `CachedBuffer.recursivePrefillStart` also resumes from the ring's actual
+  upper bound after a disjoint backward read, not the historical indicator
+  high-water mark. Do not override
   `minimumCacheableIndexAfterHeadAdvance(int)` to return
   `Integer.MAX_VALUE` for such indicators: discarding the whole cache on
   head advance would restore an O(`maximumBarCount`) rebuild after every
