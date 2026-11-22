@@ -1009,6 +1009,58 @@ public class RuleSerializationTest {
         assertThat(exception).hasMessage("failed to restore rule name");
     }
 
+    @Test
+    public void nestedReflectiveRuleConstructorKeepsUnexpectedCause() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1).build();
+        ComponentDescriptor broken = ComponentDescriptor.typeOnly(BrokenConstructorRule.class.getName());
+        ComponentDescriptor nested = ComponentDescriptor.builder().withType("NotRule").addComponent(broken).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder().withType("NotRule").addComponent(nested).build();
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasRootCauseInstanceOf(NullPointerException.class)
+                .hasRootCauseMessage("broken rule constructor");
+    }
+
+    @Test
+    public void nestedReflectiveConstructorValidationStillReportsMismatch() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("NotRule")
+                .addComponent(ComponentDescriptor.typeOnly(InvalidConstructorRule.class.getName()))
+                .build();
+
+        RuleSerializationException exception = assertThrows(RuleSerializationException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessageContaining("No compatible constructor").hasNoCause();
+    }
+
+    private static final class BrokenConstructorRule extends AbstractRule {
+
+        BrokenConstructorRule() {
+            throw new NullPointerException("broken rule constructor");
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            return false;
+        }
+    }
+
+    private static final class InvalidConstructorRule extends AbstractRule {
+
+        InvalidConstructorRule() {
+            throw new IllegalArgumentException("invalid configuration");
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            return false;
+        }
+    }
+
     private static final AtomicInteger STATIC_INITIALIZER_PROBE_RUNS = new AtomicInteger();
 
     /** Not a rule or enum; descriptor resolution must never initialize it. */

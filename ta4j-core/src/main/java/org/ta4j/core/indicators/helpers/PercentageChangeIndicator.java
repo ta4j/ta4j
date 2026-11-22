@@ -3,11 +3,15 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
@@ -39,7 +43,10 @@ import static org.ta4j.core.num.NaN.NaN;
  * these are respectively 0.1, 1.1, and ln(1.1), rather than 10. Non-finite
  * source values or arithmetic that cannot represent a return produce
  * {@code NaN}. An unrepresentable threshold comparison keeps the previous
- * notification as the baseline.
+ * notification as the baseline. Decimal logarithms use the configured
+ * precision, or the default decimal precision when it is unlimited. With
+ * {@link RoundingMode#UNNECESSARY}, only an exactly representable logarithm is
+ * returned.
  *
  * <p>
  * <strong>Optional features:</strong>
@@ -331,13 +338,69 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
             case PERCENTAGE -> thresholdBased ? fractionToPercentage(currentValue.dividedBy(baseline))
                     : calculateRateOfReturnPercentage(currentValue, baseline);
             case DECIMAL -> currentValue.minus(baseline).dividedBy(baseline);
-            case MULTIPLICATIVE, LOG ->
-                returnRepresentation.toRepresentationFromTotalReturn(currentValue.dividedBy(baseline));
+            case MULTIPLICATIVE -> currentValue.dividedBy(baseline);
+            case LOG -> calculateLogReturn(currentValue.dividedBy(baseline));
             };
             return Num.isFinite(result) ? result : NaN;
         } catch (ArithmeticException ex) {
             return NaN;
         }
+    }
+
+    private Num calculateLogReturn(Num ratio) {
+        if (!(ratio instanceof DecimalNum decimal)) {
+            return returnRepresentation.toRepresentationFromTotalReturn(ratio);
+        }
+        if (decimal.isNegativeOrZero()) {
+            return NaN;
+        }
+
+        BigDecimal value = decimal.bigDecimalValue();
+        MathContext context = decimal.getMathContext();
+        if (value.compareTo(BigDecimal.ONE) == 0) {
+            return DecimalNum.valueOf(BigDecimal.ZERO, context);
+        }
+        if (context.getRoundingMode() == RoundingMode.UNNECESSARY) {
+            return NaN;
+        }
+
+        int precision = context.getPrecision() == 0 ? DecimalNum.getDefaultPrecision() : context.getPrecision();
+        int reductionDigits = precision / 1000 + 1;
+        MathContext working = new MathContext(Math.addExact(precision, 10 + reductionDigits), RoundingMode.HALF_EVEN);
+
+        // Bring the mantissa near one so the existing fixed-depth DecimalNum.log()
+        // converges even for ratios far outside the primitive double range.
+        long exponent = (long) value.precision() - value.scale() - 1;
+        BigDecimal mantissa = new BigDecimal(value.unscaledValue(), value.precision() - 1);
+        if (mantissa.compareTo(BigDecimal.valueOf(5)) >= 0) {
+            mantissa = mantissa.movePointLeft(1);
+            exponent++;
+        }
+        BigDecimal result = decimalLog(mantissa, working, reductionDigits);
+        if (exponent != 0) {
+            BigDecimal logTen = decimalLog(BigDecimal.TEN, working, reductionDigits);
+            result = result.add(logTen.multiply(BigDecimal.valueOf(exponent), working), working);
+        }
+        MathContext resultContext = new MathContext(precision, context.getRoundingMode());
+        return DecimalNum.valueOf(result.round(resultContext), context);
+    }
+
+    private static BigDecimal decimalLog(BigDecimal value, MathContext working, int reductionDigits) {
+        if (value.compareTo(BigDecimal.ONE) == 0) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal multiplier = BigDecimal.ONE;
+        if (working.getPrecision() > 300) {
+            // At very high precision, reduce further so the fixed-depth continued
+            // fraction converges, then undo ln(sqrt(x)) = ln(x) / 2. The extra
+            // working digits preserve accuracy when subtracting one after roots.
+            BigDecimal maxDistance = BigDecimal.ONE.scaleByPowerOfTen(-reductionDigits);
+            while (value.subtract(BigDecimal.ONE).abs().compareTo(maxDistance) > 0) {
+                value = value.sqrt(working);
+                multiplier = multiplier.multiply(BigDecimal.valueOf(2));
+            }
+        }
+        return DecimalNum.valueOf(value, working).log().bigDecimalValue().multiply(multiplier, working);
     }
 
     // Overlapping replays stage state locally and publish only if no other

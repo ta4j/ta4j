@@ -8,7 +8,9 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -28,6 +30,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.OpenPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -137,12 +140,15 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
 
     @Test
     public void logReturnUsesThePriceRatioAndRejectsNonPositiveRatios() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1e18, 1, -1).build();
-        PercentageChangeIndicator change = new PercentageChangeIndicator(new ClosePriceIndicator(series),
-                ReturnRepresentation.LOG);
-        assertThat(Num.isFinite(change.getValue(1))).isTrue();
-        assertThat(change.getValue(1).isNegative()).isTrue();
-        assertThat(change.getValue(2).isNaN()).isTrue();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1e18, 1, 1e18, -1).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        PercentageChangeIndicator change = new PercentageChangeIndicator(close, ReturnRepresentation.LOG);
+        PercentageChangeIndicator threshold = new PercentageChangeIndicator(close, 5, ReturnRepresentation.LOG);
+        for (PercentageChangeIndicator indicator : new PercentageChangeIndicator[] { change, threshold }) {
+            assertThat(indicator.getValue(1).doubleValue()).isCloseTo(-41.44653167389282, within(1e-12));
+            assertThat(indicator.getValue(2).doubleValue()).isCloseTo(41.44653167389282, within(1e-12));
+            assertThat(indicator.getValue(3).isNaN()).isTrue();
+        }
     }
 
     @Test
@@ -206,13 +212,90 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
-    public void unlimitedPrecisionReturnsNaNWhenLogarithmRequiresRounding() {
-        var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(MathContext.UNLIMITED))
-                .withData(100, 110)
+    public void unlimitedPrecisionUsesDefaultPrecisionForLogarithms() {
+        BarSeries series = new MockBarSeriesBuilder()
+                .withNumFactory(DecimalNumFactory.getInstance(MathContext.UNLIMITED))
+                .withData(100, 110, 121)
                 .build();
-        var close = new ClosePriceIndicator(series);
-        assertThat(new PercentageChangeIndicator(close, ReturnRepresentation.LOG).getValue(1).isNaN()).isTrue();
-        assertThat(new PercentageChangeIndicator(close, 5, ReturnRepresentation.LOG).getValue(1).isNaN()).isTrue();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        PercentageChangeIndicator change = new PercentageChangeIndicator(close, ReturnRepresentation.LOG);
+        PercentageChangeIndicator threshold = new PercentageChangeIndicator(close, 5, ReturnRepresentation.LOG);
+        for (PercentageChangeIndicator indicator : new PercentageChangeIndicator[] { change, threshold }) {
+            for (int index = 1; index <= 2; index++) {
+                Num result = indicator.getValue(index);
+                assertThat(result.bigDecimalValue()).isEqualByComparingTo("0.09531017980432486");
+                assertThat(((DecimalNum) result).getMathContext()).isEqualTo(MathContext.UNLIMITED);
+            }
+        }
+        assertThat(new PercentageChangeIndicator(close, ReturnRepresentation.DECIMAL).getValue(1).bigDecimalValue())
+                .isEqualByComparingTo("0.1");
+        assertThat(new PercentageChangeIndicator(close, 5, ReturnRepresentation.DECIMAL).getValue(1).bigDecimalValue())
+                .isEqualByComparingTo("0.1");
+    }
+
+    @Test
+    public void strictRoundingOnlyAllowsTheExactLogarithmOfOne() {
+        for (MathContext context : new MathContext[] { new MathContext(0, RoundingMode.UNNECESSARY),
+                new MathContext(20, RoundingMode.UNNECESSARY) }) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(context))
+                    .withData(100, 100, 110)
+                    .build();
+            ClosePriceIndicator close = new ClosePriceIndicator(series);
+            PercentageChangeIndicator change = new PercentageChangeIndicator(close, ReturnRepresentation.LOG);
+            PercentageChangeIndicator threshold = new PercentageChangeIndicator(close, 5, ReturnRepresentation.LOG);
+            for (PercentageChangeIndicator indicator : new PercentageChangeIndicator[] { change, threshold }) {
+                assertThat(indicator.getValue(1).bigDecimalValue()).isEqualByComparingTo(BigDecimal.ZERO);
+                assertThat(indicator.getValue(2).isNaN()).isTrue();
+            }
+        }
+    }
+
+    @Test
+    public void decimalLogarithmsKeepPrecisionAcrossExtremeAndNearUnitRatios() {
+        MathContext context = new MathContext(50, RoundingMode.HALF_EVEN);
+        NumFactory factory = DecimalNumFactory.getInstance(context);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1, 1, 1).build();
+        FixedIndicator<Num> extremes = new FixedIndicator<>(series, factory.numOf("1E400"), factory.numOf("3"),
+                factory.numOf("1E400"));
+        PercentageChangeIndicator change = new PercentageChangeIndicator(extremes, ReturnRepresentation.LOG);
+        PercentageChangeIndicator threshold = new PercentageChangeIndicator(extremes, 5, ReturnRepresentation.LOG);
+        BigDecimal expected = new BigDecimal("919.93542490895016391580133663682315733579310489369");
+        for (PercentageChangeIndicator indicator : new PercentageChangeIndicator[] { change, threshold }) {
+            Num loss = indicator.getValue(1);
+            assertThat(loss.bigDecimalValue()).isEqualByComparingTo(expected.negate());
+            assertThat(((DecimalNum) loss).getMathContext()).isEqualTo(context);
+            assertThat(indicator.getValue(2).bigDecimalValue()).isEqualByComparingTo(expected);
+        }
+
+        FixedIndicator<Num> nearOne = new FixedIndicator<>(series, factory.one(),
+                factory.numOf("0.99999999999999999999999999999999999999999999999999"));
+        Num smallChange = new PercentageChangeIndicator(nearOne, ReturnRepresentation.LOG).getValue(1);
+        assertThat(smallChange.bigDecimalValue()).isEqualByComparingTo("-1E-50");
+    }
+
+    @Test
+    public void decimalLogarithmsHonorDirectedRounding() {
+        for (RoundingMode mode : new RoundingMode[] { RoundingMode.DOWN, RoundingMode.UP }) {
+            NumFactory factory = DecimalNumFactory.getInstance(new MathContext(10, mode));
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(100, 110).build();
+            Num result = new PercentageChangeIndicator(new ClosePriceIndicator(series), ReturnRepresentation.LOG)
+                    .getValue(1);
+            assertThat(result.bigDecimalValue())
+                    .isEqualByComparingTo(mode == RoundingMode.DOWN ? "0.09531017980" : "0.09531017981");
+        }
+    }
+
+    @Test
+    public void decimalLogarithmsConvergeBeyondTheOriginalFractionDepth() {
+        NumFactory factory = DecimalNumFactory.getInstance(new MathContext(350, RoundingMode.HALF_EVEN));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1, 1).build();
+        FixedIndicator<Num> prices = new FixedIndicator<>(series, factory.numOf("1E400"), factory.one());
+        Num result = new PercentageChangeIndicator(prices, ReturnRepresentation.LOG).getValue(1);
+        assertThat(result.bigDecimalValue()).isEqualByComparingTo(new BigDecimal(
+                "-921.034037197618273607196581873745683040440595451509190413331160387029043870940992094398882035839319"
+                        + "336787113616914499453363810186033122702666514947639512675793162883330221872337519957930493279"
+                        + "411357402123586151093051538465346488915079287954698617466989761697309746062019573725975756591"
+                        + "84776176008884204068566992014752336050588322742270972864913420880"));
     }
 
     @Test

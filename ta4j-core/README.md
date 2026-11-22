@@ -54,6 +54,8 @@ keeps its existing retained-window reset behavior.
 `ReturnRepresentation.DECIMAL`, `MULTIPLICATIVE`, or `LOG` to select a decimal
 return, growth factor, or natural log return instead. For a move from 100 to
 110, these outputs are `10`, `0.10`, `1.10`, and `ln(1.10)`, respectively.
+Logarithmic returns use bounded working precision when an unlimited decimal
+context permits rounding.
 Threshold-based constructors still take percentage points regardless of the
 output format. Non-finite inputs or returns that the configured arithmetic
 cannot represent yield `NaN`. Neither non-finite prices nor unrepresentable
@@ -63,6 +65,8 @@ reports a rank from 0 to 100.
 `PeriodicalGrowthRateIndicator` counts complete periods in bars, independently
 of the series' numeric precision. Incomplete trailing periods, non-finite
 prices, and unsupported rounding operations yield `NaN`.
+When more bars complete a period, rereading its earlier values reflects
+the completed period.
 
 ## Trace rule decisions
 

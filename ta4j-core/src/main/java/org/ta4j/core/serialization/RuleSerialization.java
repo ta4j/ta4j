@@ -860,16 +860,24 @@ public final class RuleSerialization {
     }
 
     /**
-     * Tells whether a failure stems from a dependency of the component being
-     * reconstructed that cannot be linked. Unlike a constructor mismatch, no other
-     * constructor can recover from it, and swallowing it would replace the cause
-     * with a misleading "no compatible constructor" error.
+     * Identifies failures that constructor matching must not mistake for a
+     * descriptor mismatch. Reflective constructor calls wrap their target
+     * exceptions, including unexpected failures, in serializer exceptions. Expected
+     * configuration failures still permit another match.
      */
-    private static boolean isLinkageFailure(Throwable failure) {
+    private static boolean isUnrecoverableComponentFailure(Throwable failure) {
         Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Throwable cause = failure; cause != null && visited.add(cause); cause = cause.getCause()) {
             if (cause instanceof LinkageError) {
                 return true;
+            }
+            if (cause instanceof InvocationTargetException invocation) {
+                Throwable target = invocation.getTargetException();
+                if (!(target instanceof IllegalArgumentException) && !(target instanceof IllegalStateException)
+                        && !(target instanceof RuleSerializationException)
+                        && !(target instanceof IndicatorSerializationException)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -901,7 +909,7 @@ public final class RuleSerialization {
             }
         } catch (RuleSerializationException | IndicatorSerializationException | IllegalArgumentException
                 | IllegalStateException e) {
-            if (isLinkageFailure(e)) {
+            if (isUnrecoverableComponentFailure(e)) {
                 throw e;
             }
             return null; // Can't resolve, try next match
@@ -968,7 +976,7 @@ public final class RuleSerialization {
             }
             return null; // Can't resolve, try next match
         } catch (Exception e) {
-            if (isLinkageFailure(e)) {
+            if (isUnrecoverableComponentFailure(e)) {
                 throw e;
             }
             return null; // Can't resolve, try next match

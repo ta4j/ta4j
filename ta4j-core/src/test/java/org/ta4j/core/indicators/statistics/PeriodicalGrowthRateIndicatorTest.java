@@ -18,6 +18,7 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -82,6 +83,48 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
         assertNumEquals(0, growth.getValue(5));
         assertEquals(NaN, growth.getValue(6));
         assertEquals(NaN, growth.getValue(7));
+
+        series.barBuilder().openPrice(100).closePrice(100).highPrice(100).lowPrice(100).volume(0).add();
+        assertNumEquals(0, growth.getValue(6));
+    }
+
+    @Test
+    public void incompleteTimeframeIsRecomputedThroughDownstreamCacheAfterAppend() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 100, 100, 100)
+                .build();
+        int[] warmupCalculations = { 0 };
+        var growth = new PeriodicalGrowthRateIndicator(new ClosePriceIndicator(series), 3) {
+            @Override
+            protected Num calculate(int index) {
+                if (index == 1) {
+                    warmupCalculations[0]++;
+                }
+                return super.calculate(index);
+            }
+        };
+        CachedIndicator<Num> downstream = new CachedIndicator<>(growth) {
+            @Override
+            protected Num calculate(int index) {
+                return growth.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return growth.getCountOfUnstableBars();
+            }
+        };
+
+        assertEquals(NaN, growth.getValue(1));
+        assertEquals(NaN, growth.getValue(1));
+        assertEquals(1, warmupCalculations[0]);
+        assertEquals(NaN, growth.getValue(6));
+        assertEquals(NaN, downstream.getValue(6));
+
+        series.barBuilder().openPrice(100).closePrice(100).highPrice(100).lowPrice(100).volume(0).add();
+
+        assertNumEquals(0, growth.getValue(6));
+        assertNumEquals(0, downstream.getValue(6));
     }
 
     @Test

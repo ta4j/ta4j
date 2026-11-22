@@ -32,6 +32,8 @@ import org.ta4j.core.num.Num;
  * is a year and your timeseries contains data for 11,3 years, than no values
  * are calculated for the remaining 0,3 years - the method 'getTotalReturn'
  * calculates the total return over all returns of the corresponding timeframes.
+ * Incomplete timeframe values are recomputed as bars are appended, including
+ * when this indicator is used by another cached indicator.
  *
  * <p>
  * Non-finite source values and results that cannot be represented under the
@@ -118,9 +120,13 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
         // Keep the source progressing even when this index has no growth value.
         Num currentValue = indicator.getValue(index);
         int completeTimeframes = indicator.getBarSeries().getBarCount() / barCount;
-        // Do not calculate before the first timeframe or in an incomplete trailing one.
         // Both quantities describe discrete bars and must not be rounded as Num values.
-        if (index < barCount || index / barCount >= completeTimeframes) {
+        if (index < barCount) {
+            return NaN;
+        }
+        if (index / barCount >= completeTimeframes) {
+            // Appending bars can complete this timeframe, including for downstream caches.
+            markResultTransient();
             return NaN;
         }
 
