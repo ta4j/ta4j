@@ -79,7 +79,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
     // Runtime replay state is not a constructor parameter.
     private transient Num lastNotification;
     private transient long notificationVersion;
-    private final transient NotificationReplay replay = new NotificationReplay();
+    private final transient NotificationReplay replay;
 
     /**
      * Constructor to calculate percentage change from the previous value.
@@ -238,6 +238,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
             Num percentageThreshold, ReturnRepresentation returnRepresentation) {
         super(indicator, previousIndicator == null ? NO_ADDITIONAL_SOURCES : new Indicator<?>[] { previousIndicator });
         this.indicator = indicator;
+        this.replay = new NotificationReplay(indicator);
         this.previousIndicator = previousIndicator;
         this.percentageThreshold = percentageThreshold;
         this.returnRepresentation = Objects.requireNonNull(returnRepresentation, "returnRepresentation");
@@ -301,8 +302,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
                     version = notificationVersion;
                 }
                 try {
-                    notification = replay.replay(getBarSeries(), notification, beginIndex, index,
-                            this::nextNotification);
+                    notification = replay.replay(notification, beginIndex, index, this::nextNotification);
                 } catch (TransientValueException transientRead) {
                     markResultTransient();
                     return NaN;
