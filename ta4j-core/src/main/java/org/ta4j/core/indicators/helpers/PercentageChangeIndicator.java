@@ -79,6 +79,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
     // Runtime replay state is not a constructor parameter.
     private transient Num lastNotification;
     private transient long notificationVersion;
+    private final transient NotificationReplay replay = new NotificationReplay();
 
     /**
      * Constructor to calculate percentage change from the previous value.
@@ -300,9 +301,8 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
                     version = notificationVersion;
                 }
                 try {
-                    for (int i = beginIndex; i < index; i++) {
-                        notification = nextNotification(notification, i);
-                    }
+                    notification = replay.replay(getBarSeries(), notification, beginIndex, index,
+                            this::nextNotification);
                 } catch (TransientValueException transientRead) {
                     markResultTransient();
                     return NaN;

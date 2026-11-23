@@ -158,4 +158,116 @@ public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Ind
 
         return new ConcurrentReplay(indicator, replayResult.get());
     }
+
+    @Test
+    public void incrementalReplayMatchesFullReplayForAnyAccessOrder() {
+        java.util.Random random = new java.util.Random(42);
+        double[] closes = new double[300];
+        double price = 100;
+        for (int i = 0; i < closes.length; i++) {
+            price = Math.max(1, price * (1 + (random.nextDouble() - 0.5) * 0.12));
+            closes[i] = i % 37 == 5 ? 0 : price;
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        for (double threshold : new double[] { 0, 3, 7, 15 }) {
+            DifferencePercentageIndicator actual = new DifferencePercentageIndicator(close, numOf(threshold));
+            FullReplay expected = new FullReplay(close, numOf(threshold));
+            for (int step = 0; step < 600; step++) {
+                int index = step < 300 ? step : random.nextInt(closes.length);
+                if (step % 53 == 0) {
+                    actual.setLastNotification(index);
+                    expected.setLastNotification(index);
+                }
+                Num want = expected.getValue(index);
+                Num got = actual.getValue(index);
+                assertThat(got.isNaN()).as("threshold %s index %s", threshold, index).isEqualTo(want.isNaN());
+                if (!want.isNaN()) {
+                    assertThat(got.isEqual(want)).as("threshold %s index %s", threshold, index).isTrue();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void forwardPassReadsEachSourceBarABoundedNumberOfTimes() {
+        int barCount = 5_000;
+        double[] closes = new double[barCount];
+        for (int i = 0; i < barCount; i++) {
+            closes[i] = 100 + 20 * Math.sin(i / 25.0);
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        java.util.concurrent.atomic.AtomicLong reads = new java.util.concurrent.atomic.AtomicLong();
+        Indicator<Num> counting = new AbstractIndicator<>(series) {
+            @Override
+            public Num getValue(int index) {
+                reads.incrementAndGet();
+                return close.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        DifferencePercentageIndicator indicator = new DifferencePercentageIndicator(counting, numOf(5));
+
+        for (int i = 0; i < barCount; i++) {
+            indicator.getValue(i);
+        }
+
+        // A full rescan per bar would read about barCount^2 / 2 = 12.5M values.
+        assertThat(reads.get()).isLessThan(50L * barCount);
+    }
+
+    // The replay semantics before the incremental trajectory: every calculation
+    // rescans the retained prefix from the carried notification.
+    private static final class FullReplay extends CachedIndicator<Num> {
+        private final Indicator<Num> indicator;
+        private final Num threshold;
+        private Num lastNotification;
+
+        private FullReplay(Indicator<Num> indicator, Num threshold) {
+            super(indicator);
+            this.indicator = indicator;
+            this.threshold = threshold;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            Num value = indicator.getValue(index);
+            if (value.isNaN() || value.isZero()) {
+                return NaN.NaN;
+            }
+            for (int i = getBarSeries().getBeginIndex(); i < index; i++) {
+                setLastNotification(i);
+            }
+            if (lastNotification == null) {
+                return NaN.NaN;
+            }
+            Num hundred = getBarSeries().numFactory().hundred();
+            return value.dividedBy(lastNotification).multipliedBy(hundred).minus(hundred);
+        }
+
+        void setLastNotification(int index) {
+            Num value = indicator.getValue(index);
+            if (value.isNaN() || value.isZero()) {
+                return;
+            }
+            if (lastNotification == null) {
+                lastNotification = value;
+            }
+            Num hundred = getBarSeries().numFactory().hundred();
+            Num change = value.dividedBy(lastNotification).multipliedBy(hundred).minus(hundred);
+            if (change.abs().isGreaterThanOrEqual(threshold)) {
+                lastNotification = value;
+            }
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
 }

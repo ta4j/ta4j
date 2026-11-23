@@ -589,4 +589,36 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
 
         assertThat(indicator.getValue(4).doubleValue()).isCloseTo(-4.3478, within(1e-3));
     }
+
+    @Test
+    public void thresholdForwardPassReadsEachSourceBarABoundedNumberOfTimes() {
+        int barCount = 5_000;
+        double[] closes = new double[barCount];
+        for (int i = 0; i < barCount; i++) {
+            closes[i] = 100 + 20 * Math.sin(i / 25.0);
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        java.util.concurrent.atomic.AtomicLong reads = new java.util.concurrent.atomic.AtomicLong();
+        Indicator<Num> counting = new org.ta4j.core.indicators.AbstractIndicator<>(series) {
+            @Override
+            public Num getValue(int index) {
+                reads.incrementAndGet();
+                return close.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        PercentageChangeIndicator indicator = new PercentageChangeIndicator(counting, null, numOf(5));
+
+        for (int i = 0; i < barCount; i++) {
+            indicator.getValue(i);
+        }
+
+        // A full rescan per bar would read about barCount^2 / 2 = 12.5M values.
+        assertThat(reads.get()).isLessThan(50L * barCount);
+    }
 }
