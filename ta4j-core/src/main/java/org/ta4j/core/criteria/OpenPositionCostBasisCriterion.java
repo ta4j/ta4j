@@ -20,9 +20,9 @@ import java.util.List;
  *
  * <p>
  * For aggregate entries composed of multiple fills, only fills at or before the
- * evaluated index contribute to the cost basis. When all fills are visible,
- * the configured transaction-cost model's total is used; for a partial window,
- * the recorded fees of the visible fills are summed.
+ * evaluated index contribute to the cost basis. When all fills are visible, the
+ * configured transaction-cost model's total is used; for a partial window, the
+ * recorded fees of the visible fills are summed.
  * </p>
  *
  * @since 0.22.2
@@ -66,7 +66,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         }
 
         if (fills == null) {
-            return fullWindowCostBasis(series, entry, factory);
+            return NaN.NaN;
         }
 
         List<TradeFill> visibleFills = fills.stream()

@@ -136,24 +136,59 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void fullWindowUnlimitedPrecisionDoesNotThrow() {
-        NumFactory factory = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
-        var series = new MockBarSeriesBuilder().withNumFactory(factory).withData(100, 100, 100, 100, 100, 200).build();
+    public void fullWindowModeledFeeFinitePrecisionUsesScalarPath() {
         var costModel = new FixedTransactionCostModel(1.0);
-        var entry = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(0, factory.hundred(), factory.one()),
-                new TradeFill(5, factory.numOf(200), factory.one())), costModel);
+        var entry = Trade.fromFills(TradeType.BUY, List.of(
+                new TradeFill(0, numFactory.hundred(), numFactory.one()),
+                new TradeFill(5, numFactory.numOf(200), numFactory.one())), costModel);
         var position = new Position(entry, costModel, new ZeroCostModel());
-        var criterion = new OpenPositionCostBasisCriterion();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 200)
+                .build();
+        var criterion = getCriterion();
 
         Num result = criterion.calculate(series, position);
 
-        assertNumEquals(factory.numOf(301), result);
+        assertNumEquals(numFactory.numOf(301), result);
+    }
+
+    @Test
+    public void unlimitedPrecisionUnrepresentableFeeReturnsNaN() {
+        NumFactory factory = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
+        var series = new MockBarSeriesBuilder().withNumFactory(factory).withData(100, 100, 100, 100, 100, 200).build();
+        var costModel = new FixedTransactionCostModel(1.0);
+        var entry = Trade.fromFills(TradeType.BUY, List.of(
+                new TradeFill(0, factory.hundred(), factory.one()),
+                new TradeFill(5, factory.numOf(200), factory.one())), costModel);
+        var position = new Position(entry, costModel, new ZeroCostModel());
+        var criterion = getCriterion();
+
+        Num result = criterion.calculate(series, position);
+
+        assertTrue(result.isNaN());
+    }
+
+    @Test
+    public void unlimitedPrecisionPartialWindowReturnsNaN() {
+        NumFactory factory = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
+        var costModel = new FixedTransactionCostModel(1.0);
+        var entry = Trade.fromFills(TradeType.BUY, List.of(
+                new TradeFill(0, factory.hundred(), factory.one()),
+                new TradeFill(5, factory.numOf(200), factory.one())), costModel);
+        var position = new Position(entry, costModel, new ZeroCostModel());
+        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("partial", factory, 0, 100d, 100d, 100d,
+                100d, 100d, 200d);
+        var criterion = getCriterion();
+
+        Num result = criterion.calculate(constrained, position);
+
+        assertTrue(result.isNaN());
     }
 
     @Test
     public void partialWindowUsesRecordedFeesOfVisibleFills() {
-        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries(
-                "partial", numFactory, 0, 100d, 100d, 100d, 100d, 100d, 200d);
+        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("partial", numFactory, 0, 100d, 100d, 100d,
+                100d, 100d, 200d);
         var entry = Trade.fromFills(TradeType.BUY, List.of(
                         new TradeFill(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.one(),
                                 ExecutionSide.BUY, null, null),
@@ -174,12 +209,12 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
         var entry = Trade.fromFills(TradeType.BUY, List.of(
                         new TradeFill(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.one(),
                                 ExecutionSide.BUY, null, null),
-                        new TradeFill(5, Instant.EPOCH, numFactory.numOf(200), numFactory.one(),
-                                numFactory.numOf(2), ExecutionSide.BUY, null, null)),
+                        new TradeFill(5, Instant.EPOCH, numFactory.numOf(200), numFactory.one(), numFactory.numOf(2),
+                                ExecutionSide.BUY, null, null)),
                 costModel);
         var position = new Position(entry, costModel, new ZeroCostModel());
-        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("partial", numFactory, 0,
-                100d, 100d, 100d, 100d, 100d, 200d);
+        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("partial", numFactory, 0, 100d, 100d, 100d,
+                100d, 100d, 200d);
         var criterion = getCriterion();
 
         Num result = criterion.calculate(constrained, position);
