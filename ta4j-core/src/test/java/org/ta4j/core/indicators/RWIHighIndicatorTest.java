@@ -76,4 +76,19 @@ public class RWIHighIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(20, rwih.getCountOfUnstableBars());
         assertIndicatorEquals(expected, rwih);
     }
+
+    @Test
+    public void rejectsBarCountAboveHelperCapAndSharesOneTrueRange() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10).highPrice(12).lowPrice(8).closePrice(10).add();
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new RWIHighIndicator(series, RWIHighIndicator.MAX_BAR_COUNT + 1));
+        RWIHighIndicator rwi = new RWIHighIndicator(series, 4);
+        // ATR -> Wilder average -> true range
+        Indicator<?> firstTrueRange = rwi.getDependencies().get(0).getDependencies().get(0).getDependencies().get(0);
+        for (Indicator<?> atr : rwi.getDependencies()) {
+            assertThat(atr.getDependencies().get(0).getDependencies()).containsExactly(firstTrueRange);
+        }
+    }
 }

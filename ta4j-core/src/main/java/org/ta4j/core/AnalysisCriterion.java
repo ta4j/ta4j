@@ -94,6 +94,11 @@ public interface AnalysisCriterion {
 
     /**
      * Reconstructs an analysis criterion from canonical descriptor JSON.
+     * <p>
+     * The JSON is treated as untrusted, so only criteria in the
+     * {@code org.ta4j.core.criteria} package tree are restored. Custom criteria
+     * from trusted data use
+     * {@link AnalysisCriterionSerialization#fromTrustedJson(String)}.
      *
      * @param json JSON payload
      * @return reconstructed criterion
