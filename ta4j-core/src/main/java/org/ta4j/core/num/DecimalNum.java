@@ -6,6 +6,10 @@ package org.ta4j.core.num;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -437,7 +441,7 @@ public final class DecimalNum implements Num {
      */
     @Override
     public Num remainder(final Num divisor) {
-        if (divisor.isNaN()) {
+        if (divisor.isNaN() || divisor.isZero()) {
             return NaN;
         }
         final var decimalNum = (DecimalNum) divisor;
@@ -461,8 +465,14 @@ public final class DecimalNum implements Num {
      */
     @Override
     public Num pow(final int n) {
-        final BigDecimal result = this.delegate.pow(n, this.mathContext);
-        return new DecimalNum(result, this.mathContext);
+        if (this.isZero() && n < 0) {
+            return NaN;
+        }
+        try {
+            return new DecimalNum(this.delegate.pow(n, this.mathContext), this.mathContext);
+        } catch (ArithmeticException e) {
+            return NaN;
+        }
     }
 
     /**
@@ -709,15 +719,8 @@ public final class DecimalNum implements Num {
      * {@link NaN#NaN} is returned.
      *
      * @param n power to raise this {@code Num} to
-     * @return <code>this<sup>n</sup></code>, or {@link NaN#NaN} if invalid or
-     *         infinite
-     * @throws ArithmeticException if the integer part of the exponent {@code n}
-     *                             overflows {@code int} or its magnitude exceeds
-     *                             {@code 999999999}, the limit of
-     *                             {@link BigDecimal#pow(int, MathContext)}; or if
-     *                             this number's {@link MathContext} uses
-     *                             {@link RoundingMode#UNNECESSARY} and the result
-     *                             is inexact
+     * @return <code>this<sup>n</sup></code>, or {@link NaN#NaN} if invalid,
+     *         infinite or beyond {@link BigDecimal#pow(int, MathContext)}
      */
     @Override
     public Num pow(final Num n) {
@@ -728,7 +731,14 @@ public final class DecimalNum implements Num {
             return NaN;
         }
 
-        final DecimalNum decimalN = n instanceof DecimalNum dn ? dn : DecimalNum.valueOf(n);
+        try {
+            return powFinite(n instanceof DecimalNum dn ? dn : DecimalNum.valueOf(n));
+        } catch (ArithmeticException e) {
+            return NaN;
+        }
+    }
+
+    private Num powFinite(final DecimalNum decimalN) {
 
         // There is no BigDecimal.pow(BigDecimal). We could do:
         // double Math.pow(double delegate.doubleValue(), double n)
@@ -784,6 +794,22 @@ public final class DecimalNum implements Num {
         // use PrecisionNum.multiply(PrecisionNum)
         final BigDecimal result = xpowa.multiply(BigDecimal.valueOf(xpowb));
         return new DecimalNum(result.toString(), this.mathContext);
+    }
+
+    @Serial
+    private void readObject(final ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        if (this.delegate == null) {
+            throw new InvalidObjectException("Delegate BigDecimal must not be null");
+        }
+        if (this.mathContext == null) {
+            throw new InvalidObjectException("MathContext must not be null");
+        }
+    }
+
+    @Serial
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("DecimalNum class data is required");
     }
 
 }

@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -70,6 +71,18 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
         } catch (StackOverflowError e) {
             fail("Recursive indicator should not cause stack overflow with large gap");
         }
+    }
+
+    @Test
+    public void forwardReadAfterDisjointBackwardReadRebuildsTheRecurrence() {
+        BarSeries longSeries = transientSeries(5_300);
+        RunningSum sum = new RunningSum(new ClosePriceIndicator(longSeries));
+        assertNumEquals(5_201.0 * 5_202 / 2, sum.getValue(5_200));
+        // Model the cache's capacity ceiling without millions of input bars.
+        sum.getCache().synchronize(0, 128, -1);
+
+        assertNumEquals(1, sum.getValue(0));
+        assertNumEquals(5_001.0 * 5_002 / 2, sum.getValue(5_000));
     }
 
     @Test
@@ -415,5 +428,55 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
         public int getCountOfUnstableBars() {
             return 0;
         }
+    }
+
+    private BarSeries transientSeries(int barCount) {
+        double[] data = new double[barCount];
+        for (int i = 0; i < barCount; i++) {
+            data[i] = i + 1;
+        }
+        return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+    }
+
+    private static final class RunningSum extends RecursiveCachedIndicator<Num> {
+        private final Indicator<Num> source;
+
+        private RunningSum(Indicator<Num> source) {
+            super(source);
+            this.source = source;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            Num value = source.getValue(index);
+            return index == 0 ? value : getValue(index - 1).plus(value);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    @Test
+    public void transientValuesRecoverAfterAStackOverflowOnTheSameThread() {
+        LegacyReentrantIndicator legacy = new LegacyReentrantIndicator(series, TARGET_INDEX);
+        assertThrows(StackOverflowError.class, () -> legacy.getValue(TARGET_INDEX));
+
+        longRecursiveChainOverTransientSourceRecoversWithoutOverflow();
+    }
+
+    @Test
+    public void longRecursiveChainOverTransientSourceRecoversWithoutOverflow() {
+        int bars = 20_000;
+        BarSeries series = transientSeries(bars);
+        CachedIndicatorTest.TransientFlakySource source = new CachedIndicatorTest.TransientFlakySource(series, 100, 1,
+                true);
+        RunningSum sum = new RunningSum(source);
+        Num expected = new RunningSum(new ClosePriceIndicator(series)).getValue(bars - 1);
+
+        assertTrue(sum.getValue(bars - 1).isNaN());
+        assertNumEquals(expected, sum.getValue(bars - 1));
+        assertNumEquals(new RunningSum(new ClosePriceIndicator(series)).getValue(99), sum.getValue(99));
     }
 }

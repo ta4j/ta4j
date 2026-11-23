@@ -105,7 +105,8 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
         for (int i = start; i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }
-        if (!terminal && snapshot.revision() >= 0 && Num.isFinite(sum) && rollingLock.tryLock()) {
+        if (!terminal && snapshot.revision() >= 0 && Num.isFinite(sum) && !isResultTransient()
+                && rollingLock.tryLock()) {
             try {
                 rollingSum = sum;
                 rollingStart = start;
@@ -153,7 +154,7 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
                     return null;
                 }
             }
-            if (!terminal) {
+            if (!terminal && !isResultTransient()) {
                 rollingSum = sum;
                 rollingStart = start;
                 rollingUpdates++;
@@ -193,6 +194,9 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
     }
 
     private void updatePartialSum(final int index, final Num sum, final BarSeries.BarSeriesChangeSnapshot snapshot) {
+        if (isResultTransient()) {
+            return;
+        }
         previousPartialSum = new PartialSum(index, sum, snapshot);
     }
 

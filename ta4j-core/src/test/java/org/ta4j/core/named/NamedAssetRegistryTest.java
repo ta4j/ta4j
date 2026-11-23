@@ -128,6 +128,30 @@ public class NamedAssetRegistryTest {
     }
 
     @Test
+    public void integerArgumentOverflowReportsLocationAndCause() {
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> registry.toDescriptor(NamedAssetKind.INDICATOR, "SMA(2147483648)"));
+
+        assertThat(exception).hasMessageContaining("indicator.args[0]")
+                .hasMessageContaining("2147483648")
+                .hasCauseInstanceOf(NumberFormatException.class);
+    }
+
+    @Test
+    public void unparseableBarCountCannotBeRenderedAsNamedIndicator() {
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("SMAIndicator")
+                .withParameters(Map.of("barCount", "invalid"))
+                .addComponent(ComponentDescriptor.typeOnly("ClosePriceIndicator"))
+                .build();
+
+        assertThat(registry.toExpression(NamedAssetKind.INDICATOR, descriptor)).isEmpty();
+    }
+
+    @Test
     public void finiteNumberArgumentsAcceptNumbersOutsideDoubleRange() {
         NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
         String authored = "1e309";
@@ -142,19 +166,27 @@ public class NamedAssetRegistryTest {
     }
 
     @Test
-    public void finiteNumberArgumentsRejectExponentsThatExpandToHugePlainText() {
+    public void numericExponentOverflowReportsLocationAndCause() {
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
+        String exponent = Long.toString(Long.MAX_VALUE);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> registry.toDescriptor(NamedAssetKind.RULE, "StopLoss(1e" + exponent + ")"));
+
+        assertThat(exception).hasMessageContaining("rule.args[0]")
+                .hasMessageContaining(exponent)
+                .hasCauseInstanceOf(NumberFormatException.class);
+    }
+
+    @Test
+    public void largeFiniteExponentsStayCompactInDescriptors() {
         NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
 
-        IllegalArgumentException large = assertThrows(IllegalArgumentException.class,
-                () -> registry.toDescriptor(NamedAssetKind.RULE, "Over(ClosePrice,1e999999999)"));
-        IllegalArgumentException tiny = assertThrows(IllegalArgumentException.class,
-                () -> registry.toDescriptor(NamedAssetKind.RULE, "StopLoss(1e-999999999%)"));
+        ComponentDescriptor over = registry.toDescriptor(NamedAssetKind.RULE, "Over(ClosePrice,1e1025)");
+        ComponentDescriptor stopLoss = registry.toDescriptor(NamedAssetKind.RULE, "StopLoss(1e-1025%)");
 
-        assertThat(large).hasMessageContaining("plain digits");
-        assertThat(tiny).hasMessageContaining("plain digits");
-        String limit = "1e" + (NamedAssetRegistry.MAX_PLAIN_NUMBER_DIGITS - 1);
-        assertThat(registry.toDescriptor(NamedAssetKind.RULE, "StopLoss(" + limit + ")").getParameters())
-                .containsEntry("lossPercentage", new BigDecimal(limit).toPlainString());
+        assertThat(over.getComponents().get(1).getParameters()).containsEntry("value", "1E+1025");
+        assertThat(stopLoss.getParameters()).containsEntry("lossPercentage", "1E-1025");
     }
 
     @Test

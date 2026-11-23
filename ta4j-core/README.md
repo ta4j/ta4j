@@ -48,6 +48,29 @@ it cannot recover evicted observations. A source that explicitly resets after a
 head advance also resets the composition. Standalone `StochasticIndicator`
 keeps its existing retained-window reset behavior.
 
+## Choose a return representation
+
+`new PercentageChangeIndicator(close)` reports percentage points. Pass
+`ReturnRepresentation.DECIMAL`, `MULTIPLICATIVE`, or `LOG` to select a decimal
+return, growth factor, or natural log return instead. For a move from 100 to
+110, these outputs are `10`, `0.10`, `1.10`, and `ln(1.10)`, respectively.
+Logarithmic returns use bounded working precision when an unlimited decimal
+context permits rounding.
+Threshold-based constructors still take percentage points regardless of the
+output format. Non-finite inputs or returns that the configured arithmetic
+cannot represent yield `NaN`, including a growth factor that underflows to
+zero. Neither non-finite prices nor unrepresentable threshold comparisons
+replace the baseline. `PercentRankIndicator` still reports a rank from 0 to 100.
+
+`PeriodicalGrowthRateIndicator` counts complete periods in bars, independently
+of the series' numeric precision. Incomplete trailing periods, non-finite
+prices, and unsupported rounding operations yield `NaN`.
+When more bars complete a period, rereading its earlier values reflects
+the completed period.
+`getTotalReturn()` excludes incomplete trailing periods. It returns `NaN`
+if a complete period is undefined or the aggregate underflows or overflows.
+An actual zero growth factor remains zero.
+
 ## Trace rule decisions
 
 - To answer "why did this fire?" or "why did this not fire?", enable SLF4J `TRACE` on the relevant `Rule` or `Strategy` logger and run the normal `isSatisfied(...)`, `shouldEnter(...)`, or `shouldExit(...)` call.
@@ -66,6 +89,12 @@ keeps its existing retained-window reset behavior.
 
 - Precision-first workflows: `DecimalNum`
 - Throughput-first workflows with accepted floating-point tradeoffs: `DoubleNum`
+
+## Combine numeric signals
+
+Use `BinaryOperationIndicator` for same-series arithmetic. The deprecated `CombineIndicator` also requires a shared backing series; matching index ranges on independent series are not sufficient.
+
+Historical indicator reads can evict newer cached values. A backward jump past the cache capacity restarts the cache at the requested bar; read forward when evaluating consecutive bars.
 
 ## Choose the right correlation metric
 

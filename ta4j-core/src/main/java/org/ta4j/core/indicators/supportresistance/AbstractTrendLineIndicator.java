@@ -20,15 +20,47 @@ import static org.ta4j.core.num.NaN.NaN;
  * Abstract base for trend line indicators that rely on previously confirmed
  * swing highs or lows.
  * <p>
- * The indicator computes the best trend line for the latest window of
- * {@code barCount} bars anchored at the series end. Bars that fall outside the
- * look-back window return {@code NaN}. Bars inside the window (including the
- * {@code windowStart}) return the active line when at least two swing points
- * exist; otherwise, they return {@code NaN}. When a new bar arrives, the
- * current trend line is recomputed for the new window. The current segment and
- * tolerance settings can be inspected via {@link #getCurrentSegment()} and
- * {@link #getToleranceSettings()}. By default, searches are capped to the most
- * recent {@value #DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE} swing points and
+ * By default the indicator is <em>end-anchored</em>: it computes the best trend
+ * line for the latest window of {@code barCount} bars anchored at the series
+ * end and reports that one line at every index of the window. Bars that fall
+ * outside the look-back window return {@code NaN}. Bars inside the window
+ * (including the {@code windowStart}) return the active line when at least two
+ * swing points exist; otherwise, they return {@code NaN}. When a new bar
+ * arrives, the current trend line is recomputed for the new window and every
+ * value is recalculated. A value at an earlier index therefore uses swings
+ * confirmed after that index: on a pre-loaded series every index sees the line
+ * fitted with the final bars. That suits charting the current line, not
+ * backtesting.
+ * <p>
+ * A <em>causal</em> indicator (see {@link #isCausal()} and the subclasses'
+ * {@code causal} factories) instead fits, for each index {@code i}, the line of
+ * the {@code barCount}-bar window ending at {@code i} from the swings confirmed
+ * by {@code i}, and reports that line's value at {@code i}. A value depends
+ * only on bars up to its index and does not change when later bars arrive; it
+ * equals the value an end-anchored indicator reports at {@code i} while
+ * {@code i} is the last bar. Each index costs one full candidate search (every
+ * pair of the at most {@code maxSwingPointsForTrendline} swings in its window,
+ * each scored against all of them), where the end-anchored indicator searches
+ * once per series end.
+ * <p>
+ * Like other windowed indicators, a causal indicator counts its window in
+ * {@link #getCountOfUnstableBars()}: the swing source's unstable bars plus
+ * {@code barCount - 1}, because a value reads the window's bars and the bars
+ * that confirm its swings. As with
+ * {@link org.ta4j.core.indicators.averages.SMAIndicator}, earlier indices are
+ * not {@code NaN}: they fit the shorter window that exists, so a strategy that
+ * must not act on them uses that count as its unstable bars. On a bounded
+ * series, when the head advances, values within that many bars of the new first
+ * retained bar are recomputed from the retained bars on the next read, so the
+ * line behind a value never depends on whether it was read before older bars
+ * were removed; later values keep their cached fits. Line coordinates are
+ * measured from the first retained bar, so a value computed after the head
+ * advanced can differ from a cached one in its last digits.
+ * <p>
+ * The current segment and tolerance settings can be inspected via
+ * {@link #getCurrentSegment()} and {@link #getToleranceSettings()}. By default,
+ * searches are capped to the most recent
+ * {@value #DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE} swing points and
  * {@value #DEFAULT_MAX_CANDIDATE_PAIRS} candidate pairs; use the extended
  * constructors to widen the search up to
  * {@value #MAX_SWING_POINTS_FOR_TRENDLINE} swing points and
@@ -81,6 +113,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private final ToleranceSettings toleranceSettings;
     private final int maxSwingPointsForTrendline;
     private final int maxCandidatePairs;
+    private final boolean causal;
 
     private transient volatile TrendLineCandidate cachedSegment;
     private transient int cachedEndIndex = Integer.MIN_VALUE;
@@ -103,7 +136,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings) {
         this(validatedConfig(swingIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
                 averageDeviationWeight, anchorRecencyWeight, toleranceSettings, DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
-                DEFAULT_MAX_CANDIDATE_PAIRS));
+                DEFAULT_MAX_CANDIDATE_PAIRS, false));
     }
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
@@ -112,7 +145,36 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             int maxSwingPointsForTrendline, int maxCandidatePairs) {
         this(validatedConfig(swingIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
                 averageDeviationWeight, anchorRecencyWeight, toleranceSettings, maxSwingPointsForTrendline,
-                maxCandidatePairs));
+                maxCandidatePairs, false));
+    }
+
+    /**
+     * Constructor that also selects end-anchored or causal evaluation.
+     *
+     * @param swingIndicator             swing source of the anchor points
+     * @param barCount                   look-back window in bars
+     * @param side                       support or resistance
+     * @param touchCountWeight           weight for swing point touch count
+     * @param touchesExtremeWeight       weight for extreme point inclusion
+     * @param outsideCountWeight         weight for minimizing outside swings
+     * @param averageDeviationWeight     weight for minimizing average deviation
+     * @param anchorRecencyWeight        weight for anchor point recency
+     * @param toleranceSettings          tolerance settings for touch detection
+     * @param maxSwingPointsForTrendline maximum number of swing points to consider
+     * @param maxCandidatePairs          maximum number of candidate pairs to
+     *                                   evaluate
+     * @param causal                     {@code true} to fit each index from the
+     *                                   bars up to that index only; {@code false}
+     *                                   for the end-anchored line
+     * @since 0.29.1
+     */
+    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
+            double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
+            double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
+            int maxSwingPointsForTrendline, int maxCandidatePairs, boolean causal) {
+        this(validatedConfig(swingIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
+                averageDeviationWeight, anchorRecencyWeight, toleranceSettings, maxSwingPointsForTrendline,
+                maxCandidatePairs, causal));
     }
 
     private AbstractTrendLineIndicator(Config config) {
@@ -125,6 +187,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         this.toleranceSettings = config.toleranceSettings();
         this.maxSwingPointsForTrendline = config.maxSwingPointsForTrendline();
         this.maxCandidatePairs = config.maxCandidatePairs();
+        this.causal = config.causal();
     }
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, TrendLineSide side,
@@ -137,7 +200,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private static Config validatedConfig(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
             double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
             double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
-            int maxSwingPointsForTrendline, int maxCandidatePairs) {
+            int maxSwingPointsForTrendline, int maxCandidatePairs, boolean causal) {
         RecentSwingIndicator validatedSwingIndicator = Objects.requireNonNull(swingIndicator,
                 "swingIndicator must not be null");
         Indicator<Num> priceIndicator = Objects.requireNonNull(validatedSwingIndicator.getPriceIndicator(),
@@ -149,7 +212,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         ToleranceSettings resolvedTolerance = toleranceSettings == null ? ToleranceSettings.defaultSettings()
                 : toleranceSettings;
         return new Config(validatedSwingIndicator, priceIndicator, barCount, validatedSide, weights, resolvedTolerance,
-                maxSwingPointsForTrendline, maxCandidatePairs);
+                maxSwingPointsForTrendline, maxCandidatePairs, causal);
     }
 
     private static Config validatedConfig(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
@@ -165,7 +228,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         ToleranceSettings resolvedTolerance = toleranceSettings == null ? ToleranceSettings.defaultSettings()
                 : toleranceSettings;
         return new Config(validatedSwingIndicator, priceIndicator, barCount, validatedSide, resolvedWeights,
-                resolvedTolerance, maxSwingPointsForTrendline, maxCandidatePairs);
+                resolvedTolerance, maxSwingPointsForTrendline, maxCandidatePairs, false);
     }
 
     private static void validateWindowConfiguration(int barCount, int maxSwingPointsForTrendline,
@@ -190,16 +253,30 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
     private record Config(RecentSwingIndicator swingIndicator, Indicator<Num> priceIndicator, int barCount,
             TrendLineSide side, ScoringWeights scoringWeights, ToleranceSettings toleranceSettings,
-            int maxSwingPointsForTrendline, int maxCandidatePairs) {
+            int maxSwingPointsForTrendline, int maxCandidatePairs, boolean causal) {
     }
 
+    /**
+     * Returns the swing source's unstable bars, plus {@code barCount - 1} for a
+     * causal indicator, whose value at an index reads the whole window ending
+     * there. The head-advance cache floor uses this count, so on a bounded series a
+     * causal value whose window reached removed bars is recomputed from the
+     * retained bars.
+     *
+     * @return the number of unstable bars
+     */
     @Override
     public int getCountOfUnstableBars() {
-        return swingIndicator.getCountOfUnstableBars();
+        final int swingUnstableBars = swingIndicator.getCountOfUnstableBars();
+        return causal ? (int) Math.min(Integer.MAX_VALUE, (long) swingUnstableBars + barCount - 1) : swingUnstableBars;
     }
 
     @Override
     public synchronized Num getValue(int index) {
+        if (causal) {
+            final boolean inSeries = index >= getBarSeries().getBeginIndex() && index <= getBarSeries().getEndIndex();
+            return inSeries ? super.getValue(index) : NaN;
+        }
         refreshCachedState();
         final int beginIndex = getBarSeries().getBeginIndex();
         final int endIndex = getBarSeries().getEndIndex();
@@ -210,17 +287,47 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (index < windowStart) {
             return NaN;
         }
-        ensureGeometries(windowStart, endIndex);
-        ensureCandidate(windowStart, endIndex);
+        try {
+            readNonTransient(windowEnd -> {
+                ensureGeometries(windowStart, windowEnd);
+                ensureCandidate(windowStart, windowEnd);
+                return windowEnd;
+            }, endIndex);
+        } catch (TransientValueException transientRead) {
+            cachedGeometries = List.of();
+            cachedWindowSwings = List.of();
+            cachedSegment = null;
+            return NaN;
+        }
         return super.getValue(index);
     }
 
+    /**
+     * Synchronized like {@link #getValue(int)} because a causal fit refreshes the
+     * shared coordinate base.
+     */
     @Override
-    protected Num calculate(int index) {
-        if (cachedSegment == null) {
+    protected synchronized Num calculate(int index) {
+        final TrendLineCandidate segment = causal ? fitWindowEndingAt(index) : cachedSegment;
+        if (segment == null) {
             return NaN;
         }
-        return cachedSegment.valueAt(index);
+        return segment.valueAt(index);
+    }
+
+    /**
+     * Fits the line of the window ending at {@code windowEnd} from the swings
+     * confirmed by {@code windowEnd}, without touching the end-anchored state.
+     */
+    private TrendLineCandidate fitWindowEndingAt(int windowEnd) {
+        final int windowStart = Math.max(getBarSeries().getBeginIndex(), windowEnd - barCount + 1);
+        final List<Integer> windowSwings = windowedSwings(windowStart, windowEnd,
+                swingIndicator.getSwingPointIndexesUpTo(windowEnd));
+        final List<TrendLineCandidate> geometries = buildGeometries(windowStart, windowEnd, windowSwings);
+        if (geometries.isEmpty()) {
+            return null;
+        }
+        return selectBestCandidate(geometries, windowEnd, resolvePriceAtIndex(windowEnd));
     }
 
     private void refreshCachedState() {
@@ -257,7 +364,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
             cachedSegment = null;
             return;
         }
-        cachedSegment = selectBestCandidate(windowEnd, resolvePriceAtIndex(windowEnd));
+        cachedSegment = selectBestCandidate(cachedGeometries, windowEnd, resolvePriceAtIndex(windowEnd));
         cachedEndIndex = windowEnd;
         cachedWindowStart = windowStart;
     }
@@ -343,12 +450,10 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         return Num.isNaNOrNull(fallback) ? price : fallback;
     }
 
-    private TrendLineCandidate selectBestCandidate(int evaluationIndex, Num priceAtEvaluation) {
-        if (cachedGeometries.isEmpty()) {
-            return null;
-        }
+    private TrendLineCandidate selectBestCandidate(List<TrendLineCandidate> geometries, int evaluationIndex,
+            Num priceAtEvaluation) {
         TrendLineCandidate bestCandidate = null;
-        for (TrendLineCandidate candidate : cachedGeometries) {
+        for (TrendLineCandidate candidate : geometries) {
             final Num projected = candidate.valueAt(evaluationIndex);
             if (Num.isNaNOrNull(projected)) {
                 continue;
@@ -676,24 +781,43 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
      * diagnostics, and understanding why a particular trend line was selected.
      * <p>
      * The segment is computed lazily and cached. It is recalculated when new bars
-     * arrive or when the series is modified.
+     * arrive or when the series is modified. A causal indicator fits it on each
+     * call; it is the line behind the value at the end index.
      *
      * @return the current trend line segment, or {@code null} if no valid trend
      *         line could be computed (e.g., fewer than two swing points exist)
      */
     public synchronized TrendLineSegment getCurrentSegment() {
-        refreshCachedState();
-        final int beginIndex = getBarSeries().getBeginIndex();
-        final int endIndex = getBarSeries().getEndIndex();
-        final int windowStart = Math.max(beginIndex, endIndex - barCount + 1);
-        ensureGeometries(windowStart, endIndex);
-        ensureCandidate(windowStart, endIndex);
-        if (cachedSegment == null) {
+        final TrendLineCandidate segment;
+        if (causal) {
+            segment = fitWindowEndingAt(getBarSeries().getEndIndex());
+        } else {
+            refreshCachedState();
+            final int beginIndex = getBarSeries().getBeginIndex();
+            final int endIndex = getBarSeries().getEndIndex();
+            final int windowStart = Math.max(beginIndex, endIndex - barCount + 1);
+            ensureGeometries(windowStart, endIndex);
+            ensureCandidate(windowStart, endIndex);
+            segment = cachedSegment;
+        }
+        if (segment == null) {
             return null;
         }
-        return new TrendLineSegment(cachedSegment.firstIndex, cachedSegment.secondIndex, cachedSegment.slope,
-                cachedSegment.intercept, cachedSegment.touchCount, cachedSegment.outsideCount,
-                cachedSegment.touchesExtreme, cachedSegment.score, cachedSegment.windowStart, cachedSegment.windowEnd);
+        return new TrendLineSegment(segment.firstIndex, segment.secondIndex, segment.slope, segment.intercept,
+                segment.touchCount, segment.outsideCount, segment.touchesExtreme, segment.score, segment.windowStart,
+                segment.windowEnd);
+    }
+
+    /**
+     * Returns whether this indicator is causal: each index reports the line fitted
+     * from the bars up to that index, instead of the end-anchored line of the
+     * latest window.
+     *
+     * @return {@code true} when values are causal
+     * @since 0.29.1
+     */
+    public boolean isCausal() {
+        return causal;
     }
 
     @Override
@@ -710,6 +834,9 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         parameters.put("toleranceMode", toleranceSettings.mode.name());
         parameters.put("toleranceValue", toleranceSettings.value);
         parameters.put("toleranceMinimum", toleranceSettings.minimumAbsolute);
+        if (causal) {
+            parameters.put("causal", true);
+        }
         final ComponentDescriptor swingDescriptor = swingIndicator.toDescriptor();
 
         return ComponentDescriptor.builder()

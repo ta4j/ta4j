@@ -9,6 +9,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
+import java.io.Serial;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.Duration;
@@ -79,6 +88,22 @@ public class DecimalNumTest {
     private Indicator<Num> lowPrecisionIndicator;
 
     @Test
+    public void floorAndCeilingPreserveLargeValuesAndContext() {
+        MathContext context = new MathContext(50);
+        DecimalNum positive = DecimalNum.valueOf(new BigDecimal("123456789012345678901234567890.9"), context);
+        DecimalNum negative = DecimalNum.valueOf(new BigDecimal("-123456789012345678901234567890.9"), context);
+
+        DecimalNum positiveFloor = (DecimalNum) positive.floor();
+        DecimalNum negativeFloor = (DecimalNum) negative.floor();
+        assertEquals(new BigDecimal("123456789012345678901234567890"), positiveFloor.getDelegate());
+        assertEquals(new BigDecimal("123456789012345678901234567891"), positive.ceil().bigDecimalValue());
+        assertEquals(new BigDecimal("-123456789012345678901234567891"), negativeFloor.getDelegate());
+        assertEquals(new BigDecimal("-123456789012345678901234567890"), negative.ceil().bigDecimalValue());
+        assertEquals(context, positiveFloor.getMathContext());
+        assertEquals(context, negativeFloor.getMathContext());
+    }
+
+    @Test
     public void testPowNaNExponentReturnsNaN() {
         final Num x = DecimalNum.valueOf(2);
         assertTrue(x.pow(NaN.NaN).isNaN());
@@ -126,12 +151,24 @@ public class DecimalNumTest {
     }
 
     @Test
-    public void testPowOverflowExponent() {
-        assertThrows(ArithmeticException.class, () -> {
-            final Num x = DecimalNum.valueOf("2");
-            final Num n = DecimalNum.valueOf(SUPER_PRECISION_LARGE_STRING);
-            assertNumEquals("1", x.pow(n));
-        });
+    public void testPowOverflowExponentReturnsNaN() {
+        final Num two = DecimalNum.valueOf("2");
+        assertTrue(two.pow(DecimalNum.valueOf(SUPER_PRECISION_LARGE_STRING)).isNaN());
+        assertTrue(two.pow(1_000_000_000).isNaN());
+        assertTrue(DecimalNum.valueOf("0").pow(-1).isNaN());
+    }
+
+    @Test
+    public void testRemainderByZeroReturnsNaN() {
+        assertTrue(DecimalNum.valueOf("5").remainder(DecimalNum.valueOf("0")).isNaN());
+    }
+
+    @Test
+    public void testFactoryNumOfNonFiniteReturnsNaN() {
+        NumFactory factory = DecimalNumFactory.getInstance();
+        assertTrue(factory.numOf(Double.NaN).isNaN());
+        assertTrue(factory.numOf(Double.POSITIVE_INFINITY).isNaN());
+        assertTrue(factory.numOf(Float.NEGATIVE_INFINITY).isNaN());
     }
 
     @Test
@@ -537,6 +574,69 @@ public class DecimalNumTest {
         final Num result = large.exp();
         // e^10 ≈ 22026.46579480673 (with default precision rounding)
         assertNumEquals("22026.46579480673", result);
+    }
+
+    @Test
+    public void testSerializationRoundTrip() throws Exception {
+        final DecimalNum original = DecimalNum.valueOf("123.456789");
+        final DecimalNum restored = (DecimalNum) deserialize(serialize(original));
+        assertEquals(original, restored);
+        assertEquals(original.getMathContext(), restored.getMathContext());
+        assertEquals(original.getDelegate(), restored.getDelegate());
+    }
+
+    @Test
+    public void testDeserializationRejectsNullDelegate() {
+        final SerializedDecimalNumState state = new SerializedDecimalNumState(null, MathContext.DECIMAL64);
+        assertThrows(InvalidObjectException.class, () -> restoreState(state));
+    }
+
+    @Test
+    public void testDeserializationRejectsNullMathContext() {
+        final SerializedDecimalNumState state = new SerializedDecimalNumState(BigDecimal.TEN, null);
+        assertThrows(InvalidObjectException.class, () -> restoreState(state));
+    }
+
+    private static byte[] serialize(final Object value) throws IOException {
+        try (ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                ObjectOutputStream out = new ObjectOutputStream(bytes)) {
+            out.writeObject(value);
+            out.flush();
+            return bytes.toByteArray();
+        }
+    }
+
+    private static Object deserialize(final byte[] bytes) throws IOException, ClassNotFoundException {
+        try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
+            return in.readObject();
+        }
+    }
+
+    private static Object restoreState(final SerializedDecimalNumState state) throws Exception {
+        final byte[] bytes = serialize(state);
+        try (ObjectInputStream input = new ObjectInputStream(new ByteArrayInputStream(bytes)) {
+            @Override
+            protected ObjectStreamClass readClassDescriptor() throws IOException, ClassNotFoundException {
+                ObjectStreamClass descriptor = super.readClassDescriptor();
+                return descriptor.getName().equals(SerializedDecimalNumState.class.getName())
+                        ? ObjectStreamClass.lookup(DecimalNum.class)
+                        : descriptor;
+            }
+        }) {
+            return input.readObject();
+        }
+    }
+
+    private static final class SerializedDecimalNumState implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 1L;
+        private final BigDecimal delegate;
+        private final MathContext mathContext;
+
+        private SerializedDecimalNumState(final BigDecimal delegate, final MathContext mathContext) {
+            this.delegate = delegate;
+            this.mathContext = mathContext;
+        }
     }
 
 }

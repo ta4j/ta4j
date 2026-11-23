@@ -137,6 +137,39 @@ class WalkForwardTunerTest {
     }
 
     @Test
+    void tunerIsolatesObjectiveFailureAndContinuesToNextCandidate() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(3)).build();
+        NumFactory numFactory = series.numFactory();
+        WalkForwardConfig config = new WalkForwardConfig(1, 2, 2, 0, 0, 0, 1, List.of(), 1, List.of(), 1L);
+        WalkForwardEngine<Double, Double, Boolean> engine = new WalkForwardEngine<>(
+                new AnchoredExpandingWalkForwardSplitter(),
+                (fullSeries, decisionIndex, context) -> List
+                        .of(new RankedPrediction<>("p", 1, numFactory.numOf(0.5), numFactory.numOf(0.5), context)),
+                (fullSeries, decisionIndex, horizonBars, prediction) -> prediction.payload() > 0.5,
+                List.of(WalkForwardMetric.agreement("agreement", 1, (prediction, outcome) -> outcome)));
+        WalkForwardObjective weighted = WalkForwardObjective.weighted(Map.of("agreement", numFactory.one()), Map.of(),
+                Map.of(), numFactory.zero());
+        WalkForwardObjective objective = (globalMetrics, foldMetrics) -> {
+            if (globalMetrics.get("agreement").isZero()) {
+                throw new IllegalStateException("objective cannot score candidate");
+            }
+            return weighted.evaluate(globalMetrics, foldMetrics);
+        };
+        WalkForwardTuner<Double, Double, Boolean> tuner = new WalkForwardTuner<>(engine, objective, 1, 1,
+                WalkForwardTuner.CalibrationMode.NONE, WalkForwardTuner.CalibrationGate.defaultGate(), 1,
+                outcome -> outcome ? numFactory.one() : numFactory.zero());
+
+        WalkForwardLeaderboard<Double> leaderboard = tuner.tune(series,
+                List.of(new WalkForwardCandidate<>("failed", 0.0), new WalkForwardCandidate<>("healthy", 1.0)), config);
+
+        assertThat(leaderboard.failedCount()).isEqualTo(1);
+        assertThat(leaderboard.evaluatedCount()).isEqualTo(1);
+        assertThat(leaderboard.entries()).hasSize(1);
+        assertThat(leaderboard.entries().getFirst().candidate().id()).isEqualTo("healthy");
+        assertThat(leaderboard.entries().getFirst().globalMetrics()).containsEntry("agreement", numFactory.one());
+    }
+
+    @Test
     void tunerRethrowsProgressCallbackFailures() {
         BarSeries series = new MockBarSeriesBuilder().withData(prices(420)).build();
         NumFactory numFactory = series.numFactory();

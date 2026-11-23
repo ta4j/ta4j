@@ -40,7 +40,8 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 
 ## Numerical safety
 
-- Guard against zero-volume and undefined inputs; return `NaN.NaN` for undefined results.
+- Guard against zero-volume and undefined inputs; return `NaN.NaN` for undefined results and never throw from
+  `getValue` / `calculate` (see the calculation-time failure contract in `org/ta4j/core/AGENTS.md`).
 - `Indicator<Num>` calculations should preserve `Num` through rolling windows, comparisons, accumulation, and return conversion. Limit `doubleValue()` to explicit `DoubleNum` validation, external interop, or unavoidable primitive-only math.
 - Validate both `Num.isNaN()` and raw `Double`/`Float` delegate NaN or infinity where relevant because primitive-backed factories can surface non-finite values.
 - Finite-value checks must not reject finite `DecimalNum` values just because their primitive `double` representation overflows.
@@ -88,9 +89,9 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   floor and are recomputed like any windowed indicator: the floor retains
   a cached suffix while evicting the band below it, and a read inside the
   evicted band is served by iteratively prefilling from the first missing
-  index (`RecursiveCachedIndicator` routes the read through
-  `CachedBuffer.firstMissingIndex`), so only the gap is recomputed and no
-  floor override is needed. Do not override
+  index. `CachedBuffer.recursivePrefillStart` also resumes from the ring's actual
+  upper bound after a disjoint backward read, not the historical indicator
+  high-water mark. Do not override
   `minimumCacheableIndexAfterHeadAdvance(int)` to return
   `Integer.MAX_VALUE` for such indicators: discarding the whole cache on
   head advance would restore an O(`maximumBarCount`) rebuild after every

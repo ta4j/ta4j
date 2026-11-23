@@ -8,11 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.BeforeEach;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -137,5 +140,37 @@ public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Indicator<N
         for (int i = data.getBeginIndex(); i <= data.getEndIndex(); i++) {
             assertNumEquals(indicator.getValue(i), restored.getValue(i));
         }
+    }
+
+    @Test
+    public void transientSourceValueDoesNotCorruptThePartialSum() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0, 0, 0, 0, 0, 1, 0, 0)
+                .build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        AtomicInteger transientReads = new AtomicInteger(1);
+        CachedIndicator<Num> flaky = new CachedIndicator<>(series) {
+            @Override
+            protected Num calculate(int index) {
+                if (index == 5 && transientReads.getAndDecrement() > 0) {
+                    markResultTransient();
+                    return NaN.NaN;
+                }
+                return close.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        RunningTotalIndicator total = new RunningTotalIndicator(new HighestValueIndicator(flaky, 2), 1);
+        RunningTotalIndicator clean = new RunningTotalIndicator(new HighestValueIndicator(close, 2), 1);
+
+        total.getValue(4);
+        total.getValue(5);
+
+        assertNumEquals(clean.getValue(6), total.getValue(6));
+        assertNumEquals(clean.getValue(5), total.getValue(5));
     }
 }

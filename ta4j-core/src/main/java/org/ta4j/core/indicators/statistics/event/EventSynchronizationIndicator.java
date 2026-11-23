@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.statistics.event;
 
+import java.util.ConcurrentModificationException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -86,11 +87,10 @@ import org.ta4j.core.num.Num;
  * needs more than {@value EventSynchronizationSupport#MAX_MATCHING_CELLS} cells
  * — that is, {@code (predicted events + 1) * (reference events + 1) > 8
  * million} — throws {@link IllegalArgumentException} from
- * {@link #getResult(int)} (and therefore from {@link #getValue(int)}), as does
- * a source whose cached event history would exceed the same limit. Sparse event
- * streams stay far below this bound; a dense stream that fires on most bars
- * inside a large window can exceed it, so callers must be prepared for the
- * exception or keep windows sparse enough.
+ * {@link #getResult(int)}, as does a source whose cached event history would
+ * exceed the same limit; {@link #getValue(int)} returns {@code NaN} instead.
+ * Sparse event streams stay far below this bound; a dense stream that fires on
+ * most bars inside a large window can exceed it.
  *
  * <p>
  * Both event caches are invalidated from the series'
@@ -215,7 +215,16 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      */
     @Override
     protected Num calculate(int index) {
-        return getResult(index).f1Score();
+        try {
+            return getResult(index).f1Score();
+        } catch (EventSynchronizationSupport.MatcherCapacityException matcherCapacityExceeded) {
+            return NaN.NaN;
+        } catch (EventSynchronizationSupport.MatcherInvariantException brokenInvariant) {
+            throw brokenInvariant;
+        } catch (RuntimeException retriesExhaustedOrSourceFailed) {
+            markResultTransient();
+            return NaN.NaN;
+        }
     }
 
     /**
@@ -224,11 +233,8 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      *         {@code [index - barCount + 1, index]}, {@code NaN} when the index
      *         lies outside the series' current {@code [getBeginIndex(),
      *         getEndIndex()]} domain or the window reaches below the sources'
-     *         anchored stability boundary
-     * @throws IllegalStateException when an uncached value is evaluated while the
-     *                               sources change repeatedly during event scanning
-     *                               and the bounded retry budget is exhausted (the
-     *                               same contract as {@link #getResult(int)})
+     *         anchored stability boundary, or a {@code NaN} that no cache keeps
+     *         when the sources change on every retry or a source throws
      * @since 0.24.2
      */
     @Override
@@ -277,14 +283,16 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      *
      * @param index the bar index
      * @return the immutable window evaluation result
-     * @throws IllegalArgumentException when a dense window's alignment problem
-     *                                  exceeds the baseline matcher capacity (see
-     *                                  the class documentation)
-     * @throws IllegalStateException    when the series changes so often during
-     *                                  evaluation that the coordinated retry budget
-     *                                  is exhausted; the condition is deliberately
-     *                                  not cached, so the next call re-evaluates
-     *                                  the window
+     * @throws IllegalArgumentException        when a dense window's alignment
+     *                                         problem exceeds the baseline matcher
+     *                                         capacity (see the class
+     *                                         documentation)
+     * @throws ConcurrentModificationException when the series changes so often
+     *                                         during evaluation that the
+     *                                         coordinated retry budget is
+     *                                         exhausted; the condition is
+     *                                         deliberately not cached, so the next
+     *                                         call re-evaluates the window
      * @since 0.24.2
      */
     public Result getResult(int index) {
@@ -354,8 +362,9 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                         // scalar cache: a cached NaN would survive revisions that
                         // never touch this window, permanently masking a window
                         // whose next evaluation could succeed.
-                        throw new IllegalStateException("event synchronization retry budget exhausted at index " + index
-                                + " after repeated series revisions");
+                        throw new ConcurrentModificationException(
+                                "event synchronization retry budget exhausted at index " + index
+                                        + " after repeated series revisions");
                     }
                     // The mutation is accounted for; retry the iteration now
                     // so a single transient mutation still gets its full retry
@@ -368,8 +377,8 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                     break;
                 }
                 if (++revisionChangeRetries > 1) {
-                    throw new IllegalStateException("event synchronization retry budget exhausted at index " + index
-                            + " after repeated series revisions");
+                    throw new ConcurrentModificationException("event synchronization retry budget exhausted at index "
+                            + index + " after repeated series revisions");
                 }
             }
             // Capture both event windows before leaving the coordinated critical
@@ -838,7 +847,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
         }
 
         private void appendEvent(int index, EventSignal signal) {
-            if (signal.isEvent(index)) {
+            if (readNonTransient(signal::isEvent, index)) {
                 // Enforce the reserved-cell budget on every append, not only
                 // when resizing: after the final clamped growth the array still
                 // has room for one more element, which would otherwise slip
@@ -846,9 +855,10 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 // count + 1 cells, so a single stream must stay at or below
                 // the cap minus one events.
                 if ((long) size + 2 > EventSynchronizationSupport.MAX_MATCHING_CELLS) {
-                    throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
-                            + (EventSynchronizationSupport.MAX_MATCHING_CELLS / 1_000_000L)
-                            + " million cells (~128 MB of alignment arrays)");
+                    throw new EventSynchronizationSupport.MatcherCapacityException(
+                            "event count exceeds the baseline matcher capacity of "
+                                    + (EventSynchronizationSupport.MAX_MATCHING_CELLS / 1_000_000L)
+                                    + " million cells (~128 MB of alignment arrays)");
                 }
                 if (size == events.length) {
                     events = Arrays.copyOf(events,

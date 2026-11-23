@@ -387,6 +387,10 @@ LOG.info("Output: {}", strategyJson);
 
 Restore supported components with `Indicator.fromJson(series, json)` and `Strategy.fromJson(series, json)`. See [migration and version compatibility](https://ta4j.github.io/ta4j-wiki/Migration-and-Version-Compatibility.html) before persisting descriptors across releases.
 
+When restoring nested rules, a component that cannot be resolved may rule out a
+constructor. Linkage failures and runtime failures such as
+`NullPointerException` are not treated as constructor mismatches.
+
 </details>
 
 ### Specialized research tools

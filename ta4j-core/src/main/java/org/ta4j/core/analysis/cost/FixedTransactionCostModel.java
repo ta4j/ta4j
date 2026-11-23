@@ -5,6 +5,7 @@ package org.ta4j.core.analysis.cost;
 
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -25,9 +26,23 @@ public class FixedTransactionCostModel implements CostModel {
      * </pre>
      *
      * @param feePerTrade the fixed fee per {@link Trade trade}
+     * @throws IllegalArgumentException if {@code feePerTrade} is not finite
      */
     public FixedTransactionCostModel(double feePerTrade) {
-        this.feePerTrade = feePerTrade;
+        this(new Fee(feePerTrade));
+    }
+
+    private FixedTransactionCostModel(Fee fee) {
+        this.feePerTrade = fee.value();
+    }
+
+    private record Fee(double value) {
+
+        private Fee {
+            if (!Double.isFinite(value)) {
+                throw new IllegalArgumentException("feePerTrade must be finite");
+            }
+        }
     }
 
     /**
@@ -38,6 +53,9 @@ public class FixedTransactionCostModel implements CostModel {
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
+        if (position.getEntry() == null) {
+            return NaN.NaN;
+        }
         final var numFactory = position.getEntry().getPricePerAsset().getNumFactory();
         Num multiplier = numFactory.one();
         if (position.isClosed()) {

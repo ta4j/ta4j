@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.*;
@@ -29,6 +31,14 @@ public class LinearTransactionCostModelTest {
     @BeforeEach
     public void setUp() throws Exception {
         transactionModel = new LinearTransactionCostModel(0.01);
+    }
+
+    @Test
+    public void rejectsNonFiniteFeeAndReturnsNaNForNewPosition() {
+        assertThrows(IllegalArgumentException.class, () -> new LinearTransactionCostModel(Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> new LinearTransactionCostModel(Double.POSITIVE_INFINITY));
+        assertTrue(new LinearTransactionCostModel(0.01).calculate(new Position()).isNaN());
+        assertTrue(new LinearTransactionCostModel(0.01).calculate(new Position(), 3).isNaN());
     }
 
     @Test

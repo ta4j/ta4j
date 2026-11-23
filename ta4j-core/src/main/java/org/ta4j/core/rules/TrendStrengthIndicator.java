@@ -193,7 +193,7 @@ final class TrendStrengthIndicator extends CachedIndicator<Integer> {
 
     private void publish(long version, BarSeriesChangeSnapshot snapshot, int index, int begin, int start, int count,
             int first, Num value) {
-        if (!checkpointLock.tryLock()) {
+        if (isResultTransient() || !checkpointLock.tryLock()) {
             return;
         }
         try {

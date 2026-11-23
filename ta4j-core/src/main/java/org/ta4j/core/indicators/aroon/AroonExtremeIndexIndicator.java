@@ -48,7 +48,7 @@ final class AroonExtremeIndexIndicator extends CachedIndicator<Integer> {
         var changes = series.getBarSeriesChangeSnapshot(expectedRevision);
         boolean cached = expectedIndex >= 0 && isCached(expectedIndex);
         Num previous = terminal && expectedIndex == index - 2 ? source.getValue(index - 1) : null;
-        if (cached && expectedRevision >= 0 && changes.revision() >= 0 && lock.tryLock()) {
+        if (cached && expectedRevision >= 0 && changes.revision() >= 0 && !isResultTransient() && lock.tryLock()) {
             try {
                 if (checkpoint == expectedIndex && revision == expectedRevision
                         && (changes.earliestChangedIndex() < 0 || changes.earliestChangedIndex() > checkpoint)
@@ -91,7 +91,7 @@ final class AroonExtremeIndexIndicator extends CachedIndicator<Integer> {
         add(rebuilt, index, current);
         Entry best = rebuilt.peekFirst();
         int result = best == null ? (current.isEqual(current) ? index : -1) : matchingIndex(best);
-        if (!terminal && sourceRevision >= 0 && lock.tryLock()) {
+        if (!terminal && sourceRevision >= 0 && !isResultTransient() && lock.tryLock()) {
             try {
                 entries = rebuilt;
                 checkpoint = index;

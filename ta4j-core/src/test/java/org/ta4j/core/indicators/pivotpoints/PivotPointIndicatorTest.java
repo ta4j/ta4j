@@ -1421,48 +1421,12 @@ public class PivotPointIndicatorTest {
         assertEquals(NaN, fibS2.getValue(series1Hours.getBeginIndex()));
         assertEquals(NaN, fibS3.getValue(6));
 
-        assertEquals(fibR3.getValue(series1Hours.getEndIndex()),
-                pp.getValue(series1Hours.getEndIndex())
-                        .plus(series1Hours.numFactory()
-                                .one()
-                                .multipliedBy(series1Hours.numFactory()
-                                        .numOf(171.66)
-                                        .minus(series1Hours.numFactory().numOf(161.56)))));
-        assertEquals(fibR2.getValue(series1Hours.getEndIndex()),
-                pp.getValue(series1Hours.getEndIndex())
-                        .plus(series1Hours.numFactory()
-                                .numOf(0.618)
-                                .multipliedBy(series1Hours.numFactory()
-                                        .numOf(171.66)
-                                        .minus(series1Hours.numFactory().numOf(161.56)))));
-        assertEquals(fibR1.getValue(series1Hours.getEndIndex()),
-                pp.getValue(series1Hours.getEndIndex())
-                        .plus(series1Hours.numFactory()
-                                .numOf(0.382)
-                                .multipliedBy(series1Hours.numFactory()
-                                        .numOf(171.66)
-                                        .minus(series1Hours.numFactory().numOf(161.56)))));
-        assertEquals(fibS1.getValue(series1Hours.getEndIndex()),
-                pp.getValue(series1Hours.getEndIndex())
-                        .minus(series1Hours.numFactory()
-                                .numOf(0.382)
-                                .multipliedBy(series1Hours.numFactory()
-                                        .numOf(171.66)
-                                        .minus(series1Hours.numFactory().numOf(161.56)))));
-        assertEquals(fibS2.getValue(series1Hours.getEndIndex()),
-                pp.getValue(series1Hours.getEndIndex())
-                        .minus(series1Hours.numFactory()
-                                .numOf(0.618)
-                                .multipliedBy(series1Hours.numFactory()
-                                        .numOf(171.66)
-                                        .minus(series1Hours.numFactory().numOf(161.56)))));
-        assertEquals(fibS3.getValue(series1Hours.getEndIndex()),
-                pp.getValue(series1Hours.getEndIndex())
-                        .minus(series1Hours.numFactory()
-                                .one()
-                                .multipliedBy(series1Hours.numFactory()
-                                        .numOf(171.66)
-                                        .minus(series1Hours.numFactory().numOf(161.56)))));
+        assertNumEquals(178.11, fibR3.getValue(series1Hours.getEndIndex()));
+        assertNumEquals(174.2518, fibR2.getValue(series1Hours.getEndIndex()));
+        assertNumEquals(171.8682, fibR1.getValue(series1Hours.getEndIndex()));
+        assertNumEquals(164.1518, fibS1.getValue(series1Hours.getEndIndex()));
+        assertNumEquals(161.7682, fibS2.getValue(series1Hours.getEndIndex()));
+        assertNumEquals(157.91, fibS3.getValue(series1Hours.getEndIndex()));
 
         var deMarkpp = new DeMarkPivotPointIndicator(series1Hours, WEEK);
         var deMarkR1 = new DeMarkReversalIndicator(deMarkpp, DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);

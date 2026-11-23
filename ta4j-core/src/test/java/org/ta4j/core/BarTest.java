@@ -260,10 +260,11 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void doesNotThrowNullPointerException() {
-        var bar = new TimeBarBuilder().timePeriod(Duration.ofHours(1)).endTime(endTime).build();
-        // TODO use Junit5: org.junit.jupiter.api.Assertions.assertDoesNotThrow instead:
-        assertNotNull(bar.toString());
+    void describesBarWithoutPrices() {
+        Bar bar = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1)).endTime(endTime).build();
+        String description = assertDoesNotThrow(bar::toString);
+
+        assertTrue(description.contains(endTime.toString()));
     }
 
     @Test

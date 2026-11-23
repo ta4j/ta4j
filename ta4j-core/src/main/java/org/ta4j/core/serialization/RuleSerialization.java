@@ -860,16 +860,24 @@ public final class RuleSerialization {
     }
 
     /**
-     * Tells whether a failure stems from a dependency of the component being
-     * reconstructed that cannot be linked. Unlike a constructor mismatch, no other
-     * constructor can recover from it, and swallowing it would replace the cause
-     * with a misleading "no compatible constructor" error.
+     * Identifies failures that constructor matching must not mistake for a
+     * descriptor mismatch. Reflective constructor calls wrap their target
+     * exceptions, including unexpected failures, in serializer exceptions. Expected
+     * configuration failures still permit another match.
      */
-    private static boolean isLinkageFailure(Throwable failure) {
+    private static boolean isUnrecoverableComponentFailure(Throwable failure) {
         Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Throwable cause = failure; cause != null && visited.add(cause); cause = cause.getCause()) {
             if (cause instanceof LinkageError) {
                 return true;
+            }
+            if (cause instanceof InvocationTargetException invocation) {
+                Throwable target = invocation.getTargetException();
+                if (!(target instanceof IllegalArgumentException) && !(target instanceof IllegalStateException)
+                        && !(target instanceof RuleSerializationException)
+                        && !(target instanceof IndicatorSerializationException)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -899,8 +907,9 @@ public final class RuleSerialization {
                 // 2. Strategy-level components via the parent chain
                 return RuleSerialization.fromDescriptor(context.series, component, context);
             }
-        } catch (Exception e) {
-            if (isLinkageFailure(e)) {
+        } catch (RuleSerializationException | IndicatorSerializationException | IllegalArgumentException
+                | IllegalStateException e) {
+            if (isUnrecoverableComponentFailure(e)) {
                 throw e;
             }
             return null; // Can't resolve, try next match
@@ -912,6 +921,17 @@ public final class RuleSerialization {
             ReconstructionContext context) {
         if (value == null) {
             return null;
+        }
+
+        if (paramType.equals(ChainLink[].class)) {
+            try {
+                return deserializeChainLinks(value, context);
+            } catch (RuleSerializationException | IndicatorSerializationException | IllegalStateException e) {
+                if (isUnrecoverableComponentFailure(e)) {
+                    throw e;
+                }
+                return null;
+            }
         }
 
         try {
@@ -957,17 +977,10 @@ public final class RuleSerialization {
                     return context.resolveNumberArray(paramName, paramType);
                 } else if (componentType.isEnum()) {
                     return context.resolveEnumArray(paramName, componentType);
-                } else if (componentType.equals(ChainLink.class)) {
-                    return deserializeChainLinks(value, context);
                 }
             }
-        } catch (IllegalArgumentException e) {
-            if (paramType.isArray() && paramType.getComponentType().equals(ChainLink.class)) {
-                throw e;
-            }
-            return null; // Can't resolve, try next match
         } catch (Exception e) {
-            if (isLinkageFailure(e)) {
+            if (isUnrecoverableComponentFailure(e)) {
                 throw e;
             }
             return null; // Can't resolve, try next match

@@ -50,12 +50,21 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
      * @param indicator  the {@link Indicator}
      * @param barCount   the time frame
      * @param multiplier the multiplier
+     * @throws IllegalArgumentException if {@code barCount < 1} or
+     *                                  {@code multiplier} is not finite
      */
     protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
-        super(indicator);
+        super(validatedSource(indicator, barCount, multiplier));
         this.indicator = indicator;
         this.barCount = barCount;
         this.multiplier = getBarSeries().numFactory().numOf(multiplier);
+    }
+
+    private static Indicator<Num> validatedSource(Indicator<Num> indicator, int barCount, double multiplier) {
+        if (barCount < 1 || !Double.isFinite(multiplier)) {
+            throw new IllegalArgumentException("barCount must be >= 1 and multiplier finite");
+        }
+        return indicator;
     }
 
     @Override

@@ -91,13 +91,13 @@ class OrderBookIndicatorTest {
     }
 
     @Test
-    void rejectsRemovedNegativeFutureAndClearedIndices() {
+    void removedIndicesAreEmptyAndNegativeOrFutureIndicesAreRejected() {
         BarSeries series = series(1, 2);
         OrderBookIndicator indicator = new OrderBookIndicator(series, List.of(book(1, OrderBook.State.SYNCHRONIZED)),
                 Duration.ofDays(1), BarTime.END);
         indicator.getValue(0);
         series.setMaximumBarCount(1);
-        assertThrows(IndexOutOfBoundsException.class, () -> indicator.getValue(0));
+        assertTrue(indicator.getValue(0).isEmpty());
         assertThrows(IndexOutOfBoundsException.class, () -> indicator.getValue(-1));
         assertThrows(IndexOutOfBoundsException.class, () -> indicator.getValue(2));
         assertEquals(START.plusSeconds(1), indicator.getValue(1).orElseThrow().getMetadata().availableTime());
@@ -123,7 +123,7 @@ class OrderBookIndicatorTest {
 
         assertSame(first, indicator.getValue(0).orElseThrow());
         eviction.getAndSet(null).run();
-        assertThrows(IndexOutOfBoundsException.class, () -> indicator.getValue(0));
+        assertTrue(indicator.getValue(0).isEmpty());
         assertSame(future, indicator.getValue(1).orElseThrow());
     }
 

@@ -24,6 +24,10 @@
 **Learning:** Serializable classes extending other serializable classes that rely on `readObject()` to initialize transient invariants must implement `readObjectNoData()` to reject streams missing expected class data.
 **Prevention:** Implement `@Serial private void readObjectNoData() throws InvalidObjectException` on serializable subclasses to reject streams lacking class data.
 
+## 2026-11-02 - Java Deserialization Invariant Validation for DecimalNum and DecimalNumFactory
+**Vulnerability:** `DecimalNum` and `DecimalNumFactory` implement `Serializable` (via `Num` and `NumFactory`) without defining `readObject`. Serialized payloads with null `delegate`, null `mathContext`, or null pre-cached constants could instantiate uninitialized numeric instances, leading to unexpected `NullPointerException` during arithmetic calculations or indicators evaluation.
+**Learning:** Core value types and numeric factories must enforce non-nullness of delegates, math contexts, and pre-cached constants during deserialization to maintain the immutable value contract across Java serialization streams.
+**Prevention:** Always implement `readObject` with explicit non-null checks throwing `InvalidObjectException` on `Serializable` numeric types and factories.
 ## 2026-10-29 - Invariant Validation in BarBuilderFactories and BarBuilders
 **Vulnerability:** `TickBarBuilderFactory`, `VolumeBarBuilderFactory`, and `AmountBarBuilderFactory` did not validate constructor parameters or deserialized object states, allowing zero/negative thresholds or null policies to cause arithmetic division-by-zero errors or invalid bar calculations when ingesting trade data.
 **Learning:** `BarBuilderFactory` implementations are `Serializable` components used by `BarSeries`. Because deserialization restores primitive fields directly without constructor checks, factory thresholds must be validated in `readObject()` throwing `InvalidObjectException`.

@@ -80,6 +80,9 @@ public class MutualInformationIndicator extends CachedIndicator<Num> {
         NumFactory numFactory = getBarSeries().numFactory();
         BinMapper firstMapper = BinMapper.from(window.firstValues(), window.sampleCount(), binCount);
         BinMapper secondMapper = BinMapper.from(window.secondValues(), window.sampleCount(), binCount);
+        if (firstMapper == null || secondMapper == null) {
+            return NaN.NaN;
+        }
         if (firstMapper.constant || secondMapper.constant) {
             return numFactory.zero();
         }
@@ -147,8 +150,8 @@ public class MutualInformationIndicator extends CachedIndicator<Num> {
             if (minimum.compareTo(maximum) == 0) {
                 return new BinMapper(minimum, minimum.getNumFactory().zero(), binCount, true);
             }
-            return new BinMapper(minimum, maximum.minus(minimum).dividedBy(minimum.getNumFactory().numOf(binCount)),
-                    binCount, false);
+            Num width = maximum.minus(minimum).dividedBy(minimum.getNumFactory().numOf(binCount));
+            return !Num.isFinite(width) || width.isZero() ? null : new BinMapper(minimum, width, binCount, false);
         }
 
         int bin(Num value) {

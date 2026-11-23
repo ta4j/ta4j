@@ -16,7 +16,6 @@ import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
-import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.criteria.Statistics;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;

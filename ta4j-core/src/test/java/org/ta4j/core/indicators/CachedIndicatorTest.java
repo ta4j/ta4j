@@ -3594,4 +3594,96 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             return calculations.get();
         }
     }
+
+    private BarSeries transientSeries(int barCount) {
+        double[] data = new double[barCount];
+        for (int i = 0; i < barCount; i++) {
+            data[i] = i + 1;
+        }
+        return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+    }
+
+    static final class TransientFlakySource extends CachedIndicator<Num> {
+        private final ClosePriceIndicator close;
+        private final int failAt;
+        private final AtomicInteger failures;
+        private final AtomicInteger calculations = new AtomicInteger();
+        private final boolean transientFailure;
+
+        TransientFlakySource(BarSeries series, int failAt, int failures, boolean transientFailure) {
+            super(series);
+            this.close = new ClosePriceIndicator(series);
+            this.failAt = failAt;
+            this.failures = new AtomicInteger(failures);
+            this.transientFailure = transientFailure;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            if (index == failAt && failures.getAndDecrement() > 0) {
+                if (transientFailure) {
+                    markResultTransient();
+                }
+                return NaN.NaN;
+            }
+            return close.getValue(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class Positive extends CachedIndicator<Boolean> {
+        private final Indicator<Num> source;
+
+        private Positive(Indicator<Num> source) {
+            super(source);
+            this.source = source;
+        }
+
+        @Override
+        protected Boolean calculate(int index) {
+            Num value = source.getValue(index);
+            return !value.isNaN() && value.isPositive();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    @Test
+    public void transientNaNIsNotCachedBySourceOrWrapper() {
+        BarSeries series = transientSeries(20);
+        TransientFlakySource source = new TransientFlakySource(series, 5, 1, true);
+        SMAIndicator sma = new SMAIndicator(source, 3);
+        Num expected = new SMAIndicator(new ClosePriceIndicator(series), 3).getValue(7);
+
+        assertTrue(sma.getValue(7).isNaN());
+        assertNumEquals(expected, sma.getValue(7));
+        assertNumEquals(6, source.getValue(5));
+    }
+
+    @Test
+    public void deterministicNaNStaysCached() {
+        BarSeries series = transientSeries(20);
+        TransientFlakySource source = new TransientFlakySource(series, 5, 1, false);
+
+        assertTrue(source.getValue(5).isNaN());
+        assertTrue(source.getValue(5).isNaN());
+        assertEquals(1, source.calculations.get());
+    }
+
+    @Test
+    public void nonNumWrapperReturnsItsOwnValueAndRecovers() {
+        BarSeries series = transientSeries(20);
+        Positive positive = new Positive(new TransientFlakySource(series, 5, 1, true));
+
+        assertFalse(positive.getValue(5));
+        assertTrue(positive.getValue(5));
+    }
 }
