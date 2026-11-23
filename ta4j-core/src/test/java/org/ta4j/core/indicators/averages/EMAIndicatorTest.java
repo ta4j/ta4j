@@ -791,4 +791,31 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             }
         }
     }
+
+    @Test
+    @org.junit.jupiter.api.Timeout(value = 30, unit = TimeUnit.SECONDS)
+    public void headThatNeverSettlesReturnsUncachedNaNInsteadOfSpinningForever() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
+        AtomicBoolean churn = new AtomicBoolean(true);
+        // Simulates a writer that prunes between every pair of reads: the begin
+        // index alternates, so no computation ever sees a stable head.
+        BarSeries churning = (BarSeries) java.lang.reflect.Proxy.newProxyInstance(BarSeries.class.getClassLoader(),
+                new Class<?>[] { BarSeries.class }, (proxy, method, arguments) -> {
+                    if (churn.get() && method.getName().equals("getBeginIndex")) {
+                        return reads.getAndIncrement() % 2;
+                    }
+                    try {
+                        return method.invoke(source, arguments);
+                    } catch (java.lang.reflect.InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                });
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(churning), 2);
+
+        assertTrue(ema.getValue(3).isNaN());
+
+        churn.set(false);
+        assertNumEquals(new EMAIndicator(new ClosePriceIndicator(source), 2).getValue(3), ema.getValue(3));
+    }
 }

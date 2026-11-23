@@ -134,7 +134,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         if (this.oneMinusDecay.isEqual(factory.one())) {
             this.decay = factory.numOf(rawDecay);
             BigDecimal exactDecay = this.decay.isZero() ? rawDecay : ExactDecimalArithmetic.exactValueOf(this.decay);
-            this.exactOneMinusDecay = BigDecimal.ONE.subtract(exactDecay);
+            this.exactOneMinusDecay = BigDecimal.ONE.subtract(exactDecay, ExactDecimalArithmetic.RECOVERY_CONTEXT);
         } else {
             this.decay = factory.one().minus(this.oneMinusDecay);
             this.exactOneMinusDecay = ExactDecimalArithmetic.exactValueOf(this.oneMinusDecay);
@@ -179,7 +179,10 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     public synchronized Num getValue(int index) {
         BarSeries series = getBarSeries();
-        while (true) {
+        for (int attempt = 0;; attempt++) {
+            if (seriesChangeRetriesExhausted(attempt)) {
+                return NaN.NaN;
+            }
             int removedBarsCount = series.getRemovedBarsCount();
             long barHistoryRevision = series.getBarHistoryRevision();
             // Advance both moments before this bar can leave the source. Otherwise
@@ -195,7 +198,10 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        while (true) {
+        for (int attempt = 0;; attempt++) {
+            if (seriesChangeRetriesExhausted(attempt)) {
+                return NaN.NaN;
+            }
             int beginIndex = getBarSeries().getBeginIndex();
             Num value = calculateRetained(index, beginIndex);
             if (getBarSeries().getBeginIndex() == beginIndex) {
@@ -275,7 +281,8 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // recovery matters.
             updatedVariance = ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
                     ExactDecimalArithmetic.exactValueOf(previousVariance),
-                    ExactDecimalArithmetic.exactValueOf(deviation).pow(2), exactOneMinusDecay);
+                    ExactDecimalArithmetic.exactValueOf(deviation).pow(2, ExactDecimalArithmetic.RECOVERY_CONTEXT),
+                    exactOneMinusDecay);
         }
         return Num.isFinite(deviation) && Num.isFinite(updatedVariance) ? updatedVariance : NaN.NaN;
     }
@@ -385,7 +392,8 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         // left by opposite-sign cancellation.
         BigDecimal exactSum = BigDecimal.ZERO;
         for (Num value : windowValues) {
-            exactSum = exactSum.add(ExactDecimalArithmetic.exactValueOf(value));
+            exactSum = exactSum.add(ExactDecimalArithmetic.exactValueOf(value),
+                    ExactDecimalArithmetic.RECOVERY_CONTEXT);
         }
         BigDecimal exactMean = exactSum.divide(BigDecimal.valueOf(windowLength), MathContext.DECIMAL128);
         return factory.numOf(exactMean);
@@ -480,7 +488,10 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         private synchronized Num readValue(int index) {
-            while (true) {
+            for (int attempt = 0;; attempt++) {
+                if (seriesChangeRetriesExhausted(attempt)) {
+                    return NaN.NaN;
+                }
                 int beginIndex = getBarSeries().getBeginIndex();
                 Num value = super.getValue(index);
                 if (getBarSeries().getBeginIndex() == beginIndex) {
@@ -491,7 +502,10 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
 
         @Override
         protected Num calculate(int index) {
-            while (true) {
+            for (int attempt = 0;; attempt++) {
+                if (seriesChangeRetriesExhausted(attempt)) {
+                    return NaN.NaN;
+                }
                 int beginIndex = getBarSeries().getBeginIndex();
                 Num value = calculateRetained(index, beginIndex);
                 if (getBarSeries().getBeginIndex() == beginIndex) {

@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis.elliott.swing;
 
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Objects;
 
@@ -23,6 +24,28 @@ record SwingHistorySnapshot(long revision, int beginIndex, int endIndex, Bar fir
 
     SwingHistorySnapshot {
         bars = List.copyOf(bars);
+    }
+
+    /**
+     * Detection attempts a query makes before giving up on a series whose history
+     * keeps changing while the detector evaluates it. A feed that mutates the
+     * series continuously would otherwise keep the query retrying forever.
+     */
+    static final int MAX_DETECTION_ATTEMPTS = 8;
+
+    /**
+     * Fails a query whose history changed during the last allowed attempt.
+     *
+     * @param attempt one-based attempt that just observed a history change
+     * @param cause   evaluation failure seen during that attempt, or {@code null}
+     * @throws ConcurrentModificationException once {@code attempt} reaches
+     *                                         {@link #MAX_DETECTION_ATTEMPTS}
+     */
+    static void requireAnotherAttempt(final int attempt, final RuntimeException cause) {
+        if (attempt >= MAX_DETECTION_ATTEMPTS) {
+            throw new ConcurrentModificationException("Series history changed during each of " + MAX_DETECTION_ATTEMPTS
+                    + " swing detection attempts; retry once the series is stable", cause);
+        }
     }
 
     static SwingHistorySnapshot capture(final BarSeries series) {

@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.Serial;
-import java.util.IdentityHashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -26,7 +24,7 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     private final int volumeThreshold;
     private final RemainderCarryOverPolicy carryOverPolicy;
     private final boolean realtimeBars;
-    private transient Map<BarSeries, VolumeBarBuilder> barBuilders;
+    private transient SeriesBuilderCache<VolumeBarBuilder> barBuilders;
 
     /**
      * Constructor.
@@ -104,18 +102,19 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     @Override
     public synchronized BarBuilder createBarBuilder(final BarSeries series) {
         final BarSeries requestedSeries = Objects.requireNonNull(series);
-        return builders().computeIfAbsent(requestedSeries, this::createBoundBuilder);
+        return builders().get(requestedSeries, this::createBoundBuilder);
     }
 
-    private Map<BarSeries, VolumeBarBuilder> builders() {
+    // Package-private for tests.
+    SeriesBuilderCache<VolumeBarBuilder> builders() {
         if (barBuilders == null) {
-            barBuilders = new IdentityHashMap<>();
+            barBuilders = new SeriesBuilderCache<>();
         }
         return barBuilders;
     }
 
     private VolumeBarBuilder createBoundBuilder(final BarSeries series) {
         return new VolumeBarBuilder(series.numFactory(), this.volumeThreshold, this.realtimeBars, this.carryOverPolicy)
-                .bindTo(series);
+                .bindWeaklyTo(series);
     }
 }

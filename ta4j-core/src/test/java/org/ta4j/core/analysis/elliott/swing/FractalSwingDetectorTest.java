@@ -497,6 +497,21 @@ class FractalSwingDetectorTest {
     }
 
     @Test
+    void ascendingReplayStaysLinearWhenEveryBarIsNonpublishing() {
+        final CountedZigZagSeries small = new CountedZigZagSeries(1_200, UntrackedBar::new, true);
+        final FractalSwingDetector smallDetector = new FractalSwingDetector(2);
+        final long smallReads = replayAscending(smallDetector, small);
+        assertThat(smallDetector.detectPivots(small.series(), small.seriesEnd()))
+                .isEqualTo(new FractalSwingDetector(2).detectPivots(small.series(), small.seriesEnd()));
+
+        final CountedZigZagSeries large = new CountedZigZagSeries(2_400, UntrackedBar::new, true);
+        final long largeReads = replayAscending(new FractalSwingDetector(2), large);
+
+        // Revalidating every custom bar on every query would quadruple the reads.
+        assertThat(largeReads).isLessThan(3 * smallReads);
+    }
+
+    @Test
     void staggeredSameIndexSidesReconcileInsteadOfAppendingZeroLengthSwings() {
         // With window 1 the LOW@1 (price 0) confirms at bar 2 while the HIGH
         // plateau [1..2] only completes at bar 3, so the opposite-type side
@@ -869,6 +884,11 @@ class FractalSwingDetectorTest {
         }
 
         private CountedZigZagSeries(final int barCount, final Function<BaseBar, Bar> customBar) {
+            this(barCount, customBar, false);
+        }
+
+        private CountedZigZagSeries(final int barCount, final Function<BaseBar, Bar> customBar,
+                final boolean everyBar) {
             final NumFactory factory = series.numFactory();
             double price = 100;
             int direction = 1;
@@ -882,7 +902,7 @@ class FractalSwingDetectorTest {
                 final BaseBar baseBar = new BaseBar(Duration.ofMinutes(1), beginTime,
                         beginTime.plus(Duration.ofMinutes(1)), value, value, value, value, factory.one(),
                         factory.zero(), 0L);
-                series.addBar(index == 1 && customBar != null ? customBar.apply(baseBar) : baseBar);
+                series.addBar((everyBar || index == 1) && customBar != null ? customBar.apply(baseBar) : baseBar);
             }
         }
 

@@ -45,6 +45,12 @@ class FileSystemChartStorageTest {
     }
 
     @Test
+    void testSaveRejectsOversizedImageBeforeWriting() {
+        assertThrows(IllegalArgumentException.class, () -> storage.save(chart, barSeries, "Huge", 100_000, 100_000));
+        assertThrows(IllegalArgumentException.class, () -> storage.save(chart, barSeries, "Empty", 0, 600));
+    }
+
+    @Test
     void testSaveWithValidInput() {
         Optional<Path> result = storage.save(chart, barSeries, "Test Strategy", 800, 600);
 

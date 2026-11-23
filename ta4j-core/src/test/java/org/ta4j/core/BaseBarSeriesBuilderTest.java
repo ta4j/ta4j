@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -164,6 +165,35 @@ public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, N
                 () -> new BaseBarSeriesBuilder().withBars(List.of(first, second))
                         .withBeginIndex(Integer.MAX_VALUE)
                         .build());
+    }
+
+    @Test
+    public void testSubSeriesOfSeriesEndingAtIntegerMaximumDoesNotWrap() {
+        final NumFactory factory = DoubleNumFactory.getInstance();
+        final Bar first = new TimeBarBuilder(factory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:01:00Z"))
+                .closePrice(1)
+                .build();
+        final Bar second = new TimeBarBuilder(factory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:02:00Z"))
+                .closePrice(2)
+                .build();
+        BaseBarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first, second))
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+        ConcurrentBarSeries concurrent = new ConcurrentBarSeriesBuilder().withBars(List.of(first, second))
+                .withNumFactory(factory)
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+
+        BarSeries head = series.getSubSeries(Integer.MAX_VALUE - 1, Integer.MAX_VALUE);
+        BarSeries concurrentHead = concurrent.getSubSeries(Integer.MAX_VALUE - 1, Integer.MAX_VALUE);
+
+        assertEquals(1, head.getBarCount());
+        assertEquals(Integer.MAX_VALUE - 1, head.getBeginIndex());
+        assertSame(first, head.getBar(Integer.MAX_VALUE - 1));
+        assertEquals(1, concurrentHead.getBarCount());
+        assertEquals(Integer.MAX_VALUE - 1, concurrentHead.getBeginIndex());
     }
 
     @Test

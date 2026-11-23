@@ -243,6 +243,15 @@ public class TickBarBuilder implements BarBuilder {
     }
 
     /**
+     * Binds like {@link #bindTo(BarSeries)} without keeping the series reachable,
+     * for builders cached by a factory that may outlive the series.
+     */
+    TickBarBuilder bindWeaklyTo(final BarSeries barSeries) {
+        this.barAppender = SeriesBuilderCache.weakAppender(barSeries);
+        return this;
+    }
+
+    /**
      * Ingests a trade into the current tick bar and appends the bar once the tick
      * threshold is met.
      *
@@ -320,7 +329,7 @@ public class TickBarBuilder implements BarBuilder {
         }
     }
 
-    private Consumer<Bar> boundBarAppender() {
+    Consumer<Bar> boundBarAppender() {
         return Objects.requireNonNull(barAppender, "barSeries");
     }
 

@@ -68,6 +68,14 @@ import org.ta4j.core.num.Num;
 public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /**
+     * Attempts an optimistic recomputation makes before it gives up on a series
+     * whose head or history keeps changing underneath it.
+     *
+     * @since 0.29.1
+     */
+    protected static final int MAX_SERIES_CHANGE_RETRIES = 1_000;
+
+    /**
      * Maximum time (in milliseconds) to wait for a concurrent last-bar computation
      * to complete before computing independently. This prevents indefinite hangs if
      * the owning thread dies or encounters an unexpected issue.
@@ -529,6 +537,39 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
         log.warn("{}: maximumBarCount {} is smaller than unstable bars {}; continued values are not blocked",
                 getClass().getName(), maximumBarCount, unstableBars);
+    }
+
+    /**
+     * Bounds an optimistic retry loop that recomputes a value when the series head
+     * or history changes during the computation. Concurrent pruning that never
+     * pauses would otherwise keep the reader spinning forever.
+     *
+     * <p>
+     * On exhaustion the caller returns its unavailable value ({@code NaN} for a
+     * {@code Num}). When called inside a cached calculation, that calculation is
+     * marked transient (see {@link #markResultTransient()}) so the unavailable
+     * value is not cached and a later stable read recomputes.
+     *
+     * @param attempt zero-based number of the attempt about to start
+     * @return {@code true} once {@link #MAX_SERIES_CHANGE_RETRIES} attempts have
+     *         been made
+     * @since 0.29.1
+     */
+    protected static boolean seriesChangeRetriesExhausted(int attempt) {
+        TransientScope scope = TRANSIENT_SCOPE.get();
+        if (scope.depth == 0 && attempt == 0) {
+            scope.retriesExhausted = false;
+        }
+        if (attempt < MAX_SERIES_CHANGE_RETRIES && !scope.retriesExhausted) {
+            return false;
+        }
+        // Enclosing retry loops give up too; otherwise nested budgets multiply.
+        scope.retriesExhausted = true;
+        // Outside any evaluation there is no cache store to suppress.
+        if (scope.depth > 0) {
+            scope.tainted = true;
+        }
+        return true;
     }
 
     /**
@@ -1714,6 +1755,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     static final class TransientScope {
         private int depth;
         private boolean tainted;
+        private boolean retriesExhausted;
         private Map<CachedIndicator<?>, Map<Integer, Object>> values;
         // Entries in creation order; depths never decrease along the list because
         // deeper entries are dropped when their read returns. Dropping by depth
@@ -1768,6 +1810,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     static TransientScope enterTransientScope() {
         TransientScope scope = TRANSIENT_SCOPE.get();
+        if (scope.depth == 0) {
+            scope.retriesExhausted = false;
+        }
         scope.depth++;
         return scope;
     }

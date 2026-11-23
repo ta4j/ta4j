@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.bars.TimeBarBuilder;
@@ -31,6 +33,8 @@ public class DurationBarAggregator implements BarAggregator {
      *
      * @param timePeriod the target time period that aggregated bars should have
      */
+    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Rejecting a non-positive period is a "
+            + "documented fail-fast constructor contract; the aggregator holds no resources to leak.")
     public DurationBarAggregator(Duration timePeriod) {
         this(timePeriod, true);
     }
@@ -41,9 +45,12 @@ public class DurationBarAggregator implements BarAggregator {
      * @param timePeriod    the target time period that aggregated bars should have
      * @param onlyFinalBars if true, only bars with elapsed time (final bars) will
      *                      be created, otherwise also pending bars
+     * @throws IllegalArgumentException if {@code timePeriod} is not positive
      */
+    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Rejecting a non-positive period is a "
+            + "documented fail-fast constructor contract; the aggregator holds no resources to leak.")
     public DurationBarAggregator(Duration timePeriod, boolean onlyFinalBars) {
-        this.timePeriod = timePeriod;
+        this.timePeriod = requirePositive(timePeriod, "timePeriod");
         this.onlyFinalBars = onlyFinalBars;
     }
 
@@ -52,7 +59,8 @@ public class DurationBarAggregator implements BarAggregator {
      *
      * @param bars the actual bars with actual {@code timePeriod}
      * @return the aggregated bars with new {@link #timePeriod}
-     * @throws IllegalArgumentException if {@link #timePeriod} is not a
+     * @throws IllegalArgumentException if the source bars have no positive time
+     *                                  period, or {@link #timePeriod} is not a
      *                                  multiplication of actual {@code timePeriod}
      */
     @Override
@@ -63,18 +71,12 @@ public class DurationBarAggregator implements BarAggregator {
         }
         final Bar firstBar = bars.getFirst();
         // get the actual time period
-        final Duration actualDur = firstBar.getTimePeriod();
-        // Compare complete durations so fractional seconds are neither truncated
-        // nor divided by zero; BigInteger also avoids nanosecond conversion overflow.
-        final BigInteger nanosPerSecond = BigInteger.valueOf(1_000_000_000L);
-        final BigInteger targetNanos = BigInteger.valueOf(timePeriod.getSeconds())
-                .multiply(nanosPerSecond)
-                .add(BigInteger.valueOf(timePeriod.getNano()));
-        final BigInteger sourceNanos = BigInteger.valueOf(actualDur.getSeconds())
-                .multiply(nanosPerSecond)
-                .add(BigInteger.valueOf(actualDur.getNano()));
-        if (sourceNanos.signum() <= 0 || targetNanos.signum() <= 0
-                || !targetNanos.remainder(sourceNanos).equals(BigInteger.ZERO)) {
+        final Duration actualDur = requirePositive(firstBar.getTimePeriod(), "source bar timePeriod");
+        // check if new timePeriod is a multiplication of actual time period;
+        // compare whole durations so sub-second bars neither divide by zero nor
+        // pass on their truncated seconds alone
+        final boolean isMultiplication = isMultipleOf(timePeriod, actualDur);
+        if (!isMultiplication) {
             throw new IllegalArgumentException(
                     "Cannot aggregate bars: the new timePeriod must be a multiplication of the actual timePeriod.");
         }
@@ -139,6 +141,24 @@ public class DurationBarAggregator implements BarAggregator {
         }
 
         return aggregated;
+    }
+
+    private static Duration requirePositive(final Duration duration, final String name) {
+        if (duration == null || duration.isNegative() || duration.isZero()) {
+            throw new IllegalArgumentException(name + " must be a positive duration: " + duration);
+        }
+        return duration;
+    }
+
+    private static boolean isMultipleOf(final Duration target, final Duration source) {
+        final BigInteger targetNanos = toNanos(target);
+        return targetNanos.mod(toNanos(source)).signum() == 0;
+    }
+
+    private static BigInteger toNanos(final Duration duration) {
+        return BigInteger.valueOf(duration.getSeconds())
+                .multiply(BigInteger.valueOf(1_000_000_000L))
+                .add(BigInteger.valueOf(duration.getNano()));
     }
 
     private boolean beginTimesInDuration(Instant startTime, Instant endTime) {

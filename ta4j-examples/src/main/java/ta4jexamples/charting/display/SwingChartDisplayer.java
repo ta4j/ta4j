@@ -13,6 +13,8 @@ import org.jfree.data.xy.XYDataset;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import ta4jexamples.charting.ChartImageSize;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -291,6 +293,7 @@ public final class SwingChartDisplayer implements ChartDisplayer {
             if (preferredSize.width <= 0 || preferredSize.height <= 0) {
                 throw new IllegalArgumentException("Preferred display size must be positive");
             }
+            ChartImageSize.validate(preferredSize.width, preferredSize.height);
             return new Dimension(preferredSize);
         }
 

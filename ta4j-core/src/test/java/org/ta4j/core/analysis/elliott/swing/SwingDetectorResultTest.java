@@ -6,6 +6,7 @@ package org.ta4j.core.analysis.elliott.swing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,24 @@ class SwingDetectorResultTest {
 
         assertThatThrownBy(() -> new SwingDetectorResult(pivots, swings)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("inconsistent");
+    }
+
+    @Test
+    void mismatchMessageStaysSmallForLargeChains() {
+        int count = 20_000;
+        ArrayList<ElliottSwing> swings = new ArrayList<>(count);
+        ArrayList<SwingPivot> pivots = new ArrayList<>(count + 1);
+        pivots.add(pivot(0, 100, SwingPivotType.LOW));
+        for (int i = 0; i < count; i++) {
+            boolean rising = i % 2 == 0;
+            swings.add(swing(i, i + 1, rising ? 100 : 110, rising ? 110 : 100));
+            pivots.add(pivot(i + 1, rising ? 110 : 100, rising ? SwingPivotType.HIGH : SwingPivotType.LOW));
+        }
+        pivots.set(count, pivot(count, 999, pivots.get(count).type()));
+
+        assertThatThrownBy(() -> new SwingDetectorResult(pivots, swings)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("pivot " + count)
+                .satisfies(error -> assertThat(error.getMessage()).hasSizeLessThan(400));
     }
 
     @Test

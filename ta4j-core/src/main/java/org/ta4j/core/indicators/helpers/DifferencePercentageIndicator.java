@@ -50,6 +50,8 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     private Num lastNotification;
     private transient long notificationVersion;
 
+    private final transient NotificationReplay replay;
+
     /**
      * Constructor to get the percentage difference from the previous value.
      *
@@ -81,6 +83,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     public DifferencePercentageIndicator(Indicator<Num> indicator, Num percentageThreshold) {
         super(indicator);
         this.indicator = indicator;
+        this.replay = new NotificationReplay(indicator);
         this.percentageThreshold = percentageThreshold;
     }
 
@@ -90,6 +93,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
             lastNotification = null;
             notificationVersion++;
         }
+        replay.reset();
         return super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
     }
 
@@ -113,9 +117,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
                 version = notificationVersion;
             }
             try {
-                for (int i = beginIndex; i < index; i++) {
-                    notification = nextNotification(notification, i);
-                }
+                notification = replay.replay(notification, beginIndex, index, this::nextNotification);
             } catch (TransientValueException transientRead) {
                 markResultTransient();
                 return NaN.NaN;

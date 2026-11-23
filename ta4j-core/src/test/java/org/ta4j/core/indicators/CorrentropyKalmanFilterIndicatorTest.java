@@ -360,6 +360,14 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void iterationBudgetIsBoundedForDescriptorReconstruction() {
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> filter(closePrice, 1e-3, 1e-2, 2, CorrentropyKalmanFilterIndicator.MAX_ITERATIONS + 1));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> filter(closePrice, 1e-3, 1e-2, 2, 0));
+        Assertions.assertNotNull(filter(closePrice, 1e-3, 1e-2, 2, CorrentropyKalmanFilterIndicator.MAX_ITERATIONS));
+    }
+
+    @Test
     public void rejectsNoiseIndicatorsOnDifferentSeries() {
         BarSeries otherSeries = seriesOf(1, 2, 3);
         Assertions.assertThrows(IllegalArgumentException.class, () -> new CorrentropyKalmanFilterIndicator(closePrice,

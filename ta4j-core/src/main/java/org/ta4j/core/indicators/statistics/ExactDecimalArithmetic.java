@@ -4,6 +4,8 @@
 package org.ta4j.core.indicators.statistics;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -35,6 +37,15 @@ import org.ta4j.core.num.NumFactory;
  * consults a primitive delegate.
  */
 final class ExactDecimalArithmetic {
+
+    /**
+     * Working precision of the "exact" recovery arithmetic. Every product and sum
+     * of two double expansions fits in fewer digits, so primitive-backed recovery
+     * stays exact; decimal operands with extreme exponents (for example
+     * {@code 1e-999999999}) are rounded here instead of expanding to millions of
+     * digits.
+     */
+    static final MathContext RECOVERY_CONTEXT = new MathContext(10_000, RoundingMode.HALF_EVEN);
 
     private ExactDecimalArithmetic() {
         // Utility class.
@@ -121,7 +132,8 @@ final class ExactDecimalArithmetic {
      * @return the exactly combined, once-narrowed weighted sum
      */
     static Num exactWeightedSum(NumFactory factory, BigDecimal first, BigDecimal second, BigDecimal exactSecondWeight) {
-        BigDecimal exactFirstWeight = BigDecimal.ONE.subtract(exactSecondWeight);
-        return factory.numOf(first.multiply(exactFirstWeight).add(second.multiply(exactSecondWeight)));
+        BigDecimal exactFirstWeight = BigDecimal.ONE.subtract(exactSecondWeight, RECOVERY_CONTEXT);
+        return factory.numOf(first.multiply(exactFirstWeight, RECOVERY_CONTEXT)
+                .add(second.multiply(exactSecondWeight, RECOVERY_CONTEXT), RECOVERY_CONTEXT));
     }
 }

@@ -44,10 +44,23 @@ public final class RuleCopies {
         try {
             ComponentDescriptor descriptor = RuleSerialization.describe(source);
             BarSeries series = findBarSeries(source).orElseGet(RuleCopies::emptySeries);
-            return RuleSerialization.fromDescriptor(series, descriptor);
+            // The descriptor comes from a live rule the caller already holds, not
+            // from external input, so custom rule types are reconstructed too.
+            Rule copy = RuleSerialization.fromTrustedDescriptor(series, descriptor);
+            return isFaithfulCopy(source, descriptor, copy) ? copy : source;
         } catch (RuntimeException ex) {
             return source;
         }
+    }
+
+    /**
+     * A copy is used only when it has the source's exact type and describes back to
+     * the same descriptor; otherwise a lossy round trip would silently change the
+     * rule's behavior.
+     */
+    private static boolean isFaithfulCopy(Rule source, ComponentDescriptor descriptor, Rule copy) {
+        return copy != null && copy.getClass() == source.getClass()
+                && descriptor.equals(RuleSerialization.describe(copy));
     }
 
     private static BarSeries emptySeries() {

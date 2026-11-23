@@ -589,4 +589,71 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
 
         assertThat(indicator.getValue(4).doubleValue()).isCloseTo(-4.3478, within(1e-3));
     }
+
+    @Test
+    public void thresholdForwardPassReadsEachSourceBarABoundedNumberOfTimes() {
+        int barCount = 5_000;
+        double[] closes = new double[barCount];
+        for (int i = 0; i < barCount; i++) {
+            closes[i] = 100 + 20 * Math.sin(i / 25.0);
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        java.util.concurrent.atomic.AtomicLong reads = new java.util.concurrent.atomic.AtomicLong();
+        Indicator<Num> counting = new org.ta4j.core.indicators.AbstractIndicator<>(series) {
+            @Override
+            public Num getValue(int index) {
+                reads.incrementAndGet();
+                return close.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        PercentageChangeIndicator indicator = new PercentageChangeIndicator(counting, null, numOf(5));
+
+        for (int i = 0; i < barCount; i++) {
+            indicator.getValue(i);
+        }
+
+        // A full rescan per bar would read about barCount^2 / 2 = 12.5M values.
+        assertThat(reads.get()).isLessThan(50L * barCount);
+    }
+
+    @Test
+    public void historicalEditInADependencySeriesIsReplayed() {
+        BarSeries backing = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
+        BarSeries dependency = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
+        ClosePriceIndicator dependencyClose = new ClosePriceIndicator(dependency);
+        Indicator<Num> source = new CachedIndicator<>(backing, dependencyClose) {
+            @Override
+            protected Num calculate(int index) {
+                return dependencyClose.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        PercentageChangeIndicator indicator = new PercentageChangeIndicator(source, null, numOf(1));
+
+        assertThat(indicator.getValue(2).isZero()).isTrue();
+
+        org.ta4j.core.Bar original = dependency.getBar(1);
+        ((org.ta4j.core.BaseBarSeries) dependency).replaceBar(1,
+                new org.ta4j.core.bars.TimeBarBuilder(numFactory).timePeriod(original.getTimePeriod())
+                        .endTime(original.getEndTime())
+                        .openPrice(200)
+                        .highPrice(200)
+                        .lowPrice(200)
+                        .closePrice(200)
+                        .volume(0)
+                        .build());
+
+        assertThat(backing.getBarHistoryRevision()).isEqualTo(0L);
+        assertThat(indicator.getValue(2).isEqual(numOf(-50))).as("value %s", indicator.getValue(2)).isTrue();
+    }
 }
