@@ -88,6 +88,22 @@ public class DecimalNumTest {
     private Indicator<Num> lowPrecisionIndicator;
 
     @Test
+    public void floorAndCeilingPreserveLargeValuesAndContext() {
+        MathContext context = new MathContext(50);
+        DecimalNum positive = DecimalNum.valueOf(new BigDecimal("123456789012345678901234567890.9"), context);
+        DecimalNum negative = DecimalNum.valueOf(new BigDecimal("-123456789012345678901234567890.9"), context);
+
+        DecimalNum positiveFloor = (DecimalNum) positive.floor();
+        DecimalNum negativeFloor = (DecimalNum) negative.floor();
+        assertEquals(new BigDecimal("123456789012345678901234567890"), positiveFloor.getDelegate());
+        assertEquals(new BigDecimal("123456789012345678901234567891"), positive.ceil().bigDecimalValue());
+        assertEquals(new BigDecimal("-123456789012345678901234567891"), negativeFloor.getDelegate());
+        assertEquals(new BigDecimal("-123456789012345678901234567890"), negative.ceil().bigDecimalValue());
+        assertEquals(context, positiveFloor.getMathContext());
+        assertEquals(context, negativeFloor.getMathContext());
+    }
+
+    @Test
     public void testPowNaNExponentReturnsNaN() {
         final Num x = DecimalNum.valueOf(2);
         assertTrue(x.pow(NaN.NaN).isNaN());

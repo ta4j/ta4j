@@ -3,8 +3,15 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
@@ -29,11 +36,18 @@ import static org.ta4j.core.num.NaN.NaN;
  * </pre>
  *
  * <p>
- * <strong>Representation:</strong> This indicator uses rate of return
- * representation. For example, if a price moves from 100 to 110, this indicator
- * returns 10.0 (representing a 10% gain). This differs from total return
- * representation, which would return 1.10 (representing 110% of the original
- * value).
+ * <strong>Representation:</strong> Existing constructors return percentages,
+ * independently of the global return representation policy. Constructors
+ * accepting a {@link ReturnRepresentation} can instead return a decimal rate, a
+ * multiplicative factor, or a logarithmic return. For a change from 100 to 110
+ * these are respectively 0.1, 1.1, and ln(1.1), rather than 10. Non-finite
+ * source values or arithmetic that cannot represent a return produce
+ * {@code NaN}, including a multiplicative factor that underflows to zero. An
+ * unrepresentable threshold comparison keeps the previous notification as the
+ * baseline. Decimal logarithms use the configured precision, or the default
+ * decimal precision when it is unlimited. With
+ * {@link RoundingMode#UNNECESSARY}, only an exactly representable logarithm is
+ * returned.
  *
  * <p>
  * <strong>Optional features:</strong>
@@ -45,16 +59,10 @@ import static org.ta4j.core.num.NaN.NaN;
  * current open price with the previous close price.</li>
  * <li><strong>Percentage threshold:</strong> When {@link #percentageThreshold}
  * is greater than zero, the indicator tracks the last time the threshold was
- * exceeded and calculates the percentage change from that point instead of from
- * the previous bar. This is useful for detecting significant moves and
- * measuring cumulative changes since the last significant move.</li>
+ * exceeded and calculates the change from that point instead of from the
+ * previous bar. The threshold is always a percentage, regardless of the output
+ * representation.</li>
  * </ul>
- *
- * <p>
- * TODO: <strong>Future compatibility:</strong> Once
- * {@code ReturnRepresentation} is available (see PR #1376), this indicator may
- * be extended to support both representations via an optional constructor
- * parameter.
  *
  * @since 0.20
  */
@@ -66,8 +74,10 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final Indicator<Num> previousIndicator;
     private final Num percentageThreshold;
+    private final ReturnRepresentation returnRepresentation;
     private final transient Object notificationLock = new Object();
-    private Num lastNotification;
+    // Runtime replay state is not a constructor parameter.
+    private transient Num lastNotification;
     private transient long notificationVersion;
 
     /**
@@ -78,6 +88,17 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
      */
     public PercentageChangeIndicator(Indicator<Num> indicator) {
         this(indicator, null, indicator.getBarSeries().numFactory().zero());
+    }
+
+    /**
+     * Constructs an indicator with the requested return representation.
+     *
+     * @param indicator            the indicator to compare with its previous value
+     * @param returnRepresentation the non-null output representation
+     * @since 0.29.1
+     */
+    public PercentageChangeIndicator(Indicator<Num> indicator, ReturnRepresentation returnRepresentation) {
+        this(indicator, null, indicator.getBarSeries().numFactory().zero(), returnRepresentation);
     }
 
     /**
@@ -112,6 +133,33 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
      */
     public PercentageChangeIndicator(Indicator<Num> indicator, Number percentageThreshold) {
         this(indicator, null, indicator.getBarSeries().numFactory().numOf(percentageThreshold));
+    }
+
+    /**
+     * Constructs an indicator with a percentage threshold and output
+     * representation.
+     *
+     * @param indicator            the indicator to calculate the change for
+     * @param percentageThreshold  the threshold in percentage points
+     * @param returnRepresentation the non-null output representation
+     * @since 0.29.1
+     */
+    public PercentageChangeIndicator(Indicator<Num> indicator, Num percentageThreshold,
+            ReturnRepresentation returnRepresentation) {
+        this(indicator, null, percentageThreshold, returnRepresentation);
+    }
+
+    /**
+     * Constructs an indicator with a numeric percentage threshold.
+     *
+     * @param indicator            the indicator to calculate the change for
+     * @param percentageThreshold  the threshold in percentage points
+     * @param returnRepresentation the non-null output representation
+     * @since 0.29.1
+     */
+    public PercentageChangeIndicator(Indicator<Num> indicator, Number percentageThreshold,
+            ReturnRepresentation returnRepresentation) {
+        this(indicator, null, indicator.getBarSeries().numFactory().numOf(percentageThreshold), returnRepresentation);
     }
 
     /**
@@ -151,10 +199,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
      */
     public PercentageChangeIndicator(Indicator<Num> indicator, Indicator<Num> previousIndicator,
             Num percentageThreshold) {
-        super(indicator, previousIndicator == null ? NO_ADDITIONAL_SOURCES : new Indicator<?>[] { previousIndicator });
-        this.indicator = indicator;
-        this.previousIndicator = previousIndicator;
-        this.percentageThreshold = percentageThreshold;
+        this(indicator, previousIndicator, percentageThreshold, ReturnRepresentation.PERCENTAGE);
     }
 
     /**
@@ -178,13 +223,48 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Calculates the percentage change between the current value and the previous
-     * value of the indicator using rate of return representation.
+     * Constructs an indicator with an optional previous source, percentage
+     * threshold, and output representation.
+     *
+     * @param indicator            the indicator to calculate the change for
+     * @param previousIndicator    the previous-value source, or null to use the
+     *                             same indicator
+     * @param percentageThreshold  the threshold in percentage points
+     * @param returnRepresentation the non-null output representation
+     * @since 0.29.1
+     */
+    public PercentageChangeIndicator(Indicator<Num> indicator, Indicator<Num> previousIndicator,
+            Num percentageThreshold, ReturnRepresentation returnRepresentation) {
+        super(indicator, previousIndicator == null ? NO_ADDITIONAL_SOURCES : new Indicator<?>[] { previousIndicator });
+        this.indicator = indicator;
+        this.previousIndicator = previousIndicator;
+        this.percentageThreshold = percentageThreshold;
+        this.returnRepresentation = Objects.requireNonNull(returnRepresentation, "returnRepresentation");
+    }
+
+    /**
+     * Constructs an indicator with an optional previous source and numeric
+     * percentage threshold.
+     *
+     * @param indicator            the indicator to calculate the change for
+     * @param previousIndicator    the previous-value source, or null to use the
+     *                             same indicator
+     * @param percentageThreshold  the threshold in percentage points
+     * @param returnRepresentation the non-null output representation
+     * @since 0.29.1
+     */
+    public PercentageChangeIndicator(Indicator<Num> indicator, Indicator<Num> previousIndicator,
+            Number percentageThreshold, ReturnRepresentation returnRepresentation) {
+        this(indicator, previousIndicator, indicator.getBarSeries().numFactory().numOf(percentageThreshold),
+                returnRepresentation);
+    }
+
+    /**
+     * Calculates the change between the current and previous values in the
+     * configured return representation.
      *
      * @param index the index of the current bar
-     * @return the percentage change between the current and previous values (rate
-     *         of return representation), or NaN if index is within the unstable bar
-     *         period or if previous value is zero
+     * @return the represented return, or NaN if the value is not defined
      */
     @Override
     protected Num calculate(int index) {
@@ -205,7 +285,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
-        if (Num.isNaNOrNull(currentValue) || currentValue.isZero()) {
+        if (!Num.isFinite(currentValue) || currentValue.isZero()) {
             return NaN;
         }
 
@@ -228,7 +308,10 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
                     return NaN;
                 }
                 if (publishNotification(notification, version)) {
-                    return notification == null ? NaN : fractionToPercentage(currentValue.dividedBy(notification));
+                    if (notification == null) {
+                        return NaN;
+                    }
+                    return calculateReturn(currentValue, notification, true);
                 }
             }
             // Every replay lost to an overlapping one; a stale result must not be
@@ -243,12 +326,87 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
             previousValue = sourceForPrevious.getValue(index - 1);
         }
 
-        // Check for NaN or zero previous value (division by zero)
-        if (Num.isNaNOrNull(previousValue) || previousValue.isZero()) {
+        if (!Num.isFinite(previousValue) || previousValue.isZero()) {
             return NaN;
         }
 
-        return calculateRateOfReturnPercentage(currentValue, previousValue);
+        return calculateReturn(currentValue, previousValue, false);
+    }
+
+    private Num calculateReturn(Num currentValue, Num baseline, boolean thresholdBased) {
+        try {
+            Num result = switch (returnRepresentation) {
+            case PERCENTAGE -> thresholdBased ? fractionToPercentage(multiplicativeReturn(currentValue, baseline))
+                    : calculateRateOfReturnPercentage(currentValue, baseline);
+            case DECIMAL -> currentValue.minus(baseline).dividedBy(baseline);
+            case MULTIPLICATIVE -> multiplicativeReturn(currentValue, baseline);
+            case LOG -> calculateLogReturn(multiplicativeReturn(currentValue, baseline));
+            };
+            return Num.isFinite(result) ? result : NaN;
+        } catch (ArithmeticException ex) {
+            return NaN;
+        }
+    }
+
+    private static Num multiplicativeReturn(Num value, Num baseline) {
+        Num factor = value.dividedBy(baseline);
+        return factor.isZero() ? NaN : factor;
+    }
+
+    private Num calculateLogReturn(Num ratio) {
+        if (!(ratio instanceof DecimalNum decimal)) {
+            return returnRepresentation.toRepresentationFromTotalReturn(ratio);
+        }
+        if (decimal.isNegativeOrZero()) {
+            return NaN;
+        }
+
+        BigDecimal value = decimal.bigDecimalValue();
+        MathContext context = decimal.getMathContext();
+        if (value.compareTo(BigDecimal.ONE) == 0) {
+            return DecimalNum.valueOf(BigDecimal.ZERO, context);
+        }
+        if (context.getRoundingMode() == RoundingMode.UNNECESSARY) {
+            return NaN;
+        }
+
+        int precision = context.getPrecision() == 0 ? DecimalNum.getDefaultPrecision() : context.getPrecision();
+        int reductionDigits = precision / 1000 + 1;
+        MathContext working = new MathContext(Math.addExact(precision, 10 + reductionDigits), RoundingMode.HALF_EVEN);
+
+        // Bring the mantissa near one so the existing fixed-depth DecimalNum.log()
+        // converges even for ratios far outside the primitive double range.
+        long exponent = (long) value.precision() - value.scale() - 1;
+        BigDecimal mantissa = new BigDecimal(value.unscaledValue(), value.precision() - 1);
+        if (mantissa.compareTo(BigDecimal.valueOf(5)) >= 0) {
+            mantissa = mantissa.movePointLeft(1);
+            exponent++;
+        }
+        BigDecimal result = decimalLog(mantissa, working, reductionDigits);
+        if (exponent != 0) {
+            BigDecimal logTen = decimalLog(BigDecimal.TEN, working, reductionDigits);
+            result = result.add(logTen.multiply(BigDecimal.valueOf(exponent), working), working);
+        }
+        MathContext resultContext = new MathContext(precision, context.getRoundingMode());
+        return DecimalNum.valueOf(result.round(resultContext), context);
+    }
+
+    private static BigDecimal decimalLog(BigDecimal value, MathContext working, int reductionDigits) {
+        if (value.compareTo(BigDecimal.ONE) == 0) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal multiplier = BigDecimal.ONE;
+        if (working.getPrecision() > 300) {
+            // At very high precision, reduce further so the fixed-depth continued
+            // fraction converges, then undo ln(sqrt(x)) = ln(x) / 2. The extra
+            // working digits preserve accuracy when subtracting one after roots.
+            BigDecimal maxDistance = BigDecimal.ONE.scaleByPowerOfTen(-reductionDigits);
+            while (value.subtract(BigDecimal.ONE).abs().compareTo(maxDistance) > 0) {
+                value = value.sqrt(working);
+                multiplier = multiplier.multiply(BigDecimal.valueOf(2));
+            }
+        }
+        return DecimalNum.valueOf(value, working).log().bigDecimalValue().multiply(multiplier, working);
     }
 
     // Overlapping replays stage state locally and publish only if no other
@@ -266,15 +424,21 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
 
     private Num nextNotification(Num notification, int index) {
         Num value = readNonTransient(indicator::getValue, index);
-        if (Num.isNaNOrNull(value) || value.isZero()) {
+        if (!Num.isFinite(value) || value.isZero()) {
             return notification;
         }
         if (notification == null) {
             return value;
         }
 
-        Num changePercentage = fractionToPercentage(value.dividedBy(notification));
-        return changePercentage.abs().isGreaterThanOrEqual(percentageThreshold) ? value : notification;
+        try {
+            Num changePercentage = fractionToPercentage(multiplicativeReturn(value, notification));
+            return Num.isFinite(changePercentage) && changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)
+                    ? value
+                    : notification;
+        } catch (ArithmeticException ex) {
+            return notification;
+        }
     }
 
     /**
@@ -291,10 +455,6 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
 
     /**
      * Calculates the rate of return as a percentage.
-     * <p>
-     * This method is structured to allow easy extension when
-     * {@code ReturnRepresentation} support is added. The calculation can be
-     * switched based on the representation type.
      *
      * @param currentValue  the current indicator value
      * @param previousValue the previous indicator value

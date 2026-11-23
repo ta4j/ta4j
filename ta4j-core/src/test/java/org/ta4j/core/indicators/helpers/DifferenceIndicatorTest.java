@@ -42,6 +42,22 @@ public class DifferenceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     }
 
     @Test
+    @SuppressWarnings("deprecation")
+    public void deprecatedClosePriceDifferenceUsesClosePrices() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int close : new int[] { 10, 12, 12, 7 }) {
+            series.barBuilder().openPrice(50).highPrice(100).lowPrice(0).closePrice(close).add();
+        }
+        ClosePriceDifferenceIndicator difference = new ClosePriceDifferenceIndicator(series);
+
+        assertThat(difference.getCountOfUnstableBars()).isEqualTo(1);
+        assertThat(difference.getValue(0).isNaN()).isTrue();
+        assertThat(difference.getValue(1)).isEqualByComparingTo(numOf(2));
+        assertThat(difference.getValue(2)).isEqualByComparingTo(numFactory.zero());
+        assertThat(difference.getValue(3)).isEqualByComparingTo(numOf(-5));
+    }
+
+    @Test
     public void returnsNaNInUnstableRegionAfterRemoval() {
         BarSeries removed = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4)

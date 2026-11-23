@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -20,10 +23,6 @@ import org.ta4j.core.num.NumFactory;
  */
 public class RWIHighIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    /**
-     * TODO: Just graphically Excel-Sheet validation with hard coded results. Excel
-     * formula needed
-     */
     private final ExternalIndicatorTest xls;
 
     public RWIHighIndicatorTest(NumFactory numFactory) {
@@ -46,6 +45,28 @@ public class RWIHighIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> 
         }
         assertThat(rwi.getValue(4)).isEqualByComparingTo(numFactory.one().dividedBy(numOf(2).sqrt()));
         assertThat(new RWIHighIndicator(series, 1).getDependencies()).isEmpty();
+    }
+
+    @Test
+    public void matchesFormulaWorksheetAndHardCodedHighValues() {
+        List<RWIWorksheetFixture.Observation> rows = RWIWorksheetFixture.rows();
+        BarSeries series = RWIWorksheetFixture.series(numFactory);
+        RWIHighIndicator indicator = new RWIHighIndicator(series, 3);
+
+        assertThat(rows).hasSize(9);
+        assertEquals(3, indicator.getCountOfUnstableBars());
+        for (int i = 0; i < rows.size(); i++) {
+            Num actual = indicator.getValue(i);
+            if (i < 3) {
+                assertThat(actual.isNaN()).as("warm-up bar %s", i).isTrue();
+            } else {
+                RWIWorksheetFixture.Observation row = rows.get(i);
+                assertThat(Double.isFinite(row.expectedHigh())).as("reference bar %s", i).isTrue();
+                assertThat(Num.isFinite(actual)).as("indicator bar %s", i).isTrue();
+                assertEquals(row.expectedHigh(), row.formulaHigh(), 1e-10, "worksheet bar " + i);
+                assertEquals(row.expectedHigh(), actual.doubleValue(), 1e-10, "indicator bar " + i);
+            }
+        }
     }
 
     @Test
