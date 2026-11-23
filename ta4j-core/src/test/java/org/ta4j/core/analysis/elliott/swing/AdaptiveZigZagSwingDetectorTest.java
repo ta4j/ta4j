@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ConcurrentModificationException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -310,7 +311,7 @@ class AdaptiveZigZagSwingDetectorTest {
                 () -> interior.addPrice(series.numFactory().numOf(170 + series.mutationCount)));
 
         assertThatThrownBy(() -> detector.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(ConcurrentModificationException.class)
                 .hasMessageContaining("swing detection attempts");
         assertThat(series.mutationCount).isEqualTo(SwingHistorySnapshot.MAX_DETECTION_ATTEMPTS);
 

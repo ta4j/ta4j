@@ -42,7 +42,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * Queries retry until the before/after history observations agree, at most
  * eight times; a query against a series that keeps changing throws
- * {@link IllegalStateException}.
+ * {@link java.util.ConcurrentModificationException}.
  *
  * @since 0.22.2
  */

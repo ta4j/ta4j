@@ -70,7 +70,9 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     @Override
     protected Num calculate(int index) {
         for (int attempt = 0;; attempt++) {
-            requireSeriesChangeRetry(attempt);
+            if (seriesChangeRetriesExhausted(attempt)) {
+                return NaN;
+            }
             int beginIndex = getBarSeries().getBeginIndex();
             if (beginIndex < 0) {
                 // Empty series: there is no bar to seed from or recurse to.

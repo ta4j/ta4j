@@ -180,7 +180,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     public synchronized Num getValue(int index) {
         BarSeries series = getBarSeries();
         for (int attempt = 0;; attempt++) {
-            requireSeriesChangeRetry(attempt);
+            if (seriesChangeRetriesExhausted(attempt)) {
+                return NaN.NaN;
+            }
             int removedBarsCount = series.getRemovedBarsCount();
             long barHistoryRevision = series.getBarHistoryRevision();
             // Advance both moments before this bar can leave the source. Otherwise
@@ -197,7 +199,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         for (int attempt = 0;; attempt++) {
-            requireSeriesChangeRetry(attempt);
+            if (seriesChangeRetriesExhausted(attempt)) {
+                return NaN.NaN;
+            }
             int beginIndex = getBarSeries().getBeginIndex();
             Num value = calculateRetained(index, beginIndex);
             if (getBarSeries().getBeginIndex() == beginIndex) {
@@ -485,7 +489,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
 
         private synchronized Num readValue(int index) {
             for (int attempt = 0;; attempt++) {
-                requireSeriesChangeRetry(attempt);
+                if (seriesChangeRetriesExhausted(attempt)) {
+                    return NaN.NaN;
+                }
                 int beginIndex = getBarSeries().getBeginIndex();
                 Num value = super.getValue(index);
                 if (getBarSeries().getBeginIndex() == beginIndex) {
@@ -497,7 +503,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         @Override
         protected Num calculate(int index) {
             for (int attempt = 0;; attempt++) {
-                requireSeriesChangeRetry(attempt);
+                if (seriesChangeRetriesExhausted(attempt)) {
+                    return NaN.NaN;
+                }
                 int beginIndex = getBarSeries().getBeginIndex();
                 Num value = calculateRetained(index, beginIndex);
                 if (getBarSeries().getBeginIndex() == beginIndex) {

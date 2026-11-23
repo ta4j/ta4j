@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
+import java.util.ConcurrentModificationException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -92,7 +93,7 @@ class ProminenceSwingDetectorTest {
                 () -> interior.addPrice(series.numFactory().numOf(50 + series.mutationCount)));
 
         assertThatThrownBy(() -> detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(ConcurrentModificationException.class)
                 .hasMessageContaining("swing detection attempts");
         assertThat(series.mutationCount).isEqualTo(SwingHistorySnapshot.MAX_DETECTION_ATTEMPTS);
 

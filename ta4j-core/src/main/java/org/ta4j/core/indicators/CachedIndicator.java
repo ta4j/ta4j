@@ -540,6 +540,39 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
+     * Bounds an optimistic retry loop that recomputes a value when the series head
+     * or history changes during the computation. Concurrent pruning that never
+     * pauses would otherwise keep the reader spinning forever.
+     *
+     * <p>
+     * On exhaustion the caller returns its unavailable value ({@code NaN} for a
+     * {@code Num}). When called inside a cached calculation, that calculation is
+     * marked transient (see {@link #markResultTransient()}) so the unavailable
+     * value is not cached and a later stable read recomputes.
+     *
+     * @param attempt zero-based number of the attempt about to start
+     * @return {@code true} once {@link #MAX_SERIES_CHANGE_RETRIES} attempts have
+     *         been made
+     * @since 0.29.1
+     */
+    protected static boolean seriesChangeRetriesExhausted(int attempt) {
+        TransientScope scope = TRANSIENT_SCOPE.get();
+        if (scope.depth == 0 && attempt == 0) {
+            scope.retriesExhausted = false;
+        }
+        if (attempt < MAX_SERIES_CHANGE_RETRIES && !scope.retriesExhausted) {
+            return false;
+        }
+        // Enclosing retry loops give up too; otherwise nested budgets multiply.
+        scope.retriesExhausted = true;
+        // Outside any evaluation there is no cache store to suppress.
+        if (scope.depth > 0) {
+            scope.tainted = true;
+        }
+        return true;
+    }
+
+    /**
      * Reconciles cached state with the latest series revision, retained window, and
      * capacity before a read or recursive prefill.
      *
@@ -547,23 +580,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return the synchronized series snapshot
      * @since 0.24.1
      */
-    /**
-     * Bounds an optimistic retry loop that recomputes a value when the series head
-     * or history changes during the computation. Concurrent pruning that never
-     * pauses would otherwise keep the reader spinning forever.
-     *
-     * @param attempt zero-based number of the attempt about to start
-     * @throws IllegalStateException once {@link #MAX_SERIES_CHANGE_RETRIES}
-     *                               attempts have been made
-     * @since 0.29.1
-     */
-    protected final void requireSeriesChangeRetry(int attempt) {
-        if (attempt >= MAX_SERIES_CHANGE_RETRIES) {
-            throw new IllegalStateException(getClass().getSimpleName() + " gave up after " + MAX_SERIES_CHANGE_RETRIES
-                    + " attempts because its bar series kept changing during evaluation");
-        }
-    }
-
     protected final BarSeriesChangeSnapshot synchronizeCacheWithSeries(BarSeries series) {
         boolean reconciliationRequired = false;
         while (true) {
@@ -1739,6 +1755,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     static final class TransientScope {
         private int depth;
         private boolean tainted;
+        private boolean retriesExhausted;
         private Map<CachedIndicator<?>, Map<Integer, Object>> values;
         // Entries in creation order; depths never decrease along the list because
         // deeper entries are dropped when their read returns. Dropping by depth
@@ -1793,6 +1810,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     static TransientScope enterTransientScope() {
         TransientScope scope = TRANSIENT_SCOPE.get();
+        if (scope.depth == 0) {
+            scope.retriesExhausted = false;
+        }
         scope.depth++;
         return scope;
     }

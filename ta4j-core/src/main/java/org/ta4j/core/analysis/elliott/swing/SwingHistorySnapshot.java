@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis.elliott.swing;
 
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Objects;
 
@@ -37,12 +38,12 @@ record SwingHistorySnapshot(long revision, int beginIndex, int endIndex, Bar fir
      *
      * @param attempt one-based attempt that just observed a history change
      * @param cause   evaluation failure seen during that attempt, or {@code null}
-     * @throws IllegalStateException once {@code attempt} reaches
-     *                               {@link #MAX_DETECTION_ATTEMPTS}
+     * @throws ConcurrentModificationException once {@code attempt} reaches
+     *                                         {@link #MAX_DETECTION_ATTEMPTS}
      */
     static void requireAnotherAttempt(final int attempt, final RuntimeException cause) {
         if (attempt >= MAX_DETECTION_ATTEMPTS) {
-            throw new IllegalStateException("Series history changed during each of " + MAX_DETECTION_ATTEMPTS
+            throw new ConcurrentModificationException("Series history changed during each of " + MAX_DETECTION_ATTEMPTS
                     + " swing detection attempts; retry once the series is stable", cause);
         }
     }

@@ -29,7 +29,7 @@ import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
  * history checks. Indicator evaluation runs outside the detector's series read
  * scopes. Queries retry until the before/after observations agree, at most
  * eight times; a query against a series that keeps changing throws
- * {@link IllegalStateException}.
+ * {@link java.util.ConcurrentModificationException}.
  *
  * @since 0.23.1
  */

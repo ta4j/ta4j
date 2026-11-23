@@ -120,7 +120,9 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     public synchronized Num getValue(int index) {
         BarSeries series = getBarSeries();
         for (int attempt = 0;; attempt++) {
-            requireSeriesChangeRetry(attempt);
+            if (seriesChangeRetriesExhausted(attempt)) {
+                return NaN.NaN;
+            }
             int removedBarsCount = series.getRemovedBarsCount();
             long barHistoryRevision = series.getBarHistoryRevision();
             Num value = super.getValue(index);
@@ -286,7 +288,9 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         for (int attempt = 0;; attempt++) {
-            requireSeriesChangeRetry(attempt);
+            if (seriesChangeRetriesExhausted(attempt)) {
+                return NaN.NaN;
+            }
             int beginIndex = getBarSeries().getBeginIndex();
             Num value = calculateRetained(index, beginIndex);
             if (getBarSeries().getBeginIndex() == beginIndex) {
@@ -466,7 +470,9 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         @Override
         protected ScaleState calculate(int index) {
             for (int attempt = 0;; attempt++) {
-                requireSeriesChangeRetry(attempt);
+                if (seriesChangeRetriesExhausted(attempt)) {
+                    return new ScaleState(NaN.NaN);
+                }
                 int beginIndex = getBarSeries().getBeginIndex();
                 ScaleState value = calculateRetained(index, beginIndex);
                 if (getBarSeries().getBeginIndex() == beginIndex) {

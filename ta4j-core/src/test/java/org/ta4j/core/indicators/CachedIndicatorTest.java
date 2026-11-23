@@ -37,7 +37,10 @@ import org.ta4j.core.indicators.averages.VIDYAIndicator;
 import org.ta4j.core.indicators.averages.WildersMAIndicator;
 import org.ta4j.core.indicators.averages.ZLEMAIndicator;
 import org.ta4j.core.indicators.helpers.AverageIndicator;
+import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -3685,5 +3688,119 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         assertFalse(positive.getValue(5));
         assertTrue(positive.getValue(5));
+    }
+
+    private static final class NeverSettlingIndicator extends CachedIndicator<Num> {
+        private final AtomicBoolean settled = new AtomicBoolean();
+        private final AtomicInteger attempts = new AtomicInteger();
+
+        private NeverSettlingIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            for (int attempt = 0;; attempt++) {
+                if (seriesChangeRetriesExhausted(attempt)) {
+                    return NaN.NaN;
+                }
+                attempts.incrementAndGet();
+                if (settled.get()) {
+                    return getBarSeries().numFactory().numOf(index);
+                }
+            }
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    @Test
+    public void exhaustedSeriesChangeRetriesReturnUncachedNaN() {
+        BarSeries data = transientSeries(8);
+        NeverSettlingIndicator unsettled = new NeverSettlingIndicator(data);
+        SMAIndicator dependent = new SMAIndicator(unsettled, 1);
+
+        assertTrue(unsettled.getValue(3).isNaN());
+        assertEquals(CachedIndicator.MAX_SERIES_CHANGE_RETRIES, unsettled.attempts.get());
+        assertTrue(dependent.getValue(3).isNaN());
+
+        unsettled.settled.set(true);
+        assertNumEquals(3, unsettled.getValue(3));
+        assertNumEquals(3, dependent.getValue(3));
+    }
+
+    @Test
+    @Timeout(30)
+    public void retryingIndicatorsReturnNaNWhileSeriesNeverSettlesAndRecoverOnceStable() {
+        List<Function<Indicator<Num>, Indicator<Num>>> factories = List
+                .of(source -> new EwmaVarianceIndicator(source, 3, 0.94), source -> new CusumIndicator(source, 0, 0));
+        for (Function<Indicator<Num>, Indicator<Num>> factory : factories) {
+            BarSeries data = transientSeries(6);
+            AtomicBoolean churning = new AtomicBoolean();
+            ClosePriceIndicator close = new ClosePriceIndicator(data);
+            Indicator<Num> editingSource = new AbstractIndicator<>(data) {
+                @Override
+                public Num getValue(int index) {
+                    if (churning.get()) {
+                        data.getLastBar().addPrice(data.numFactory().numOf(6));
+                    }
+                    return close.getValue(index);
+                }
+
+                @Override
+                public int getCountOfUnstableBars() {
+                    return 0;
+                }
+            };
+            Indicator<Num> indicator = factory.apply(editingSource);
+            int index = data.getEndIndex();
+            indicator.getValue(index - 1);
+
+            churning.set(true);
+            assertTrue(indicator.getValue(index).isNaN(), indicator.toString());
+
+            churning.set(false);
+            Num expected = factory.apply(close).getValue(index);
+            assertFalse(expected.isNaN());
+            assertNumEquals(expected, indicator.getValue(index));
+        }
+    }
+
+    @Test
+    @Timeout(30)
+    public void returnForecastStateIsUnstableWhileSeriesNeverSettlesAndRecoversOnceStable() {
+        BarSeries data = transientSeries(8);
+        AtomicBoolean churning = new AtomicBoolean();
+        ClosePriceIndicator close = new ClosePriceIndicator(data);
+        Indicator<Num> editingSource = new AbstractIndicator<>(data) {
+            @Override
+            public Num getValue(int index) {
+                if (churning.get()) {
+                    data.getLastBar().addPrice(data.numFactory().numOf(8));
+                }
+                return close.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EwmaReturnForecastStateIndicator forecast = new EwmaReturnForecastStateIndicator(
+                new LogReturnIndicator(editingSource), 2, 0.94);
+        int index = data.getEndIndex();
+        forecast.getValue(index - 1);
+
+        churning.set(true);
+        assertFalse(forecast.getValue(index).isStable());
+
+        churning.set(false);
+        ReturnForecastState expected = new EwmaReturnForecastStateIndicator(new LogReturnIndicator(close), 2, 0.94)
+                .getValue(index);
+        assertTrue(expected.isStable());
+        assertEquals(expected, forecast.getValue(index));
     }
 }

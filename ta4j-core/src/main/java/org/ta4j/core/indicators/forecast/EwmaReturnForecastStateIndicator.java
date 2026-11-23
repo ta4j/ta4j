@@ -110,7 +110,9 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
     public synchronized ReturnForecastState getValue(int index) {
         BarSeries series = getBarSeries();
         for (int attempt = 0;; attempt++) {
-            requireSeriesChangeRetry(attempt);
+            if (seriesChangeRetriesExhausted(attempt)) {
+                return ReturnForecastState.unstable(index, 0, ReturnRepresentation.LOG);
+            }
             int removedBarsCount = series.getRemovedBarsCount();
             long barHistoryRevision = series.getBarHistoryRevision();
             RetainedValues retainedValues = barHistoryRevision < 0L
