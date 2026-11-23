@@ -200,7 +200,7 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         }
         Num mean = varianceIndicator.getMeanIndicator().getValue(index);
         Num variance = varianceIndicator.getValue(index);
-        if (!Num.isFinite(mean) || !Num.isFinite(variance)) {
+        if (observationCount <= 0 || !Num.isFinite(mean) || !Num.isFinite(variance)) {
             return ReturnForecastState.unstable(index, observationCount, ReturnRepresentation.LOG);
         }
         Num drift = driftMode == DriftMode.ZERO ? getBarSeries().numFactory().zero() : mean;

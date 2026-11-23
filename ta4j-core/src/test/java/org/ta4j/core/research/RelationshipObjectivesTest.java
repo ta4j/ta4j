@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.research.ParameterResearch.ObjectiveEvaluation;
 import org.ta4j.core.research.ParameterResearch.ParameterResearchReport;
 import org.ta4j.core.research.ParameterResearch.RankedCandidate;
+import org.ta4j.core.research.ParameterResearch.ResearchWindow;
 import org.ta4j.core.research.ParameterResearch.SearchPlan;
 import org.ta4j.core.research.ParameterResearch.TerminationReason;
 
@@ -396,6 +398,39 @@ class RelationshipObjectivesTest {
                 .extracting(failed -> failed.reason())
                 .asString()
                 .contains("bars");
+    }
+
+    @Test
+    void relationshipObjectivesReportReferenceBuildFailures() {
+        BarSeries series = waveSeries(6);
+        ResearchWindow window = new ResearchWindow(series, series.getBeginIndex(), series.getEndIndex(),
+                ResearchWindow.WindowPhase.TRAINING, "training");
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        List<ObjectiveEvaluation> results = List.of(
+                RelationshipObjectives.eventSynchronizationF1(RelationshipObjectivesTest::unavailableReference, 3, 1)
+                        .evaluate(noEvents(series), window),
+                RelationshipObjectives.leadLagCorrelation(RelationshipObjectivesTest::unavailableReference, 3, -1, 1)
+                        .evaluate(close, window),
+                RelationshipObjectives
+                        .dynamicTimeWarpingDistance(RelationshipObjectivesTest::unavailableReference, 3,
+                                DynamicTimeWarpingDistanceIndicator.Config.shapeComparison(1))
+                        .evaluate(close, window),
+                RelationshipObjectives
+                        .eventMutualInformation(RelationshipObjectivesTest::unavailableReference,
+                                new EventMutualInformationConfig(1, 1, 4, BinningStrategy.EQUAL_FREQUENCY), true)
+                        .evaluate(close, window));
+
+        assertThat(results)
+                .allSatisfy(result -> assertThat(result.status()).isEqualTo(ObjectiveEvaluation.Status.FAILED))
+                .extracting(ObjectiveEvaluation::failureReason)
+                .containsExactly("event synchronization evaluation failed: reference data unavailable",
+                        "lead/lag correlation evaluation failed: reference data unavailable",
+                        "dynamic time warping evaluation failed: reference data unavailable",
+                        "event mutual information evaluation failed: reference data unavailable");
+    }
+
+    private static <T> Indicator<T> unavailableReference(BarSeries series) {
+        throw new IllegalArgumentException("reference data unavailable");
     }
 
     private static Map<String, Double> trainingScoresById(ParameterResearchReport report) {

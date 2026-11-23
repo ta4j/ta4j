@@ -58,7 +58,8 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
         int startIndex = getWindowStartIndex(index);
-        if (startIndex > index) {
+        // A window start resolved from a transient read is provisional.
+        if (startIndex > index || isResultTransient()) {
             return NaN.NaN;
         }
         VWAPValues values = collectValues(startIndex, index);

@@ -91,9 +91,13 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
         if (!state.currentValuesValid()) {
             return KinematicKalmanForecastState.unstable(index, state.observationCount());
         }
-        return KinematicKalmanForecastState.stable(index, state.observationCount(), state.position(), state.velocity(),
-                state.positionVariance(), state.positionVelocityCovariance(), state.velocityVariance(),
-                state.processNoise(), state.measurementNoise());
+        try {
+            return KinematicKalmanForecastState.stable(index, state.observationCount(), state.position(),
+                    state.velocity(), state.positionVariance(), state.positionVelocityCovariance(),
+                    state.velocityVariance(), state.processNoise(), state.measurementNoise());
+        } catch (IllegalArgumentException | ArithmeticException unrepresentable) {
+            return KinematicKalmanForecastState.unstable(index, state.observationCount());
+        }
     }
 
     @Override

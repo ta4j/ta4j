@@ -6,6 +6,7 @@ package org.ta4j.core.analysis;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.time.Duration;
 import java.time.Instant;
@@ -796,7 +797,7 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
         // The curve holds values from the captured bars; pricing a new position
         // from the replaced bar would mix two bar histories.
-        assertThrows(IllegalStateException.class, () -> curve.calculatePosition(later, 2));
+        assertThrows(ConcurrentModificationException.class, () -> curve.calculatePosition(later, 2));
     }
 
     @Test
@@ -903,7 +904,7 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         CumulativePnL curve = new CumulativePnL(race.series(), race.emptyRecord());
         List<Num> before = curve.stream().toList();
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(ConcurrentModificationException.class,
                 () -> curve.calculatePosition(race.position(), PreWindowCostRace.WINDOW_END));
 
         assertEquals(before, curve.stream().toList());

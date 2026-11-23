@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
-import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**

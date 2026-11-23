@@ -76,7 +76,6 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
             }
         }
 
-        // TODO is Num needed?
         final var numFactory = getBarSeries().numFactory();
         return numFactory.numOf(barCount - nbBars).dividedBy(barCountNum).multipliedBy(numFactory.hundred());
     }

@@ -141,12 +141,16 @@ public final class LognormalApproximationPriceForecastIndicator extends CachedIn
                 quantiles.put(probability, quantile);
             }
         }
-        return Forecast.builder(index, getHorizon(), numFactory, ForecastSupport.analytic(SUPPORT_ASSUMPTION))
-                .mean(mean)
-                .median(median)
-                .standardDeviation(standardDeviation)
-                .quantiles(quantiles)
-                .build();
+        try {
+            return Forecast.builder(index, getHorizon(), numFactory, ForecastSupport.analytic(SUPPORT_ASSUMPTION))
+                    .mean(mean)
+                    .median(median)
+                    .standardDeviation(standardDeviation)
+                    .quantiles(quantiles)
+                    .build();
+        } catch (IllegalArgumentException | ArithmeticException unrepresentable) {
+            return Forecast.unstable(index, getHorizon());
+        }
     }
 
     /**

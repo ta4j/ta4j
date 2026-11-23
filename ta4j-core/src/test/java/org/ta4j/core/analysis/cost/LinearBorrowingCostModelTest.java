@@ -25,6 +25,14 @@ public class LinearBorrowingCostModelTest {
     }
 
     @Test
+    public void rejectsNonFiniteFeeAndReturnsNaNForNewPosition() {
+        assertThrows(IllegalArgumentException.class, () -> new LinearBorrowingCostModel(Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> new LinearBorrowingCostModel(Double.POSITIVE_INFINITY));
+        assertTrue(new LinearBorrowingCostModel(0.01).calculate(new Position()).isNaN());
+        assertTrue(new LinearBorrowingCostModel(0.01).calculate(new Position(), 3).isNaN());
+    }
+
+    @Test
     public void calculateZeroTest() {
         // Price - Amount calculation Test
         Num price = DoubleNum.valueOf(100);

@@ -5,6 +5,7 @@ package org.ta4j.core.research;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import java.util.ConcurrentModificationException;
 import java.math.MathContext;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -801,7 +802,7 @@ class ParameterResearchTest {
                     return ParameterResearch.ObjectiveEvaluation.of(window.series().numFactory().numOf(candidate));
                 })
                 .search(SearchPlan.grid(3));
-        assertThrows(IllegalStateException.class, builder::run);
+        assertThrows(ConcurrentModificationException.class, builder::run);
     }
 
     @Test
@@ -874,7 +875,7 @@ class ParameterResearchTest {
                     return ParameterResearch.ObjectiveEvaluation.of(window.series().numFactory().numOf(candidate));
                 })
                 .search(SearchPlan.grid(3));
-        assertThrows(IllegalStateException.class, builder::run);
+        assertThrows(ConcurrentModificationException.class, builder::run);
     }
 
     @Test
@@ -1080,7 +1081,7 @@ class ParameterResearchTest {
                 })
                 .search(SearchPlan.grid(2));
 
-        assertThrows(IllegalStateException.class, builder::run);
+        assertThrows(ConcurrentModificationException.class, builder::run);
         assertThat(observedWindowClose).hasValue(2);
         assertThat(series.getBar(1).getClosePrice().doubleValue()).isEqualTo(999d);
     }
@@ -1651,7 +1652,7 @@ class ParameterResearchTest {
         BarSeries series = series(1d, 2d, 3d);
         final boolean[] mutated = { false };
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(ConcurrentModificationException.class,
                 () -> ParameterResearch.<Integer>builder(series)
                         .integer("a", 1, 2)
                         .candidate((window, parameters) -> parameters.intValue("a"))
@@ -1679,7 +1680,7 @@ class ParameterResearchTest {
         final BarSeries[] stash = { null };
         final int[] calls = { 0 };
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(ConcurrentModificationException.class,
                 () -> ParameterResearch.<Integer>builder(series)
                         .integer("a", 1, 2)
                         .candidate((window, parameters) -> parameters.intValue("a"))
@@ -1710,7 +1711,7 @@ class ParameterResearchTest {
         final BarSeries[] stash = { null };
         final int[] calls = { 0 };
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(ConcurrentModificationException.class,
                 () -> ParameterResearch.<Integer>builder(series)
                         .integer("a", 1, 2)
                         .candidate((window, parameters) -> parameters.intValue("a"))
@@ -1825,7 +1826,7 @@ class ParameterResearchTest {
                 .search(SearchPlan.grid(2))
                 .topK(1);
 
-        assertThrows(IllegalStateException.class, builder::run);
+        assertThrows(ConcurrentModificationException.class, builder::run);
     }
 
     @Test

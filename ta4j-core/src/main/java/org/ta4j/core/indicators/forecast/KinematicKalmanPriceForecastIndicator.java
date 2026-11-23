@@ -135,12 +135,16 @@ public final class KinematicKalmanPriceForecastIndicator extends CachedIndicator
                 quantiles.put(probability, quantile);
             }
         }
-        return Forecast.builder(index, horizon, numFactory, ForecastSupport.analytic(SUPPORT_ASSUMPTION))
-                .mean(mean)
-                .median(mean)
-                .standardDeviation(standardDeviation)
-                .quantiles(quantiles)
-                .build();
+        try {
+            return Forecast.builder(index, horizon, numFactory, ForecastSupport.analytic(SUPPORT_ASSUMPTION))
+                    .mean(mean)
+                    .median(mean)
+                    .standardDeviation(standardDeviation)
+                    .quantiles(quantiles)
+                    .build();
+        } catch (IllegalArgumentException | ArithmeticException unrepresentable) {
+            return Forecast.unstable(index, horizon);
+        }
     }
 
     @Override

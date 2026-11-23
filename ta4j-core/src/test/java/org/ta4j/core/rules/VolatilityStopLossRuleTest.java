@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.rules;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -84,6 +85,20 @@ public class VolatilityStopLossRuleTest extends AbstractIndicatorTest<Object, Ob
         tradingRecord.enter(0, numFactory.hundred(), numFactory.one());
 
         assertTrue(rule.isSatisfied(1, tradingRecord));
+    }
+
+    @Test
+    public void negativeThresholdIsUnavailable() {
+        var series = StopRuleTestSupport.series(numFactory, 100, 50);
+        var closePrice = new ClosePriceIndicator(series);
+        var volatility = new ConstantIndicator<>(series, numFactory.numOf(-5));
+        var rule = new VolatilityStopLossRule(closePrice, volatility, 2);
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+
+        tradingRecord.enter(0, numFactory.hundred(), numFactory.one());
+
+        assertFalse(rule.isSatisfied(1, tradingRecord));
+        assertNull(rule.stopPrice(series, new Position(Trade.buyAt(0, series), Trade.sellAt(1, series))));
     }
 
     @Test

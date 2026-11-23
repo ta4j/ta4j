@@ -6,7 +6,6 @@ package org.ta4j.core.indicators;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.averages.AbstractEMAIndicator;
 import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.num.Num;

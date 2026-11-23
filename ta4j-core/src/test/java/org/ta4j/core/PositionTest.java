@@ -88,6 +88,14 @@ public class PositionTest {
     }
 
     @Test
+    public void newPositionProfitAndReturnAreNaN() {
+        assertTrue(newPosition.getProfit().isNaN());
+        assertTrue(newPosition.getGrossProfit().isNaN());
+        assertTrue(newPosition.getGrossReturn().isNaN());
+        assertTrue(newPosition.getProfit(1, DoubleNum.valueOf(1)).isNaN());
+    }
+
+    @Test
     public void whenNewShouldNotExit() {
         assertFalse(newPosition.isOpened());
     }

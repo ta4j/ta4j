@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.ConcurrentModificationException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.DoubleStream;
 
@@ -33,6 +35,7 @@ import org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator.R
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
@@ -669,6 +672,119 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void transientSourceFailureIsUncachedNaN() {
+        BarSeries series = series();
+        Indicator<Boolean> stable = events(series, 0, 8, 11);
+        AtomicInteger failures = new AtomicInteger(1);
+        Indicator<Boolean> flaky = new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                if (index == 10 && failures.getAndDecrement() > 0) {
+                    throw new IllegalArgumentException("transient source failure");
+                }
+                return stable.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(flaky, stable, 5, 1, 1);
+        Num expected = indicator(stable, stable, 5, 1, 1).getValue(12);
+
+        assertTrue(indicator.getValue(12).isNaN());
+        assertNumEquals(expected, indicator.getValue(12));
+        assertFalse(expected.isNaN());
+    }
+
+    @Test
+    public void transientFalseEventIsNotCommittedToTheScan() {
+        BarSeries series = series();
+        Indicator<Boolean> stable = events(series, 0, 8, 10, 11);
+        AtomicInteger transientReads = new AtomicInteger(1);
+        CachedIndicator<Boolean> flaky = new CachedIndicator<Boolean>(series) {
+            @Override
+            protected Boolean calculate(int index) {
+                if (index == 10 && transientReads.getAndDecrement() > 0) {
+                    markResultTransient();
+                    return false;
+                }
+                return stable.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(flaky, stable, 5, 1, 1);
+        Num expected = indicator(stable, stable, 5, 1, 1).getValue(12);
+
+        assertTrue(indicator.getValue(12).isNaN());
+        assertFalse(expected.isNaN());
+        assertNumEquals(expected, indicator.getValue(12));
+    }
+
+    @Test
+    public void transientSourceFailureIsNotCachedByWrappingIndicators() {
+        BarSeries series = series();
+        Indicator<Boolean> stable = events(series, 0, 8, 11);
+        AtomicInteger failures = new AtomicInteger(1);
+        Indicator<Boolean> flaky = new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                if (index == 10 && failures.getAndDecrement() > 0) {
+                    throw new IllegalStateException("transient source failure");
+                }
+                return stable.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        SMAIndicator sma = new SMAIndicator(indicator(flaky, stable, 5, 1, 1), 1);
+        Num expected = new SMAIndicator(indicator(stable, stable, 5, 1, 1), 1).getValue(12);
+
+        assertTrue(sma.getValue(12).isNaN());
+        assertFalse(expected.isNaN());
+        assertNumEquals(expected, sma.getValue(12));
+    }
+
+    @Test
+    public void denseWindowBeyondMatcherCapacityIsNaN() {
+        int windowSize = 3_000;
+        BarSeries series = series(1);
+        BaseBarSeries proxy = new BaseBarSeries(series.getName(), series.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return 0;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return windowSize - 1;
+            }
+        };
+        Indicator<Boolean> always = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return true;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(always, always, windowSize, 0, 0);
+        assertThrows(IllegalArgumentException.class, () -> indicator.getResult(windowSize - 1));
+        assertTrue(indicator.getValue(windowSize - 1).isNaN());
+    }
+
+    @Test
     public void windowWiderThanHalfTheMatcherCapacityStillBoundsTheCache() {
         // The eviction cap keeps this scenario cheap (the catch-up scan is
         // bounded well below the array ceiling), so it runs for both numeric
@@ -764,7 +880,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
             }
         };
         EventSynchronizationIndicator failing = indicator(predicted, reference, 5, 0, 0);
-        assertThrows(IllegalStateException.class, () -> failing.getValue(15));
+        assertTrue(failing.getValue(15).isNaN());
         Result afterRetry = failing.getResult(15);
 
         EventSynchronizationIndicator clean = indicator(predicted,
@@ -1046,11 +1162,46 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // Exhaustion must surface as an exception rather than a cached
         // unavailable result: a cached NaN would survive later revisions that
         // never touch this window.
-        IllegalStateException exhausted = assertThrows(IllegalStateException.class, () -> indicator.getResult(11));
+        ConcurrentModificationException exhausted = assertThrows(ConcurrentModificationException.class,
+                () -> indicator.getResult(11));
         assertTrue(exhausted.getMessage().contains("retry budget exhausted"));
         // The window must actually have been scanned (the stub mutated on
         // every read); a vacuous outer-domain rejection would leave reads 0.
         assertTrue(reads.get() > 2);
+    }
+
+    @Test
+    public void exhaustedRetriesAreNaNThatNoWrapperCaches() {
+        BaseBarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+                .withMaxBarCount(8)
+                .build();
+        AtomicBoolean mutate = new AtomicBoolean(true);
+        Indicator<Boolean> predicted = new AbstractIndicator<Boolean>(rolling) {
+            @Override
+            public Boolean getValue(int index) {
+                if (mutate.get()) {
+                    rolling.replaceBar(rolling.getEndIndex(), rolling.getBar(rolling.getEndIndex()));
+                }
+                return index == 10;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 2;
+            }
+        };
+        Indicator<Boolean> reference = events(rolling, 0, 10);
+        EventSynchronizationIndicator indicator = indicator(predicted, reference, 4, 0, 0);
+
+        SMAIndicator sma = new SMAIndicator(indicator, 1);
+
+        assertTrue(sma.getValue(10).isNaN());
+        mutate.set(false);
+        Num expected = indicator(events(rolling, 0, 10), reference, 4, 0, 0).getValue(10);
+        assertFalse(expected.isNaN());
+        assertNumEquals(expected, indicator.getValue(10));
+        assertNumEquals(expected, sma.getValue(10));
     }
 
     @Test

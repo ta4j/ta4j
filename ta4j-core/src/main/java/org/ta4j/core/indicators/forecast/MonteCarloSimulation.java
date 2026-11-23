@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import java.util.TreeSet;
 import java.util.function.IntFunction;
 import java.util.random.RandomGenerator;
 
@@ -110,7 +109,11 @@ final class MonteCarloSimulation {
             }
             terminalValues.add(terminalValue);
         }
-        return Forecast.ofSamples(index, settings.horizon(), terminalValues, settings.quantileProbabilities());
+        try {
+            return Forecast.ofSamples(index, settings.horizon(), terminalValues, settings.quantileProbabilities());
+        } catch (IllegalArgumentException | ArithmeticException unrepresentable) {
+            return Forecast.unstable(index, settings.horizon());
+        }
     }
 
     int getCountOfUnstableBars() {

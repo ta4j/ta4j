@@ -38,12 +38,7 @@ public final class NamedAssetRegistry {
     private static final Pattern JSON_NUMBER_LITERAL = Pattern
             .compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
     private static final Pattern JSON_INTEGER_LITERAL = Pattern.compile("-?(?:0|[1-9]\\d*)");
-    /**
-     * Largest number of digits a shorthand numeric argument may expand to in plain
-     * notation. It admits any value a {@code double} or ordinary decimal price can
-     * hold while rejecting exponent-only payloads that expand to huge strings.
-     */
-    static final int MAX_PLAIN_NUMBER_DIGITS = 1_000;
+    private static final int MAX_PLAIN_NUMBER_SCALE = 1024;
     private static final AtomicReference<NamedAssetRegistry> DEFAULT_REGISTRY = new AtomicReference<>();
 
     private final Map<NamedAssetKind, Map<String, Binding>> bindings;
@@ -907,7 +902,8 @@ public final class NamedAssetRegistry {
          * Reads a finite JSON-style number as text.
          *
          * @param index argument index
-         * @return normalized number text
+         * @return normalized number text, in scientific notation when needed to avoid
+         *         expanding a large exponent
          * @since 0.23.1
          */
         public String finiteNumberText(int index) {
@@ -1244,20 +1240,12 @@ public final class NamedAssetRegistry {
         if (!JSON_NUMBER_LITERAL.matcher(trimmed).matches()) {
             throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed);
         }
-        BigDecimal decimal;
         try {
-            decimal = new BigDecimal(trimmed).stripTrailingZeros();
-        } catch (NumberFormatException ex) {
+            BigDecimal decimal = new BigDecimal(trimmed).stripTrailingZeros();
+            return Math.abs((long) decimal.scale()) <= MAX_PLAIN_NUMBER_SCALE ? decimal.toPlainString()
+                    : decimal.toString();
+        } catch (NumberFormatException | ArithmeticException ex) {
             throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed, ex);
         }
-        // An exponent expands to that many plain digits, so "1e999999999" would
-        // otherwise allocate a gigabyte-sized string from a short expression.
-        long plainDigits = decimal.scale() < 0 ? (long) decimal.precision() - decimal.scale()
-                : Math.max(decimal.precision(), decimal.scale() + 1L);
-        if (plainDigits > MAX_PLAIN_NUMBER_DIGITS) {
-            throw new IllegalArgumentException("Numeric argument at " + location + " needs more than "
-                    + MAX_PLAIN_NUMBER_DIGITS + " plain digits: " + trimmed);
-        }
-        return decimal.toPlainString();
     }
 }

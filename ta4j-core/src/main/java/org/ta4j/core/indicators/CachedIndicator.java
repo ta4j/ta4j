@@ -6,11 +6,13 @@ package org.ta4j.core.indicators;
 import java.io.Serial;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -90,6 +92,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     private static final Indicator<?>[] NO_SOURCES = new Indicator<?>[0];
 
+    private static final DependencyObservation[] NO_OBSERVATIONS = new DependencyObservation[0];
+
     /**
      * Per-thread source traversal context. It preserves virtual cache-floor
      * overrides while nested base cached indicators share their visited set.
@@ -128,7 +132,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     private final ObservedSeries[] observedDependencySeries;
 
-    private final IntFunction<T> calculator = this::calculate;
+    private final IntFunction<T> calculator = this::calculateTracked;
     private final IntConsumer computedIndexRecorder = this::updateHighestResultIndex;
 
     private static final AtomicIntegerFieldUpdater<CachedIndicator> HIGHEST_RESULT_INDEX_UPDATER = AtomicIntegerFieldUpdater
@@ -469,6 +473,19 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     @Override
     public T getValue(int index) {
+        TransientScope scope = enterTransientScope();
+        try {
+            return getValueTracked(index);
+        } catch (TransientResult transientResult) {
+            @SuppressWarnings("unchecked")
+            T value = (T) transientResult.value;
+            return value;
+        } finally {
+            exitTransientScope(scope);
+        }
+    }
+
+    private T getValueTracked(int index) {
         BarSeries series = getBarSeries();
         BarSeriesChangeSnapshot snapshot = synchronizeCacheWithSeries(series);
         warnIfWindowIsShorterThanUnstablePeriod(snapshot.maximumBarCount());
@@ -710,6 +727,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * snapshot, returning one observation per dependency.
      */
     private DependencyObservation[] observeDependencySeries() {
+        if (observedDependencySeries.length == 0) {
+            return NO_OBSERVATIONS;
+        }
         DependencyObservation[] observations = new DependencyObservation[observedDependencySeries.length];
         for (int i = 0; i < observedDependencySeries.length; i++) {
             observations[i] = DependencyObservation.of(observedDependencySeries[i]);
@@ -1371,7 +1391,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
 
         // Compute outside the lock to avoid lock-order deadlocks with the cache lock.
-        T computed = calculate(0);
+        T computed = calculateTracked(0);
 
         // If the series window advanced during computation, don't cache this value.
         if (series.getRemovedBarsCount() != removedBarsCount) {
@@ -1472,7 +1492,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
         final T computed;
         try {
-            computed = calculate(index);
+            computed = calculateTracked(index);
         } catch (RuntimeException | Error error) {
             if (ownsComputation) {
                 synchronized (lastBarLock) {
@@ -1624,6 +1644,192 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             firstBarHasCachedResult = false;
             firstBarCachedResult = null;
         }
+    }
+
+    /**
+     * Marks the value being calculated on this thread as transient: it is returned
+     * to the caller but neither this indicator nor any cached indicator computing
+     * from it stores it, so a later read recomputes.
+     *
+     * <p>
+     * Call from {@link #calculate(int)} when the result is undefined only because
+     * of a condition a retry could clear, such as history that kept changing during
+     * the calculation or a source that failed once. Deterministic undefined results
+     * must not be marked: they are final answers and belong in the cache.
+     *
+     * @since 0.29.1
+     */
+    protected static void markResultTransient() {
+        TRANSIENT_SCOPE.get().tainted = true;
+    }
+
+    /**
+     * Whether the calculation running on this thread has read a transient value
+     * (see {@link #markResultTransient()}).
+     *
+     * <p>
+     * Indicators that keep state besides this cache, such as running sums or scan
+     * frontiers, must not commit it while this returns {@code true}: the value they
+     * would commit is not a final answer. A spurious {@code true} only costs a
+     * recomputation.
+     *
+     * @return {@code true} when a transient value was read during this calculation
+     * @since 0.29.1
+     */
+    protected static boolean isResultTransient() {
+        return TRANSIENT_SCOPE.get().tainted;
+    }
+
+    /**
+     * Performs {@code read} and returns its result, or throws when the read
+     * produced a value marked with {@link #markResultTransient()}.
+     *
+     * <p>
+     * Use when a result is committed to state other than this cache, such as an
+     * incremental scan frontier, so a transient value is never recorded there.
+     *
+     * @param read  the read to perform, typically a source indicator lookup
+     * @param index the bar index passed to {@code read}
+     * @param <V>   the value type
+     * @return the value read
+     * @throws TransientValueException when the value read was transient
+     * @since 0.29.1
+     */
+    protected static <V> V readNonTransient(IntFunction<V> read, int index) {
+        TransientScope scope = enterTransientScope();
+        boolean outerTainted = scope.tainted;
+        scope.tainted = false;
+        V value;
+        boolean tainted;
+        try {
+            value = read.apply(index);
+        } finally {
+            tainted = scope.tainted;
+            scope.tainted = outerTainted || tainted;
+            exitTransientScope(scope);
+        }
+        if (tainted) {
+            throw new TransientValueException(index);
+        }
+        return value;
+    }
+
+    /**
+     * Thrown by {@link #readNonTransient(IntFunction, int)} when the value read was
+     * transient. A later read at the same index may succeed.
+     *
+     * @since 0.29.1
+     */
+    public static final class TransientValueException extends RuntimeException {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        TransientValueException(int index) {
+            super("transient value at index " + index);
+        }
+    }
+
+    private static final ThreadLocal<TransientScope> TRANSIENT_SCOPE = ThreadLocal.withInitial(TransientScope::new);
+
+    /**
+     * Per-thread state for one top-level evaluation. Transient values are kept in
+     * {@code values} until the evaluation ends so a recursive indicator reads its
+     * transient predecessor instead of recomputing the whole chain.
+     */
+    static final class TransientScope {
+        private int depth;
+        private boolean tainted;
+        private Map<CachedIndicator<?>, Map<Integer, Object>> values;
+        // Entries in creation order; depths never decrease along the list because
+        // deeper entries are dropped when their read returns. Dropping by depth
+        // rather than at depth zero keeps a frame lost to a StackOverflowError
+        // from pinning stale values on this thread.
+        private final ArrayList<TransientEntry> entries = new ArrayList<>();
+
+        private Map<Integer, Object> valuesOf(CachedIndicator<?> indicator) {
+            return values == null ? null : values.get(indicator);
+        }
+
+        private void put(CachedIndicator<?> indicator, int index, Object value) {
+            if (values == null) {
+                values = new IdentityHashMap<>();
+            }
+            values.computeIfAbsent(indicator, ignored -> new HashMap<>()).put(index, value);
+            entries.add(new TransientEntry(indicator, index, depth));
+        }
+
+        private void dropDeeperThan(int keptDepth) {
+            for (int i = entries.size() - 1; i >= 0 && entries.get(i).depth() > keptDepth; i--) {
+                TransientEntry entry = entries.remove(i);
+                Map<Integer, Object> indicatorValues = values.get(entry.indicator());
+                indicatorValues.remove(entry.index());
+                if (indicatorValues.isEmpty()) {
+                    values.remove(entry.indicator());
+                }
+            }
+        }
+    }
+
+    private record TransientEntry(CachedIndicator<?> indicator, int index, int depth) {
+    }
+
+    /**
+     * Carries a transient value past the cache stores of the indicator that
+     * computed it. Never escapes that indicator's {@link #getValue(int)}.
+     */
+    static final class TransientResult extends RuntimeException {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        final transient Object value;
+        final int index;
+
+        TransientResult(Object value, int index) {
+            super(null, null, false, false);
+            this.value = value;
+            this.index = index;
+        }
+    }
+
+    static TransientScope enterTransientScope() {
+        TransientScope scope = TRANSIENT_SCOPE.get();
+        scope.depth++;
+        return scope;
+    }
+
+    static void exitTransientScope(TransientScope scope) {
+        int depth = --scope.depth;
+        if (!scope.entries.isEmpty()) {
+            scope.dropDeeperThan(depth);
+        }
+        if (depth <= 0) {
+            scope.depth = 0;
+            scope.tainted = false;
+        }
+    }
+
+    final T calculateTracked(int index) {
+        TransientScope scope = TRANSIENT_SCOPE.get();
+        Map<Integer, Object> transientValues = scope.valuesOf(this);
+        if (transientValues != null && transientValues.containsKey(index)) {
+            scope.tainted = true;
+            throw new TransientResult(transientValues.get(index), index);
+        }
+        boolean outerTainted = scope.tainted;
+        scope.tainted = false;
+        T value;
+        boolean tainted;
+        try {
+            value = calculate(index);
+        } finally {
+            tainted = scope.tainted;
+            scope.tainted = outerTainted || tainted;
+        }
+        if (!tainted) {
+            return value;
+        }
+        scope.put(this, index, value);
+        throw new TransientResult(value, index);
     }
 
     /**

@@ -302,9 +302,16 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
             }
             final HistorySnapshot before = series.withReadLock(() -> HistorySnapshot.capture(series, endIndex));
             final long firstIndex = Math.max((long) beginIndex, (long) lastScannedIndex + 1L);
+            int scannedThrough = targetIndex;
             for (long currentIndex = firstIndex; currentIndex <= targetIndex; currentIndex++) {
                 final int currentBarIndex = (int) currentIndex;
-                final int swingIndex = swingIndexDetector.apply(currentBarIndex);
+                final int swingIndex;
+                try {
+                    swingIndex = readNonTransient(swingIndexDetector, currentBarIndex);
+                } catch (TransientValueException transientRead) {
+                    scannedThrough = currentBarIndex - 1;
+                    break;
+                }
                 if (swingIndex < 0) {
                     if (purgeOnNegativeDetection()) {
                         confirmedSwings.clear();
@@ -331,7 +338,7 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
                 sourceInvalidationPending = true;
                 return true;
             }
-            lastScannedIndex = targetIndex;
+            lastScannedIndex = scannedThrough;
             observedEndIndex = before.endIndex();
             observedBeginIndex = before.beginIndex();
             observedRevision = before.revision();

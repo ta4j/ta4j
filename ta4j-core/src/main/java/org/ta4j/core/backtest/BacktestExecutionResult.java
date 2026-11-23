@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.backtest;
 
+import java.util.ConcurrentModificationException;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -66,7 +67,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * or evicted bars inside it are not, because strategies that ran before and
      * after the change observed different data than the baseline reports.
      *
-     * @throws IllegalStateException if the window changed
+     * @throws ConcurrentModificationException if the window changed
      */
     static void verifyUnchanged(BarSeries source, BarSeries baseline) {
         if (!(baseline instanceof FrozenBarSeries frozenBaseline)) {
@@ -74,7 +75,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         }
         String change = source.withReadLock(() -> frozenBaseline.changeSince(source));
         if (change != null) {
-            throw new IllegalStateException(String.format(
+            throw new ConcurrentModificationException(String.format(
                     "Bar series '%s' changed inside the backtest window [%d, %d] while strategies were running: %s. "
                             + "Results would mix bar revisions. Pause writes to the series while backtesting, or "
                             + "build the strategies on a copy the feed does not update (for example "

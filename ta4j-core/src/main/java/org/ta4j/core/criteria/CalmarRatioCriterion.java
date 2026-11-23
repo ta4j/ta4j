@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.ConcurrentModificationException;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -165,7 +166,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
                 return value;
             }
         }
-        throw new IllegalStateException("Bar series '" + series.getName()
+        throw new ConcurrentModificationException("Bar series '" + series.getName()
                 + "' evicted or changed the analysis window during each of " + MAX_ATTEMPTS + " attempts");
     }
 

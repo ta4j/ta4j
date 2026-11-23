@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -20,10 +23,6 @@ import org.ta4j.core.num.NumFactory;
  */
 public class RWILowIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
-    /**
-     * TODO: Just graphically Excel-Sheet validation with hard coded results. Excel
-     * formula needed
-     */
     private final ExternalIndicatorTest xls;
 
     public RWILowIndicatorTest(NumFactory numFactory) {
@@ -49,6 +48,36 @@ public class RWILowIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void matchesFormulaWorksheetAndHardCodedLowValues() {
+        List<RWIWorksheetFixture.Observation> rows = RWIWorksheetFixture.rows();
+        BarSeries series = RWIWorksheetFixture.series(numFactory);
+        RWILowIndicator indicator = new RWILowIndicator(series, 3);
+
+        assertThat(rows).hasSize(9);
+        assertEquals(3, indicator.getCountOfUnstableBars());
+        for (int i = 0; i < rows.size(); i++) {
+            Num actual = indicator.getValue(i);
+            if (i < 3) {
+                assertThat(actual.isNaN()).as("warm-up bar %s", i).isTrue();
+            } else {
+                RWIWorksheetFixture.Observation row = rows.get(i);
+                assertThat(Double.isFinite(row.expectedLow())).as("reference bar %s", i).isTrue();
+                assertThat(Num.isFinite(actual)).as("indicator bar %s", i).isTrue();
+                assertEquals(row.expectedLow(), row.formulaLow(), 1e-10, "worksheet bar " + i);
+                assertEquals(row.expectedLow(), actual.doubleValue(), 1e-10, "indicator bar " + i);
+            }
+        }
+    }
+
+    @Test
+    public void randomWalkIndexLow() throws Exception {
+        Indicator<Num> expected = xls.getIndicator(20);
+        RWILowIndicator rwil = (RWILowIndicator) getIndicator(expected.getBarSeries(), 20);
+        assertEquals(20, rwil.getCountOfUnstableBars());
+        assertIndicatorEquals(expected, rwil);
+    }
+
+    @Test
     public void rejectsBarCountAboveHelperCapAndSharesOneTrueRange() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(10).highPrice(12).lowPrice(8).closePrice(10).add();
@@ -61,13 +90,5 @@ public class RWILowIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
         for (Indicator<?> atr : rwi.getDependencies()) {
             assertThat(atr.getDependencies().get(0).getDependencies()).containsExactly(firstTrueRange);
         }
-    }
-
-    @Test
-    public void randomWalkIndexHigh() throws Exception {
-        Indicator<Num> expected = xls.getIndicator(20);
-        RWILowIndicator rwil = (RWILowIndicator) getIndicator(expected.getBarSeries(), 20);
-        assertEquals(20, rwil.getCountOfUnstableBars());
-        assertIndicatorEquals(expected, rwil);
     }
 }

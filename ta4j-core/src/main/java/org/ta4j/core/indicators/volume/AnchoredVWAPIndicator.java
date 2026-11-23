@@ -130,42 +130,57 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
      */
     private int resolveAnchorIndex(int index) {
         synchronized (anchorIndexCache) {
-            ensureAnchorCacheLocked(index);
             int offset = index - baseIndex;
             if (offset < 0) {
                 return baseAnchorIndex;
             }
-            return anchorIndexCache.get(offset);
+            if (ensureAnchorCacheLocked(index)) {
+                return anchorIndexCache.get(offset);
+            }
+            // A transient signal stopped the scan; finish it without caching.
+            markResultTransient();
+            int size = anchorIndexCache.size();
+            int anchor = size == 0 ? baseAnchorIndex : anchorIndexCache.get(size - 1);
+            for (int i = size; i <= offset; i++) {
+                anchor = nextAnchor(anchor, baseIndex + i, anchorSignal.getValue(baseIndex + i));
+            }
+            return anchor;
         }
     }
 
     /**
-     * Ensures anchor cache locked.
+     * Extends the anchor cache through {@code index}.
+     *
+     * @return {@code false} when a transient signal stopped the scan early
      */
-    private void ensureAnchorCacheLocked(int index) {
+    private boolean ensureAnchorCacheLocked(int index) {
         int offset = index - baseIndex;
-        if (offset < 0) {
-            return;
-        }
         int currentSize = anchorIndexCache.size();
         if (offset < currentSize) {
-            return;
+            return true;
         }
 
         int lastAnchor = currentSize == 0 ? baseAnchorIndex : anchorIndexCache.get(currentSize - 1);
         for (int i = currentSize; i <= offset; i++) {
             int seriesIndex = baseIndex + i;
-            int anchor = lastAnchor;
+            Boolean signal = null;
             if (anchorSignal != null) {
-                Boolean signal = anchorSignal.getValue(seriesIndex);
-                if (Boolean.TRUE.equals(signal)) {
-                    anchor = seriesIndex;
+                try {
+                    signal = readNonTransient(anchorSignal::getValue, seriesIndex);
+                } catch (TransientValueException transientRead) {
+                    return false;
                 }
             }
-            anchor = Math.max(anchor, baseAnchorIndex);
+            int anchor = nextAnchor(lastAnchor, seriesIndex, signal);
             anchorIndexCache.add(anchor);
             lastAnchor = anchor;
         }
+        return true;
+    }
+
+    private int nextAnchor(int lastAnchor, int seriesIndex, Boolean signal) {
+        int anchor = Boolean.TRUE.equals(signal) ? seriesIndex : lastAnchor;
+        return Math.max(anchor, baseAnchorIndex);
     }
 
     /**

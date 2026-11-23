@@ -3,14 +3,6 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.IdentityHashMap;
-import java.util.Set;
-
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.NaN;
@@ -52,17 +44,11 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final Num percentageThreshold;
+    private static final int MAX_REPLAY_ATTEMPTS = 3;
+
+    private final transient Object notificationLock = new Object();
     private Num lastNotification;
-    private static final int NOT_SCANNED = Integer.MIN_VALUE;
-    /** Last index folded into {@link #lastNotification} by the sequential scan. */
-    private transient int scannedThrough = NOT_SCANNED;
-    /**
-     * Series backing this indicator and every source in its graph. A change to any
-     * of them, not only to this indicator's own series, can alter the bars the scan
-     * already folded in.
-     */
-    private transient BarSeries[] scannedSeries;
-    private transient long[] scannedRevisions;
+    private transient long notificationVersion;
 
     /**
      * Constructor to get the percentage difference from the previous value.
@@ -100,8 +86,10 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     @Override
     protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        lastNotification = null;
-        scannedThrough = NOT_SCANNED;
+        synchronized (notificationLock) {
+            lastNotification = null;
+            notificationVersion++;
+        }
         return super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
     }
 
@@ -117,92 +105,75 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        // The last notification for this index is the result of a sequential scan
-        // of the earlier bars. Continue the previous scan when it is a prefix of
-        // this one instead of rescanning from the head for every index, which made
-        // a full pass quadratic.
-        long[] revisions = currentRevisions();
-        int start;
-        if (scannedThrough == NOT_SCANNED || scannedThrough >= index || scannedThrough < beginIndex - 1
-                || revisions == null || !Arrays.equals(revisions, scannedRevisions)) {
-            lastNotification = null;
-            start = beginIndex;
-        } else {
-            start = scannedThrough + 1;
+        for (int attempt = 0; attempt < MAX_REPLAY_ATTEMPTS; attempt++) {
+            Num notification;
+            long version;
+            synchronized (notificationLock) {
+                notification = lastNotification;
+                version = notificationVersion;
+            }
+            try {
+                for (int i = beginIndex; i < index; i++) {
+                    notification = nextNotification(notification, i);
+                }
+            } catch (TransientValueException transientRead) {
+                markResultTransient();
+                return NaN.NaN;
+            }
+            if (publishNotification(notification, version)) {
+                return notification == null ? NaN.NaN : fractionToPercentage(value.dividedBy(notification));
+            }
         }
-        for (int i = start; i < index; i++) {
-            applyNotification(i);
-        }
-        scannedThrough = index - 1;
-        scannedRevisions = revisions;
-
-        if (lastNotification == null) {
-            return NaN.NaN;
-        }
-
-        Num changeFraction = value.dividedBy(lastNotification);
-        return fractionToPercentage(changeFraction);
+        // Every replay lost to a concurrent update; a stale result must not be cached.
+        markResultTransient();
+        return NaN.NaN;
     }
 
     public void setLastNotification(int index) {
-        // An external update breaks the sequential scan state.
-        scannedThrough = NOT_SCANNED;
-        applyNotification(index);
+        while (true) {
+            Num notification;
+            long version;
+            synchronized (notificationLock) {
+                notification = lastNotification;
+                version = notificationVersion;
+            }
+            try {
+                notification = nextNotification(notification, index);
+            } catch (TransientValueException transientRead) {
+                return;
+            }
+            if (publishNotification(notification, version)) {
+                return;
+            }
+        }
     }
 
-    /**
-     * @return the history revisions of every series in the source graph, or
-     *         {@code null} when one of them does not track revisions
-     */
-    private long[] currentRevisions() {
-        if (scannedSeries == null) {
-            scannedSeries = collectSeries();
-        }
-        long[] revisions = new long[scannedSeries.length];
-        for (int i = 0; i < scannedSeries.length; i++) {
-            long revision = scannedSeries[i].getBarHistoryRevision();
-            if (revision < 0) {
-                return null;
+    // Replays stage state locally and publish only if no other update landed
+    // since their snapshot, so neither a failed nor a stale replay can erase one.
+    private boolean publishNotification(Num notification, long version) {
+        synchronized (notificationLock) {
+            if (notificationVersion != version) {
+                return false;
             }
-            revisions[i] = revision;
+            lastNotification = notification;
+            notificationVersion++;
+            return true;
         }
-        return revisions;
     }
 
-    private BarSeries[] collectSeries() {
-        Set<BarSeries> series = Collections.newSetFromMap(new IdentityHashMap<>());
-        Set<Indicator<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        Deque<Indicator<?>> pending = new ArrayDeque<>();
-        series.add(getBarSeries());
-        pending.add(indicator);
-        while (!pending.isEmpty()) {
-            Indicator<?> source = pending.removeLast();
-            if (!visited.add(source)) {
-                continue;
-            }
-            if (source.getBarSeries() != null) {
-                series.add(source.getBarSeries());
-            }
-            pending.addAll(source.getDependencies());
-        }
-        return series.toArray(BarSeries[]::new);
-    }
-
-    private void applyNotification(int index) {
-        Num value = indicator.getValue(index);
+    private Num nextNotification(Num notification, int index) {
+        Num value = readNonTransient(indicator::getValue, index);
         if (value.isNaN() || value.isZero()) {
-            return;
+            return notification;
         }
-        if (lastNotification == null) {
-            lastNotification = value;
+        if (notification == null) {
+            notification = value;
         }
 
-        Num changeFraction = value.dividedBy(lastNotification);
+        Num changeFraction = value.dividedBy(notification);
         Num changePercentage = fractionToPercentage(changeFraction);
 
-        if (changePercentage.abs().isGreaterThanOrEqual(percentageThreshold)) {
-            lastNotification = value;
-        }
+        return changePercentage.abs().isGreaterThanOrEqual(percentageThreshold) ? value : notification;
     }
 
     @Override

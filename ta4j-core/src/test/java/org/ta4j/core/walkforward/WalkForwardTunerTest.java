@@ -137,45 +137,36 @@ class WalkForwardTunerTest {
     }
 
     @Test
-    void tunerExcludesCandidatesWithAnyFailedFold() {
-        BarSeries series = new MockBarSeriesBuilder().withData(prices(420)).build();
+    void tunerIsolatesObjectiveFailureAndContinuesToNextCandidate() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(3)).build();
         NumFactory numFactory = series.numFactory();
-        WalkForwardConfig config = new WalkForwardConfig(120, 60, 30, 2, 2, 0, 5, List.of(), 1, List.of(), 7L);
-
-        PredictionProvider<Double, Double> provider = (fullSeries, decisionIndex, context) -> {
-            if (context == 0.6 && decisionIndex >= 300) {
-                throw new IllegalStateException("synthetic late-fold failure");
-            }
-            return List.of(
-                    new RankedPrediction<>("p-" + decisionIndex, 1, numFactory.numOf(0.5), numFactory.numOf(0.5), 0.5));
-        };
-        OutcomeLabeler<Double, Boolean> labeler = (fullSeries, decisionIndex, horizonBars, prediction) -> fullSeries
-                .getBar(decisionIndex + horizonBars)
-                .getClosePrice()
-                .isGreaterThan(fullSeries.getBar(decisionIndex).getClosePrice());
-
-        List<WalkForwardMetric<Double, Boolean>> metrics = List
-                .of(WalkForwardMetric.agreement("eventAgreement", 1, (prediction, outcome) -> outcome));
-
+        WalkForwardConfig config = new WalkForwardConfig(1, 2, 2, 0, 0, 0, 1, List.of(), 1, List.of(), 1L);
         WalkForwardEngine<Double, Double, Boolean> engine = new WalkForwardEngine<>(
-                new AnchoredExpandingWalkForwardSplitter(), provider, labeler, metrics);
-
-        WalkForwardObjective objective = WalkForwardObjective.weighted(Map.of("eventAgreement", numFactory.one()),
-                Map.of(), Map.of(), numFactory.zero());
-
-        WalkForwardTuner<Double, Double, Boolean> tuner = new WalkForwardTuner<>(engine, objective, 2, 1,
+                new AnchoredExpandingWalkForwardSplitter(),
+                (fullSeries, decisionIndex, context) -> List
+                        .of(new RankedPrediction<>("p", 1, numFactory.numOf(0.5), numFactory.numOf(0.5), context)),
+                (fullSeries, decisionIndex, horizonBars, prediction) -> prediction.payload() > 0.5,
+                List.of(WalkForwardMetric.agreement("agreement", 1, (prediction, outcome) -> outcome)));
+        WalkForwardObjective weighted = WalkForwardObjective.weighted(Map.of("agreement", numFactory.one()), Map.of(),
+                Map.of(), numFactory.zero());
+        WalkForwardObjective objective = (globalMetrics, foldMetrics) -> {
+            if (globalMetrics.get("agreement").isZero()) {
+                throw new IllegalStateException("objective cannot score candidate");
+            }
+            return weighted.evaluate(globalMetrics, foldMetrics);
+        };
+        WalkForwardTuner<Double, Double, Boolean> tuner = new WalkForwardTuner<>(engine, objective, 1, 1,
                 WalkForwardTuner.CalibrationMode.NONE, WalkForwardTuner.CalibrationGate.defaultGate(), 1,
                 outcome -> outcome ? numFactory.one() : numFactory.zero());
 
         WalkForwardLeaderboard<Double> leaderboard = tuner.tune(series,
-                List.of(new WalkForwardCandidate<>("c-1", 0.9), new WalkForwardCandidate<>("c-2", 0.6)), config);
+                List.of(new WalkForwardCandidate<>("failed", 0.0), new WalkForwardCandidate<>("healthy", 1.0)), config);
 
-        assertThat(leaderboard.entries()).hasSize(1);
-        assertThat(engine.run(series, 0.6, config, "probe", Map.of()).foldFailures()).isNotEmpty()
-                .hasSizeLessThan(engine.run(series, 0.6, config, "probe", Map.of()).splits().size());
-        assertThat(leaderboard.entries().get(0).candidate().context()).isEqualTo(0.9);
         assertThat(leaderboard.failedCount()).isEqualTo(1);
         assertThat(leaderboard.evaluatedCount()).isEqualTo(1);
+        assertThat(leaderboard.entries()).hasSize(1);
+        assertThat(leaderboard.entries().getFirst().candidate().id()).isEqualTo("healthy");
+        assertThat(leaderboard.entries().getFirst().globalMetrics()).containsEntry("agreement", numFactory.one());
     }
 
     @Test
@@ -271,5 +262,47 @@ class WalkForwardTunerTest {
         } finally {
             Locale.setDefault(previousLocale);
         }
+    }
+
+    @Test
+    void tunerExcludesCandidatesWithAnyFailedFold() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(420)).build();
+        NumFactory numFactory = series.numFactory();
+        WalkForwardConfig config = new WalkForwardConfig(120, 60, 30, 2, 2, 0, 5, List.of(), 1, List.of(), 7L);
+
+        PredictionProvider<Double, Double> provider = (fullSeries, decisionIndex, context) -> {
+            if (context == 0.6 && decisionIndex >= 300) {
+                throw new IllegalStateException("synthetic late-fold failure");
+            }
+            return List.of(
+                    new RankedPrediction<>("p-" + decisionIndex, 1, numFactory.numOf(0.5), numFactory.numOf(0.5), 0.5));
+        };
+        OutcomeLabeler<Double, Boolean> labeler = (fullSeries, decisionIndex, horizonBars, prediction) -> fullSeries
+                .getBar(decisionIndex + horizonBars)
+                .getClosePrice()
+                .isGreaterThan(fullSeries.getBar(decisionIndex).getClosePrice());
+
+        List<WalkForwardMetric<Double, Boolean>> metrics = List
+                .of(WalkForwardMetric.agreement("eventAgreement", 1, (prediction, outcome) -> outcome));
+
+        WalkForwardEngine<Double, Double, Boolean> engine = new WalkForwardEngine<>(
+                new AnchoredExpandingWalkForwardSplitter(), provider, labeler, metrics);
+
+        WalkForwardObjective objective = WalkForwardObjective.weighted(Map.of("eventAgreement", numFactory.one()),
+                Map.of(), Map.of(), numFactory.zero());
+
+        WalkForwardTuner<Double, Double, Boolean> tuner = new WalkForwardTuner<>(engine, objective, 2, 1,
+                WalkForwardTuner.CalibrationMode.NONE, WalkForwardTuner.CalibrationGate.defaultGate(), 1,
+                outcome -> outcome ? numFactory.one() : numFactory.zero());
+
+        WalkForwardLeaderboard<Double> leaderboard = tuner.tune(series,
+                List.of(new WalkForwardCandidate<>("c-1", 0.9), new WalkForwardCandidate<>("c-2", 0.6)), config);
+
+        assertThat(leaderboard.entries()).hasSize(1);
+        assertThat(engine.run(series, 0.6, config, "probe", Map.of()).foldFailures()).isNotEmpty()
+                .hasSizeLessThan(engine.run(series, 0.6, config, "probe", Map.of()).splits().size());
+        assertThat(leaderboard.entries().get(0).candidate().context()).isEqualTo(0.9);
+        assertThat(leaderboard.failedCount()).isEqualTo(1);
+        assertThat(leaderboard.evaluatedCount()).isEqualTo(1);
     }
 }

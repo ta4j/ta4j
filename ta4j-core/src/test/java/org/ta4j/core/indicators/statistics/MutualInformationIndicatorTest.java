@@ -19,6 +19,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -71,6 +72,20 @@ public class MutualInformationIndicatorTest extends AbstractIndicatorTest<Indica
         MutualInformationIndicator mutualInformation = new MutualInformationIndicator(constant, changing, 4, 2);
 
         assertNumEquals(0, mutualInformation.getValue(3));
+    }
+
+    @Test
+    public void returnsNaNWhenBinWidthUnderflows() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).withData(1, 2, 3, 4).build();
+        List<Num> tiny = java.util.stream.Stream.of(0d, Double.MIN_VALUE, 0d, Double.MIN_VALUE)
+                .map(doubleFactory::numOf)
+                .toList();
+        Indicator<Num> first = new MockIndicator(series, tiny);
+        Indicator<Num> second = new MockIndicator(series, tiny);
+        MutualInformationIndicator mutualInformation = new MutualInformationIndicator(first, second, 4, 2);
+
+        assertTrue(mutualInformation.getValue(3).isNaN());
     }
 
     @Test
