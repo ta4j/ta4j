@@ -58,25 +58,29 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         }
         Trade entry = position.getEntry();
 
-        List<TradeFill> fills;
+        List<TradeFill> recordedFills;
         try {
-            fills = entry.getFills();
+            recordedFills = entry.getRecordedFills();
         } catch (RuntimeException e) {
-            fills = null;
+            recordedFills = null;
         }
 
-        if (fills == null) {
+        if (recordedFills == null) {
             return NaN.NaN;
         }
 
-        List<TradeFill> visibleFills = fills.stream()
+        if (recordedFills.isEmpty()) {
+            return fullWindowCostBasis(series, entry, factory);
+        }
+
+        List<TradeFill> visibleFills = recordedFills.stream()
                 .filter(f -> f.index() >= 0 && f.index() <= finalIndex)
                 .toList();
         if (visibleFills.isEmpty()) {
             return factory.zero();
         }
 
-        if (visibleFills.size() == fills.size()) {
+        if (visibleFills.size() == recordedFills.size()) {
             return fullWindowCostBasis(series, entry, factory);
         }
 

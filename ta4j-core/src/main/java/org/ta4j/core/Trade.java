@@ -193,6 +193,24 @@ public interface Trade extends Serializable {
     }
 
     /**
+     * Returns the recorded execution fills for this trade, without any modeled-fee
+     * apportionment.
+     *
+     * <p>
+     * Unlike {@link #getFills()}, this does not redistribute a modeled transaction
+     * cost across fills, so the returned fees do not depend on fills that may not
+     * be visible at a given evaluation index. Use this for partial-window
+     * calculations.
+     * </p>
+     *
+     * @return recorded execution fills of this trade
+     * @since 0.29.1
+     */
+    default List<TradeFill> getRecordedFills() {
+        return getFills();
+    }
+
+    /**
      * Resolves execution fills for the provided trade.
      *
      * <p>
