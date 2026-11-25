@@ -8,6 +8,7 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import java.util.ConcurrentModificationException;
 import java.util.List;
 
 /**
@@ -28,6 +29,8 @@ import java.util.List;
  * @since 0.22.2
  */
 public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
+
+    private static final int MAX_ATTEMPTS = 8;
 
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -58,46 +61,66 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         }
         Trade entry = position.getEntry();
 
-        List<TradeFill> recordedFills;
-        try {
-            recordedFills = entry.getRecordedFills();
-        } catch (RuntimeException e) {
-            recordedFills = null;
-        }
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            try {
+                List<TradeFill> recordedFills;
+                try {
+                    recordedFills = entry.getRecordedFills();
+                } catch (ConcurrentModificationException e) {
+                    throw e;
+                } catch (RuntimeException e) {
+                    recordedFills = null;
+                }
 
-        if (recordedFills == null) {
-            return NaN.NaN;
-        }
+                if (recordedFills == null) {
+                    return NaN.NaN;
+                }
 
-        if (recordedFills.isEmpty()) {
-            return fullWindowCostBasis(series, entry, factory);
-        }
+                if (recordedFills.isEmpty()) {
+                    return fullWindowCostBasis(series, entry, factory);
+                }
 
-        List<TradeFill> visibleFills = recordedFills.stream()
-                .filter(f -> f.index() >= 0 && f.index() <= finalIndex)
-                .toList();
-        if (visibleFills.isEmpty()) {
-            return factory.zero();
-        }
+                List<TradeFill> visibleFills = recordedFills.stream()
+                        .filter(f -> f.index() >= 0 && f.index() <= finalIndex)
+                        .toList();
+                if (visibleFills.isEmpty()) {
+                    return factory.zero();
+                }
 
-        if (visibleFills.size() == recordedFills.size()) {
-            return fullWindowCostBasis(series, entry, factory);
-        }
+                if (visibleFills.size() == recordedFills.size()) {
+                    return fullWindowCostBasis(series, entry, factory);
+                }
 
-        Num entryCost = factory.zero();
-        try {
-            for (TradeFill fill : visibleFills) {
-                Num price = fill.price().isNaN()
-                        && fill.index() >= series.getBeginIndex()
-                        && fill.index() <= series.getEndIndex()
-                        ? series.getBar(fill.index()).getClosePrice()
-                        : fill.price();
-                entryCost = entryCost.plus(toSeriesNum(factory, price.multipliedBy(fill.amount()).plus(fill.fee())));
+                Num entryCost = null;
+                try {
+                    for (TradeFill fill : visibleFills) {
+                        Num price = fill.price().isNaN()
+                                && fill.index() >= series.getBeginIndex()
+                                && fill.index() <= series.getEndIndex()
+                                ? series.getBar(fill.index()).getClosePrice()
+                                : fill.price();
+                        Num fillCost = price.multipliedBy(fill.amount()).plus(fill.fee());
+                        entryCost = entryCost == null ? fillCost : entryCost.plus(fillCost);
+                    }
+                } catch (ConcurrentModificationException e) {
+                    throw e;
+                } catch (RuntimeException e) {
+                    return NaN.NaN;
+                }
+
+                if (entryCost == null) {
+                    entryCost = factory.zero();
+                }
+
+                return toSeriesNum(factory, entryCost);
+            } catch (ConcurrentModificationException e) {
+                if (attempt == MAX_ATTEMPTS - 1) {
+                    throw e;
+                }
             }
-        } catch (RuntimeException e) {
-            return NaN.NaN;
         }
-        return toSeriesNum(factory, entryCost);
+        throw new ConcurrentModificationException("Bar series '" + series.getName()
+                + "' evicted or changed the analysis window during each of " + MAX_ATTEMPTS + " attempts");
     }
 
     private boolean isOpenAt(Position position, int finalIndex) {
