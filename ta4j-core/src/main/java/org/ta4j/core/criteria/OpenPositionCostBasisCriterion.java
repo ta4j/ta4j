@@ -8,6 +8,7 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import java.math.BigDecimal;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 
@@ -91,7 +92,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
                     return fullWindowCostBasis(series, entry, factory);
                 }
 
-                Num entryCost = null;
+                BigDecimal entryCost = BigDecimal.ZERO;
                 try {
                     for (TradeFill fill : visibleFills) {
                         Num price = fill.price().isNaN()
@@ -100,7 +101,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
                                 ? series.getBar(fill.index()).getClosePrice()
                                 : fill.price();
                         Num fillCost = price.multipliedBy(fill.amount()).plus(fill.fee());
-                        entryCost = entryCost == null ? fillCost : entryCost.plus(fillCost);
+                        entryCost = entryCost.add(new BigDecimal(fillCost.getDelegate().toString()));
                     }
                 } catch (ConcurrentModificationException e) {
                     throw e;
@@ -108,11 +109,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
                     return NaN.NaN;
                 }
 
-                if (entryCost == null) {
-                    entryCost = factory.zero();
-                }
-
-                return toSeriesNum(factory, entryCost);
+                return toSeriesNum(factory, factory.numOf(entryCost));
             } catch (ConcurrentModificationException e) {
                 if (attempt == MAX_ATTEMPTS - 1) {
                     throw e;

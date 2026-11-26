@@ -304,6 +304,26 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
         assertNumEquals(seriesFactory.numOf(2.5), result);
     }
 
+    @Test
+    public void partialWindowLowPrecisionFillsRetainSubtotals() {
+        NumFactory fillFactory = DecimalNumFactory.getInstance(3);
+        NumFactory seriesFactory = DecimalNumFactory.getInstance(4);
+        var costModel = new ZeroCostModel();
+        var entry = Trade.fromFills(TradeType.BUY, List.of(
+                        new TradeFill(0, fillFactory.numOf(100), fillFactory.one()),
+                        new TradeFill(1, fillFactory.numOf(0.4), fillFactory.one()),
+                        new TradeFill(2, fillFactory.numOf(0.4), fillFactory.one()),
+                        new TradeFill(5, fillFactory.numOf(1.0), fillFactory.one())),
+                costModel);
+        var position = new Position(entry, costModel, new ZeroCostModel());
+        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("partial", seriesFactory,
+                2, 100d, 0.4, 0.4, 1.0, 1.0, 1.0);
+        var criterion = getCriterion();
+        Num result = criterion.calculate(constrained, position);
+
+        assertNumEquals(seriesFactory.numOf(100.8), result);
+    }
+
     private BaseTradingRecord openLotsAcrossLogicalEnd() {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
