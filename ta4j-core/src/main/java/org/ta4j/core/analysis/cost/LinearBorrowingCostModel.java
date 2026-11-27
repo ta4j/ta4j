@@ -19,10 +19,10 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * A closed position uses its actual exit index. An open position uses the
- * supplied observation index and requires that overload. The price/amount
- * overload returns zero because it cannot determine a holding duration. These
- * legacy conventions are preserved. Calendar/mark-based borrowing requires an
- * explicitly supplied cost model with the relevant historical inputs.
+ * supplied observation index and incurs no cost before its entry. The
+ * price/amount overload returns zero because it cannot determine a holding
+ * duration. Calendar/mark-based borrowing requires an explicitly supplied cost
+ * model with the relevant historical inputs.
  *
  * <p>
  * By default borrowing costs apply to short positions only, preserving the
@@ -143,6 +143,9 @@ public class LinearBorrowingCostModel implements CostModel {
             if (position.isClosed()) {
                 tradingPeriods = exitTrade.getIndex() - entryTrade.getIndex();
             } else if (position.isOpened()) {
+                if (currentIndex < entryTrade.getIndex()) {
+                    return borrowingCost;
+                }
                 tradingPeriods = currentIndex - entryTrade.getIndex();
             }
             borrowingCost = getHoldingCostForPeriods(tradingPeriods, position.getEntry().getValue());

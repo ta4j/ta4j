@@ -90,9 +90,20 @@ public class LinearBorrowingCostModelTest {
     }
 
     @Test
+    public void openShortAccruesBorrowingCostOnlyAfterEntry() {
+        Position position = new Position(Trade.TradeType.SELL, new ZeroCostModel(), borrowingModel);
+        position.operate(5, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+
+        assertNumEquals(0, position.getHoldingCost(2));
+        assertNumEquals(0, position.getHoldingCost(5));
+        assertNumEquals(4, position.getHoldingCost(9));
+    }
+
+    @Test
     public void entryValueAndIndexDistanceIgnoreChangedExitMark() {
         Position position = new Position(Trade.sellAt(10, DoubleNum.valueOf(100), DoubleNum.valueOf(2)),
                 Trade.buyAt(14, DoubleNum.valueOf(250), DoubleNum.valueOf(2)), new ZeroCostModel(), borrowingModel);
+        assertNumEquals(8, position.getHoldingCost(9));
         assertNumEquals(8, position.getHoldingCost(14));
         assertNumEquals(8, position.getHoldingCost());
     }
