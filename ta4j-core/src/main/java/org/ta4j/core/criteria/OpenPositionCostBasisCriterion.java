@@ -64,52 +64,52 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
 
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             try {
-                List<TradeFill> recordedFills;
-                try {
-                    recordedFills = entry.getRecordedFills();
-                } catch (ConcurrentModificationException e) {
-                    throw e;
-                } catch (RuntimeException e) {
-                    recordedFills = null;
-                }
-
-                if (recordedFills == null) {
-                    return NaN.NaN;
-                }
-
-                if (recordedFills.isEmpty()) {
-                    return fullWindowCostBasis(series, entry, factory);
-                }
-
-                List<TradeFill> visibleFills = recordedFills.stream()
-                        .filter(f -> f.index() >= 0 && f.index() <= finalIndex)
-                        .toList();
-                if (visibleFills.isEmpty()) {
-                    return factory.zero();
-                }
-
-                if (visibleFills.size() == recordedFills.size()) {
-                    return fullWindowCostBasis(series, entry, factory);
-                }
-
-                BigDecimal entryCost = BigDecimal.ZERO;
-                try {
-                    for (TradeFill fill : visibleFills) {
-                        Num price = fill.price().isNaN()
-                                && fill.index() >= series.getBeginIndex()
-                                && fill.index() <= series.getEndIndex()
-                                ? series.getBar(fill.index()).getClosePrice()
-                                : fill.price();
-                        Num fillCost = price.multipliedBy(fill.amount()).plus(fill.fee());
-                        entryCost = entryCost.add(new BigDecimal(fillCost.getDelegate().toString()));
+                return series.withReadLock(() -> {
+                    List<TradeFill> recordedFills;
+                    try {
+                        recordedFills = entry.getRecordedFills();
+                    } catch (ConcurrentModificationException e) {
+                        throw e;
+                    } catch (RuntimeException e) {
+                        recordedFills = null;
                     }
-                } catch (ConcurrentModificationException e) {
-                    throw e;
-                } catch (RuntimeException e) {
-                    return NaN.NaN;
-                }
 
-                return toSeriesNum(factory, factory.numOf(entryCost));
+                    if (recordedFills == null) {
+                        return NaN.NaN;
+                    }
+
+                    if (recordedFills.isEmpty()) {
+                        return fullWindowCostBasis(series, entry, factory);
+                    }
+
+                    List<TradeFill> visibleFills = recordedFills.stream()
+                            .filter(f -> f.index() >= 0 && f.index() <= finalIndex)
+                            .toList();
+                    if (visibleFills.isEmpty()) {
+                        return factory.zero();
+                    }
+
+                    if (visibleFills.size() == recordedFills.size()) {
+                        return fullWindowCostBasis(series, entry, factory);
+                    }
+
+                    BigDecimal entryCost = BigDecimal.ZERO;
+                    try {
+                        for (TradeFill fill : visibleFills) {
+                            Num price = fill.price().isNaN() && fill.index() <= series.getEndIndex()
+                                    ? series.getBar(Math.max(fill.index(), series.getBeginIndex())).getClosePrice()
+                                    : fill.price();
+                            Num fillCost = price.multipliedBy(fill.amount()).plus(fill.fee());
+                            entryCost = entryCost.add(new BigDecimal(fillCost.getDelegate().toString()));
+                        }
+                    } catch (ConcurrentModificationException e) {
+                        throw e;
+                    } catch (RuntimeException e) {
+                        return NaN.NaN;
+                    }
+
+                    return toSeriesNum(factory, factory.numOf(entryCost));
+                });
             } catch (ConcurrentModificationException e) {
                 if (attempt == MAX_ATTEMPTS - 1) {
                     throw e;
