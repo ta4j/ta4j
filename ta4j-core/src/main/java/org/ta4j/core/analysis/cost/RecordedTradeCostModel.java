@@ -31,7 +31,7 @@ public final class RecordedTradeCostModel implements CostModel {
         if (entry == null) {
             return zero;
         }
-        Num total = visibleEntryCost(entry, finalIndex, zero);
+        Num total = visibleEntryCost(entry, finalIndex);
         if (exit != null && exit.getIndex() <= finalIndex) {
             total = total.plus(exit.getCost());
         }
@@ -62,9 +62,10 @@ public final class RecordedTradeCostModel implements CostModel {
         return otherModel instanceof RecordedTradeCostModel;
     }
 
-    private static Num visibleEntryCost(Trade entry, int finalIndex, Num zero) {
+    private static Num visibleEntryCost(Trade entry, int finalIndex) {
+        Num numericZero = entry.getPricePerAsset().getNumFactory().zero();
         if (entry.getIndex() > finalIndex) {
-            return zero;
+            return numericZero;
         }
         List<TradeFill> fills = entry.getFills();
         int lastFillIndex = entry.getIndex();
@@ -74,7 +75,7 @@ public final class RecordedTradeCostModel implements CostModel {
         if (lastFillIndex <= finalIndex) {
             return entry.getCost();
         }
-        Num visible = zero;
+        Num visible = numericZero;
         for (TradeFill fill : fills) {
             if (fill.index() <= finalIndex && fill.fee() != null) {
                 visible = visible.plus(fill.fee());
