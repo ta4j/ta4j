@@ -65,6 +65,10 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             try {
                 return series.withReadLock(() -> {
+                    if (finalIndex < series.getBeginIndex()) {
+                        return factory.zero();
+                    }
+
                     List<TradeFill> recordedFills;
                     try {
                         recordedFills = entry.getRecordedFills();
@@ -108,7 +112,11 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
                         return NaN.NaN;
                     }
 
-                    return toSeriesNum(factory, factory.numOf(entryCost));
+                    try {
+                        return toSeriesNum(factory, factory.numOf(entryCost));
+                    } catch (ArithmeticException e) {
+                        return NaN.NaN;
+                    }
                 });
             } catch (ConcurrentModificationException e) {
                 if (attempt == MAX_ATTEMPTS - 1) {
