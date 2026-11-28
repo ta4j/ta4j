@@ -3,8 +3,10 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import java.util.List;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
@@ -29,7 +31,7 @@ public final class RecordedTradeCostModel implements CostModel {
         if (entry == null) {
             return zero;
         }
-        Num total = entry.getIndex() <= finalIndex ? entry.getCost() : zero;
+        Num total = visibleEntryCost(entry, finalIndex, zero);
         if (exit != null && exit.getIndex() <= finalIndex) {
             total = total.plus(exit.getCost());
         }
@@ -58,6 +60,27 @@ public final class RecordedTradeCostModel implements CostModel {
     @Override
     public boolean equals(CostModel otherModel) {
         return otherModel instanceof RecordedTradeCostModel;
+    }
+
+    private static Num visibleEntryCost(Trade entry, int finalIndex, Num zero) {
+        if (entry.getIndex() > finalIndex) {
+            return zero;
+        }
+        List<TradeFill> fills = entry.getFills();
+        int lastFillIndex = entry.getIndex();
+        for (TradeFill fill : fills) {
+            lastFillIndex = Math.max(lastFillIndex, fill.index());
+        }
+        if (lastFillIndex <= finalIndex) {
+            return entry.getCost();
+        }
+        Num visible = zero;
+        for (TradeFill fill : fills) {
+            if (fill.index() <= finalIndex && fill.fee() != null) {
+                visible = visible.plus(fill.fee());
+            }
+        }
+        return visible;
     }
 
     private Num zeroFor(Trade entry, Trade exit) {
