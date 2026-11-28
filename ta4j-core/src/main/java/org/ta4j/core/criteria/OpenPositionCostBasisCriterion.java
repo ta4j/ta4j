@@ -3,13 +3,14 @@
  */
 package org.ta4j.core.criteria;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.*;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+
+import java.math.BigDecimal;
+import java.util.ConcurrentModificationException;
+import java.util.List;
 
 /**
  * Analysis criterion that returns the cost basis of the open position.
@@ -19,9 +20,18 @@ import org.ta4j.core.num.NumFactory;
  * cost. Returns zero when no open position exists.
  * </p>
  *
+ * <p>
+ * For aggregate entries composed of multiple fills, only fills at or before the
+ * evaluated index contribute to the cost basis. When all fills are visible, the
+ * configured transaction-cost model's total is used; for a partial window, the
+ * recorded fees of the visible fills are summed.
+ * </p>
+ *
  * @since 0.22.2
  */
 public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
+
+    private static final int MAX_ATTEMPTS = 8;
 
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -47,13 +57,86 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
 
     private Num calculateAt(BarSeries series, Position position, int finalIndex) {
         NumFactory factory = series.numFactory();
+        int initialBeginIndex = series.getBeginIndex();
         if (finalIndex < series.getBeginIndex() || !isOpenAt(position, finalIndex)) {
             return factory.zero();
         }
         Trade entry = position.getEntry();
-        Num entryPrice = entry.getPricePerAsset(series);
-        Num entryCost = entryPrice.multipliedBy(entry.getAmount()).plus(entry.getCost());
-        return toSeriesNum(factory, entryCost);
+
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            try {
+                return series.withReadLock(() -> {
+                    int currentBeginIndex = series.getBeginIndex();
+                    if (finalIndex < currentBeginIndex) {
+                        if (currentBeginIndex != initialBeginIndex) {
+                            throw new ConcurrentModificationException(
+                                    "Bar series '" + series.getName() + "' changed during calculation");
+                        }
+                        return factory.zero();
+                    }
+
+                    List<TradeFill> recordedFills;
+                    try {
+                        recordedFills = entry.getRecordedFills();
+                    } catch (ConcurrentModificationException e) {
+                        throw e;
+                    } catch (RuntimeException e) {
+                        recordedFills = null;
+                    }
+
+                    if (recordedFills == null) {
+                        List<TradeFill> exportedFills = entry.getFills();
+                        if (exportedFills == null || exportedFills.isEmpty()) {
+                            return fullWindowCostBasis(series, entry, factory);
+                        }
+                        return NaN.NaN;
+                    }
+
+                    boolean allFillsDeferred = recordedFills.stream().allMatch(f -> f.index() < 0);
+                    if (recordedFills.isEmpty() || allFillsDeferred) {
+                        return fullWindowCostBasis(series, entry, factory);
+                    }
+
+                    List<TradeFill> visibleFills = recordedFills.stream()
+                            .filter(f -> f.index() >= 0 && f.index() <= finalIndex)
+                            .toList();
+                    if (visibleFills.isEmpty()) {
+                        return factory.zero();
+                    }
+
+                    if (visibleFills.size() == recordedFills.size()) {
+                        return fullWindowCostBasis(series, entry, factory);
+                    }
+
+                    BigDecimal entryCost = BigDecimal.ZERO;
+                    try {
+                        for (TradeFill fill : visibleFills) {
+                            Num price = fill.price().isNaN() && fill.index() <= series.getEndIndex()
+                                    ? series.getBar(Math.max(fill.index(), series.getBeginIndex())).getClosePrice()
+                                    : fill.price();
+                            Num fillCost = price.multipliedBy(fill.amount()).plus(fill.fee());
+                            entryCost = entryCost.add(new BigDecimal(fillCost.getDelegate().toString()));
+                        }
+                    } catch (ConcurrentModificationException e) {
+                        throw e;
+                    } catch (RuntimeException e) {
+                        return NaN.NaN;
+                    }
+
+                    try {
+                        return toSeriesNum(factory, factory.numOf(entryCost));
+                    } catch (ArithmeticException e) {
+                        return NaN.NaN;
+                    }
+                });
+            } catch (ConcurrentModificationException e) {
+                if (attempt == MAX_ATTEMPTS - 1) {
+                    throw e;
+                }
+            }
+        }
+        throw new ConcurrentModificationException("Bar series '" + series.getName()
+                + "' evicted or changed the analysis window during each of " + MAX_ATTEMPTS + " attempts");
     }
 
     private boolean isOpenAt(Position position, int finalIndex) {
@@ -76,5 +159,11 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
             return NaN.NaN;
         }
         return factory.numOf(value.getDelegate());
+    }
+
+    private Num fullWindowCostBasis(BarSeries series, Trade entry, NumFactory factory) {
+        Num entryPrice = entry.getPricePerAsset(series);
+        Num entryCost = entryPrice.multipliedBy(entry.getAmount()).plus(entry.getCost());
+        return toSeriesNum(factory, entryCost);
     }
 }

@@ -3,23 +3,24 @@
  */
 package org.ta4j.core.criteria;
 
+import java.math.MathContext;
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.ConstrainedSeriesSupport;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.BaseTrade;
-import org.ta4j.core.ExecutionMatchPolicy;
-import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.*;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -116,6 +117,306 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
 
         assertTrue(record.getPositions().isEmpty());
         assertNumEquals(numFactory.hundred(), getCriterion().calculate(series, record));
+    }
+
+    @Test
+    public void aggregateEntrySpotRideAlongIncludesOnlyFillsAtLogicalEnd() {
+        var earlySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
+        var fullSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 200)
+                .build();
+        var entry = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(0, numFactory.hundred(), numFactory.one()),
+                new TradeFill(5, numFactory.numOf(200), numFactory.one())), RecordedTradeCostModel.INSTANCE);
+        var position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        Num earlySeriesCriteriaResult = getCriterion().calculate(earlySeries, position);
+        Num fullSeriesCriteriaResult = getCriterion().calculate(fullSeries, position);
+
+        assertNumEquals(numFactory.hundred(), earlySeriesCriteriaResult);
+        assertNumEquals(numFactory.numOf(300), fullSeriesCriteriaResult);
+    }
+
+    @Test
+    public void fullWindowModeledFeeFinitePrecisionUsesScalarPath() {
+        var costModel = new FixedTransactionCostModel(1.0);
+        var entry = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(0, numFactory.hundred(), numFactory.one()),
+                new TradeFill(5, numFactory.numOf(200), numFactory.one())), costModel);
+        var position = new Position(entry, costModel, new ZeroCostModel());
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 200)
+                .build();
+
+        Num result = getCriterion().calculate(series, position);
+
+        assertNumEquals(numFactory.numOf(301), result);
+    }
+
+    @Test
+    public void unlimitedPrecisionFullWindowUsesScalarPath() {
+        NumFactory factory = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
+        var series = new MockBarSeriesBuilder().withNumFactory(factory).withData(100, 100, 100, 100, 100, 200).build();
+        var costModel = new FixedTransactionCostModel(1.0);
+        var entry = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(0, factory.hundred(), factory.one()),
+                new TradeFill(5, factory.numOf(200), factory.one())), costModel);
+        var position = new Position(entry, costModel, new ZeroCostModel());
+
+        Num result = getCriterion().calculate(series, position);
+
+        assertNumEquals(factory.numOf(301), result);
+    }
+
+    @Test
+    public void unlimitedPrecisionPartialWindowUsesRecordedFees() {
+        NumFactory factory = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
+        var costModel = new FixedTransactionCostModel(1.0);
+        var entry = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(0, factory.hundred(), factory.one()),
+                new TradeFill(5, factory.numOf(200), factory.one())), costModel);
+        var position = new Position(entry, costModel, new ZeroCostModel());
+        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("partial", factory, 0, 100d, 100d, 100d,
+                100d, 100d, 200d);
+
+        Num result = getCriterion().calculate(constrained, position);
+
+        assertNumEquals(factory.numOf(100), result);
+    }
+
+    @Test
+    public void partialWindowUsesRecordedFeesOfVisibleFills() {
+        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("partial", numFactory, 0, 100d, 100d, 100d,
+                100d, 100d, 200d);
+        var entry = Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.one(),
+                        ExecutionSide.BUY, null, null),
+                        new TradeFill(5, Instant.EPOCH, numFactory.numOf(200), numFactory.one(), numFactory.numOf(2),
+                                ExecutionSide.BUY, null, null)),
+                RecordedTradeCostModel.INSTANCE);
+        var position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        Num result = getCriterion().calculate(constrained, position);
+
+        assertNumEquals(numFactory.numOf(101), result);
+    }
+
+    @Test
+    public void partialWindowWithModeledCostUsesRecordedFillFees() {
+        var costModel = new ZeroCostModel();
+        var entry = Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.one(),
+                        ExecutionSide.BUY, null, null),
+                        new TradeFill(5, Instant.EPOCH, numFactory.numOf(200), numFactory.one(), numFactory.numOf(2),
+                                ExecutionSide.BUY, null, null)),
+                costModel);
+        var position = new Position(entry, costModel, new ZeroCostModel());
+        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("partial", numFactory, 0, 100d, 100d, 100d,
+                100d, 100d, 200d);
+
+        Num result = getCriterion().calculate(constrained, position);
+
+        assertNumEquals(numFactory.numOf(101), result);
+    }
+
+    @Test
+    public void legacyEmptyFillListUsesScalarBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 200)
+                .build();
+        Trade legacyTrade = new Trade() {
+            public TradeType getType() {
+                return TradeType.BUY;
+            }
+
+            public int getIndex() {
+                return 0;
+            }
+
+            public Num getPricePerAsset() {
+                return numFactory.hundred();
+            }
+
+            public Num getNetPrice() {
+                return numFactory.hundred();
+            }
+
+            public Num getAmount() {
+                return numFactory.one();
+            }
+
+            public Num getCost() {
+                return numFactory.zero();
+            }
+
+            public CostModel getCostModel() {
+                return new ZeroCostModel();
+            }
+
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+
+            public List<TradeFill> getRecordedFills() {
+                return getFills();
+            }
+        };
+        Position position = new Position(legacyTrade, new ZeroCostModel(), new ZeroCostModel());
+
+        Num result = getCriterion().calculate(series, position);
+
+        assertNumEquals(numFactory.hundred(), result);
+    }
+
+    @Test
+    public void partialWindowModeledFeeIndependentOfFutureFill() {
+        var costModel = new FixedTransactionCostModel(1.0);
+        var entry1 = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(0, numFactory.hundred(), numFactory.one()),
+                new TradeFill(5, numFactory.numOf(200), numFactory.one())), costModel);
+        var pos1 = new Position(entry1, costModel, new ZeroCostModel());
+        var constrained1 = ConstrainedSeriesSupport.trailingConstrainedSeries("p1", numFactory, 0, 100d, 100d, 100d,
+                100d, 100d, 200d);
+        Num r1 = getCriterion().calculate(constrained1, pos1);
+
+        var entry2 = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(0, numFactory.hundred(), numFactory.one()),
+                new TradeFill(5, numFactory.numOf(300), numFactory.one())), costModel);
+        var pos2 = new Position(entry2, costModel, new ZeroCostModel());
+        var constrained2 = ConstrainedSeriesSupport.trailingConstrainedSeries("p2", numFactory, 0, 100d, 100d, 100d,
+                100d, 100d, 300d);
+        Num r2 = getCriterion().calculate(constrained2, pos2);
+
+        assertNumEquals(numFactory.numOf(100), r1);
+        assertNumEquals(numFactory.numOf(100), r2);
+    }
+
+    @Test
+    public void partialWindowMixedPrecisionConvertsOnce() {
+        NumFactory seriesFactory = DecimalNumFactory.getInstance(2);
+        NumFactory fillFactory = DecimalNumFactory.getInstance(4);
+        var costModel = new ZeroCostModel();
+        var entry = Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(0, fillFactory.numOf(1.24), fillFactory.one()),
+                        new TradeFill(1, fillFactory.numOf(1.24), fillFactory.one()),
+                        new TradeFill(5, fillFactory.numOf(1.24), fillFactory.one())),
+                costModel);
+        var position = new Position(entry, costModel, new ZeroCostModel());
+        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("partial", seriesFactory, 1, 1.24, 1.24,
+                1.24, 1.24, 1.24, 1.24);
+
+        Num result = getCriterion().calculate(constrained, position);
+
+        assertNumEquals(seriesFactory.numOf(2.5), result);
+    }
+
+    @Test
+    public void partialWindowLowPrecisionFillsRetainSubtotals() {
+        NumFactory fillFactory = DecimalNumFactory.getInstance(3);
+        NumFactory seriesFactory = DecimalNumFactory.getInstance(4);
+        var costModel = new ZeroCostModel();
+        var entry = Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(0, fillFactory.numOf(100), fillFactory.one()),
+                        new TradeFill(1, fillFactory.numOf(0.4), fillFactory.one()),
+                        new TradeFill(2, fillFactory.numOf(0.4), fillFactory.one()),
+                        new TradeFill(5, fillFactory.numOf(1.0), fillFactory.one())),
+                costModel);
+        var position = new Position(entry, costModel, new ZeroCostModel());
+        var constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("partial", seriesFactory, 2, 100d, 0.4,
+                0.4, 1.0, 1.0, 1.0);
+
+        Num result = getCriterion().calculate(constrained, position);
+
+        assertNumEquals(seriesFactory.numOf(100.8), result);
+    }
+
+    @Test
+    public void prunedFillReanchorsToFirstRetainedBar() {
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("pruned", numFactory, 1, 1, 1, 110d, 120d, 130d, 140d,
+                200d);
+        Trade entry = new Trade() {
+            public TradeType getType() {
+                return TradeType.BUY;
+            }
+
+            public int getIndex() {
+                return 0;
+            }
+
+            public Num getPricePerAsset() {
+                return NaN.NaN;
+            }
+
+            public Num getNetPrice() {
+                return NaN.NaN;
+            }
+
+            public Num getAmount() {
+                return numFactory.one();
+            }
+
+            public Num getCost() {
+                return numFactory.zero();
+            }
+
+            public CostModel getCostModel() {
+                return new ZeroCostModel();
+            }
+
+            public List<TradeFill> getFills() {
+                return List.of(new TradeFill(0, null, NaN.NaN, numFactory.one(), numFactory.zero(), null, null, null),
+                        new TradeFill(1, numFactory.numOf(110), numFactory.one()),
+                        new TradeFill(5, numFactory.numOf(200), numFactory.one()));
+            }
+
+            public List<TradeFill> getRecordedFills() {
+                return getFills();
+            }
+        };
+        Position position = new Position(entry, new ZeroCostModel(), new ZeroCostModel());
+
+        Num result = getCriterion().calculate(series, position);
+
+        assertNumEquals(numFactory.numOf(220), result);
+    }
+
+    @Test
+    public void legacyScalarTradeWithoutRecordedFillsUsesScalarBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 200)
+                .build();
+        Trade legacyTrade = new Trade() {
+            public TradeType getType() {
+                return TradeType.BUY;
+            }
+
+            public int getIndex() {
+                return 0;
+            }
+
+            public Num getPricePerAsset() {
+                return numFactory.hundred();
+            }
+
+            public Num getNetPrice() {
+                return numFactory.hundred();
+            }
+
+            public Num getAmount() {
+                return numFactory.one();
+            }
+
+            public Num getCost() {
+                return numFactory.zero();
+            }
+
+            public CostModel getCostModel() {
+                return new ZeroCostModel();
+            }
+
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+        };
+        Position position = new Position(legacyTrade, new ZeroCostModel(), new ZeroCostModel());
+
+        Num result = getCriterion().calculate(series, position);
+
+        assertNumEquals(numFactory.hundred(), result);
     }
 
     private BaseTradingRecord openLotsAcrossLogicalEnd() {

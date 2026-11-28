@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -292,6 +293,20 @@ class BaseTradeTest {
         private String orderId;
         private String correlationId;
         private Num cost = NUM_FACTORY.zero();
+    }
+
+    @Test
+    void recordedFillsExposeRawFeesWithoutModeledApportionment() {
+        var costModel = new FixedTransactionCostModel(1.0);
+        var entry = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(0, NUM_FACTORY.hundred(), NUM_FACTORY.one()),
+                new TradeFill(5, NUM_FACTORY.numOf(200), NUM_FACTORY.one())), costModel);
+
+        assertEquals(2, entry.getFills().size());
+        assertNumEquals(NUM_FACTORY.numOf(0.3333333333333333), entry.getFills().getFirst().fee());
+
+        assertEquals(2, entry.getRecordedFills().size());
+        assertNumEquals(NUM_FACTORY.zero(), entry.getRecordedFills().get(0).fee());
+        assertNumEquals(NUM_FACTORY.zero(), entry.getRecordedFills().get(1).fee());
     }
 
     private BaseTrade copyTrade(BaseTrade original) throws Exception {

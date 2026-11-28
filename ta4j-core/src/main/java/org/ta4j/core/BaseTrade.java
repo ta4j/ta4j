@@ -324,6 +324,11 @@ public class BaseTrade implements Trade {
         return exportedFills();
     }
 
+    @Override
+    public List<TradeFill> getRecordedFills() {
+        return List.copyOf(fills);
+    }
+
     /**
      * @return execution timestamp
      * @since 0.22.4
