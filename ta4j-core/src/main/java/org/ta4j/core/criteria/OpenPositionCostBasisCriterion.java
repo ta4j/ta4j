@@ -66,7 +66,8 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
             try {
                 return series.withReadLock(() -> {
                     if (finalIndex < series.getBeginIndex()) {
-                        return factory.zero();
+                        throw new ConcurrentModificationException(
+                                "Bar series '" + series.getName() + "' changed during calculation");
                     }
 
                     List<TradeFill> recordedFills;
