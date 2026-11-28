@@ -252,6 +252,10 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
             public List<TradeFill> getFills() {
                 return List.of();
             }
+
+            public List<TradeFill> getRecordedFills() {
+                return getFills();
+            }
         };
         Position position = new Position(legacyTrade, new ZeroCostModel(), new ZeroCostModel());
 
@@ -368,6 +372,51 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
         Num result = getCriterion().calculate(series, position);
 
         assertNumEquals(numFactory.numOf(220), result);
+    }
+
+    @Test
+    public void legacyScalarTradeWithoutRecordedFillsUsesScalarBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 200)
+                .build();
+        Trade legacyTrade = new Trade() {
+            public TradeType getType() {
+                return TradeType.BUY;
+            }
+
+            public int getIndex() {
+                return 0;
+            }
+
+            public Num getPricePerAsset() {
+                return numFactory.hundred();
+            }
+
+            public Num getNetPrice() {
+                return numFactory.hundred();
+            }
+
+            public Num getAmount() {
+                return numFactory.one();
+            }
+
+            public Num getCost() {
+                return numFactory.zero();
+            }
+
+            public CostModel getCostModel() {
+                return new ZeroCostModel();
+            }
+
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+        };
+        Position position = new Position(legacyTrade, new ZeroCostModel(), new ZeroCostModel());
+
+        Num result = getCriterion().calculate(series, position);
+
+        assertNumEquals(numFactory.hundred(), result);
     }
 
     private BaseTradingRecord openLotsAcrossLogicalEnd() {

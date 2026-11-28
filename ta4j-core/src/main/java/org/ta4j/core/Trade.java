@@ -203,11 +203,18 @@ public interface Trade extends Serializable {
      * calculations.
      * </p>
      *
-     * @return recorded execution fills of this trade
+     * <p>
+     * Returns {@code null} when this trade does not expose separately recorded
+     * fees. Callers must treat {@code null} as "recorded fees unavailable" rather
+     * than falling back to {@link #getFills()}.
+     * </p>
+     *
+     * @return recorded execution fills of this trade, or {@code null} if
+     *         unavailable
      * @since 0.29.1
      */
     default List<TradeFill> getRecordedFills() {
-        return getFills();
+        return null;
     }
 
     /**

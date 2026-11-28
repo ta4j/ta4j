@@ -57,6 +57,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
 
     private Num calculateAt(BarSeries series, Position position, int finalIndex) {
         NumFactory factory = series.numFactory();
+        int initialBeginIndex = series.getBeginIndex();
         if (finalIndex < series.getBeginIndex() || !isOpenAt(position, finalIndex)) {
             return factory.zero();
         }
@@ -65,9 +66,13 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             try {
                 return series.withReadLock(() -> {
-                    if (finalIndex < series.getBeginIndex()) {
-                        throw new ConcurrentModificationException(
-                                "Bar series '" + series.getName() + "' changed during calculation");
+                    int currentBeginIndex = series.getBeginIndex();
+                    if (finalIndex < currentBeginIndex) {
+                        if (currentBeginIndex != initialBeginIndex) {
+                            throw new ConcurrentModificationException(
+                                    "Bar series '" + series.getName() + "' changed during calculation");
+                        }
+                        return factory.zero();
                     }
 
                     List<TradeFill> recordedFills;
@@ -80,10 +85,15 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
                     }
 
                     if (recordedFills == null) {
+                        List<TradeFill> exportedFills = entry.getFills();
+                        if (exportedFills == null || exportedFills.isEmpty()) {
+                            return fullWindowCostBasis(series, entry, factory);
+                        }
                         return NaN.NaN;
                     }
 
-                    if (recordedFills.isEmpty()) {
+                    boolean allFillsDeferred = recordedFills.stream().allMatch(f -> f.index() < 0);
+                    if (recordedFills.isEmpty() || allFillsDeferred) {
                         return fullWindowCostBasis(series, entry, factory);
                     }
 
